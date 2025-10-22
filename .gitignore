@@ -3,6 +3,7 @@ ui/node_modules
 .env
 .DS_Store
 dist
-
+ui/dist
+ui/.next
 # History data
 .history/
