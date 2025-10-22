@@ -8,8 +8,13 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import multer from "multer";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { execSync } from "child_process";
 import { GitWorkAnalyzer } from "./services/GitWorkAnalyzer.js";
 import { NotesProcessor } from "./services/NotesProcessor.js";
+import { HistoryService } from "./services/HistoryService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import { ClickUpService } from "./services/ClickUpService.js";
@@ -37,7 +42,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  origin: ['http://localhost:3008', 'http://localhost:3009'],
   credentials: true,
 }));
 app.use(express.json());
@@ -77,13 +82,211 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       });
     });
 
+    // Browse directories endpoint
+    app.get("/browse", (req, res) => {
+      try {
+        const requestedPath = (req.query.path as string) || os.homedir();
+
+        // Security: Prevent directory traversal attacks
+        const normalizedPath = path.normalize(requestedPath);
+
+        // Check if path exists and is a directory
+        if (!fs.existsSync(normalizedPath)) {
+          res.status(404).json({
+            success: false,
+            error: "Path does not exist",
+          });
+          return;
+        }
+
+        const stats = fs.statSync(normalizedPath);
+        if (!stats.isDirectory()) {
+          res.status(400).json({
+            success: false,
+            error: "Path is not a directory",
+          });
+          return;
+        }
+
+        // Read directory contents
+        const items = fs.readdirSync(normalizedPath, { withFileTypes: true });
+
+        // Filter and format results
+        const directories = items
+          .filter(item => item.isDirectory() && !item.name.startsWith('.'))
+          .map(item => ({
+            name: item.name,
+            path: path.join(normalizedPath, item.name),
+            isGitRepo: fs.existsSync(path.join(normalizedPath, item.name, '.git'))
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        // Get parent directory
+        const parentPath = path.dirname(normalizedPath);
+        const canGoUp = normalizedPath !== path.parse(normalizedPath).root;
+
+        res.json({
+          success: true,
+          data: {
+            currentPath: normalizedPath,
+            parentPath: canGoUp ? parentPath : null,
+            directories,
+            gitRepos: directories.filter(d => d.isGitRepo).length
+          }
+        });
+      } catch (error) {
+        console.error("Browse error:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to browse directory",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // History endpoint
+    app.get("/history", (req, res) => {
+      try {
+        const historyService = new HistoryService();
+        const limit = parseInt(req.query.limit as string) || 50;
+
+        const history = historyService.getAnalysisHistory(limit);
+        const stats = historyService.getStatistics();
+
+        res.json({
+          success: true,
+          data: {
+            history,
+            statistics: stats,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to get history:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve history",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // Git info endpoint - fetch branches and user info
+    app.get("/git-info", (req, res) => {
+      try {
+        const projectPath = (req.query.path as string) || process.cwd();
+
+        // Validate path exists and is a directory
+        if (!fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
+          res.status(400).json({
+            success: false,
+            error: "Invalid project path",
+          });
+          return;
+        }
+
+        // Check if it's a git repository
+        const gitDir = path.join(projectPath, '.git');
+        if (!fs.existsSync(gitDir)) {
+          res.status(400).json({
+            success: false,
+            error: "Not a git repository",
+          });
+          return;
+        }
+
+        try {
+          // Get all branches
+          const branchesOutput = execSync('git branch -a', {
+            cwd: projectPath,
+            encoding: 'utf-8',
+          });
+
+          const branches = branchesOutput
+            .split('\n')
+            .map((line) => line.trim().replace(/^\*\s+/, '').replace(/^remotes\/origin\//, ''))
+            .filter((branch) => branch && !branch.includes('HEAD'))
+            .filter((branch, index, self) => self.indexOf(branch) === index); // Remove duplicates
+
+          // Get current branch
+          const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+            cwd: projectPath,
+            encoding: 'utf-8',
+          }).trim();
+
+          // Get current user email
+          let userEmail = '';
+          try {
+            userEmail = execSync('git config user.email', {
+              cwd: projectPath,
+              encoding: 'utf-8',
+            }).trim();
+          } catch (e) {
+            // If local config doesn't exist, try global
+            try {
+              userEmail = execSync('git config --global user.email', {
+                encoding: 'utf-8',
+              }).trim();
+            } catch (e2) {
+              // No git user email configured
+              userEmail = '';
+            }
+          }
+
+          // Get current user name
+          let userName = '';
+          try {
+            userName = execSync('git config user.name', {
+              cwd: projectPath,
+              encoding: 'utf-8',
+            }).trim();
+          } catch (e) {
+            try {
+              userName = execSync('git config --global user.name', {
+                encoding: 'utf-8',
+              }).trim();
+            } catch (e2) {
+              userName = '';
+            }
+          }
+
+          res.json({
+            success: true,
+            data: {
+              branches,
+              currentBranch,
+              userEmail,
+              userName,
+              projectPath,
+            },
+          });
+        } catch (gitError) {
+          console.error('Git command failed:', gitError);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to get git information',
+            details: gitError instanceof Error ? gitError.message : 'Unknown error',
+          });
+        }
+      } catch (error) {
+        console.error('Git info fetch failed:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to fetch git information',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
     // Analyze work endpoint
     app.post("/analyze", async (req, res) => {
       try {
-        const { date, endDate, author, createTasks = false } = req.body;
+        const { date, endDate, author, branch, createTasks = false, projectPath } = req.body;
 
-        const analyzer = new GitWorkAnalyzer(config.project.path);
-        const workAnalysis = await analyzer.analyzeWork(date, endDate, author);
+        // Use provided project path or default from config
+        const targetProjectPath = projectPath || config.project.path;
+
+        const analyzer = new GitWorkAnalyzer(targetProjectPath);
+        const workAnalysis = await analyzer.analyzeWork(date, endDate, author, branch);
 
         let createdTasks = [];
         if (createTasks) {
@@ -214,6 +417,46 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to process notes",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // Create tasks endpoint
+    app.post("/create-tasks", async (req, res) => {
+      try {
+        const { workAnalysis, projectPath } = req.body;
+
+        if (!workAnalysis) {
+          res.status(400).json({
+            success: false,
+            error: "workAnalysis is required",
+          });
+          return;
+        }
+
+        const targetProjectPath = projectPath || config.project.path;
+        const analyzer = new GitWorkAnalyzer(targetProjectPath);
+
+        // Create tasks from the work analysis
+        const createdTasks = await analyzer.createTasksFromWork(
+          workAnalysis,
+          config.clickup
+        );
+
+        res.json({
+          success: true,
+          data: {
+            tasksCreated: createdTasks.filter((t) => t !== null).length,
+            tasks: createdTasks.filter((t) => t !== null),
+          },
+          message: `Created ${createdTasks.filter((t) => t !== null).length} tasks in ClickUp`,
+        });
+      } catch (error) {
+        console.error("Failed to create tasks:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to create tasks",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }
@@ -403,3 +646,8 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     process.exit(1);
   }
 }
+
+// Start the server if this file is run directly
+const config = getAppConfig();
+const port = config.webhook.port || 3000;
+startWebhookServer(port);

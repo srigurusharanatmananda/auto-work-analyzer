@@ -9,6 +9,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { distance as levenshteinDistance } from "fastest-levenshtein";
 import { ClickUpService } from "./ClickUpService.js";
+import { HistoryService } from "./HistoryService.js";
 import {
   GitCommit,
   DetectedWork,
@@ -28,10 +29,12 @@ export class GitWorkAnalyzer {
   private projectPath: string;
   private cache: Map<string, CacheEntry<any>>;
   private cacheTTL: number = 5 * 60 * 1000; // 5 minutes
+  private historyService: HistoryService;
 
   constructor(projectPath: string = process.cwd(), cacheTTL?: number) {
     this.projectPath = projectPath;
     this.cache = new Map();
+    this.historyService = new HistoryService();
     if (cacheTTL !== undefined) {
       this.cacheTTL = cacheTTL;
     }
@@ -76,14 +79,15 @@ export class GitWorkAnalyzer {
   async analyzeWork(
     date?: string,
     endDate?: string,
-    author?: string
+    author?: string,
+    branch?: string
   ): Promise<WorkAnalysisResult> {
     try {
       // Validate inputs
       this.validateDateInputs(date, endDate);
 
       // Create cache key
-      const cacheKey = `analysis:${date || "today"}:${endDate || ""}:${author || "all"}`;
+      const cacheKey = `analysis:${date || "today"}:${endDate || ""}:${author || "all"}:${branch || "all"}`;
 
       // Check cache
       const cached = this.getCached<WorkAnalysisResult>(cacheKey);
@@ -95,7 +99,17 @@ export class GitWorkAnalyzer {
       await this.verifyGitRepository();
 
       // Get commits for the specified date range
-      const commits = await this.getCommitsForDateRange(date, endDate, author);
+      const allCommits = await this.getCommitsForDateRange(date, endDate, author, branch);
+
+      // Filter out already processed commits to prevent duplicates
+      const commits = this.historyService.filterUnprocessedCommits(
+        allCommits,
+        this.projectPath
+      );
+
+      console.log(
+        `Found ${allCommits.length} total commits, ${commits.length} unprocessed (${allCommits.length - commits.length} already processed)`
+      );
 
       // Analyze the commits to detect work patterns
       const detectedWork = await this.detectWorkFromCommits(commits);
@@ -204,11 +218,12 @@ export class GitWorkAnalyzer {
   private async getCommitsForDateRange(
     startDate?: string,
     endDate?: string,
-    author?: string
+    author?: string,
+    branch?: string
   ): Promise<GitCommit[]> {
     try {
       // Create cache key for commits
-      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${author || ""}`;
+      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${author || ""}:${branch || ""}`;
 
       // Check cache
       const cached = this.getCached<GitCommit[]>(cacheKey);
@@ -231,6 +246,11 @@ export class GitWorkAnalyzer {
       // Add author filtering
       if (author) {
         gitCommand += ` --author="${author}"`;
+      }
+
+      // Add branch filtering (add branch name at the end)
+      if (branch) {
+        gitCommand += ` ${branch}`;
       }
 
       const { stdout } = await execAsync(gitCommand, {
@@ -654,7 +674,7 @@ export class GitWorkAnalyzer {
   ): Promise<any[]> {
     try {
       const clickUpService = new ClickUpService(config);
-      const createdTasks = [];
+      const createdTasks: any[] = [];
 
       // Create summary task
       const summaryTask = await clickUpService.createTask({
@@ -688,8 +708,13 @@ export class GitWorkAnalyzer {
         const batch = workItems.slice(i, i + batchSize);
 
         // Process batch in parallel
-        const batchPromises = batch.map((work) =>
-          clickUpService.createTask({
+        const batchPromises = batch.map((work) => {
+          // Get the most recent commit date for due date
+          const commitDate = work.commits.length > 0
+            ? work.commits[work.commits.length - 1].date
+            : workAnalysis.date;
+
+          return clickUpService.createTask({
             name: `${
               work.type === "feature"
                 ? "✅"
@@ -705,13 +730,14 @@ export class GitWorkAnalyzer {
                 ? "normal"
                 : "low",
             status: "complete",
-            tags: [work.type, "completed", workAnalysis.date, ...work.tags],
+            tags: [work.type, "git-analyzed", workAnalysis.date, ...work.tags],
             timeEstimate: work.estimatedHours * 60 * 60 * 1000, // Convert to milliseconds
+            dueDate: commitDate, // Set due date to the commit date
           }).catch((error): null => {
             console.error(`Failed to create task for ${work.name}:`, error);
             return null; // Return null for failed tasks
-          })
-        );
+          });
+        });
 
         // Wait for batch to complete
         const batchResults = await Promise.all(batchPromises);
@@ -724,6 +750,39 @@ export class GitWorkAnalyzer {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
+
+      // Mark commits as processed and save analysis history
+      const allCommits = workAnalysis.detectedWork.flatMap((work) => work.commits);
+      const taskMapping = new Map<string, { id: string; name: string }>();
+
+      // Map commits to their created tasks
+      workAnalysis.detectedWork.forEach((work) => {
+        work.commits.forEach((commit) => {
+          const task = createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
+          if (task) {
+            taskMapping.set(commit.hash, { id: task.id, name: task.name });
+          }
+        });
+      });
+
+      // Mark these commits as processed
+      this.historyService.markCommitsAsProcessed(
+        allCommits,
+        this.projectPath,
+        taskMapping
+      );
+
+      // Save analysis to history
+      this.historyService.addAnalysisHistory({
+        projectPath: this.projectPath,
+        date: workAnalysis.date,
+        endDate: undefined,
+        author: undefined,
+        totalCommits: workAnalysis.totalCommits,
+        totalWorkItems: workAnalysis.detectedWork.length,
+        tasksCreated: createdTasks.filter((t) => t !== null).length,
+        summary: workAnalysis.summary,
+      });
 
       return createdTasks;
     } catch (error) {
