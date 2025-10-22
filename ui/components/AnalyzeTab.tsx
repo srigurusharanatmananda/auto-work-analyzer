@@ -1,17 +1,82 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { AnalysisResponse } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
+import DirectoryBrowser from './DirectoryBrowser';
 
-export default function AnalyzeTab() {
+interface AnalyzeTabProps {
+  selectedProjectPath: string;
+  setSelectedProjectPath: (path: string) => void;
+}
+
+export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath }: AnalyzeTabProps) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [currentBranch, setCurrentBranch] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [loadingGitInfo, setLoadingGitInfo] = useState(false);
 
   // Set default date to today
   const today = new Date().toISOString().split('T')[0];
+
+  // Fetch git info when project path changes
+  const fetchGitInfo = async (path: string) => {
+    if (!path) {
+      setBranches([]);
+      setCurrentBranch('');
+      setUserEmail('');
+      return;
+    }
+
+    setLoadingGitInfo(true);
+    try {
+      const response = await fetch(`/api/git-info?path=${encodeURIComponent(path)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setBranches(result.data.branches || []);
+        setCurrentBranch(result.data.currentBranch || '');
+        setUserEmail(result.data.userEmail || '');
+      } else {
+        // Not a git repo or error - clear state
+        setBranches([]);
+        setCurrentBranch('');
+        setUserEmail('');
+      }
+    } catch (err) {
+      console.error('Failed to fetch git info:', err);
+      setBranches([]);
+      setCurrentBranch('');
+      setUserEmail('');
+    } finally {
+      setLoadingGitInfo(false);
+    }
+  };
+
+  // Fetch git info when selected project path changes
+  useEffect(() => {
+    if (selectedProjectPath) {
+      fetchGitInfo(selectedProjectPath);
+    }
+  }, [selectedProjectPath]);
+
+  const handleBrowseClick = () => {
+    setShowBrowser(true);
+  };
+
+  const handleSelectDirectory = (path: string) => {
+    setSelectedProjectPath(path);
+    setShowBrowser(false);
+  };
+
+  const handleCancelBrowse = () => {
+    setShowBrowser(false);
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,6 +89,8 @@ export default function AnalyzeTab() {
       date: formData.get('startDate') as string,
       endDate: (formData.get('endDate') as string) || undefined,
       author: (formData.get('author') as string) || undefined,
+      branch: (formData.get('branch') as string) || undefined,
+      projectPath: (formData.get('projectPath') as string) || undefined,
       createTasks: formData.get('createTasks') === 'on',
     };
 
@@ -111,16 +178,72 @@ export default function AnalyzeTab() {
         </div>
 
         <div>
+          <label htmlFor="projectPath" className="block text-sm font-semibold text-gray-700 mb-2">
+            Project Path (Optional)
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              id="projectPath"
+              name="projectPath"
+              value={selectedProjectPath}
+              onChange={(e) => setSelectedProjectPath(e.target.value)}
+              placeholder="/path/to/your/project (leave empty for current project)"
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleBrowseClick}
+              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <span>📁</span>
+              <span>Browse</span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            💡 Click &quot;Browse&quot; to select a folder, or type the absolute path to any git repository
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="branch" className="block text-sm font-semibold text-gray-700 mb-2">
+            Branch {loadingGitInfo && <span className="text-xs text-gray-500">(Loading...)</span>}
+          </label>
+          <select
+            id="branch"
+            name="branch"
+            defaultValue={currentBranch}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+            disabled={!selectedProjectPath || loadingGitInfo}
+          >
+            <option value="">All Branches</option>
+            {branches.length > 0 && branches.map((branch) => (
+              <option key={branch} value={branch}>
+                {branch} {branch === currentBranch ? '(current)' : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            💡 Select a specific branch to analyze, or leave as "All Branches" to analyze all commits
+          </p>
+        </div>
+
+        <div>
           <label htmlFor="author" className="block text-sm font-semibold text-gray-700 mb-2">
-            Author Email (Optional)
+            Author Email (Optional) {userEmail && <span className="text-xs text-green-600">✓ Auto-filled</span>}
           </label>
           <input
             type="email"
             id="author"
             name="author"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
             placeholder="developer@example.com"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            💡 Leave empty to analyze commits from all authors
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -168,6 +291,13 @@ export default function AnalyzeTab() {
       )}
 
       {results && <ResultsDisplay type="analysis" data={results} />}
+
+      {showBrowser && (
+        <DirectoryBrowser
+          onSelect={handleSelectDirectory}
+          onCancel={handleCancelBrowse}
+        />
+      )}
     </div>
   );
 }
