@@ -1,0 +1,56 @@
+{
+  "name": "auto-work-analyzer",
+  "version": "1.0.0",
+  "description": "Automatic work analysis and ClickUp task creation based on git commits",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "analyze": "tsx src/cli.ts",
+    "test": "tsx src/test.ts",
+    "setup": "tsx src/setup.ts",
+    "webhook": "tsx src/webhook-server.ts"
+  },
+  "bin": {
+    "auto-work-analyzer": "./dist/cli.js",
+    "awa": "./dist/cli.js"
+  },
+  "keywords": [
+    "git",
+    "clickup",
+    "automation",
+    "work-analysis",
+    "task-management",
+    "productivity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "fastest-levenshtein": "^1.0.16",
+    "helmet": "^7.1.0",
+    "multer": "^2.0.2",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/auto-work-analyzer.git"
+  },
+  "homepage": "https://github.com/yourusername/auto-work-analyzer#readme"
+}
