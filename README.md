@@ -165,7 +165,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 9 * * *'
+    - cron: "0 9 * * *"
 
 jobs:
   analyze:
@@ -223,17 +223,20 @@ analyze_work:
 ## 📊 What Gets Created in ClickUp
 
 ### Summary Task
+
 - **Name**: "📊 Daily Work Summary - 2024-01-15"
 - **Description**: Complete analysis of work completed
 - **Subtasks**: One for each detected work item
 
 ### Individual Tasks
+
 - **Feature Tasks**: "✅ Feature: Add user authentication system"
 - **Bug Fix Tasks**: "🐛 Bug Fix: Fix login form validation error"
 - **Improvement Tasks**: "🔧 Improvement: Optimize database queries"
 - **Test Tasks**: "🧪 Test: Add unit tests for payment service"
 
 ### Smart Features
+
 - **Priority**: Based on complexity (high/medium/low)
 - **Tags**: Auto-generated based on file types and content
 - **Time Estimates**: Calculated from commit complexity
@@ -263,17 +266,17 @@ CLICKUP_DEFAULT_LIST_ID=list2
 ```typescript
 // Create custom workflow templates
 const customTemplate = {
-  name: 'Custom Workflow',
-  description: 'My custom workflow',
+  name: "Custom Workflow",
+  description: "My custom workflow",
   tasks: [
     {
-      name: 'Custom Task',
-      description: 'Custom task description',
-      priority: 'high',
-      tags: ['custom', 'workflow'],
-    }
-  ]
-}
+      name: "Custom Task",
+      description: "Custom task description",
+      priority: "high",
+      tags: ["custom", "workflow"],
+    },
+  ],
+};
 ```
 
 ### Webhook Security
@@ -293,14 +296,17 @@ curl -X POST http://localhost:3000/webhook \
 ### Common Issues
 
 1. **"ClickUp credentials not configured"**
+
    - Check environment variables are set correctly
    - Verify API key starts with `pk_`
 
 2. **"Git repository not found"**
+
    - Ensure you're running from a git repository
    - Check PROJECT_PATH is correct
 
 3. **"No work detected"**
+
    - Check if there are commits in the specified date range
    - Verify author email matches git commit author
    - Ensure commits have meaningful messages
@@ -358,4 +364,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 **Made with ❤️ for developers who want to track their work automatically**
-

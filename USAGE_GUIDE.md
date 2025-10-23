@@ -177,17 +177,17 @@ curl -X POST http://localhost:3000/webhook \
 ### Programmatic Usage
 
 ```typescript
-import { analyzeWork, createTasksFromWork } from 'auto-work-analyzer'
+import { analyzeWork, createTasksFromWork } from "auto-work-analyzer";
 
 // Analyze work
 const result = await analyzeWork({
-  date: '2024-01-15',
+  date: "2024-01-15",
   createTasks: true,
-  projectPath: '/path/to/project'
-})
+  projectPath: "/path/to/project",
+});
 
-console.log('Work analysis:', result.workAnalysis)
-console.log('Created tasks:', result.createdTasks)
+console.log("Work analysis:", result.workAnalysis);
+console.log("Created tasks:", result.createdTasks);
 ```
 
 ## 🔄 Integration Options
@@ -239,7 +239,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 9 * * *'
+    - cron: "0 9 * * *"
 
 jobs:
   analyze:
@@ -274,7 +274,7 @@ analyze_work:
 cp .env .env.project1
 # Edit .env.project1 with Project 1 credentials
 
-# Project 2  
+# Project 2
 cp .env .env.project2
 # Edit .env.project2 with Project 2 credentials
 
@@ -337,17 +337,20 @@ cd project2-analyzer && npm run setup
 ## 📊 What Gets Created in ClickUp
 
 ### Summary Task
+
 - **Name**: "📊 Daily Work Summary - 2024-01-15"
 - **Description**: Complete analysis of work completed
 - **Subtasks**: One for each detected work item
 
 ### Individual Tasks
+
 - **Feature Tasks**: "✅ Feature: Add user authentication system"
 - **Bug Fix Tasks**: "🐛 Bug Fix: Fix login form validation error"
 - **Improvement Tasks**: "🔧 Improvement: Optimize database queries"
 - **Test Tasks**: "🧪 Test: Add unit tests for payment service"
 
 ### Smart Features
+
 - **Priority**: Based on complexity (high/medium/low)
 - **Tags**: Auto-generated based on file types and content
 - **Time Estimates**: Calculated from commit complexity
@@ -359,14 +362,17 @@ cd project2-analyzer && npm run setup
 ### Common Issues
 
 1. **"ClickUp credentials not configured"**
+
    - Check environment variables are set correctly
    - Verify API key starts with `pk_`
 
 2. **"Git repository not found"**
+
    - Ensure PROJECT_PATH points to a git repository
    - Check the path is correct
 
 3. **"No work detected"**
+
    - Check if there are commits in the specified date range
    - Verify author email matches git commit author
    - Ensure commits have meaningful messages
@@ -399,28 +405,33 @@ npm run test
 ## 🎉 Getting Started
 
 1. **Clone the repository**
+
    ```bash
    git clone auto-work-analyzer
    cd auto-work-analyzer
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure for your project**
+
    ```bash
    npm run setup
    # Or manually edit .env file
    ```
 
 4. **Test configuration**
+
    ```bash
    npm run test
    ```
 
 5. **Analyze work**
+
    ```bash
    npm run analyze today
    ```
@@ -447,4 +458,3 @@ npm run test
 ---
 
 **🎯 This standalone project makes work analysis reusable across all your projects!**
-
