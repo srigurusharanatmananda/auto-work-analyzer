@@ -15,7 +15,7 @@ export interface EnhancedDescription {
 
 export class AIDescriptionService {
   private genAI: GoogleGenerativeAI;
-  private model: string = 'gemini-1.5-flash';
+  private model: string = 'gemini-2.5-flash';
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.GOOGLE_API_KEY;
