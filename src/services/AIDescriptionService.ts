@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GitCommit } from '../types/index.js';
 
 export interface EnhancedDescription {
+  improvedTitle: string;
   description: string;
   suggestedTags: string[];
   priority: 'low' | 'normal' | 'high' | 'urgent';
@@ -80,14 +81,16 @@ ${filesChanged.length > 20 ? `\n... and ${filesChanged.length - 20} more files` 
 
 Please analyze this work and provide:
 
-1. **Enhanced Description** (2-3 sentences): A clear, non-technical summary that explains what was done and why it matters
-2. **Suggested Tags** (3-5 tags): Relevant labels like "frontend", "api", "bug-fix", "performance", "security", etc.
-3. **Priority** (one of: low, normal, high, urgent): Based on keywords like "urgent", "critical", "fix", "breaking", etc.
-4. **Business Value** (1 sentence): What business problem this solves or what value it provides
-5. **Technical Summary** (2-3 bullet points): Key technical changes made
+1. **Improved Title** (5-10 words): A clear, concise title that accurately describes what was done. Better than the current title. Use proper capitalization.
+2. **Enhanced Description** (2-3 sentences): A clear, non-technical summary that explains what was done and why it matters
+3. **Suggested Tags** (3-5 tags): Relevant labels like "frontend", "api", "bug-fix", "performance", "security", etc.
+4. **Priority** (one of: low, normal, high, urgent): Based on keywords like "urgent", "critical", "fix", "breaking", etc.
+5. **Business Value** (1 sentence): What business problem this solves or what value it provides
+6. **Technical Summary** (2-3 bullet points): Key technical changes made
 
 Format your response EXACTLY as JSON:
 {
+  "improvedTitle": "...",
   "description": "...",
   "suggestedTags": ["tag1", "tag2", ...],
   "priority": "normal",
@@ -121,6 +124,7 @@ Format your response EXACTLY as JSON:
       }
 
       return {
+        improvedTitle: parsed.improvedTitle || '',
         description: parsed.description,
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         priority: parsed.priority,
@@ -133,6 +137,7 @@ Format your response EXACTLY as JSON:
 
       // Fallback: use the raw response as description
       return {
+        improvedTitle: '',
         description: responseText.trim(),
         suggestedTags: [],
         priority: 'normal',
@@ -172,6 +177,7 @@ Format your response EXACTLY as JSON:
         console.error(`Failed to enhance "${item.name}":`, error);
         // Return original description on error
         results.push({
+          improvedTitle: item.name,
           description: item.description,
           suggestedTags: [],
           priority: 'normal',
