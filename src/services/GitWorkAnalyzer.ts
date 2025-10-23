@@ -80,7 +80,8 @@ export class GitWorkAnalyzer {
     date?: string,
     endDate?: string,
     author?: string,
-    branch?: string
+    branch?: string,
+    includeProcessed: boolean = false
   ): Promise<WorkAnalysisResult> {
     try {
       // Validate inputs
@@ -101,14 +102,17 @@ export class GitWorkAnalyzer {
       // Get commits for the specified date range
       const allCommits = await this.getCommitsForDateRange(date, endDate, author, branch);
 
-      // Filter out already processed commits to prevent duplicates
-      const commits = this.historyService.filterUnprocessedCommits(
-        allCommits,
-        this.projectPath
-      );
+      // Filter out already processed commits to prevent duplicates (only if includeProcessed is false)
+      const commits = includeProcessed
+        ? allCommits
+        : this.historyService.filterUnprocessedCommits(allCommits, this.projectPath);
 
       console.log(
-        `Found ${allCommits.length} total commits, ${commits.length} unprocessed (${allCommits.length - commits.length} already processed)`
+        `Found ${allCommits.length} total commits${
+          includeProcessed
+            ? ''
+            : `, ${commits.length} unprocessed (${allCommits.length - commits.length} already processed)`
+        }`
       );
 
       // Analyze the commits to detect work patterns
