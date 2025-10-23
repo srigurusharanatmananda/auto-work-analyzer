@@ -1,8 +1,8 @@
 /**
- * AI Description Service - Uses Claude API to enhance work item descriptions
+ * AI Description Service - Uses Google Gemini API to enhance work item descriptions
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GitCommit } from '../types/index.js';
 
 export interface EnhancedDescription {
@@ -14,19 +14,17 @@ export interface EnhancedDescription {
 }
 
 export class AIDescriptionService {
-  private client: Anthropic;
-  private model: string = 'claude-3-5-sonnet-20241022';
+  private genAI: GoogleGenerativeAI;
+  private model: string = 'gemini-1.5-flash';
 
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+    const key = apiKey || process.env.GOOGLE_API_KEY;
 
     if (!key) {
-      throw new Error('ANTHROPIC_API_KEY is required. Please add it to your .env file.');
+      throw new Error('GOOGLE_API_KEY is required. Please add it to your .env file.');
     }
 
-    this.client = new Anthropic({
-      apiKey: key,
-    });
+    this.genAI = new GoogleGenerativeAI(key);
   }
 
   /**
@@ -41,23 +39,13 @@ export class AIDescriptionService {
     const prompt = this.buildPrompt(workItemName, currentDescription, commits, filesChanged);
 
     try {
-      const message = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
+      const model = this.genAI.getGenerativeModel({ model: this.model });
 
-      const response = message.content[0];
-      if (response.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
-      }
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
 
-      return this.parseResponse(response.text);
+      return this.parseResponse(text);
     } catch (error) {
       console.error('AI enhancement failed:', error);
       throw new Error(`Failed to enhance description: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -65,7 +53,7 @@ export class AIDescriptionService {
   }
 
   /**
-   * Build prompt for Claude API
+   * Build prompt for Gemini API
    */
   private buildPrompt(
     workItemName: string,
@@ -109,7 +97,7 @@ Format your response EXACTLY as JSON:
   }
 
   /**
-   * Parse Claude's response into structured data
+   * Parse Gemini's response into structured data
    */
   private parseResponse(responseText: string): EnhancedDescription {
     try {

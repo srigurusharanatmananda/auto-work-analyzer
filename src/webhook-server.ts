@@ -185,10 +185,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         }
 
         // Check if API key is configured
-        if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
+        if (!process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY === 'your_google_api_key_here') {
           res.status(400).json({
             success: false,
-            error: "Anthropic API key not configured. Please add ANTHROPIC_API_KEY to your .env file.",
+            error: "Google API key not configured. Please add GOOGLE_API_KEY to your .env file.",
           });
           return;
         }
