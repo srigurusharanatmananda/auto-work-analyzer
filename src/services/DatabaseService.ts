@@ -229,6 +229,35 @@ export class DatabaseService implements IDatabaseService {
     return stmt.all(analysisId) as WorkItemRecord[];
   }
 
+  /**
+   * Get complete report (analysis + work items) by ID
+   */
+  getCompleteReport(analysisId: string): { analysis: AnalysisRecord; workItems: WorkItemRecord[] } | null {
+    const analysis = this.getAnalysisById(analysisId);
+    if (!analysis) {
+      return null;
+    }
+
+    const workItems = this.getWorkItemsByAnalysis(analysisId);
+
+    return { analysis, workItems };
+  }
+
+  /**
+   * Get paginated reports with work items
+   */
+  getPaginatedReports(limit: number = 10, offset: number = 0): Array<{
+    analysis: AnalysisRecord;
+    workItems: WorkItemRecord[];
+  }> {
+    const analyses = this.getAnalysisHistory(limit, offset);
+
+    return analyses.map(analysis => ({
+      analysis,
+      workItems: this.getWorkItemsByAnalysis(analysis.id),
+    }));
+  }
+
   // ==================== Processed Commits Methods ====================
 
   /**
