@@ -6,8 +6,9 @@ import AnalyzeTab from '@/components/AnalyzeTab';
 import NotesTab from '@/components/NotesTab';
 import HistoryTab from '@/components/HistoryTab';
 import ReportsTab from '@/components/ReportsTab';
+import SavedReportsTab from '@/components/SavedReportsTab';
 
-type Tab = 'analyze' | 'notes' | 'history' | 'reports';
+type Tab = 'analyze' | 'notes' | 'history' | 'reports' | 'saved';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('analyze');
@@ -80,7 +81,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 mb-8 shadow-xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <button
               onClick={() => setActiveTab('analyze')}
               className={`py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
@@ -112,6 +113,16 @@ export default function Home() {
               📄 Daily Reports
             </button>
             <button
+              onClick={() => setActiveTab('saved')}
+              className={`py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'saved'
+                  ? 'bg-white text-purple-600 shadow-lg transform scale-105'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              💾 Saved Reports
+            </button>
+            <button
               onClick={() => setActiveTab('history')}
               className={`py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
                 activeTab === 'history'
@@ -139,6 +150,7 @@ export default function Home() {
               setSelectedProjectPath={setSelectedProjectPath}
             />
           )}
+          {activeTab === 'saved' && <SavedReportsTab />}
           {activeTab === 'history' && <HistoryTab />}
         </div>
       </div>
