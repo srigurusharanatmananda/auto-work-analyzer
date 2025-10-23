@@ -35,6 +35,9 @@ interface HistoryData {
   statistics: Statistics;
 }
 
+// Backend API URL (webhook server runs on port 3009)
+const BACKEND_URL = 'http://localhost:3009';
+
 export default function HistoryTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<HistoryData | null>(null);
@@ -46,7 +49,7 @@ export default function HistoryTab() {
     setError(null);
 
     try {
-      const response = await fetch('/api/history');
+      const response = await fetch(`${BACKEND_URL}/api/history`);
       const result = await response.json();
 
       if (result.success) {

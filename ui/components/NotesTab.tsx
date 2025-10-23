@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 import { NotesResponse } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
 
+// Backend API URL (webhook server runs on port 3009)
+const BACKEND_URL = 'http://localhost:3009';
+
 export default function NotesTab() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<NotesResponse | null>(null);
@@ -50,7 +53,7 @@ export default function NotesTab() {
     const toastId = toast.loading('✨ Processing your notes...');
 
     try {
-      const response = await fetch('/api/notes', {
+      const response = await fetch(`${BACKEND_URL}/api/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

@@ -19,6 +19,9 @@ interface EditableWorkItem {
   isEditing: boolean;
 }
 
+// Backend API URL (webhook server runs on port 3009)
+const BACKEND_URL = 'http://localhost:3009';
+
 export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath }: ReportsTabProps) {
   const [loading, setLoading] = useState(false);
   const [summaryReport, setSummaryReport] = useState<string>('');
@@ -48,7 +51,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
     setLoadingGitInfo(true);
     try {
-      const response = await fetch(`/api/git-info?path=${encodeURIComponent(path)}`);
+      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`);
       const result = await response.json();
 
       if (result.success) {
@@ -100,7 +103,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const toastId = toast.loading('📊 Generating report...');
 
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch(`${BACKEND_URL}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -258,7 +261,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         w => w.name === item.name
       );
 
-      const response = await fetch('/api/ai-enhance', {
+      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -341,7 +344,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         })),
       };
 
-      const response = await fetch('/api/create-tasks', {
+      const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
