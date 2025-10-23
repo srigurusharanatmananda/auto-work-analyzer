@@ -207,10 +207,22 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         });
       } catch (error) {
         console.error("AI enhancement failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+        // Provide user-friendly error messages
+        let userMessage = "Failed to enhance description";
+        if (errorMessage.includes('overloaded')) {
+          userMessage = "AI service is currently overloaded. The system will retry automatically.";
+        } else if (errorMessage.includes('rate limit')) {
+          userMessage = "Rate limit exceeded. Please wait a moment and try again.";
+        } else if (errorMessage.includes('API key')) {
+          userMessage = "API key issue. Please check your configuration.";
+        }
+
         res.status(500).json({
           success: false,
-          error: "Failed to enhance description",
-          details: error instanceof Error ? error.message : "Unknown error",
+          error: userMessage,
+          details: errorMessage,
         });
       }
     });
