@@ -32,6 +32,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
   const [loadingGitInfo, setLoadingGitInfo] = useState(false);
   const [editableWorkItems, setEditableWorkItems] = useState<EditableWorkItem[]>([]);
   const [creatingTasks, setCreatingTasks] = useState(false);
+  const [enhancingItems, setEnhancingItems] = useState<Set<string>>(new Set());
 
   // Set default date to today
   const today = new Date().toISOString().split('T')[0];
@@ -241,6 +242,78 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
   const deselectAll = () => {
     setEditableWorkItems(items => items.map(item => ({ ...item, selected: false })));
+  };
+
+  const handleEnhanceWithAI = async (id: string) => {
+    const item = editableWorkItems.find(i => i.id === id);
+    if (!item) return;
+
+    // Mark as enhancing
+    setEnhancingItems(prev => new Set([...prev, id]));
+    const toastId = toast.loading('✨ Enhancing with AI...');
+
+    try {
+      // Find original work item from analysis for commits and files
+      const originalWork = workAnalysis?.workAnalysis.detectedWork.find(
+        w => w.name === item.name
+      );
+
+      const response = await fetch('/api/ai-enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workItemName: item.name,
+          description: item.description,
+          commits: originalWork?.commits || [],
+          filesChanged: originalWork?.files || [],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const enhanced = result.data;
+
+        // Update the work item with enhanced data
+        setEditableWorkItems(items =>
+          items.map(i =>
+            i.id === id
+              ? {
+                  ...i,
+                  description: enhanced.description,
+                  // Optionally update type based on suggested tags
+                }
+              : i
+          )
+        );
+
+        toast.success('✨ Enhanced with AI!', { id: toastId, duration: 3000 });
+
+        // Show additional info as separate toasts
+        if (enhanced.suggestedTags.length > 0) {
+          setTimeout(() => {
+            toast.success(`💡 Suggested tags: ${enhanced.suggestedTags.join(', ')}`, { duration: 4000 });
+          }, 500);
+        }
+
+        if (enhanced.priority !== 'normal') {
+          setTimeout(() => {
+            toast.success(`⚠️ Detected priority: ${enhanced.priority}`, { duration: 4000 });
+          }, 1000);
+        }
+      } else {
+        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId, duration: 5000 });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } finally {
+      setEnhancingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
   };
 
   const handleCreateTasksInClickUp = async () => {
@@ -582,6 +655,27 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                             )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleEnhanceWithAI(item.id)}
+                              disabled={enhancingItems.has(item.id)}
+                              className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-semibold hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                              title="Enhance description with AI"
+                            >
+                              {enhancingItems.has(item.id) ? (
+                                <>
+                                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  <span>AI...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>✨</span>
+                                  <span>AI</span>
+                                </>
+                              )}
+                            </button>
                             <button
                               onClick={() => toggleEditMode(item.id)}
                               className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"

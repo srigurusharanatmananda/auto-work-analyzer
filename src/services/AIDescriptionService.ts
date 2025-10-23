@@ -1,0 +1,198 @@
+/**
+ * AI Description Service - Uses Claude API to enhance work item descriptions
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import { GitCommit } from '../types/index.js';
+
+export interface EnhancedDescription {
+  description: string;
+  suggestedTags: string[];
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  businessValue: string;
+  technicalSummary: string;
+}
+
+export class AIDescriptionService {
+  private client: Anthropic;
+  private model: string = 'claude-3-5-sonnet-20241022';
+
+  constructor(apiKey?: string) {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+
+    if (!key) {
+      throw new Error('ANTHROPIC_API_KEY is required. Please add it to your .env file.');
+    }
+
+    this.client = new Anthropic({
+      apiKey: key,
+    });
+  }
+
+  /**
+   * Generate enhanced description from work item details
+   */
+  async enhanceWorkItemDescription(
+    workItemName: string,
+    currentDescription: string,
+    commits: GitCommit[],
+    filesChanged: string[]
+  ): Promise<EnhancedDescription> {
+    const prompt = this.buildPrompt(workItemName, currentDescription, commits, filesChanged);
+
+    try {
+      const message = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
+
+      const response = message.content[0];
+      if (response.type !== 'text') {
+        throw new Error('Unexpected response type from Claude API');
+      }
+
+      return this.parseResponse(response.text);
+    } catch (error) {
+      console.error('AI enhancement failed:', error);
+      throw new Error(`Failed to enhance description: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Build prompt for Claude API
+   */
+  private buildPrompt(
+    workItemName: string,
+    currentDescription: string,
+    commits: GitCommit[],
+    filesChanged: string[]
+  ): string {
+    const commitMessages = commits.map((c) => `- ${c.message}`).join('\n');
+    const files = filesChanged.slice(0, 20).join('\n'); // Limit to 20 files to avoid token limits
+
+    return `You are a technical project manager analyzing git commits to create a clear, actionable task description.
+
+**Work Item:** ${workItemName}
+
+**Current Description:**
+${currentDescription || '(No description provided)'}
+
+**Commit Messages:**
+${commitMessages}
+
+**Files Changed (${filesChanged.length} total):**
+${files}
+${filesChanged.length > 20 ? `\n... and ${filesChanged.length - 20} more files` : ''}
+
+Please analyze this work and provide:
+
+1. **Enhanced Description** (2-3 sentences): A clear, non-technical summary that explains what was done and why it matters
+2. **Suggested Tags** (3-5 tags): Relevant labels like "frontend", "api", "bug-fix", "performance", "security", etc.
+3. **Priority** (one of: low, normal, high, urgent): Based on keywords like "urgent", "critical", "fix", "breaking", etc.
+4. **Business Value** (1 sentence): What business problem this solves or what value it provides
+5. **Technical Summary** (2-3 bullet points): Key technical changes made
+
+Format your response EXACTLY as JSON:
+{
+  "description": "...",
+  "suggestedTags": ["tag1", "tag2", ...],
+  "priority": "normal",
+  "businessValue": "...",
+  "technicalSummary": "- Point 1\\n- Point 2\\n- Point 3"
+}`;
+  }
+
+  /**
+   * Parse Claude's response into structured data
+   */
+  private parseResponse(responseText: string): EnhancedDescription {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      // Validate response structure
+      if (!parsed.description || !parsed.suggestedTags || !parsed.priority) {
+        throw new Error('Invalid response structure');
+      }
+
+      // Ensure priority is valid
+      const validPriorities = ['low', 'normal', 'high', 'urgent'];
+      if (!validPriorities.includes(parsed.priority)) {
+        parsed.priority = 'normal';
+      }
+
+      return {
+        description: parsed.description,
+        suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
+        priority: parsed.priority,
+        businessValue: parsed.businessValue || '',
+        technicalSummary: parsed.technicalSummary || '',
+      };
+    } catch (error) {
+      console.error('Failed to parse AI response:', error);
+      console.error('Response text:', responseText);
+
+      // Fallback: use the raw response as description
+      return {
+        description: responseText.trim(),
+        suggestedTags: [],
+        priority: 'normal',
+        businessValue: '',
+        technicalSummary: '',
+      };
+    }
+  }
+
+  /**
+   * Batch enhance multiple work items
+   */
+  async enhanceMultipleWorkItems(
+    workItems: Array<{
+      name: string;
+      description: string;
+      commits: GitCommit[];
+      files: string[];
+    }>
+  ): Promise<EnhancedDescription[]> {
+    const results: EnhancedDescription[] = [];
+
+    // Process in batches to avoid rate limits
+    for (const item of workItems) {
+      try {
+        const enhanced = await this.enhanceWorkItemDescription(
+          item.name,
+          item.description,
+          item.commits,
+          item.files
+        );
+        results.push(enhanced);
+
+        // Small delay to avoid rate limits
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Failed to enhance "${item.name}":`, error);
+        // Return original description on error
+        results.push({
+          description: item.description,
+          suggestedTags: [],
+          priority: 'normal',
+          businessValue: '',
+          technicalSummary: '',
+        });
+      }
+    }
+
+    return results;
+  }
+}

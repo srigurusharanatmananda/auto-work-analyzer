@@ -15,6 +15,7 @@ import { execSync } from "child_process";
 import { GitWorkAnalyzer } from "./services/GitWorkAnalyzer.js";
 import { NotesProcessor } from "./services/NotesProcessor.js";
 import { HistoryService } from "./services/HistoryService.js";
+import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import { ClickUpService } from "./services/ClickUpService.js";
@@ -165,6 +166,50 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to retrieve history",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // AI Enhancement endpoint - enhance work item description with Claude
+    app.post("/ai-enhance", async (req, res) => {
+      try {
+        const { workItemName, description, commits, filesChanged } = req.body;
+
+        if (!workItemName) {
+          res.status(400).json({
+            success: false,
+            error: "workItemName is required",
+          });
+          return;
+        }
+
+        // Check if API key is configured
+        if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
+          res.status(400).json({
+            success: false,
+            error: "Anthropic API key not configured. Please add ANTHROPIC_API_KEY to your .env file.",
+          });
+          return;
+        }
+
+        const aiService = new AIDescriptionService();
+        const enhanced = await aiService.enhanceWorkItemDescription(
+          workItemName,
+          description || '',
+          commits || [],
+          filesChanged || []
+        );
+
+        res.json({
+          success: true,
+          data: enhanced,
+        });
+      } catch (error) {
+        console.error("AI enhancement failed:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to enhance description",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }
