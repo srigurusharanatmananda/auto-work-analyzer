@@ -343,7 +343,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         const targetProjectPath = projectPath || config.project.path;
 
         const analyzer = new GitWorkAnalyzer(targetProjectPath);
-        const workAnalysis = await analyzer.analyzeWork(date, endDate, author, branch);
+        // Include processed commits for reports (createTasks = false)
+        // Only filter processed commits when creating tasks to prevent duplicates
+        const includeProcessed = !createTasks;
+        const workAnalysis = await analyzer.analyzeWork(date, endDate, author, branch, includeProcessed);
 
         let createdTasks = [];
         if (createTasks) {
@@ -375,6 +378,71 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to analyze work",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // Get saved reports endpoint
+    app.get("/api/reports", async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 10;
+        const offset = parseInt(req.query.offset as string) || 0;
+
+        const { DatabaseService } = await import('./services/DatabaseService.js');
+        const db = new DatabaseService();
+
+        const reports = db.getPaginatedReports(limit, offset);
+        const stats = db.getStatistics();
+
+        db.close();
+
+        res.json({
+          success: true,
+          data: {
+            reports,
+            hasMore: reports.length === limit, // If we got a full page, there might be more
+            total: stats.totalAnalyses,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to get reports:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve reports",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
+    // Get single report by ID
+    app.get("/api/reports/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const { DatabaseService } = await import('./services/DatabaseService.js');
+        const db = new DatabaseService();
+
+        const report = db.getCompleteReport(id);
+        db.close();
+
+        if (!report) {
+          res.status(404).json({
+            success: false,
+            error: "Report not found",
+          });
+          return;
+        }
+
+        res.json({
+          success: true,
+          data: report,
+        });
+      } catch (error) {
+        console.error("Failed to get report:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve report",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }
