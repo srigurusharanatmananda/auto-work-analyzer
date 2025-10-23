@@ -5,5 +5,13 @@ ui/node_modules
 dist
 ui/dist
 ui/.next
+
 # History data
 .history/
+
+# Database
+.database/
+
+# Test files
+test-*.ts
+test-*.js
