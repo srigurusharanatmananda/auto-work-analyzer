@@ -277,20 +277,21 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       if (result.success) {
         const enhanced = result.data;
 
-        // Update the work item with enhanced data
+        // Update the work item with enhanced data and open edit mode
         setEditableWorkItems(items =>
           items.map(i =>
             i.id === id
               ? {
                   ...i,
                   description: enhanced.description,
+                  isEditing: true, // Open edit mode so user can see the enhanced description
                   // Optionally update type based on suggested tags
                 }
               : i
           )
         );
 
-        toast.success('✨ Enhanced with AI!', { id: toastId, duration: 3000 });
+        toast.success('✨ Enhanced with AI! (Now in edit mode)', { id: toastId, duration: 3000 });
 
         // Show additional info as separate toasts
         if (enhanced.suggestedTags.length > 0) {
