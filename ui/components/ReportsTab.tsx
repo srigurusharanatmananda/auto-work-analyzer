@@ -198,6 +198,36 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     setShowBrowser(false);
   };
 
+  // Regenerate reports from current editable work items
+  const regenerateReports = () => {
+    const summaryLines = ['Sri Gurusharanatmanda EOD:'];
+    const detailedLines = ['Sri Gurusharanatmanda EOD:'];
+
+    if (editableWorkItems.length === 0) {
+      summaryLines.push('- No work items detected for the selected period');
+      detailedLines.push('- No work items detected for the selected period');
+    } else {
+      editableWorkItems.forEach((work) => {
+        const emoji = work.type === 'feature' ? '✨' : work.type === 'bug-fix' ? '🐛' : '🔧';
+
+        // Summary: just the title
+        summaryLines.push(`- ${emoji} ${work.name}`);
+
+        // Detailed: title + descriptions
+        detailedLines.push(`- ${emoji} ${work.name}`);
+        if (work.description && work.description.length > 0) {
+          const descLines = work.description.split('\n').filter((line: string) => line.trim());
+          descLines.forEach((line: string) => {
+            detailedLines.push(`  ${line.trim()}`);
+          });
+        }
+      });
+    }
+
+    setSummaryReport(summaryLines.join('\n'));
+    setDetailedReport(detailedLines.join('\n'));
+  };
+
   // Work item management functions
   const toggleWorkItemSelection = (id: string) => {
     setEditableWorkItems(items =>
@@ -208,23 +238,39 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
   };
 
   const toggleEditMode = (id: string) => {
-    setEditableWorkItems(items =>
-      items.map(item =>
+    setEditableWorkItems(items => {
+      const item = items.find(i => i.id === id);
+      const wasEditing = item?.isEditing;
+      const updatedItems = items.map(item =>
         item.id === id ? { ...item, isEditing: !item.isEditing } : item
-      )
-    );
+      );
+      // Regenerate reports when user finishes editing (switches from edit to view mode)
+      if (wasEditing) {
+        setTimeout(() => regenerateReports(), 100);
+      }
+      return updatedItems;
+    });
   };
 
   const updateWorkItem = (id: string, field: 'name' | 'type' | 'description', value: string) => {
-    setEditableWorkItems(items =>
-      items.map(item =>
+    setEditableWorkItems(items => {
+      const updatedItems = items.map(item =>
         item.id === id ? { ...item, [field]: value } : item
-      )
-    );
+      );
+      // Regenerate reports when name or description changes
+      if (field === 'name' || field === 'description') {
+        setTimeout(() => regenerateReports(), 100);
+      }
+      return updatedItems;
+    });
   };
 
   const deleteWorkItem = (id: string) => {
-    setEditableWorkItems(items => items.filter(item => item.id !== id));
+    setEditableWorkItems(items => {
+      const updatedItems = items.filter(item => item.id !== id);
+      setTimeout(() => regenerateReports(), 100);
+      return updatedItems;
+    });
   };
 
   const addNewWorkItem = () => {
@@ -278,20 +324,24 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         const enhanced = result.data;
 
         // Update the work item with enhanced data and open edit mode
-        setEditableWorkItems(items =>
-          items.map(i =>
+        setEditableWorkItems(items => {
+          const updatedItems = items.map(i =>
             i.id === id
               ? {
                   ...i,
+                  name: enhanced.improvedTitle || i.name, // Update title if provided
                   description: enhanced.description,
                   isEditing: true, // Open edit mode so user can see the enhanced description
                   // Optionally update type based on suggested tags
                 }
               : i
-          )
-        );
+          );
+          // Regenerate reports with updated data
+          setTimeout(() => regenerateReports(), 100);
+          return updatedItems;
+        });
 
-        toast.success('✨ Enhanced with AI! (Now in edit mode)', { id: toastId, duration: 3000 });
+        toast.success('✨ Enhanced with AI! (Title and description updated)', { id: toastId, duration: 3000 });
 
         // Show additional info as separate toasts
         if (enhanced.suggestedTags.length > 0) {
