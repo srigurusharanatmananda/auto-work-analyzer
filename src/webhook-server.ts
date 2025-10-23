@@ -75,7 +75,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     }
 
     // Health check endpoint
-    app.get("/health", (req, res) => {
+    app.get("/api/health", (req, res) => {
       res.json({
         status: "healthy",
         timestamp: new Date().toISOString(),
@@ -84,7 +84,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Browse directories endpoint
-    app.get("/browse", (req, res) => {
+    app.get("/api/browse", (req, res) => {
       try {
         const requestedPath = (req.query.path as string) || os.homedir();
 
@@ -146,7 +146,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // History endpoint
-    app.get("/history", (req, res) => {
+    app.get("/api/history", (req, res) => {
       try {
         const historyService = new HistoryService();
         const limit = parseInt(req.query.limit as string) || 50;
@@ -172,7 +172,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // AI Enhancement endpoint - enhance work item description with Claude
-    app.post("/ai-enhance", async (req, res) => {
+    app.post("/api/ai-enhance", async (req, res) => {
       try {
         const { workItemName, description, commits, filesChanged } = req.body;
 
@@ -216,7 +216,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Git info endpoint - fetch branches and user info
-    app.get("/git-info", (req, res) => {
+    app.get("/api/git-info", (req, res) => {
       try {
         const projectPath = (req.query.path as string) || process.cwd();
 
@@ -323,7 +323,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Analyze work endpoint
-    app.post("/analyze", async (req, res) => {
+    app.post("/api/analyze", async (req, res) => {
       try {
         const { date, endDate, author, branch, createTasks = false, projectPath } = req.body;
 
@@ -369,7 +369,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Notes upload endpoint
-    app.post("/notes", upload.single("notes"), async (req, res) => {
+    app.post("/api/notes", upload.single("notes"), async (req, res) => {
       try {
         let notesText = '';
 
@@ -468,7 +468,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Create tasks endpoint
-    app.post("/create-tasks", async (req, res) => {
+    app.post("/api/create-tasks", async (req, res) => {
       try {
         const { workAnalysis, projectPath } = req.body;
 
@@ -508,7 +508,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Webhook endpoint
-    app.post("/webhook", async (req, res) => {
+    app.post("/api/webhook", async (req, res) => {
       try {
         const {
           type,
@@ -607,7 +607,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Get webhook info
-    app.get("/webhook", (req, res) => {
+    app.get("/api/webhook", (req, res) => {
       res.json({
         success: true,
         data: {
