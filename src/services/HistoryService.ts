@@ -1,10 +1,10 @@
 /**
  * History Service for tracking processed commits and created tasks
+ * Now uses SQLite database instead of JSON files
  */
 
-import fs from 'fs';
-import path from 'path';
-import { GitCommit, DetectedWork } from '../types/index.js';
+import { GitCommit } from '../types/index.js';
+import { DatabaseService, AnalysisRecord, ProcessedCommitRecord } from './DatabaseService.js';
 
 interface ProcessedCommit {
   hash: string;
@@ -31,52 +31,24 @@ interface AnalysisHistory {
 }
 
 export class HistoryService {
-  private historyDir: string;
-  private processedCommitsFile: string;
-  private analysisHistoryFile: string;
+  private db: DatabaseService;
 
   constructor() {
-    this.historyDir = path.join(process.cwd(), '.history');
-    this.processedCommitsFile = path.join(this.historyDir, 'processed-commits.json');
-    this.analysisHistoryFile = path.join(this.historyDir, 'analysis-history.json');
-    this.ensureHistoryDir();
-  }
-
-  private ensureHistoryDir(): void {
-    if (!fs.existsSync(this.historyDir)) {
-      fs.mkdirSync(this.historyDir, { recursive: true });
-    }
-
-    if (!fs.existsSync(this.processedCommitsFile)) {
-      fs.writeFileSync(this.processedCommitsFile, JSON.stringify([], null, 2));
-    }
-
-    if (!fs.existsSync(this.analysisHistoryFile)) {
-      fs.writeFileSync(this.analysisHistoryFile, JSON.stringify([], null, 2));
-    }
+    this.db = new DatabaseService();
   }
 
   /**
    * Get all processed commits
    */
   getProcessedCommits(): ProcessedCommit[] {
-    try {
-      const data = fs.readFileSync(this.processedCommitsFile, 'utf-8');
-      return JSON.parse(data);
-    } catch (error) {
-      console.error('Error reading processed commits:', error);
-      return [];
-    }
+    return this.db.getProcessedCommits();
   }
 
   /**
    * Check if a commit has already been processed
    */
   isCommitProcessed(commitHash: string, projectPath: string): boolean {
-    const processedCommits = this.getProcessedCommits();
-    return processedCommits.some(
-      (commit) => commit.hash === commitHash && commit.projectPath === projectPath
-    );
+    return this.db.isCommitProcessed(commitHash, projectPath);
   }
 
   /**
@@ -94,11 +66,9 @@ export class HistoryService {
     projectPath: string,
     taskMapping?: Map<string, { id: string; name: string }>
   ): void {
-    const processedCommits = this.getProcessedCommits();
-
-    const newProcessed: ProcessedCommit[] = commits.map((commit) => {
+    commits.forEach((commit) => {
       const task = taskMapping?.get(commit.hash);
-      return {
+      const processedCommit: ProcessedCommitRecord = {
         hash: commit.hash,
         date: commit.date,
         author: commit.author,
@@ -108,85 +78,82 @@ export class HistoryService {
         taskId: task?.id,
         taskName: task?.name,
       };
+      this.db.markCommitAsProcessed(processedCommit);
     });
-
-    processedCommits.push(...newProcessed);
-
-    // Keep only last 10,000 commits (to prevent file from growing too large)
-    const trimmed = processedCommits.slice(-10000);
-
-    fs.writeFileSync(this.processedCommitsFile, JSON.stringify(trimmed, null, 2));
   }
 
   /**
    * Get analysis history
    */
   getAnalysisHistory(limit: number = 50): AnalysisHistory[] {
-    try {
-      const data = fs.readFileSync(this.analysisHistoryFile, 'utf-8');
-      const history: AnalysisHistory[] = JSON.parse(data);
-      return history.slice(-limit).reverse(); // Return most recent first
-    } catch (error) {
-      console.error('Error reading analysis history:', error);
-      return [];
-    }
+    return this.db.getAnalysisHistory(limit);
   }
 
   /**
    * Add analysis to history
    */
-  addAnalysisHistory(analysis: Omit<AnalysisHistory, 'id' | 'timestamp'>): void {
-    const history = this.getAnalysisHistory(10000);
-
-    const newEntry: AnalysisHistory = {
+  addAnalysisHistory(analysis: Omit<AnalysisHistory, 'id' | 'timestamp'>): string {
+    const newEntry: AnalysisRecord = {
       id: `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       ...analysis,
     };
 
-    history.unshift(newEntry); // Add to beginning
+    this.db.saveAnalysis(newEntry);
+    return newEntry.id;
+  }
 
-    // Keep only last 1000 analyses
-    const trimmed = history.slice(0, 1000);
+  /**
+   * Save work item to database
+   */
+  saveWorkItem(
+    analysisId: string,
+    workItemName: string,
+    workItemType: string,
+    description: string,
+    estimatedHours: number,
+    complexity: string,
+    filesCount: number,
+    commitsCount: number
+  ): string {
+    const workItemId = `work-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    fs.writeFileSync(this.analysisHistoryFile, JSON.stringify(trimmed, null, 2));
+    // Map complexity string to number (1=low, 2=medium, 3=high)
+    const complexityNumber = complexity === 'high' ? 3 : complexity === 'medium' ? 2 : 1;
+
+    this.db.saveWorkItem({
+      id: workItemId,
+      analysisId,
+      name: workItemName,
+      type: workItemType,
+      description,
+      estimatedHours,
+      complexity: complexityNumber,
+      filesCount,
+      commitsCount,
+      createdAt: new Date().toISOString(),
+    });
+
+    return workItemId;
   }
 
   /**
    * Clear old history (older than specified days)
+   * Note: This is a no-op now as SQLite can handle large datasets efficiently
+   * You can implement manual cleanup if needed
    */
   clearOldHistory(daysToKeep: number = 90): void {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    const cutoffTime = cutoffDate.getTime();
-
-    // Clear old processed commits
-    const processedCommits = this.getProcessedCommits();
-    const recentCommits = processedCommits.filter((commit) => {
-      const commitDate = new Date(commit.processedAt).getTime();
-      return commitDate >= cutoffTime;
-    });
-    fs.writeFileSync(this.processedCommitsFile, JSON.stringify(recentCommits, null, 2));
-
-    // Clear old analysis history
-    const history = this.getAnalysisHistory(10000);
-    const recentHistory = history.filter((entry) => {
-      const entryDate = new Date(entry.timestamp).getTime();
-      return entryDate >= cutoffTime;
-    });
-    fs.writeFileSync(this.analysisHistoryFile, JSON.stringify(recentHistory, null, 2));
+    console.log(`Note: Database can handle large datasets efficiently. Manual cleanup not required.`);
+    // Could implement if needed:
+    // DELETE FROM processed_commits WHERE DATE(processed_at) < DATE('now', '-${daysToKeep} days')
   }
 
   /**
    * Get statistics
    */
   getStatistics() {
-    const processedCommits = this.getProcessedCommits();
-    const history = this.getAnalysisHistory(10000);
-
-    const totalAnalyses = history.length;
-    const totalCommitsProcessed = processedCommits.length;
-    const totalTasksCreated = history.reduce((sum, entry) => sum + entry.tasksCreated, 0);
+    const dbStats = this.db.getStatistics();
+    const processedCommits = this.db.getProcessedCommits(undefined, 10000);
 
     const projectStats = new Map<string, number>();
     processedCommits.forEach((commit) => {
@@ -195,15 +162,22 @@ export class HistoryService {
     });
 
     return {
-      totalAnalyses,
-      totalCommitsProcessed,
-      totalTasksCreated,
+      totalAnalyses: dbStats.totalAnalyses,
+      totalCommitsProcessed: dbStats.totalCommitsProcessed,
+      totalTasksCreated: dbStats.totalTasksCreated,
       projectStats: Array.from(projectStats.entries()).map(([path, count]) => ({
         path,
         commitsProcessed: count,
       })),
-      oldestEntry: processedCommits[0]?.processedAt,
-      newestEntry: processedCommits[processedCommits.length - 1]?.processedAt,
+      oldestEntry: processedCommits[processedCommits.length - 1]?.processedAt,
+      newestEntry: processedCommits[0]?.processedAt,
     };
+  }
+
+  /**
+   * Close database connection
+   */
+  close(): void {
+    this.db.close();
   }
 }

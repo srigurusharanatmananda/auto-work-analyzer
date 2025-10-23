@@ -751,12 +751,37 @@ export class GitWorkAnalyzer {
         }
       }
 
-      // Mark commits as processed and save analysis history
+      // Save analysis to history first and get the analysis ID
+      const analysisId = this.historyService.addAnalysisHistory({
+        projectPath: this.projectPath,
+        date: workAnalysis.date,
+        endDate: undefined,
+        author: undefined,
+        totalCommits: workAnalysis.totalCommits,
+        totalWorkItems: workAnalysis.detectedWork.length,
+        tasksCreated: createdTasks.filter((t) => t !== null).length,
+        summary: workAnalysis.summary,
+      });
+
+      // Save work items to database and mark commits as processed
       const allCommits = workAnalysis.detectedWork.flatMap((work) => work.commits);
       const taskMapping = new Map<string, { id: string; name: string }>();
 
-      // Map commits to their created tasks
+      // Save each work item and map commits to their created tasks
       workAnalysis.detectedWork.forEach((work) => {
+        // Save work item to database
+        this.historyService.saveWorkItem(
+          analysisId,
+          work.name,
+          work.type,
+          work.description,
+          work.estimatedHours,
+          work.complexity,
+          work.files.length,
+          work.commits.length
+        );
+
+        // Map commits to their created ClickUp tasks
         work.commits.forEach((commit) => {
           const task = createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
           if (task) {
@@ -771,18 +796,6 @@ export class GitWorkAnalyzer {
         this.projectPath,
         taskMapping
       );
-
-      // Save analysis to history
-      this.historyService.addAnalysisHistory({
-        projectPath: this.projectPath,
-        date: workAnalysis.date,
-        endDate: undefined,
-        author: undefined,
-        totalCommits: workAnalysis.totalCommits,
-        totalWorkItems: workAnalysis.detectedWork.length,
-        tasksCreated: createdTasks.filter((t) => t !== null).length,
-        summary: workAnalysis.summary,
-      });
 
       return createdTasks;
     } catch (error) {
