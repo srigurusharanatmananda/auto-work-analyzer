@@ -16,7 +16,10 @@ export interface EnhancedDescription {
 
 export class AIDescriptionService {
   private genAI: GoogleGenerativeAI;
-  private model: string = 'gemini-2.5-flash';
+  private primaryModel: string = 'gemini-2.0-flash-exp';
+  private fallbackModel: string = 'gemini-1.5-flash';
+  private maxRetries: number = 3;
+  private baseRetryDelay: number = 1000; // 1 second
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.GOOGLE_API_KEY;
@@ -29,7 +32,39 @@ export class AIDescriptionService {
   }
 
   /**
-   * Generate enhanced description from work item details
+   * Sleep for specified milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Check if error is retryable (overloaded, rate limit, network issues)
+   */
+  private isRetryableError(error: any): boolean {
+    const errorMessage = error?.message || String(error);
+    return (
+      errorMessage.includes('503') ||
+      errorMessage.includes('overloaded') ||
+      errorMessage.includes('429') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('ECONNRESET') ||
+      errorMessage.includes('ETIMEDOUT')
+    );
+  }
+
+  /**
+   * Try to generate content with a specific model
+   */
+  private async tryGenerateContent(modelName: string, prompt: string): Promise<string> {
+    const model = this.genAI.getGenerativeModel({ model: modelName });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    return response.text();
+  }
+
+  /**
+   * Generate enhanced description from work item details with retry logic and fallback
    */
   async enhanceWorkItemDescription(
     workItemName: string,
@@ -39,18 +74,44 @@ export class AIDescriptionService {
   ): Promise<EnhancedDescription> {
     const prompt = this.buildPrompt(workItemName, currentDescription, commits, filesChanged);
 
-    try {
-      const model = this.genAI.getGenerativeModel({ model: this.model });
+    // Try primary model with retries
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        console.log(`Attempting with ${this.primaryModel} (attempt ${attempt + 1}/${this.maxRetries})...`);
+        const text = await this.tryGenerateContent(this.primaryModel, prompt);
+        return this.parseResponse(text);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Primary model attempt ${attempt + 1} failed:`, errorMessage);
 
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
+        // If it's a retryable error and we have retries left, wait and try again
+        if (this.isRetryableError(error) && attempt < this.maxRetries - 1) {
+          const delay = this.baseRetryDelay * Math.pow(2, attempt); // Exponential backoff
+          console.log(`Waiting ${delay}ms before retry...`);
+          await this.sleep(delay);
+          continue;
+        }
 
-      return this.parseResponse(text);
-    } catch (error) {
-      console.error('AI enhancement failed:', error);
-      throw new Error(`Failed to enhance description: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Last retry with primary model failed, try fallback
+        if (attempt === this.maxRetries - 1) {
+          console.log(`Primary model failed after ${this.maxRetries} attempts. Trying fallback model: ${this.fallbackModel}...`);
+          try {
+            const text = await this.tryGenerateContent(this.fallbackModel, prompt);
+            console.log('✅ Fallback model succeeded!');
+            return this.parseResponse(text);
+          } catch (fallbackError) {
+            const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            console.error('Fallback model also failed:', fallbackErrorMessage);
+            throw new Error(
+              `Failed to enhance description after ${this.maxRetries} retries with both ${this.primaryModel} and ${this.fallbackModel}. Last error: ${fallbackErrorMessage}`
+            );
+          }
+        }
+      }
     }
+
+    // This should never be reached, but TypeScript needs it
+    throw new Error('Unexpected error in enhancement process');
   }
 
   /**
