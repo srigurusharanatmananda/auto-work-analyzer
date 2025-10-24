@@ -8,6 +8,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import multer from "multer";
+import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -19,6 +20,9 @@ import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import { ClickUpService } from "./services/ClickUpService.js";
+import authRoutes from "./routes/auth.routes.js";
+import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
+import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -47,6 +51,9 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
+app.use(securityHeaders);
+app.use(apiRateLimiter);
 
 // Error handling middleware for JSON parsing errors
 app.use((err: any, req: any, res: any, next: any) => {
@@ -74,7 +81,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       process.exit(1);
     }
 
-    // Health check endpoint
+    // Health check endpoint (public)
     app.get("/api/health", (req, res) => {
       res.json({
         status: "healthy",
@@ -83,8 +90,11 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       });
     });
 
+    // Authentication routes (public)
+    app.use("/api/auth", authRoutes);
+
     // Browse directories endpoint
-    app.get("/api/browse", (req, res) => {
+    app.get("/api/browse", authenticate, (req, res) => {
       try {
         const requestedPath = (req.query.path as string) || os.homedir();
 
@@ -146,7 +156,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // History endpoint
-    app.get("/api/history", (req, res) => {
+    app.get("/api/history", authenticate, (req, res) => {
       try {
         const historyService = new HistoryService();
         const limit = parseInt(req.query.limit as string) || 50;
@@ -172,7 +182,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // AI Enhancement endpoint - enhance work item description with Claude
-    app.post("/api/ai-enhance", async (req, res) => {
+    app.post("/api/ai-enhance", authenticate, async (req, res) => {
       try {
         const { workItemName, description, commits, filesChanged } = req.body;
 
@@ -228,7 +238,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Git info endpoint - fetch branches and user info
-    app.get("/api/git-info", (req, res) => {
+    app.get("/api/git-info", authenticate, (req, res) => {
       try {
         const projectPath = (req.query.path as string) || process.cwd();
 
@@ -334,8 +344,8 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
-    // Analyze work endpoint
-    app.post("/api/analyze", async (req, res) => {
+    // Analyze work endpoint (protected - requires authentication)
+    app.post("/api/analyze", authenticate, async (req, res) => {
       try {
         const { date, endDate, author, branch, createTasks = false, projectPath } = req.body;
 
@@ -383,8 +393,73 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
+    // Save report endpoint
+    app.post("/api/save-report", authenticate, async (req, res) => {
+      try {
+        const { projectPath, date, endDate, author, branch, workItems, summary } = req.body;
+
+        if (!projectPath || !date || !workItems || !Array.isArray(workItems)) {
+          res.status(400).json({
+            success: false,
+            error: "Missing required fields: projectPath, date, and workItems array are required",
+          });
+          return;
+        }
+
+        const historyService = new HistoryService();
+
+        // Save analysis to database
+        const analysisId = historyService.addAnalysisHistory({
+          projectPath,
+          date,
+          endDate,
+          author,
+          totalCommits: summary?.totalCommits || 0,
+          totalWorkItems: workItems.length,
+          tasksCreated: 0, // Reports don't create tasks
+          summary: summary?.summary || `Report generated for ${date}`,
+        });
+
+        // Save all work items
+        let savedCount = 0;
+        for (const item of workItems) {
+          if (item.name && item.type) {
+            historyService.saveWorkItem(
+              analysisId,
+              item.name,
+              item.type,
+              item.description || '',
+              item.estimatedHours || 0,
+              item.complexity || 'medium',
+              item.filesCount || 0,
+              item.commitsCount || 0
+            );
+            savedCount++;
+          }
+        }
+
+        historyService.close();
+
+        res.json({
+          success: true,
+          data: {
+            analysisId,
+            savedWorkItems: savedCount,
+          },
+          message: `Report saved successfully with ${savedCount} work items`,
+        });
+      } catch (error) {
+        console.error("Failed to save report:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to save report",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+
     // Get saved reports endpoint
-    app.get("/api/reports", async (req, res) => {
+    app.get("/api/reports", authenticate, async (req, res) => {
       try {
         const limit = parseInt(req.query.limit as string) || 10;
         const offset = parseInt(req.query.offset as string) || 0;
@@ -416,7 +491,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Get single report by ID
-    app.get("/api/reports/:id", async (req, res) => {
+    app.get("/api/reports/:id", authenticate, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -449,7 +524,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Notes upload endpoint
-    app.post("/api/notes", upload.single("notes"), async (req, res) => {
+    app.post("/api/notes", upload.single("notes"), authenticate, async (req, res) => {
       try {
         let notesText = '';
 
@@ -548,7 +623,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Create tasks endpoint
-    app.post("/api/create-tasks", async (req, res) => {
+    app.post("/api/create-tasks", authenticate, async (req, res) => {
       try {
         const { workAnalysis, projectPath } = req.body;
 
