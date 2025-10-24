@@ -406,4 +406,73 @@ router.post('/setup', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Get user settings
+ * GET /api/auth/settings
+ */
+router.get('/settings', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const authService = new AuthService();
+    const settings = authService.db.getUserSettings(userId);
+    authService.close();
+
+    // Return default settings if none exist
+    const defaultSettings = {
+      default_assignee: '',
+      backend_url: 'http://localhost:3009',
+      clickup_api_key: '',
+      clickup_team_id: '',
+      clickup_list_id: '',
+    };
+
+    res.json({
+      success: true,
+      data: settings || defaultSettings,
+    });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get settings',
+    });
+  }
+});
+
+/**
+ * Update user settings
+ * PUT /api/auth/settings
+ */
+router.put('/settings', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id } = req.body;
+
+    const authService = new AuthService();
+    authService.db.upsertUserSettings(userId, {
+      default_assignee,
+      backend_url,
+      clickup_api_key,
+      clickup_team_id,
+      clickup_list_id,
+    });
+
+    const updatedSettings = authService.db.getUserSettings(userId);
+    authService.close();
+
+    res.json({
+      success: true,
+      data: updatedSettings,
+      message: 'Settings updated successfully',
+    });
+  } catch (error) {
+    console.error('Update settings error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update settings',
+    });
+  }
+});
+
 export default router;

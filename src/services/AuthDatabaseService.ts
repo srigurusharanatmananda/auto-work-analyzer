@@ -53,6 +53,16 @@ export interface LoginAttemptRecord {
   failure_reason?: string;
 }
 
+export interface UserSettingsRecord {
+  user_id: string;
+  default_assignee?: string;
+  backend_url?: string;
+  clickup_api_key?: string;
+  clickup_team_id?: string;
+  clickup_list_id?: string;
+  updated_at: string;
+}
+
 export class AuthDatabaseService {
   private db: Database.Database;
   private dbPath: string;
@@ -147,6 +157,22 @@ export class AuthDatabaseService {
 
       CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email, attempted_at);
       CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address, attempted_at);
+    `);
+
+    // User settings table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id TEXT PRIMARY KEY,
+        default_assignee TEXT,
+        backend_url TEXT,
+        clickup_api_key TEXT,
+        clickup_team_id TEXT,
+        clickup_list_id TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
     `);
 
     // Create default admin user if no users exist
@@ -483,6 +509,76 @@ export class AuthDatabaseService {
     `).get(ipAddress, since) as { count: number };
 
     return row.count;
+  }
+
+  /**
+   * Get user settings
+   */
+  getUserSettings(userId: string): UserSettingsRecord | null {
+    const settings = this.db.prepare(`
+      SELECT * FROM user_settings WHERE user_id = ?
+    `).get(userId) as UserSettingsRecord | undefined;
+
+    return settings || null;
+  }
+
+  /**
+   * Update or create user settings
+   */
+  upsertUserSettings(userId: string, settings: Partial<Omit<UserSettingsRecord, 'user_id' | 'updated_at'>>): void {
+    const existing = this.getUserSettings(userId);
+
+    if (existing) {
+      // Update existing settings
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (settings.default_assignee !== undefined) {
+        updates.push('default_assignee = ?');
+        values.push(settings.default_assignee);
+      }
+      if (settings.backend_url !== undefined) {
+        updates.push('backend_url = ?');
+        values.push(settings.backend_url);
+      }
+      if (settings.clickup_api_key !== undefined) {
+        updates.push('clickup_api_key = ?');
+        values.push(settings.clickup_api_key);
+      }
+      if (settings.clickup_team_id !== undefined) {
+        updates.push('clickup_team_id = ?');
+        values.push(settings.clickup_team_id);
+      }
+      if (settings.clickup_list_id !== undefined) {
+        updates.push('clickup_list_id = ?');
+        values.push(settings.clickup_list_id);
+      }
+
+      updates.push('updated_at = ?');
+      values.push(new Date().toISOString());
+      values.push(userId);
+
+      this.db.prepare(`
+        UPDATE user_settings
+        SET ${updates.join(', ')}
+        WHERE user_id = ?
+      `).run(...values);
+    } else {
+      // Create new settings
+      this.db.prepare(`
+        INSERT INTO user_settings (
+          user_id, default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        userId,
+        settings.default_assignee || null,
+        settings.backend_url || null,
+        settings.clickup_api_key || null,
+        settings.clickup_team_id || null,
+        settings.clickup_list_id || null,
+        new Date().toISOString()
+      );
+    }
   }
 
   /**
