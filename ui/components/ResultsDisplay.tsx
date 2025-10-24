@@ -1,6 +1,7 @@
 'use client';
 
 import { AnalysisResponse, NotesResponse, DetectedWork } from '@/types';
+import Card from '@/lib/components/ui/Card';
 
 interface ResultsDisplayProps {
   type: 'analysis' | 'notes';
@@ -22,49 +23,50 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
 
   const getWorkBadgeColor = (workType: string) => {
     const colors: Record<string, string> = {
-      feature: 'bg-blue-100 text-blue-700',
-      'bug-fix': 'bg-red-100 text-red-700',
-      improvement: 'bg-purple-100 text-purple-700',
-      test: 'bg-green-100 text-green-700',
-      documentation: 'bg-orange-100 text-orange-700',
-      refactor: 'bg-indigo-100 text-indigo-700',
+      feature: 'bg-blue-500/10 text-blue-400',
+      'bug-fix': 'bg-red-500/10 text-red-400',
+      improvement: 'bg-primary/10 text-primary',
+      test: 'bg-success/10 text-success',
+      documentation: 'bg-orange-500/10 text-orange-400',
+      refactor: 'bg-indigo-500/10 text-indigo-400',
     };
-    return colors[workType] || 'bg-gray-100 text-gray-700';
+    return colors[workType] || 'bg-foreground-tertiary/10 text-foreground-secondary';
   };
 
   const renderTaskItem = (work: DetectedWork) => (
-    <div
+    <Card
       key={work.name}
-      className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all duration-300"
+      hover
+      className="p-5"
     >
       <div className="flex items-start gap-4">
         <span className="text-3xl">{getWorkIcon(work.type)}</span>
         <div className="flex-1">
-          <h4 className="font-semibold text-lg text-gray-800 mb-2">{work.name}</h4>
+          <h4 className="font-semibold text-lg text-foreground mb-2">{work.name}</h4>
           <div className="flex flex-wrap gap-2 text-sm">
             <span className={`px-3 py-1 rounded-full font-medium ${getWorkBadgeColor(work.type)}`}>
               {work.type}
             </span>
             {'files' in work && work.files && (
-              <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+              <span className="px-3 py-1 rounded-full bg-foreground-tertiary/10 text-foreground-secondary">
                 📁 {work.files.length} files
               </span>
             )}
-            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+            <span className="px-3 py-1 rounded-full bg-foreground-tertiary/10 text-foreground-secondary">
               ⏱️ {work.estimatedHours}h
             </span>
-            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+            <span className="px-3 py-1 rounded-full bg-foreground-tertiary/10 text-foreground-secondary">
               📊 {work.complexity}
             </span>
             {work.tags.map((tag) => (
-              <span key={tag} className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs">
+              <span key={tag} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs">
                 {tag}
               </span>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 
   if (type === 'analysis') {
@@ -74,36 +76,36 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
     return (
       <div className="mt-8 space-y-6">
         {/* Success Alert */}
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-xl">
+        <div className="bg-success/10 border-l-4 border-success p-4 rounded-r-xl">
           <div className="flex items-center gap-2">
             <span className="text-2xl">✅</span>
-            <p className="text-green-700 font-medium">Analysis completed successfully!</p>
+            <p className="text-success font-medium">Analysis completed successfully!</p>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl p-5 text-center shadow-lg">
-            <h3 className="text-4xl font-bold mb-1">{summary.totalCommits}</h3>
-            <p className="text-purple-100 text-sm">Total Commits</p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-xl p-5 text-center shadow-lg">
-            <h3 className="text-4xl font-bold mb-1">{summary.totalWorkItems}</h3>
-            <p className="text-blue-100 text-sm">Work Items</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-xl p-5 text-center shadow-lg">
-            <h3 className="text-4xl font-bold mb-1">{summary.totalFilesChanged}</h3>
-            <p className="text-green-100 text-sm">Files Changed</p>
-          </div>
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-xl p-5 text-center shadow-lg">
-            <h3 className="text-4xl font-bold mb-1">{summary.tasksCreated}</h3>
-            <p className="text-orange-100 text-sm">Tasks Created</p>
-          </div>
+          <Card className="p-5 text-center bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20">
+            <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalCommits}</h3>
+            <p className="text-foreground-secondary text-sm">Total Commits</p>
+          </Card>
+          <Card className="p-5 text-center bg-gradient-to-br from-blue-500/20 to-blue-500/5 border-blue-500/20">
+            <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalWorkItems}</h3>
+            <p className="text-foreground-secondary text-sm">Work Items</p>
+          </Card>
+          <Card className="p-5 text-center bg-gradient-to-br from-success/20 to-success/5 border-success/20">
+            <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalFilesChanged}</h3>
+            <p className="text-foreground-secondary text-sm">Files Changed</p>
+          </Card>
+          <Card className="p-5 text-center bg-gradient-to-br from-orange-500/20 to-orange-500/5 border-orange-500/20">
+            <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.tasksCreated}</h3>
+            <p className="text-foreground-secondary text-sm">Tasks Created</p>
+          </Card>
         </div>
 
         {/* Work Items */}
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">Detected Work Items</h3>
+          <h3 className="text-2xl font-bold text-foreground mb-4">Detected Work Items</h3>
           <div className="space-y-3">
             {workAnalysis.detectedWork.map(renderTaskItem)}
           </div>
@@ -111,15 +113,15 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
 
         {/* Created Tasks */}
         {createdTasks && createdTasks.length > 0 && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-green-800 mb-2 flex items-center gap-2">
+          <Card className="bg-success/10 border-2 border-success/30">
+            <h3 className="text-xl font-bold text-success mb-2 flex items-center gap-2">
               <span>✅</span>
               <span>Tasks Created in ClickUp</span>
             </h3>
-            <p className="text-green-700 mb-4">
+            <p className="text-success/90 mb-4">
               {createdTasks.length} tasks were successfully created and assigned to Sri Gurusharanatmananda
             </p>
-          </div>
+          </Card>
         )}
       </div>
     );
@@ -130,28 +132,28 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
     return (
       <div className="mt-8 space-y-6">
         {/* Success Alert */}
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-xl">
+        <div className="bg-success/10 border-l-4 border-success p-4 rounded-r-xl">
           <div className="flex items-center gap-2">
             <span className="text-2xl">✅</span>
-            <p className="text-green-700 font-medium">Notes processed successfully!</p>
+            <p className="text-success font-medium">Notes processed successfully!</p>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl p-6 text-center shadow-lg">
-            <h3 className="text-5xl font-bold mb-2">{summary.tasksExtracted}</h3>
-            <p className="text-purple-100">Tasks Extracted</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-xl p-6 text-center shadow-lg">
-            <h3 className="text-5xl font-bold mb-2">{summary.tasksCreated}</h3>
-            <p className="text-green-100">Tasks Created</p>
-          </div>
+          <Card className="p-6 text-center bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20">
+            <h3 className="text-5xl font-bold mb-2 text-foreground">{summary.tasksExtracted}</h3>
+            <p className="text-foreground-secondary">Tasks Extracted</p>
+          </Card>
+          <Card className="p-6 text-center bg-gradient-to-br from-success/20 to-success/5 border-success/20">
+            <h3 className="text-5xl font-bold mb-2 text-foreground">{summary.tasksCreated}</h3>
+            <p className="text-foreground-secondary">Tasks Created</p>
+          </Card>
         </div>
 
         {/* Extracted Tasks */}
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">Extracted Tasks</h3>
+          <h3 className="text-2xl font-bold text-foreground mb-4">Extracted Tasks</h3>
           <div className="space-y-3">
             {processedNotes.tasks.map((task) => renderTaskItem(task as DetectedWork))}
           </div>
@@ -159,22 +161,22 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
 
         {/* Created Tasks with Links */}
         {createdTasks && createdTasks.length > 0 && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-green-800 mb-2 flex items-center gap-2">
+          <Card className="bg-success/10 border-2 border-success/30">
+            <h3 className="text-xl font-bold text-success mb-2 flex items-center gap-2">
               <span>✅</span>
               <span>Tasks Created in ClickUp</span>
             </h3>
-            <p className="text-green-700 mb-4">
+            <p className="text-success/90 mb-4">
               {createdTasks.length} tasks were successfully created and assigned to Sri Gurusharanatmananda
             </p>
             <div className="space-y-2">
               {createdTasks.map((task) => (
-                <div key={task.id} className="bg-white p-3 rounded-lg border border-green-300">
+                <div key={task.id} className="bg-background-secondary p-3 rounded-lg border border-border">
                   <a
                     href={task.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-2"
+                    className="text-primary hover:text-primary-hover font-semibold flex items-center gap-2"
                   >
                     <span>🔗</span>
                     <span>{task.name}</span>
@@ -182,7 +184,7 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         )}
       </div>
     );
