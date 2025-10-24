@@ -366,6 +366,34 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           );
         }
 
+        // Save analysis to database
+        const historyService = new HistoryService();
+        const analysisId = historyService.addAnalysisHistory({
+          projectPath: targetProjectPath,
+          date: workAnalysis.date,
+          endDate: endDate || undefined,
+          author: author || undefined,
+          branch: branch || undefined,
+          totalCommits: workAnalysis.totalCommits,
+          totalWorkItems: workAnalysis.detectedWork.length,
+          tasksCreated: createdTasks.length,
+          summary: workAnalysis.summary,
+        });
+
+        // Save all work items to database
+        for (const work of workAnalysis.detectedWork) {
+          historyService.saveWorkItem(
+            analysisId,
+            work.name,
+            work.type,
+            work.description,
+            work.estimatedHours,
+            work.complexity,
+            work.files.length,
+            work.commits.length
+          );
+        }
+
         res.json({
           success: true,
           data: {
