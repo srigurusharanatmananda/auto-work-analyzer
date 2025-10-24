@@ -122,6 +122,7 @@ export class ClickUpService {
       const payload = {
         name: taskData.name.trim(),
         description: taskData.description || "",
+        markdown_description: taskData.description || "", // ClickUp supports markdown formatting
         priority: this.mapPriority(taskData.priority),
         status: taskData.status || "to do",
         assignees: assignees,
@@ -154,16 +155,20 @@ export class ClickUpService {
 
       const result = await response.json();
 
-      // Note: Subtasks creation is temporarily disabled due to API endpoint issues
-      // TODO: Re-enable subtasks once the correct ClickUp API endpoint is identified
-      // if (taskData.subtasks && taskData.subtasks.length > 0) {
-      //   const subtasks = await Promise.all(
-      //     taskData.subtasks.map((subtask) =>
-      //       this.createSubtask(result.id, subtask)
-      //     )
-      //   );
-      //   result.subtasks = subtasks;
-      // }
+      // Create subtasks if provided
+      if (taskData.subtasks && taskData.subtasks.length > 0) {
+        try {
+          const subtasks = await Promise.all(
+            taskData.subtasks.map((subtask) =>
+              this.createSubtask(result.id, subtask, targetListId)
+            )
+          );
+          result.subtasks = subtasks;
+        } catch (error) {
+          console.error(`Failed to create subtasks for task ${result.id}:`, error);
+          // Don't fail the entire task creation if subtasks fail
+        }
+      }
 
       return result;
     });
@@ -174,11 +179,18 @@ export class ClickUpService {
    */
   async createSubtask(
     parentTaskId: string,
-    subtaskData: Omit<TaskData, "subtasks">
+    subtaskData: Omit<TaskData, "subtasks">,
+    listId?: string
   ): Promise<ClickUpTask> {
+    const targetListId = listId || this.config.defaultListId;
+    if (!targetListId) {
+      throw new Error("No list ID provided and no default list configured");
+    }
+
     const payload = {
       name: subtaskData.name,
       description: subtaskData.description || "",
+      markdown_description: subtaskData.description || "", // ClickUp supports markdown formatting
       priority: this.mapPriority(subtaskData.priority),
       status: subtaskData.status || "to do",
       assignees: subtaskData.assignees || [],
@@ -191,7 +203,7 @@ export class ClickUpService {
     };
 
     const response = await fetch(
-      `${this.baseUrl}/list/${this.config.defaultListId}/task`,
+      `${this.baseUrl}/list/${targetListId}/task`,
       {
         method: "POST",
         headers: {
