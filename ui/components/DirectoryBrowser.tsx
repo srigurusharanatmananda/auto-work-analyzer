@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/lib/context/AuthContext';
+import Button from '@/lib/components/ui/Button';
+
+const BACKEND_URL = 'http://localhost:3009';
 
 interface Directory {
   name: string;
@@ -22,17 +26,30 @@ interface DirectoryBrowserProps {
 }
 
 export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowserProps) {
+  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BrowseData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDirectories = async (path?: string) => {
+    if (!accessToken) {
+      setError('Not authenticated');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const url = path ? `/api/browse?path=${encodeURIComponent(path)}` : '/api/browse';
-      const response = await fetch(url);
+      const url = path
+        ? `${BACKEND_URL}/api/browse?path=${encodeURIComponent(path)}`
+        : `${BACKEND_URL}/api/browse`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -76,22 +93,22 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+      <div className="bg-background-secondary rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">📁 Browse Directories</h3>
-          <p className="text-sm text-gray-600">Navigate to your project folder and click &quot;Select This Folder&quot;</p>
+        <div className="p-6 border-b border-border">
+          <h3 className="text-2xl font-bold text-foreground mb-2">📁 Browse Directories</h3>
+          <p className="text-sm text-foreground-secondary">Navigate to your project folder and click &quot;Select This Folder&quot;</p>
         </div>
 
         {/* Current Path */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div className="px-6 py-4 bg-background-tertiary border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700 shrink-0">Current:</span>
-            <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-mono text-gray-800 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+            <span className="text-sm font-semibold text-foreground shrink-0">Current:</span>
+            <code className="flex-1 px-3 py-2 bg-background-secondary border border-border rounded-lg text-sm font-mono text-foreground overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-foreground-tertiary scrollbar-track-background-tertiary">
               {data?.currentPath || 'Loading...'}
             </code>
             {data && data.gitRepos > 0 && (
-              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold shrink-0">
+              <span className="px-3 py-1 bg-success/10 text-success rounded-full text-xs font-semibold shrink-0">
                 {data.gitRepos} Git {data.gitRepos === 1 ? 'Repo' : 'Repos'}
               </span>
             )}
@@ -108,13 +125,14 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
 
           {error && (
             <div className="text-center py-12">
-              <p className="text-red-500 font-semibold">{error}</p>
-              <button
+              <p className="text-error font-semibold">{error}</p>
+              <Button
                 onClick={() => fetchDirectories()}
-                className="mt-4 px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold transition-colors"
+                variant="secondary"
+                className="mt-4"
               >
                 Retry
-              </button>
+              </Button>
             </div>
           )}
 
@@ -124,17 +142,17 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
               {data.parentPath && (
                 <button
                   onClick={() => handleNavigate(data.parentPath!)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-background-tertiary rounded-lg transition-colors text-left"
                 >
                   <span className="text-2xl">⬆️</span>
-                  <span className="font-semibold text-gray-700">..</span>
-                  <span className="text-sm text-gray-500">(Go up)</span>
+                  <span className="font-semibold text-foreground">..</span>
+                  <span className="text-sm text-foreground-tertiary">(Go up)</span>
                 </button>
               )}
 
               {/* Subdirectories */}
               {data.directories.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-foreground-tertiary">
                   <p>No subdirectories found</p>
                 </div>
               ) : (
@@ -142,14 +160,14 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
                   <button
                     key={dir.path}
                     onClick={() => handleNavigate(dir.path)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition-colors text-left ${
-                      dir.isGitRepo ? 'border-2 border-green-300 bg-green-50' : 'border border-gray-200'
+                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-background-tertiary rounded-lg transition-colors text-left ${
+                      dir.isGitRepo ? 'border-2 border-success/30 bg-success/5' : 'border border-border'
                     }`}
                   >
                     <span className="text-2xl">{dir.isGitRepo ? '📦' : '📁'}</span>
-                    <span className="flex-1 font-medium text-gray-800">{dir.name}</span>
+                    <span className="flex-1 font-medium text-foreground">{dir.name}</span>
                     {dir.isGitRepo && (
-                      <span className="px-2 py-1 bg-green-200 text-green-800 rounded text-xs font-semibold">
+                      <span className="px-2 py-1 bg-success/10 text-success rounded text-xs font-semibold">
                         Git Repo
                       </span>
                     )}
@@ -161,20 +179,23 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 flex gap-3">
-          <button
+        <div className="p-6 border-t border-border flex gap-3">
+          <Button
             onClick={handleSelect}
             disabled={!data || loading}
-            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+            variant="primary"
+            size="lg"
+            className="flex-1"
           >
             ✅ Select This Folder
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onCancel}
-            className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-colors"
+            variant="secondary"
+            size="lg"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

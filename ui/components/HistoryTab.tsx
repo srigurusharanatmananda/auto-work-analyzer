@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { Card, Button, LoadingSpinner, EmptyState } from '@/lib/components/ui';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface AnalysisHistory {
   id: string;
@@ -25,6 +27,7 @@ interface Statistics {
   totalAnalyses: number;
   totalCommitsProcessed: number;
   totalTasksCreated: number;
+  totalWorkItems: number;
   projectStats: ProjectStats[];
   oldestEntry?: string;
   newestEntry?: string;
@@ -35,21 +38,32 @@ interface HistoryData {
   statistics: Statistics;
 }
 
-// Backend API URL (webhook server runs on port 3009)
 const BACKEND_URL = 'http://localhost:3009';
 
 export default function HistoryTab() {
+  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<HistoryData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterProject, setFilterProject] = useState<string>('all');
 
   const fetchHistory = async () => {
+    if (!accessToken) {
+      setError('Not authenticated');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/history`);
+      const response = await fetch(`${BACKEND_URL}/api/history`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -68,8 +82,10 @@ export default function HistoryTab() {
   };
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    if (accessToken) {
+      fetchHistory();
+    }
+  }, [accessToken]);
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -96,199 +112,198 @@ export default function HistoryTab() {
     new Set(data?.history.map((entry) => entry.projectPath) || [])
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-error bg-error/10">
+        <div className="flex items-center gap-3">
+          <svg className="h-6 w-6 text-error" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="text-error font-medium">{error}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!data) return null;
+
   return (
-    <div className="bg-white rounded-2xl shadow-2xl p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-            <span>📊</span>
-            <span>Analysis History</span>
-          </h2>
-          <p className="text-gray-600">
+          <p className="text-foreground-secondary">
             Track your recent analyses and task creations
           </p>
         </div>
-        <button
+        <Button
           onClick={fetchHistory}
+          variant="secondary"
           disabled={loading}
-          className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl font-semibold transition-colors disabled:opacity-50"
         >
           🔄 Refresh
-        </button>
+        </Button>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <svg className="animate-spin h-10 w-10 text-purple-500" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 bg-primary/10 border-primary/20">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">📈</span>
+            <h3 className="text-lg font-semibold text-foreground">Total Analyses</h3>
+          </div>
+          <p className="text-4xl font-bold text-primary">
+            {data.statistics.totalAnalyses}
+          </p>
+        </Card>
+
+        <Card className="p-6 bg-secondary/10 border-secondary/20">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">💻</span>
+            <h3 className="text-lg font-semibold text-foreground">Commits Processed</h3>
+          </div>
+          <p className="text-4xl font-bold text-secondary">
+            {data.statistics.totalCommitsProcessed}
+          </p>
+        </Card>
+
+        <Card className="p-6 bg-success/10 border-success/20">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">✅</span>
+            <h3 className="text-lg font-semibold text-foreground">Tasks Created</h3>
+          </div>
+          <p className="text-4xl font-bold text-success">
+            {data.statistics.totalTasksCreated}
+          </p>
+        </Card>
+      </div>
+
+      {/* Filter */}
+      {uniqueProjects.length > 1 && (
+        <div>
+          <label htmlFor="filterProject" className="block text-sm font-semibold text-foreground mb-2">
+            Filter by Project
+          </label>
+          <select
+            id="filterProject"
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            className="w-full md:w-auto px-4 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+          >
+            <option value="all">All Projects ({data.history.length})</option>
+            {uniqueProjects.map((project) => {
+              const count = data.history.filter((h) => h.projectPath === project).length;
+              return (
+                <option key={project} value={project}>
+                  {formatPath(project)} ({count})
+                </option>
+              );
+            })}
+          </select>
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">❌</span>
-            <p className="text-red-700 font-medium">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {!loading && !error && data && (
-        <>
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border-2 border-purple-200">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">📈</span>
-                <h3 className="text-lg font-semibold text-purple-800">Total Analyses</h3>
-              </div>
-              <p className="text-4xl font-bold text-purple-900">
-                {data.statistics.totalAnalyses}
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border-2 border-blue-200">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">💻</span>
-                <h3 className="text-lg font-semibold text-blue-800">Commits Processed</h3>
-              </div>
-              <p className="text-4xl font-bold text-blue-900">
-                {data.statistics.totalCommitsProcessed}
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border-2 border-green-200">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">✅</span>
-                <h3 className="text-lg font-semibold text-green-800">Tasks Created</h3>
-              </div>
-              <p className="text-4xl font-bold text-green-900">
-                {data.statistics.totalTasksCreated}
-              </p>
-            </div>
-          </div>
-
-          {/* Filter */}
-          {uniqueProjects.length > 1 && (
-            <div className="mb-6">
-              <label htmlFor="filterProject" className="block text-sm font-semibold text-gray-700 mb-2">
-                Filter by Project
-              </label>
-              <select
-                id="filterProject"
-                value={filterProject}
-                onChange={(e) => setFilterProject(e.target.value)}
-                className="w-full md:w-auto px-4 py-2 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
-              >
-                <option value="all">All Projects ({data.history.length})</option>
-                {uniqueProjects.map((project) => {
-                  const count = data.history.filter((h) => h.projectPath === project).length;
-                  return (
-                    <option key={project} value={project}>
-                      {formatPath(project)} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* History List */}
-          {filteredHistory.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <span className="text-6xl mb-4 block">📭</span>
-              <p className="text-xl text-gray-600 font-medium">No analysis history yet</p>
-              <p className="text-gray-500 mt-2">Run your first analysis to see results here!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Recent Analyses ({filteredHistory.length})
-              </h3>
-              {filteredHistory.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="border-2 border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-lg transition-all"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">📁</span>
-                        <h4 className="font-bold text-gray-800 text-lg">
-                          {formatPath(entry.projectPath)}
-                        </h4>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        🕐 {formatDate(entry.timestamp)}
-                      </p>
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">
-                          📅 {entry.date}
-                        </span>
-                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">
-                          💻 {entry.totalCommits} commits
-                        </span>
-                        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-semibold">
-                          📋 {entry.totalWorkItems} work items
-                        </span>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
-                          ✅ {entry.tasksCreated} tasks
-                        </span>
-                      </div>
-                      {entry.author && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          👤 Author: {entry.author}
-                        </p>
-                      )}
-                    </div>
+      {/* History List */}
+      {filteredHistory.length === 0 ? (
+        <EmptyState
+          icon={<span className="text-6xl">📭</span>}
+          title="No analysis history yet"
+          description="Run your first analysis to see results here!"
+        />
+      ) : (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-foreground">
+            Recent Analyses ({filteredHistory.length})
+          </h3>
+          {filteredHistory.map((entry) => (
+            <Card
+              key={entry.id}
+              hover
+              className="p-5"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">📁</span>
+                    <h4 className="font-bold text-foreground text-lg">
+                      {formatPath(entry.projectPath)}
+                    </h4>
                   </div>
-                  {entry.summary && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {entry.summary}
-                      </p>
-                    </div>
+                  <p className="text-sm text-foreground-secondary mb-3">
+                    🕐 {formatDate(entry.timestamp)}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-full font-semibold">
+                      📅 {entry.date}
+                    </span>
+                    <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full font-semibold">
+                      💻 {entry.totalCommits} commits
+                    </span>
+                    <span className="px-3 py-1 bg-warning/10 text-warning rounded-full font-semibold">
+                      📋 {entry.totalWorkItems} work items
+                    </span>
+                    <span className="px-3 py-1 bg-success/10 text-success rounded-full font-semibold">
+                      ✅ {entry.tasksCreated} tasks
+                    </span>
+                  </div>
+                  {entry.author && (
+                    <p className="text-sm text-foreground-secondary mt-2">
+                      👤 Author: {entry.author}
+                    </p>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Project Statistics */}
-          {data.statistics.projectStats.length > 0 && (
-            <div className="mt-8 pt-8 border-t-2 border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">
-                📁 Project Statistics
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.statistics.projectStats.map((project) => (
-                  <div
-                    key={project.path}
-                    className="bg-gray-50 border border-gray-200 rounded-xl p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">
-                          {formatPath(project.path)}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {project.path}
-                        </p>
-                      </div>
-                      <div className="ml-4 shrink-0">
-                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
-                          {project.commitsProcessed}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </div>
-          )}
-        </>
+              {entry.summary && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm text-foreground-secondary leading-relaxed">
+                    {entry.summary}
+                  </p>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Project Statistics */}
+      {data.statistics.projectStats.length > 0 && (
+        <div className="pt-6 border-t border-border">
+          <h3 className="text-xl font-bold text-foreground mb-4">
+            📁 Project Statistics
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.statistics.projectStats.map((project) => (
+              <Card
+                key={project.path}
+                className="p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground truncate">
+                      {formatPath(project.path)}
+                    </p>
+                    <p className="text-xs text-foreground-tertiary truncate">
+                      {project.path}
+                    </p>
+                  </div>
+                  <div className="ml-4 shrink-0">
+                    <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-sm font-bold">
+                      {project.commitsProcessed}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

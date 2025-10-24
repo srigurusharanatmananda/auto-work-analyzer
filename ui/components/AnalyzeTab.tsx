@@ -2,9 +2,11 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/lib/context/AuthContext';
 import { AnalysisResponse } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
 import DirectoryBrowser from './DirectoryBrowser';
+import { Button, LoadingSpinner } from '@/lib/components/ui';
 
 interface AnalyzeTabProps {
   selectedProjectPath: string;
@@ -15,6 +17,7 @@ interface AnalyzeTabProps {
 const BACKEND_URL = 'http://localhost:3009';
 
 export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath }: AnalyzeTabProps) {
+  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +39,19 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+
     setLoadingGitInfo(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`);
+      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -100,10 +113,20 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
     // Show loading toast
     const toastId = toast.loading('🔍 Analyzing commits...');
 
+    if (!accessToken) {
+      toast.error('Not authenticated', { id: toastId });
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -142,19 +165,19 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl p-8">
-      <h2 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+    <div className="bg-background-secondary rounded-2xl shadow-2xl p-8">
+      <h2 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
         <span>📊</span>
         <span>Analyze Git Commits</span>
       </h2>
-      <p className="text-gray-600 mb-8">
+      <p className="text-foreground-secondary mb-8">
         Analyze your git commits and automatically create tasks in ClickUp
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="startDate" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="startDate" className="block text-sm font-semibold text-foreground mb-2">
               Start Date
             </label>
             <input
@@ -163,25 +186,25 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               name="startDate"
               required
               defaultValue={today}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
 
           <div>
-            <label htmlFor="endDate" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="endDate" className="block text-sm font-semibold text-foreground mb-2">
               End Date (Optional)
             </label>
             <input
               type="date"
               id="endDate"
               name="endDate"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="projectPath" className="block text-sm font-semibold text-gray-700 mb-2">
+          <label htmlFor="projectPath" className="block text-sm font-semibold text-foreground mb-2">
             Project Path (Optional)
           </label>
           <div className="flex gap-3">
@@ -192,31 +215,31 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               value={selectedProjectPath}
               onChange={(e) => setSelectedProjectPath(e.target.value)}
               placeholder="/path/to/your/project (leave empty for current project)"
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
+              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
             />
-            <button
+            <Button
               type="button"
               onClick={handleBrowseClick}
-              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+              variant="secondary"
             >
               <span>📁</span>
               <span>Browse</span>
-            </button>
+            </Button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-foreground-tertiary mt-1">
             💡 Click &quot;Browse&quot; to select a folder, or type the absolute path to any git repository
           </p>
         </div>
 
         <div>
-          <label htmlFor="branch" className="block text-sm font-semibold text-gray-700 mb-2">
-            Branch {loadingGitInfo && <span className="text-xs text-gray-500">(Loading...)</span>}
+          <label htmlFor="branch" className="block text-sm font-semibold text-foreground mb-2">
+            Branch {loadingGitInfo && <span className="text-xs text-foreground-tertiary">(Loading...)</span>}
           </label>
           <select
             id="branch"
             name="branch"
             defaultValue={currentBranch}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
             disabled={!selectedProjectPath || loadingGitInfo}
           >
             <option value="">All Branches</option>
@@ -226,14 +249,14 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-foreground-tertiary mt-1">
             💡 Select a specific branch to analyze, or leave as "All Branches" to analyze all commits
           </p>
         </div>
 
         <div>
-          <label htmlFor="author" className="block text-sm font-semibold text-gray-700 mb-2">
-            Author Email (Optional) {userEmail && <span className="text-xs text-green-600">✓ Auto-filled</span>}
+          <label htmlFor="author" className="block text-sm font-semibold text-foreground mb-2">
+            Author Email (Optional) {userEmail && <span className="text-xs text-primary">✓ Auto-filled</span>}
           </label>
           <input
             type="email"
@@ -242,9 +265,9 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             value={userEmail}
             onChange={(e) => setUserEmail(e.target.value)}
             placeholder="developer@example.com"
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-foreground-tertiary mt-1">
             💡 Leave empty to analyze commits from all authors
           </p>
         </div>
@@ -255,24 +278,22 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             id="createTasks"
             name="createTasks"
             defaultChecked
-            className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+            className="w-5 h-5 accent-primary rounded focus:ring-primary"
           />
-          <label htmlFor="createTasks" className="text-sm font-medium text-gray-700">
+          <label htmlFor="createTasks" className="text-sm font-medium text-foreground">
             Automatically create tasks in ClickUp
           </label>
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+          variant="primary"
+          className="w-full py-4 text-lg"
         >
           {loading ? (
             <>
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <LoadingSpinner size="sm" />
               <span>Analyzing...</span>
             </>
           ) : (
@@ -281,14 +302,14 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               <span>Analyze Commits</span>
             </>
           )}
-        </button>
+        </Button>
       </form>
 
       {error && (
-        <div className="mt-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl">
+        <div className="mt-6 bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r-xl">
           <div className="flex items-center gap-2">
             <span className="text-2xl">❌</span>
-            <p className="text-red-700 font-medium">{error}</p>
+            <p className="text-red-500 font-medium">{error}</p>
           </div>
         </div>
       )}
