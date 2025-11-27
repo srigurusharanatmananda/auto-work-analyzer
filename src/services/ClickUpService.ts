@@ -124,7 +124,7 @@ export class ClickUpService {
         description: taskData.description || "",
         markdown_description: taskData.description || "", // ClickUp supports markdown formatting
         priority: this.mapPriority(taskData.priority),
-        status: taskData.status || "to do",
+        status: taskData.status || "setup", // Default to "setup" status for new lists
         assignees: assignees,
         tags: taskData.tags || [],
         due_date: taskData.dueDate
@@ -192,7 +192,7 @@ export class ClickUpService {
       description: subtaskData.description || "",
       markdown_description: subtaskData.description || "", // ClickUp supports markdown formatting
       priority: this.mapPriority(subtaskData.priority),
-      status: subtaskData.status || "to do",
+      status: subtaskData.status || "setup", // Default to "setup" status for new lists
       assignees: subtaskData.assignees || [],
       tags: subtaskData.tags || [],
       due_date: subtaskData.dueDate

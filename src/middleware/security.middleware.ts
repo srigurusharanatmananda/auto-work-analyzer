@@ -181,18 +181,28 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
  * More restrictive than general CORS
  */
 export function corsAuthConfig(req: Request, res: Response, next: NextFunction): void {
-  const allowedOrigins = [
-    'http://localhost:3008',
-    'http://localhost:3009',
-    process.env.FRONTEND_URL,
-  ].filter(Boolean);
-
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (origin) {
+    // Allow localhost and local network IPs
+    const allowedPatterns = [
+      /^http:\/\/localhost:\d+$/,
+      /^http:\/\/127\.0\.0\.1:\d+$/,
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
+      /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,
+      /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/,
+    ];
+
+    // Also allow FRONTEND_URL from env if set
+    const isAllowed = allowedPatterns.some(pattern => pattern.test(origin)) ||
+                      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL);
+
+    if (isAllowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
   }
 
   // Handle preflight requests

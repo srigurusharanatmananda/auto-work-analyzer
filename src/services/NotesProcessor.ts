@@ -17,6 +17,14 @@ export interface NoteTask {
   lineNumber: number;
 }
 
+export interface StructuredTask {
+  title: string;
+  priority?: 'urgent' | 'high' | 'normal' | 'low';
+  estimateHours?: number;
+  description: string;
+  lineNumber: number;
+}
+
 export class NotesProcessor {
   // Patterns to identify tasks in notes
   private taskPatterns = [
@@ -60,27 +68,212 @@ export class NotesProcessor {
   async processNotes(notesText: string): Promise<ProcessedNote> {
     const tasks: DetectedWork[] = [];
 
-    // Extract potential tasks from notes
-    const extractedTasks = this.extractTasks(notesText);
+    // Check if this is structured format (contains --- separators and Task X.X: pattern)
+    const hasStructuredFormat = notesText.includes('---') && /Task \d+(?:\.\d+)?:/i.test(notesText);
 
-    // Convert each extracted task into a DetectedWork item
-    for (const task of extractedTasks) {
-      const detectedWork = this.convertToDetectedWork(task.text);
-      if (detectedWork) {
-        tasks.push(detectedWork);
+    if (hasStructuredFormat) {
+      // Parse as structured tasks
+      const structuredTasks = this.parseStructuredTasks(notesText);
+      tasks.push(...structuredTasks);
+    } else {
+      // Extract potential tasks from notes (original behavior)
+      const extractedTasks = this.extractTasks(notesText);
+
+      // Convert each extracted task into a DetectedWork item
+      for (const task of extractedTasks) {
+        const detectedWork = this.convertToDetectedWork(task.text);
+        if (detectedWork) {
+          tasks.push(detectedWork);
+        }
       }
-    }
 
-    // If no structured tasks found, try to extract from free-form text
-    if (tasks.length === 0) {
-      const freeFormTasks = this.extractFromFreeForm(notesText);
-      tasks.push(...freeFormTasks);
+      // If no structured tasks found, try to extract from free-form text
+      if (tasks.length === 0) {
+        const freeFormTasks = this.extractFromFreeForm(notesText);
+        tasks.push(...freeFormTasks);
+      }
     }
 
     return {
       originalText: notesText,
       tasks,
     };
+  }
+
+  /**
+   * Parse structured tasks separated by ---
+   * Format: Task X.X: Title
+   *         Priority: LEVEL
+   *         Estimate: X hours
+   *         Assignee: Name (ignored)
+   *         Description: ...
+   */
+  private parseStructuredTasks(text: string): DetectedWork[] {
+    const tasks: DetectedWork[] = [];
+
+    // Split by --- separator (handle optional spaces before/after)
+    const sections = text.split(/\n\s*---+\s*\n/).filter(s => s.trim());
+
+    for (const section of sections) {
+      const lines = section.split('\n').map(l => l.trim());
+      let currentLine = 0;
+
+      // Find task title line (Task X.X: Title)
+      const taskTitleRegex = /^Task\s+\d+(?:\.\d+)?:\s*(.+)$/i;
+      let taskTitle = '';
+      let titleIndex = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(taskTitleRegex);
+        if (match) {
+          taskTitle = match[1].trim();
+          titleIndex = i;
+          break;
+        }
+      }
+
+      if (!taskTitle || titleIndex === -1) {
+        continue; // Skip if no task title found
+      }
+
+      // Parse metadata and description
+      let priority: 'urgent' | 'high' | 'normal' | 'low' = 'normal';
+      let estimateHours = 3; // Default
+      const descriptionLines: string[] = [];
+      let parsingDescription = false;
+
+      for (let i = titleIndex + 1; i < lines.length; i++) {
+        let line = lines[i];
+
+        if (!line) {
+          if (parsingDescription) {
+            descriptionLines.push(''); // Preserve blank lines in description
+          }
+          continue;
+        }
+
+        // Check if this line has combined metadata (Priority:CRITICALEstimate:3hours...)
+        // This handles the format where all metadata is on one line
+        if (line.includes('Priority:') && line.includes('Estimate:')) {
+          // Extract priority
+          const priorityMatch = line.match(/Priority:\s*([A-Z]+)/i);
+          if (priorityMatch) {
+            const priorityValue = priorityMatch[1].toUpperCase();
+            if (priorityValue === 'CRITICAL' || priorityValue === 'URGENT') {
+              priority = 'urgent';
+            } else if (priorityValue === 'HIGH') {
+              priority = 'high';
+            } else if (priorityValue === 'MEDIUM' || priorityValue === 'NORMAL') {
+              priority = 'normal';
+            } else if (priorityValue === 'LOW') {
+              priority = 'low';
+            }
+          }
+
+          // Extract estimate
+          const estimateMatch = line.match(/Estimate:\s*(\d+(?:\.\d+)?)\s*hours?/i);
+          if (estimateMatch) {
+            estimateHours = parseFloat(estimateMatch[1]);
+          }
+
+          // Check if Description: is on the same line
+          if (line.includes('Description:')) {
+            // Extract any description text after "Description:"
+            const descMatch = line.match(/Description:\s*(.+)$/i);
+            if (descMatch && descMatch[1].trim()) {
+              descriptionLines.push(descMatch[1].trim());
+            }
+            parsingDescription = true;
+          }
+          continue;
+        }
+
+        // Parse priority (separate line format)
+        const priorityMatch = line.match(/^Priority:\s*(.+)$/i);
+        if (priorityMatch) {
+          const priorityValue = priorityMatch[1].trim().toUpperCase();
+          if (priorityValue === 'CRITICAL' || priorityValue === 'URGENT') {
+            priority = 'urgent';
+          } else if (priorityValue === 'HIGH') {
+            priority = 'high';
+          } else if (priorityValue === 'MEDIUM' || priorityValue === 'NORMAL') {
+            priority = 'normal';
+          } else if (priorityValue === 'LOW') {
+            priority = 'low';
+          }
+          continue;
+        }
+
+        // Parse estimate (separate line format)
+        const estimateMatch = line.match(/^Estimate:\s*(\d+(?:\.\d+)?)\s*hours?$/i);
+        if (estimateMatch) {
+          estimateHours = parseFloat(estimateMatch[1]);
+          continue;
+        }
+
+        // Skip assignee line (we use app default)
+        if (line.match(/^Assignee:/i)) {
+          continue;
+        }
+
+        // Skip "Description:" label
+        if (line.match(/^Description:\s*$/i)) {
+          parsingDescription = true;
+          continue;
+        }
+
+        // Everything else is part of description
+        parsingDescription = true;
+        descriptionLines.push(line);
+      }
+
+      // Build description with proper formatting
+      const description = descriptionLines
+        .join('\n')
+        .trim();
+
+      // Determine task type based on title/description
+      let type: DetectedWork['type'] = 'feature';
+      const searchText = (taskTitle + ' ' + description).toLowerCase();
+
+      if (this.containsAnyKeyword(searchText, this.bugKeywords)) {
+        type = 'bug-fix';
+      } else if (this.containsAnyKeyword(searchText, this.testKeywords)) {
+        type = 'test';
+      } else if (this.containsAnyKeyword(searchText, this.docKeywords)) {
+        type = 'documentation';
+      } else if (this.containsAnyKeyword(searchText, this.improvementKeywords)) {
+        type = 'improvement';
+      } else if (this.containsAnyKeyword(searchText, this.featureKeywords)) {
+        type = 'feature';
+      }
+
+      // Map priority to complexity for consistency
+      const complexity = priority === 'urgent' ? 'high' :
+                        priority === 'high' ? 'high' :
+                        priority === 'low' ? 'low' : 'medium';
+
+      // Generate tags
+      const tags = this.generateTags(taskTitle + ' ' + description);
+      tags.push('structured-notes');
+
+      // Deduplicate tags
+      const uniqueTags = Array.from(new Set(tags));
+
+      tasks.push({
+        type,
+        name: taskTitle,
+        description: description || `Task: ${taskTitle}`,
+        files: [],
+        commits: [],
+        complexity,
+        estimatedHours: estimateHours,
+        tags: uniqueTags,
+        priority, // Add priority for ClickUp
+      } as any); // Type assertion needed because priority is not in DetectedWork interface
+    }
+
+    return tasks;
   }
 
   /**
@@ -355,7 +548,7 @@ export class NotesProcessor {
       }
     }
 
-    return [...new Set(tags)]; // Remove duplicates
+    return Array.from(new Set(tags)); // Remove duplicates
   }
 
   /**

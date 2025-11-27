@@ -47,7 +47,26 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 app.use(cors({
-  origin: ['http://localhost:3008', 'http://localhost:3009'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Allow localhost and local network IPs
+    const allowedPatterns = [
+      /^http:\/\/localhost:\d+$/,
+      /^http:\/\/127\.0\.0\.1:\d+$/,
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
+      /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,
+      /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/,
+    ];
+
+    const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -237,6 +256,58 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
+    // Generate manager-friendly summary from work items
+    app.post("/api/manager-summary", authenticate, async (req, res) => {
+      try {
+        const { workItems, reportDate } = req.body;
+
+        if (!workItems || !Array.isArray(workItems) || workItems.length === 0) {
+          res.status(400).json({
+            success: false,
+            error: "workItems array is required and must not be empty",
+          });
+          return;
+        }
+
+        // Use the multi-provider AI service with automatic fallback
+        const { ManagerSummaryAIService } = await import('./services/ManagerSummaryAIService.js');
+        const aiService = new ManagerSummaryAIService();
+
+        const configuredProviders = aiService.getConfiguredProviders();
+        console.log(`📋 Available AI providers: ${configuredProviders.join(', ')}`);
+
+        const summary = await aiService.generateManagerSummary(workItems, reportDate);
+
+        res.json({
+          success: true,
+          data: {
+            summary,
+          },
+        });
+      } catch (error) {
+        console.error("Manager summary generation failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+        // Provide user-friendly error messages
+        let userMessage = "Failed to generate manager summary";
+        if (errorMessage.includes('No AI providers configured')) {
+          userMessage = errorMessage; // Show the helpful setup message
+        } else if (errorMessage.includes('All AI providers failed')) {
+          userMessage = "All available AI providers failed. Please try again later or check your API keys.";
+        } else if (errorMessage.includes('overloaded')) {
+          userMessage = "AI service is currently overloaded. Please try again in a moment.";
+        } else if (errorMessage.includes('rate limit')) {
+          userMessage = "Rate limit exceeded. Trying alternative providers...";
+        }
+
+        res.status(500).json({
+          success: false,
+          error: userMessage,
+          details: errorMessage,
+        });
+      }
+    });
+
     // Git info endpoint - fetch branches and user info
     app.get("/api/git-info", authenticate, (req, res) => {
       try {
@@ -373,7 +444,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           date: workAnalysis.date,
           endDate: endDate || undefined,
           author: author || undefined,
-          branch: branch || undefined,
           totalCommits: workAnalysis.totalCommits,
           totalWorkItems: workAnalysis.detectedWork.length,
           tasksCreated: createdTasks.length,
@@ -583,27 +653,17 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
           for (const task of processedNotes.tasks) {
             try {
+              // Use priority if available (from structured notes), otherwise map from complexity
+              const priority = (task as any).priority ||
+                (task.complexity === "high" ? "high" :
+                 task.complexity === "medium" ? "normal" : "low");
+
               const createdTask = await clickUpService.createTask({
-                name: `${
-                  task.type === "feature"
-                    ? "✨"
-                    : task.type === "bug-fix"
-                    ? "🐛"
-                    : task.type === "test"
-                    ? "🧪"
-                    : task.type === "documentation"
-                    ? "📝"
-                    : "🔧"
-                } ${task.name}`,
+                name: task.name,
                 description: task.description,
-                priority:
-                  task.complexity === "high"
-                    ? "high"
-                    : task.complexity === "medium"
-                    ? "normal"
-                    : "low",
+                priority: priority,
                 tags: task.tags,
-                timeEstimate: task.estimatedHours * 60 * 60 * 1000, // Convert to milliseconds
+                timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
               });
 
               createdTasks.push(createdTask);
