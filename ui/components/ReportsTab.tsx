@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { AnalysisResponse } from '@/types';
 import DirectoryBrowser from './DirectoryBrowser';
+import TaskPreviewModal from './TaskPreviewModal';
 import { Button, Card, LoadingSpinner, EmptyState } from '@/lib/components/ui';
 import { useAuth } from '@/lib/context/AuthContext';
 
@@ -43,6 +44,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
   const [reportSaved, setReportSaved] = useState(false);
   const [autoSave, setAutoSave] = useState(false);
   const [reportMetadata, setReportMetadata] = useState<{ date: string; endDate?: string; author?: string; branch?: string } | null>(null);
+  const [showTaskPreview, setShowTaskPreview] = useState(false);
 
   // Set default date to today
   const today = new Date().toISOString().split('T')[0];
@@ -422,7 +424,32 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     }
   };
 
-  const handleCreateTasksInClickUp = async () => {
+  // Transform editable work items to modal format
+  const getWorkItemsForModal = () => {
+    const selectedItems = editableWorkItems.filter(item => item.selected);
+
+    return selectedItems.map(item => {
+      // Find original work item from analysis to get commits, files, etc.
+      const originalWork = workAnalysis?.workAnalysis.detectedWork.find(
+        w => w.name === item.name
+      );
+
+      return {
+        name: item.name,
+        type: item.type,
+        description: item.description,
+        estimatedHours: originalWork?.estimatedHours || 0,
+        complexity: originalWork?.complexity || 'medium',
+        files: originalWork?.files || [],
+        commits: originalWork?.commits || [],
+        filesCount: originalWork?.filesCount || 0,
+        commitsCount: originalWork?.commitsCount || 0,
+        tags: originalWork?.tags || [],
+      };
+    });
+  };
+
+  const handleCreateTasksInClickUp = () => {
     const selectedItems = editableWorkItems.filter(item => item.selected);
 
     if (selectedItems.length === 0) {
@@ -430,25 +457,30 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
+    // Show the task preview modal
+    setShowTaskPreview(true);
+  };
+
+  const handleCreateTasksFromModal = async (editedWorkItems: any[]) => {
     if (!accessToken) {
       toast.error('Not authenticated');
       return;
     }
 
     setCreatingTasks(true);
-    const toastId = toast.loading(`Creating ${selectedItems.length} tasks in ClickUp...`);
+    const toastId = toast.loading(`Creating ${editedWorkItems.length} tasks in ClickUp...`);
 
     try {
-      // Create a modified work analysis with only selected items
+      // Create a modified work analysis with edited items from modal
       const modifiedWorkAnalysis = {
         ...workAnalysis!.workAnalysis,
-        detectedWork: selectedItems.map(item => ({
+        detectedWork: editedWorkItems.map(item => ({
           name: item.name,
           type: item.type,
           description: item.description,
-          commits: [], // Empty commits since we're manually creating
-          tags: [], // Empty tags array
-          files: [], // Empty files array
+          commits: item.commits || [],
+          tags: item.tags || [],
+          files: item.files || [],
         })),
       };
 
@@ -472,6 +504,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
           `✅ Created ${result.data.tasksCreated} tasks in ClickUp!`,
           { id: toastId, duration: 4000 }
         );
+        setShowTaskPreview(false);
       } else {
         toast.error(`❌ ${result.error || 'Failed to create tasks'}`, { id: toastId, duration: 5000 });
       }
@@ -981,6 +1014,16 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         <DirectoryBrowser
           onSelect={handleSelectDirectory}
           onCancel={handleCancelBrowse}
+        />
+      )}
+
+      {showTaskPreview && (
+        <TaskPreviewModal
+          workItems={getWorkItemsForModal()}
+          projectPath={selectedProjectPath}
+          date={reportMetadata?.date || today}
+          onClose={() => setShowTaskPreview(false)}
+          onCreateTasks={handleCreateTasksFromModal}
         />
       )}
     </div>
