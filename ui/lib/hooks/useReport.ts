@@ -50,6 +50,8 @@ export function useReport(reportId: string) {
   const [error, setError] = useState<string | null>(null);
   const [editableWorkItems, setEditableWorkItems] = useState<EditableWorkItem[]>([]);
   const [enhancingItems, setEnhancingItems] = useState<Set<string>>(new Set());
+  const [managerSummary, setManagerSummary] = useState<string>('');
+  const [isGeneratingManagerSummary, setIsGeneratingManagerSummary] = useState(false);
 
   useEffect(() => {
     if (accessToken) {
@@ -218,19 +220,75 @@ export function useReport(reportId: string) {
     }
   };
 
+  const generateManagerSummary = async () => {
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    setIsGeneratingManagerSummary(true);
+    const toastId = toast.loading('🤖 Generating manager-friendly summary...');
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/manager-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          workItems: editableWorkItems,
+          reportDate: report?.analysis.date,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setManagerSummary(result.data.summary);
+        toast.success('✨ Manager summary generated!', { id: toastId, duration: 3000 });
+      } else {
+        toast.error(`❌ ${result.error || 'Failed to generate manager summary'}`, { id: toastId, duration: 5000 });
+      }
+    } catch (err) {
+      toast.error(`❌ ${err instanceof Error ? err.message : 'An error occurred'}`, { id: toastId, duration: 5000 });
+    } finally {
+      setIsGeneratingManagerSummary(false);
+    }
+  };
+
+  const handleCopyManagerSummary = async () => {
+    if (!managerSummary) {
+      toast.error('Please generate the manager summary first');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(managerSummary);
+      toast.success('📋 Manager summary copied to clipboard!', { duration: 2000 });
+    } catch (err) {
+      toast.error('Failed to copy manager summary');
+    }
+  };
+
   return {
     report,
     loading,
     error,
     editableWorkItems,
     enhancingItems,
+    managerSummary,
+    isGeneratingManagerSummary,
     toggleEditMode,
     updateWorkItem,
     handleEnhanceWithAI,
     generateSummaryReport,
     generateDetailedReport,
+    generateManagerSummary,
     handleCopySummary,
     handleCopyDetailed,
+    handleCopyManagerSummary,
     reload: loadReport,
   };
 }

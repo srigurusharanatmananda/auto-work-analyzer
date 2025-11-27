@@ -17,6 +17,7 @@ export default function ReportLayout({
     { name: 'Overview', href: `/saved-reports/${reportId}/overview` },
     { name: 'Summary', href: `/saved-reports/${reportId}/summary` },
     { name: 'Detailed', href: `/saved-reports/${reportId}/detailed` },
+    { name: 'Manager Summary', href: `/saved-reports/${reportId}/manager-summary` },
   ];
 
   return (

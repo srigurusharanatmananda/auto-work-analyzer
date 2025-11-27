@@ -19,6 +19,11 @@ export class AuthService {
       body: JSON.stringify(credentials),
     });
 
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Login request failed' }));
+      return { success: false, error: error.error || `HTTP error ${response.status}` };
+    }
+
     return response.json();
   }
 
@@ -33,6 +38,11 @@ export class AuthService {
       body: JSON.stringify(data),
     });
 
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Registration request failed' }));
+      return { success: false, error: error.error || `HTTP error ${response.status}` };
+    }
+
     return response.json();
   }
 
@@ -44,6 +54,11 @@ export class AuthService {
       method: 'POST',
       credentials: 'include', // Sends refresh token cookie
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Token refresh failed' }));
+      return { success: false, error: error.error || `HTTP error ${response.status}` };
+    }
 
     return response.json();
   }
@@ -73,6 +88,11 @@ export class AuthService {
       credentials: 'include',
     });
 
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to get user' }));
+      return { success: false, error: error.error || `HTTP error ${response.status}` };
+    }
+
     return response.json();
   }
 
@@ -93,6 +113,11 @@ export class AuthService {
       credentials: 'include',
       body: JSON.stringify({ oldPassword, newPassword }),
     });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Password update failed' }));
+      return { success: false, error: error.error || `HTTP error ${response.status}` };
+    }
 
     return response.json();
   }
