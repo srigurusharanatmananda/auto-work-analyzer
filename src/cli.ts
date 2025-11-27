@@ -329,3 +329,20 @@ function displayAnalysisResults(workAnalysis: any, format: string) {
 // Parse command line arguments
 program.parse();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
