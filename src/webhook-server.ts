@@ -651,25 +651,69 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         if (createTasks && processedNotes.tasks.length > 0) {
           const clickUpService = new ClickUpService(config.clickup);
 
-          for (const task of processedNotes.tasks) {
-            try {
-              // Use priority if available (from structured notes), otherwise map from complexity
-              const priority = (task as any).priority ||
-                (task.complexity === "high" ? "high" :
-                 task.complexity === "medium" ? "normal" : "low");
+          // Process tasks in batches for better performance
+          const BATCH_SIZE = 5; // Process 5 tasks at a time
+          const taskBatches = [];
 
-              const createdTask = await clickUpService.createTask({
-                name: task.name,
-                description: task.description,
-                priority: priority,
-                tags: task.tags,
-                timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
-              });
+          for (let i = 0; i < processedNotes.tasks.length; i += BATCH_SIZE) {
+            taskBatches.push(processedNotes.tasks.slice(i, i + BATCH_SIZE));
+          }
 
-              createdTasks.push(createdTask);
-            } catch (error) {
-              console.error(`Failed to create task: ${task.name}`, error);
-            }
+          // Track failed tasks
+          const failedTasks: Array<{ name: string; error: string }> = [];
+
+          for (const batch of taskBatches) {
+            const batchPromises = batch.map(async (task) => {
+              try {
+                // Use priority if available (from structured notes), otherwise map from complexity
+                const priority = (task as any).priority ||
+                  (task.complexity === "high" ? "high" :
+                   task.complexity === "medium" ? "normal" : "low");
+
+                // Use status if available (from structured/unstructured notes)
+                const status = (task as any).status;
+
+                // Use completion date if available
+                const completedDate = (task as any).completedDate;
+
+                // Add completion date to description if present
+                let description = task.description;
+                if (completedDate) {
+                  description += `\n\n**Completed Date:** ${completedDate}`;
+                }
+
+                const createdTask = await clickUpService.createTask({
+                  name: task.name,
+                  description: description,
+                  priority: priority,
+                  status: status,
+                  tags: task.tags,
+                  timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
+                });
+
+                return createdTask;
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error(`Failed to create task: ${task.name}`, errorMessage);
+                failedTasks.push({ name: task.name, error: errorMessage });
+                return null; // Return null for failed tasks
+              }
+            });
+
+            // Wait for all tasks in this batch to complete
+            const batchResults = await Promise.all(batchPromises);
+
+            // Filter out null results and add successful tasks
+            batchResults.forEach(result => {
+              if (result !== null) {
+                createdTasks.push(result);
+              }
+            });
+          }
+
+          // Log summary if there were failures
+          if (failedTasks.length > 0) {
+            console.warn(`Failed to create ${failedTasks.length} out of ${processedNotes.tasks.length} tasks`);
           }
         }
 
@@ -686,18 +730,25 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
                 tags: task.tags,
               })),
             },
-            createdTasks: createdTasks.map(task => ({
-              id: task.id,
-              name: task.name,
-              url: task.url,
-            })),
+            createdTasks: createdTasks
+              .filter(task => task !== null && task !== undefined)
+              .map(task => ({
+                id: task.id,
+                name: task.name,
+                url: task.url,
+              })),
             summary: {
               tasksExtracted: processedNotes.tasks.length,
               tasksCreated: createdTasks.length,
+              tasksFailed: createTasks ? processedNotes.tasks.length - createdTasks.length : 0,
             },
           },
           message: `Processed ${processedNotes.tasks.length} tasks from notes${
             createTasks ? `, created ${createdTasks.length} ClickUp tasks` : ""
+          }${
+            createTasks && processedNotes.tasks.length > createdTasks.length
+              ? ` (${processedNotes.tasks.length - createdTasks.length} failed)`
+              : ""
           }`,
         });
       } catch (error) {

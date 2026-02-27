@@ -57,5 +57,6 @@ export interface NotesResponse {
   summary: {
     tasksExtracted: number;
     tasksCreated: number;
+    tasksFailed?: number;
   };
 }
