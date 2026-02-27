@@ -119,12 +119,11 @@ export class ClickUpService {
         assignees = await this.getDefaultAssigneeId();
       }
 
-      const payload = {
+      const payload: Record<string, any> = {
         name: taskData.name.trim(),
         description: taskData.description || "",
         markdown_description: taskData.description || "", // ClickUp supports markdown formatting
         priority: this.mapPriority(taskData.priority),
-        status: taskData.status || "setup", // Default to "setup" status for new lists
         assignees: assignees,
         tags: taskData.tags || [],
         due_date: taskData.dueDate
@@ -133,6 +132,11 @@ export class ClickUpService {
         time_estimate: taskData.timeEstimate || null,
         custom_fields: taskData.customFields || ([] as any[]),
       };
+
+      // Only include status if explicitly provided — ClickUp will use the list's default otherwise
+      if (taskData.status) {
+        payload.status = taskData.status;
+      }
 
       const response = await fetch(
         `${this.baseUrl}/list/${targetListId}/task`,
@@ -187,12 +191,11 @@ export class ClickUpService {
       throw new Error("No list ID provided and no default list configured");
     }
 
-    const payload = {
+    const payload: Record<string, any> = {
       name: subtaskData.name,
       description: subtaskData.description || "",
       markdown_description: subtaskData.description || "", // ClickUp supports markdown formatting
       priority: this.mapPriority(subtaskData.priority),
-      status: subtaskData.status || "setup", // Default to "setup" status for new lists
       assignees: subtaskData.assignees || [],
       tags: subtaskData.tags || [],
       due_date: subtaskData.dueDate
@@ -201,6 +204,11 @@ export class ClickUpService {
       time_estimate: subtaskData.timeEstimate || null,
       custom_fields: subtaskData.customFields || ([] as any[]),
     };
+
+    // Only include status if explicitly provided — ClickUp will use the list's default otherwise
+    if (subtaskData.status) {
+      payload.status = subtaskData.status;
+    }
 
     const response = await fetch(
       `${this.baseUrl}/list/${targetListId}/task`,
