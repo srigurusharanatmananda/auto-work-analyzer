@@ -17,6 +17,15 @@
 - **No new runtime dependencies.** The template engine is hand-written; `fastest-levenshtein`, `better-sqlite3`, `express`, and `uuid` are already present.
 - **No network in tests.** ClickUp is mocked at `fetch`.
 - **`strictNullChecks` is `false`** in `tsconfig.json`. Do not enable it; do not write code that depends on it.
+- **`bun run build` does not exit 0 on this repo, and did not before this work started.** Five errors pre-exist on the base commit:
+  ```
+  src/routes/auth.routes.ts(418,34): error TS2341: Property 'db' is private and only accessible within class 'AuthService'.
+  src/routes/auth.routes.ts(453,17): error TS2341: Property 'db' is private ...
+  src/routes/auth.routes.ts(461,41): error TS2341: Property 'db' is private ...
+  src/webhook-server.ts(648,13): error TS7034: Variable 'createdTasks' implicitly has type 'any[]' ...
+  src/webhook-server.ts(733,27): error TS7005: Variable 'createdTasks' implicitly has an 'any[]' type.
+  ```
+  The bar for every task is **no NEW errors**, not a clean build. Do not fix the `auth.routes.ts` three — that is unrelated refactoring. The two `webhook-server.ts` ones disappear in Task 8, which deletes the code containing them.
 - **Backward compatibility:** `POST /api/notes` and `POST /api/create-tasks` MUST keep working with their current request shapes when the new optional fields are omitted.
 - **Commit trailer:** every commit message in this plan ends with:
   ```
@@ -264,7 +273,7 @@ Expected: PASS, 4 tests.
 - [ ] **Step 6: Verify the build still compiles**
 
 Run: `bun run build`
-Expected: exit 0, no errors. (Confirms the `*.test.ts` exclusion works.)
+Expected: **exactly the 5 pre-existing errors listed in Global Constraints and no others** — in particular nothing referencing `src/domain/`. This confirms the `*.test.ts` exclusion works and that the new files typecheck.
 
 - [ ] **Step 7: Commit**
 
@@ -2673,8 +2682,8 @@ Mounting at `/api` preserves the existing paths `/api/notes` and `/api/create-ta
 
 - [ ] **Step 6: Verify the build and full suite**
 
-Run: `bun run build && bun test`
-Expected: build exit 0; all tests pass.
+Run: `bun test && bun run build`
+Expected: all tests pass. The build should now report **3** errors, not 5 — deleting the inline `/api/notes` handler removes the two `createdTasks` implicit-any errors in `webhook-server.ts`. The 3 remaining `auth.routes.ts` private-`db` errors are pre-existing and out of scope.
 
 - [ ] **Step 7: Verify backward compatibility by hand**
 
@@ -2763,7 +2772,7 @@ git commit -m "feat(ui): template management page and preview template picker
 ## Slice 1 Definition of Done
 
 - [ ] `bun test` passes, including the markdown round-trip test.
-- [ ] `bun run build` exits 0.
+- [ ] `bun run build` reports only the 3 pre-existing `auth.routes.ts` errors — no new ones, and the 2 `webhook-server.ts` `createdTasks` errors are gone.
 - [ ] `/api/notes` and `/api/create-tasks` accept their original request shapes unchanged.
 - [ ] All three creation paths produce identically-formatted tasks for the same input.
 - [ ] `/api/export-markdown` returns markdown that `/api/notes` can re-ingest.
