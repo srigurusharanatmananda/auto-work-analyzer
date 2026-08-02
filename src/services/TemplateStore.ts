@@ -11,6 +11,25 @@ export interface TemplateInput {
   options: TemplateOptions;
 }
 
+/**
+ * Thrown by `update`/`remove` so callers (the route layer) can distinguish
+ * failure reasons without parsing `error.message`. `code` maps 1:1 to an
+ * HTTP status at the route: "not_found" -> 404, "builtin_immutable" -> 409.
+ *
+ * "not_found" is deliberately used for both "no such id" and "belongs to
+ * another user" — a 403 would confirm the id exists, turning the endpoint
+ * into an enumeration oracle for other users' template ids.
+ */
+export class TemplateStoreError extends Error {
+  constructor(
+    message: string,
+    public readonly code: "not_found" | "builtin_immutable"
+  ) {
+    super(message);
+    this.name = "TemplateStoreError";
+  }
+}
+
 interface Row {
   id: string;
   user_id: string | null;
@@ -145,10 +164,13 @@ export class TemplateStore {
   update(id: string, userId: string, input: Partial<TemplateInput>): Template {
     const existing = this.get(id);
     if (existing && existing.isBuiltin) {
-      throw new Error("Cannot modify a built-in template. Duplicate it first.");
+      throw new TemplateStoreError(
+        "Cannot modify a built-in template. Duplicate it first.",
+        "builtin_immutable"
+      );
     }
     if (!existing || existing.userId !== userId) {
-      throw new Error("Template not found");
+      throw new TemplateStoreError("Template not found", "not_found");
     }
 
     const merged = {
@@ -182,10 +204,10 @@ export class TemplateStore {
   remove(id: string, userId: string): void {
     const existing = this.get(id);
     if (existing && existing.isBuiltin) {
-      throw new Error("Cannot delete a built-in template");
+      throw new TemplateStoreError("Cannot delete a built-in template", "builtin_immutable");
     }
     if (!existing || existing.userId !== userId) {
-      throw new Error("Template not found");
+      throw new TemplateStoreError("Template not found", "not_found");
     }
     this.db.prepare(`DELETE FROM task_templates WHERE id = ? AND user_id = ?`).run(id, userId);
   }

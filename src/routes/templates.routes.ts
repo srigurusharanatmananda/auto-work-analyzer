@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
-import { TemplateStore } from "../services/TemplateStore.js";
+import { TemplateStore, TemplateStoreError } from "../services/TemplateStore.js";
 import { DEFAULT_TEMPLATE_OPTIONS, Template, TemplateOptions } from "../formatting/Template.js";
 import { validateTemplate } from "../formatting/TemplateEngine.js";
 import { WORK_ITEM_SCHEMA } from "../formatting/renderContext.js";
@@ -41,11 +41,12 @@ export function createTemplatesRouter(store: TemplateStore): Router {
 
   const userIdOf = (req: any): string => req.user!.userId;
 
-  const validateBody = (body: any): string[] => {
+  // Validates only the fields a template actually renders (nameTemplate,
+  // descriptionTemplate). Shared by create/update/preview — `name` is a
+  // separate, save-only concern (see validateBody) since preview never
+  // reads it.
+  const validateRenderedFields = (body: any): string[] => {
     const errors: string[] = [];
-    if (!body.name || String(body.name).trim().length === 0) {
-      errors.push("name is required");
-    }
     if (typeof body.nameTemplate !== "string" || body.nameTemplate.trim().length === 0) {
       errors.push("nameTemplate is required");
     } else {
@@ -59,10 +60,39 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     return errors;
   };
 
+  // Full validation for persisted templates (create/update) — adds the
+  // `name` requirement on top of the rendered-field checks.
+  const validateBody = (body: any): string[] => {
+    const errors: string[] = [];
+    if (!body.name || String(body.name).trim().length === 0) {
+      errors.push("name is required");
+    }
+    errors.push(...validateRenderedFields(body));
+    return errors;
+  };
+
   const optionsOf = (body: any): TemplateOptions => ({
     ...DEFAULT_TEMPLATE_OPTIONS,
     ...(body.options ?? {}),
   });
+
+  // Maps a TemplateStore failure to its HTTP status. "not_found" covers both
+  // "no such id" and "belongs to another user" — deliberately identical, so
+  // the response never confirms whether an id exists for someone else's
+  // template (a 403 would be an enumeration oracle). Anything untyped is a
+  // genuine 500 rather than a client error.
+  const handleStoreError = (res: any, error: unknown, fallbackMessage: string): void => {
+    if (error instanceof TemplateStoreError) {
+      const status = error.code === "builtin_immutable" ? 409 : 404;
+      res.status(status).json({ success: false, error: error.message });
+      return;
+    }
+    console.error(fallbackMessage, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : fallbackMessage,
+    });
+  };
 
   router.get("/", authenticate, (req, res) => {
     res.json({ success: true, data: store.list(userIdOf(req)) });
@@ -100,10 +130,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
       });
       res.json({ success: true, data: updated });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Update failed",
-      });
+      handleStoreError(res, error, "Update failed");
     }
   });
 
@@ -112,17 +139,18 @@ export function createTemplatesRouter(store: TemplateStore): Router {
       store.remove(req.params.id!, userIdOf(req));
       res.json({ success: true });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Delete failed",
-      });
+      handleStoreError(res, error, "Delete failed");
     }
   });
 
   // Renders an unsaved template against a fixture (or supplied items) so the
   // editor can show live output before the user commits to saving.
   router.post("/preview", authenticate, (req, res) => {
-    const errors = validateBody(req.body);
+    // Preview renders an unsaved template — it never reads `name`, so it
+    // validates only nameTemplate/descriptionTemplate, not the full
+    // save-time validateBody (Task 9's live-preview editor must not force a
+    // name to be typed before showing output).
+    const errors = validateRenderedFields(req.body);
     if (errors.length > 0) {
       res.status(400).json({ success: false, error: "Invalid template", details: errors });
       return;
@@ -135,7 +163,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
 
     const template: Template = {
       id: "preview",
-      name: req.body.name,
+      name: req.body.name || "Preview",
       nameTemplate: req.body.nameTemplate,
       descriptionTemplate: req.body.descriptionTemplate,
       options: optionsOf(req.body),
