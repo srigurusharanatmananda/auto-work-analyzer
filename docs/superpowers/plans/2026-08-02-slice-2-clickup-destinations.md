@@ -1906,7 +1906,6 @@ Change `TasksRouterDeps`:
 ```ts
 export interface TasksRouterDeps {
   resolver: DestinationResolver;
-  projectPath: string;
 }
 ```
 
@@ -1957,7 +1956,7 @@ const resolver = new DestinationResolver({
   envConfig: config.clickup,
 });
 
-app.use("/api", createTasksRouter({ resolver, projectPath: config.project.path }));
+app.use("/api", createTasksRouter({ resolver }));
 ```
 
 - [ ] **Step 6: Run the full suite and build**

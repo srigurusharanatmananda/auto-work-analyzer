@@ -56,7 +56,7 @@
 
 **Interfaces:**
 - Consumes: `GitCommit` from `src/types/index.js` (already exists).
-- Produces: `WorkItem`, `WorkItemType`, `WorkItemPriority`, `WorkItemProvenance`, `TYPE_LABELS`, `TYPE_EMOJI`, `PRIORITY_LABELS`, and the test helper `makeWorkItem(overrides?: Partial<WorkItem>): WorkItem`. Every later task uses these.
+- Produces: `WorkItem`, `WorkItemType`, `WorkItemPriority`, `WorkItemProvenance`, `TYPE_LABELS`, `TYPE_EMOJI`, `PRIORITY_LABELS`, `ALL_WORK_ITEM_TYPES`, `ALL_WORK_ITEM_PRIORITIES`, `toWorkItemType(value)`, `toWorkItemPriority(value)`, and the test helper `makeWorkItem(overrides?: Partial<WorkItem>): WorkItem`. Every later task uses these — the narrowing helpers exist here so Task 6's two sources share one copy instead of each declaring their own type list.
 
 - [ ] **Step 1: Add the test script**
 
@@ -217,6 +217,29 @@ export const PRIORITY_LABELS: Record<WorkItemPriority, string> = {
   normal: "MEDIUM",
   low: "LOW",
 };
+
+export const ALL_WORK_ITEM_TYPES: WorkItemType[] = Object.keys(TYPE_LABELS) as WorkItemType[];
+
+export const ALL_WORK_ITEM_PRIORITIES: WorkItemPriority[] = [
+  "urgent",
+  "high",
+  "normal",
+  "low",
+];
+
+/** Narrows an untrusted string to a WorkItemType, falling back to `improvement`. */
+export function toWorkItemType(value: string | undefined): WorkItemType {
+  return ALL_WORK_ITEM_TYPES.includes(value as WorkItemType)
+    ? (value as WorkItemType)
+    : "improvement";
+}
+
+/** Narrows an untrusted string to a WorkItemPriority, falling back to `normal`. */
+export function toWorkItemPriority(value: string | undefined): WorkItemPriority {
+  return ALL_WORK_ITEM_PRIORITIES.includes(value as WorkItemPriority)
+    ? (value as WorkItemPriority)
+    : "normal";
+}
 
 /** Test fixture builder. Not used by production code. */
 export function makeWorkItem(overrides: Partial<WorkItem> = {}): WorkItem {
@@ -1416,9 +1439,12 @@ describe("round trip through NotesProcessor", () => {
     }
   });
 
-  test("multi-line descriptions survive the round trip", async () => {
+  test("the parsed description has no leftover label prefix", async () => {
     const md = renderMarkdown([items[0]!], standard);
     const parsed = await new NotesProcessor().processNotes(md);
+    // Exact equality, not toContain: a "Description: " prefix leaking into the
+    // parsed body is precisely the bug this guards.
+    expect(parsed.tasks[0]!.description.startsWith("Description:")).toBe(false);
     expect(parsed.tasks[0]!.description).toContain("Users were locked out after an update.");
     expect(parsed.tasks[0]!.description).toContain("Keychain entry was invalidated.");
   });
@@ -1474,7 +1500,13 @@ function renderBlock(
   lines.push(`Estimate: ${item.estimateHours} hours`);
   if (item.status) lines.push(`Status: ${item.status}`);
   if (item.completedDate) lines.push(`Completed: ${item.completedDate}`);
-  lines.push(`Description: ${description}`);
+
+  // The label goes on its own line and the body follows. NotesProcessor only
+  // recognises a bare "Description:" as a label; "Description: text" falls
+  // through to its catch-all branch and the literal prefix ends up inside the
+  // parsed description.
+  lines.push("Description:");
+  lines.push(description);
 
   return lines.join("\n");
 }
@@ -1665,7 +1697,7 @@ Expected: FAIL — `Cannot find module './NotesWorkSource.js'`
  * so this adapter reads them defensively.
  */
 
-import { WorkItem, WorkItemPriority, WorkItemType } from "../domain/WorkItem.js";
+import { toWorkItemPriority, toWorkItemType, WorkItem } from "../domain/WorkItem.js";
 import { NotesProcessor } from "../services/NotesProcessor.js";
 
 interface LooseDetectedWork {
@@ -1681,29 +1713,6 @@ interface LooseDetectedWork {
   completedDate?: string;
 }
 
-const KNOWN_TYPES: WorkItemType[] = [
-  "feature",
-  "bug-fix",
-  "improvement",
-  "refactor",
-  "documentation",
-  "test",
-  "chore",
-  "release",
-];
-
-const KNOWN_PRIORITIES: WorkItemPriority[] = ["urgent", "high", "normal", "low"];
-
-function toType(value: string | undefined): WorkItemType {
-  return KNOWN_TYPES.includes(value as WorkItemType) ? (value as WorkItemType) : "improvement";
-}
-
-function toPriority(value: string | undefined): WorkItemPriority {
-  return KNOWN_PRIORITIES.includes(value as WorkItemPriority)
-    ? (value as WorkItemPriority)
-    : "normal";
-}
-
 export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]> {
   const processed = await new NotesProcessor().processNotes(notesText);
 
@@ -1712,8 +1721,8 @@ export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]>
     return {
       title: loose.name,
       description: loose.description ?? "",
-      type: toType(loose.type),
-      priority: toPriority(loose.priority),
+      type: toWorkItemType(loose.type),
+      priority: toWorkItemPriority(loose.priority),
       status: loose.status,
       estimateHours: loose.estimatedHours ?? 3,
       completedDate: loose.completedDate,
@@ -1733,23 +1742,8 @@ export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]>
 ```ts
 /** Adapts a WorkAnalysisResult onto canonical WorkItems. */
 
-import { WorkItem, WorkItemPriority, WorkItemType } from "../domain/WorkItem.js";
+import { toWorkItemType, WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { WorkAnalysisResult } from "../types/index.js";
-
-const KNOWN_TYPES: WorkItemType[] = [
-  "feature",
-  "bug-fix",
-  "improvement",
-  "refactor",
-  "documentation",
-  "test",
-  "chore",
-  "release",
-];
-
-function toType(value: string): WorkItemType {
-  return KNOWN_TYPES.includes(value as WorkItemType) ? (value as WorkItemType) : "improvement";
-}
 
 function priorityFromComplexity(complexity: string): WorkItemPriority {
   if (complexity === "high") return "high";
@@ -1769,7 +1763,7 @@ export function workItemsFromAnalysis(
     return {
       title: work.name,
       description: work.description,
-      type: toType(work.type),
+      type: toWorkItemType(work.type),
       priority: loose.priority ?? priorityFromComplexity(work.complexity),
       status: loose.status,
       estimateHours: work.estimatedHours,
@@ -2487,7 +2481,6 @@ export async function createRenderedTasks(
 export interface TasksRouterDeps {
   templateStore: TemplateStore;
   clickUpConfig: ClickUpConfig;
-  projectPath: string;
 }
 
 export function createTasksRouter(deps: TasksRouterDeps): Router {
@@ -2670,7 +2663,6 @@ app.use(
   createTasksRouter({
     templateStore,
     clickUpConfig: config.clickup,
-    projectPath: config.project.path,
   })
 );
 ```
