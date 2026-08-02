@@ -1,9 +1,15 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, test } from "node:test";
+import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { TemplateStore } from "./TemplateStore.js";
 import { DEFAULT_TEMPLATE_OPTIONS } from "../formatting/Template.js";
+
+// Runs under `tsx --test` (Node), not `bun test` — better-sqlite3 cannot open
+// a database under this repo's Bun version (see task-7-report.md), but Node
+// is exactly the runtime production runs under (webhook-server.ts via tsx),
+// so this exercises the real driver on the real runtime.
 
 let dir: string;
 let store: TemplateStore;
@@ -22,18 +28,17 @@ describe("TemplateStore", () => {
   test("seeds the built-in templates on first open", () => {
     const templates = store.list("user-1");
     const builtins = templates.filter((t) => t.isBuiltin);
-    expect(builtins.length).toBe(3);
-    expect(builtins.map((t) => t.id).sort()).toEqual([
-      "builtin-commit-log",
-      "builtin-standard",
-      "builtin-terse",
-    ]);
+    assert.equal(builtins.length, 3);
+    assert.deepEqual(
+      builtins.map((t) => t.id).sort(),
+      ["builtin-commit-log", "builtin-standard", "builtin-terse"]
+    );
   });
 
   test("seeding is idempotent across reopens", () => {
     store.close();
     const reopened = new TemplateStore(join(dir, "test.db"));
-    expect(reopened.list("user-1").filter((t) => t.isBuiltin).length).toBe(3);
+    assert.equal(reopened.list("user-1").filter((t) => t.isBuiltin).length, 3);
     reopened.close();
   });
 
@@ -44,12 +49,12 @@ describe("TemplateStore", () => {
       descriptionTemplate: "{{description}}",
       options: { ...DEFAULT_TEMPLATE_OPTIONS },
     });
-    expect(created.id).toBeTruthy();
-    expect(created.isBuiltin).toBe(false);
+    assert.ok(created.id);
+    assert.equal(created.isBuiltin, false);
 
     const fetched = store.get(created.id);
-    expect(fetched!.name).toBe("Mine");
-    expect(fetched!.options.dueDateSource).toBe("completedDate");
+    assert.equal(fetched!.name, "Mine");
+    assert.equal(fetched!.options.dueDateSource, "completedDate");
   });
 
   test("list returns built-ins plus only the caller's templates", () => {
@@ -63,8 +68,8 @@ describe("TemplateStore", () => {
     });
 
     const names = store.list("user-1").map((t) => t.name);
-    expect(names).toContain("Mine");
-    expect(names).not.toContain("Theirs");
+    assert.ok(names.includes("Mine"));
+    assert.ok(!names.includes("Theirs"));
   });
 
   test("update changes a user template", () => {
@@ -73,12 +78,13 @@ describe("TemplateStore", () => {
       options: { ...DEFAULT_TEMPLATE_OPTIONS },
     });
     const updated = store.update(created.id, "user-1", { name: "Renamed" });
-    expect(updated.name).toBe("Renamed");
-    expect(updated.nameTemplate).toBe("{{title}}");
+    assert.equal(updated.name, "Renamed");
+    assert.equal(updated.nameTemplate, "{{title}}");
   });
 
   test("update refuses to modify a built-in", () => {
-    expect(() => store.update("builtin-standard", "user-1", { name: "Hacked" })).toThrow(
+    assert.throws(
+      () => store.update("builtin-standard", "user-1", { name: "Hacked" }),
       /built-in/i
     );
   });
@@ -88,7 +94,7 @@ describe("TemplateStore", () => {
       name: "Theirs", nameTemplate: "{{title}}", descriptionTemplate: "x",
       options: { ...DEFAULT_TEMPLATE_OPTIONS },
     });
-    expect(() => store.update(created.id, "user-1", { name: "Stolen" })).toThrow(/not found/i);
+    assert.throws(() => store.update(created.id, "user-1", { name: "Stolen" }), /not found/i);
   });
 
   test("remove deletes a user template but refuses built-ins", () => {
@@ -97,7 +103,7 @@ describe("TemplateStore", () => {
       options: { ...DEFAULT_TEMPLATE_OPTIONS },
     });
     store.remove(created.id, "user-1");
-    expect(store.get(created.id)).toBeNull();
-    expect(() => store.remove("builtin-standard", "user-1")).toThrow(/built-in/i);
+    assert.equal(store.get(created.id), null);
+    assert.throws(() => store.remove("builtin-standard", "user-1"), /built-in/i);
   });
 });
