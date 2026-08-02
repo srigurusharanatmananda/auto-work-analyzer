@@ -21,6 +21,8 @@ import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import { ClickUpService } from "./services/ClickUpService.js";
 import authRoutes from "./routes/auth.routes.js";
+import { createTemplatesRouter } from "./routes/templates.routes.js";
+import { TemplateStore } from "./services/TemplateStore.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -111,6 +113,14 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     // Authentication routes (public)
     app.use("/api/auth", authRoutes);
+
+    // Template CRUD (same .database/auto-work-analyzer.db as AuthDatabaseService)
+    const templatesDbDir = path.join(process.cwd(), ".database");
+    if (!fs.existsSync(templatesDbDir)) {
+      fs.mkdirSync(templatesDbDir, { recursive: true });
+    }
+    const templateStore = new TemplateStore(path.join(templatesDbDir, "auto-work-analyzer.db"));
+    app.use("/api/templates", createTemplatesRouter(templateStore));
 
     // Browse directories endpoint
     app.get("/api/browse", authenticate, (req, res) => {
