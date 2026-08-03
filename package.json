@@ -12,6 +12,7 @@
     "test": "bun test && tsx --test \"src/**/*.nodetest.ts\"",
     "test:db": "tsx --test \"src/**/*.nodetest.ts\"",
     "test:smoke": "tsx src/test.ts",
+    "e2e:clickup": "tsx scripts/e2e-clickup.ts",
     "setup": "tsx src/setup.ts",
     "setup-admin": "tsx src/scripts/setup-admin.ts",
     "webhook": "tsx src/webhook-server.ts"

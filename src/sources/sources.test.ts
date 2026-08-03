@@ -34,6 +34,50 @@ describe("workItemsFromNotes", () => {
     expect(items[0]!.provenance.commits).toEqual([]);
   });
 
+  /**
+   * Found by scripts/e2e-clickup.ts on its first real run, not by any review:
+   * every test above omits the documented `Tags:` line, and the parser had no
+   * branch for it. So the line fell through to the description catch-all, and
+   * because it precedes `Description:` the label was no longer leading and the
+   * downstream strip could not remove that either — real ClickUp tasks got
+   * descriptions beginning "Tags: mobile, meditation\nDescription: ...".
+   * Separately, the author's tags were discarded and replaced with keyword
+   * guesses.
+   */
+  describe("an explicit Tags: line", () => {
+    const NOTES = [
+      "Task 1: Rework the meditation player layout",
+      "Priority: HIGH",
+      "Tags: mobile, meditation",
+      "Description: Rebuilt the transport controls.",
+      "",
+      "---",
+      "",
+    ].join("\n");
+
+    test("does not leak into the description, and neither does the label", async () => {
+      const items = await workItemsFromNotes(NOTES);
+      expect(items[0]!.description).toBe("Rebuilt the transport controls.");
+    });
+
+    test("keeps the author's tags, in order, ahead of the generated ones", async () => {
+      const items = await workItemsFromNotes(NOTES);
+      expect(items[0]!.tags.slice(0, 2)).toEqual(["mobile", "meditation"]);
+    });
+
+    test("tolerates semicolons and stray whitespace", async () => {
+      const items = await workItemsFromNotes(
+        "Task 1: A\nTags:  alpha ;beta,  gamma \nDescription: Body.\n\n---\n"
+      );
+      expect(items[0]!.tags.slice(0, 3)).toEqual(["alpha", "beta", "gamma"]);
+    });
+
+    test("an inline Description: keeps its text but drops the label", async () => {
+      const items = await workItemsFromNotes("Task 1: A\nDescription: Just the body.\n\n---\n");
+      expect(items[0]!.description).toBe("Just the body.");
+    });
+  });
+
   test("defaults priority to normal when the field is absent", async () => {
     const items = await workItemsFromNotes(
       "Task 1: Something\nEstimate: 1 hours\nDescription: Do it.\n\n---\n\nTask 2: Other\nDescription: Also.",
