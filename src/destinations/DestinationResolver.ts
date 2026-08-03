@@ -6,6 +6,20 @@ import { Destination, DestinationStore } from "./DestinationStore.js";
 
 const DEFAULT_TEMPLATE_ID = "builtin-standard";
 
+/**
+ * Raised when a request names a destination that does not exist, or that
+ * belongs to another user — deliberately the same error for both, so the
+ * endpoint is not an enumeration oracle for other users' destination ids.
+ * Typed so the route layer can answer 400 rather than 500: naming a bad id is
+ * the caller's mistake.
+ */
+export class UnknownDestinationError extends Error {
+  constructor(destinationId: string) {
+    super(`Destination not found: ${destinationId}`);
+    this.name = "UnknownDestinationError";
+  }
+}
+
 export interface ResolvedDestination {
   /** Null when falling back to the .env configuration. */
   destination: Destination | null;
@@ -41,7 +55,7 @@ export class DestinationResolver {
 
     if (destinationId) {
       destination = this.deps.destinations.get(destinationId, userId);
-      if (!destination) throw new Error(`Destination not found: ${destinationId}`);
+      if (!destination) throw new UnknownDestinationError(destinationId);
     } else {
       destination = this.deps.destinations.getDefault(userId);
     }

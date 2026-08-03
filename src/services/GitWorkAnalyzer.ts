@@ -12,6 +12,8 @@ import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
 import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
 import { renderTasks } from "../formatting/ClickUpRenderer.js";
+import type { RenderedTask } from "../formatting/ClickUpRenderer.js";
+import { mapStatus } from "../formatting/StatusMapper.js";
 import type { Template } from "../formatting/Template.js";
 import {
   GitCommit,
@@ -26,6 +28,38 @@ const execAsync = promisify(exec);
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
+}
+
+/**
+ * Rewrites each rendered task's status to the target list's real status,
+ * dropping any that cannot be matched. Mirrors `annotateStatusMapping` in
+ * tasks.routes.ts — this path renders internally, so it cannot reuse it, but it
+ * must not disagree with it either.
+ *
+ * A null/empty status list means "unknown", and is left alone rather than
+ * treated as "the list has no statuses".
+ */
+function mapRenderedStatuses(
+  rendered: RenderedTask[],
+  availableStatuses?: string[] | null
+): RenderedTask[] {
+  if (!availableStatuses || availableStatuses.length === 0) return rendered;
+
+  return rendered.map((entry) => {
+    const mapping = mapStatus(entry.task.status, availableStatuses);
+    if (!mapping) return entry;
+
+    const task = { ...entry.task };
+    if (mapping.to) {
+      task.status = mapping.to;
+    } else {
+      delete task.status;
+      console.warn(
+        `Status "${mapping.from}" does not exist in the target list — leaving "${task.name}" at the list default.`
+      );
+    }
+    return { ...entry, task };
+  });
 }
 
 export class GitWorkAnalyzer {
@@ -678,7 +712,21 @@ export class GitWorkAnalyzer {
     workAnalysis: WorkAnalysisResult,
     config: ClickUpConfig,
     batchSize: number = 5,
-    opts?: { template?: Template; repository?: string }
+    opts?: {
+      template?: Template;
+      repository?: string;
+      /**
+       * The target list's real statuses. Rendered statuses are mapped onto
+       * these, and any that cannot be matched are dropped so ClickUp applies
+       * the list default.
+       *
+       * This matters more here than on the canonical path: git-derived work
+       * items default to `status: "complete"` (see GitWorkSource), and a list
+       * whose done column is named anything else rejects the create outright.
+       * Omit, or pass null, to send statuses unmapped as before.
+       */
+      availableStatuses?: string[] | null;
+    }
   ): Promise<any[]> {
     try {
       const clickUpService = new ClickUpService(config);
@@ -695,9 +743,12 @@ export class GitWorkAnalyzer {
       // created task showed an empty string — the exact divergence this path
       // exists to eliminate.
       const renderedTasks = opts?.template
-        ? renderTasks(
-            workItemsFromAnalysis(workAnalysis, opts.repository),
-            opts.template
+        ? mapRenderedStatuses(
+            renderTasks(
+              workItemsFromAnalysis(workAnalysis, opts.repository),
+              opts.template
+            ),
+            opts.availableStatuses
           )
         : null;
 

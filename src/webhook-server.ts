@@ -26,6 +26,7 @@ import { runMigrations } from "./migrations/runMigrations.js";
 import { DestinationStore } from "./destinations/DestinationStore.js";
 import { createDestinationsRouter } from "./routes/destinations.routes.js";
 import { createClickUpRouter } from "./routes/clickup.routes.js";
+import { DestinationResolver } from "./destinations/DestinationResolver.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -134,11 +135,18 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
     // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
     // router owns their formatting now instead of each handler doing its own.
+    // `envConfig` is the last fallback in the resolution chain, so a request
+    // that names no destination still creates tasks exactly where it used to.
+    const resolver = new DestinationResolver({
+      destinations: destinationStore,
+      templates: templateStore,
+      envConfig: config.clickup,
+    });
+
     app.use(
       "/api",
       createTasksRouter({
-        templateStore,
-        clickUpConfig: config.clickup,
+        resolver,
         defaultProjectPath: config.project.path,
       })
     );

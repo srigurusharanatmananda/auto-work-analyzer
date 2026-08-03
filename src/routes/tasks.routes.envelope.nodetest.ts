@@ -21,21 +21,56 @@ import express from "express";
 import { createTasksRouter } from "./tasks.routes.js";
 import { JWTService } from "../services/JWTService.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
-import type { TemplateStore } from "../services/TemplateStore.js";
+import { UnknownTemplateError } from "../formatting/Template.js";
+import {
+  DestinationResolver,
+  UnknownDestinationError,
+} from "../destinations/DestinationResolver.js";
+import type { Destination } from "../destinations/DestinationStore.js";
+import type { ClickUpService } from "../services/ClickUpService.js";
 import type { ClickUpConfig } from "../types/index.js";
 
-/** Serves the real built-ins without opening a database. */
-const stubStore = {
-  get: (id: string) => BUILTIN_TEMPLATES.find((t) => t.id === id) ?? null,
-} as unknown as TemplateStore;
-
-// Never used: every test below leaves createTasks false, so ClickUpService is
-// never constructed and no request leaves the process.
+// Never used to reach ClickUp: every test below either leaves createTasks false
+// or stubs the analyzer, so no request leaves the process.
 const clickUpConfig = {
   teamId: "team",
   apiKey: "unused",
   projectName: "test",
 } as ClickUpConfig;
+
+/**
+ * Stands in for the real DestinationResolver without opening a database, and
+ * preserves the two rejections the router turns into 400s: an unknown template
+ * id and an unknown destination id.
+ *
+ * `listId` is left undefined so the status-mapping round trip is skipped
+ * entirely — these tests are about response envelopes, and a status lookup here
+ * would be a real network call.
+ */
+function stubResolver(destination: Destination | null = null): DestinationResolver {
+  return {
+    resolve: (_userId: string, destinationId?: string, templateId?: string) => {
+      if (destinationId && destinationId !== destination?.id) {
+        throw new UnknownDestinationError(destinationId);
+      }
+      const id = templateId || "builtin-standard";
+      const template = BUILTIN_TEMPLATES.find((t) => t.id === id);
+      if (!template) throw new UnknownTemplateError(id);
+      return {
+        destination,
+        clickUp: {
+          createTask: async (task: any) => ({ id: "x", name: task.name, url: "http://x" }),
+          getListStatuses: async () => {
+            throw new Error("no network in tests");
+          },
+        } as unknown as ClickUpService,
+        listId: undefined as string | undefined,
+        template,
+        config: clickUpConfig,
+      };
+    },
+  } as unknown as DestinationResolver;
+}
 
 const LEGACY_NOTES =
   "Task 1: Try it\nPriority: HIGH\nEstimate: 2 hours\nDescription: Smoke test.\n\n---\n\nTask 2: Second\nDescription: Also.";
@@ -66,8 +101,7 @@ before(() => {
   app.use(
     "/api",
     createTasksRouter({
-      templateStore: stubStore,
-      clickUpConfig,
+      resolver: stubResolver(),
       // Read only by the legacy {workAnalysis} branch, which no test below
       // exercises — driving it would need a real GitWorkAnalyzer against a real
       // repo and a real ClickUp.
@@ -377,8 +411,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     app.use(
       "/api",
       createTasksRouter({
-        templateStore: stubStore,
-        clickUpConfig,
+        resolver: stubResolver(),
         defaultProjectPath: "/default/project",
         analyzerFactory: (projectPath) => ({
           createTasksFromWork: async (analysis: any) => {
@@ -456,8 +489,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     app.use(
       "/api",
       createTasksRouter({
-        templateStore: stubStore,
-        clickUpConfig,
+        resolver: stubResolver(),
         defaultProjectPath: "/p",
         analyzerFactory: () => ({
           createTasksFromWork: async (_wa: any, _cfg: any, _batch?: number, opts?: any) => {
@@ -531,8 +563,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     app.use(
       "/api",
       createTasksRouter({
-        templateStore: stubStore,
-        clickUpConfig,
+        resolver: stubResolver(),
         defaultProjectPath: "/p",
         analyzerFactory: () => ({
           createTasksFromWork: async () => {
@@ -590,5 +621,119 @@ describe("POST /api/export-markdown", () => {
     const body = await res.json();
     assert.match(body.data.markdown, /# Weekly Report/);
     assert.match(body.data.markdown, /# Period: 2026-07-27 to 2026-08-02/);
+  });
+});
+
+/**
+ * Slice 2 additions to the preview envelope. The point of surfacing the
+ * destination is that a user can see WHERE tasks are about to be created before
+ * confirming; null means the .env fallback, which is what every request that
+ * names no destination still gets.
+ */
+describe("destination selection", () => {
+  test("preview reports a null destination when falling back to .env", async () => {
+    const res = await postJson("/preview-tasks", { notes: LEGACY_NOTES });
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.data.destination, null);
+    assert.deepEqual(body.data.statusMapping, []);
+  });
+
+  test("preview reports the resolved destination when one is selected", async () => {
+    const destination = {
+      id: "dest-1",
+      userId: "user-1",
+      name: "Ask Nithyananda → Dev",
+      teamId: "t1",
+      teamName: "USK",
+      listId: "l1",
+      listName: "Dev Sprint",
+      isDefault: true,
+    } as Destination;
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createTasksRouter({ resolver: stubResolver(destination), defaultProjectPath: "/p" })
+    );
+    const server = app.listen(0);
+    try {
+      const url = `http://localhost:${(server.address() as AddressInfo).port}/api/preview-tasks`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({ notes: LEGACY_NOTES, destinationId: "dest-1" }),
+      });
+      const body = await res.json();
+      assert.equal(res.status, 200);
+      assert.deepEqual(body.data.destination, {
+        id: "dest-1",
+        name: "Ask Nithyananda → Dev",
+        listName: "Dev Sprint",
+        teamName: "USK",
+      });
+    } finally {
+      server.close();
+    }
+  });
+
+  // A bad destination id is the caller's mistake, like a bad template id — not
+  // a 500.
+  test("400 when the named destination does not exist", async () => {
+    const res = await postJson("/preview-tasks", {
+      notes: LEGACY_NOTES,
+      destinationId: "no-such-destination",
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error, "Unknown destination");
+    assert.match(body.details, /no-such-destination/);
+  });
+
+  test("the destination reaches createTasksFromWork on the legacy branch", async () => {
+    const destination = {
+      id: "dest-1",
+      userId: "user-1",
+      name: "Mine",
+      teamId: "t1",
+      listId: "l1",
+      isDefault: true,
+    } as Destination;
+
+    let receivedConfig: any = "NOT_CALLED";
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createTasksRouter({
+        resolver: stubResolver(destination),
+        defaultProjectPath: "/p",
+        analyzerFactory: () => ({
+          createTasksFromWork: async (_wa: any, cfg: any) => {
+            receivedConfig = cfg;
+            return [];
+          },
+        }),
+      })
+    );
+    const server = app.listen(0);
+    try {
+      const url = `http://localhost:${(server.address() as AddressInfo).port}/api/create-tasks`;
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({
+          workAnalysis: { date: "d", detectedWork: [] },
+          destinationId: "dest-1",
+        }),
+      });
+      // The resolved config, not the raw .env one — this is what makes the
+      // legacy branch write to the chosen list instead of CLICKUP_DEFAULT_LIST_ID.
+      assert.notEqual(receivedConfig, "NOT_CALLED");
+      assert.equal(receivedConfig.teamId, "team");
+    } finally {
+      server.close();
+    }
   });
 });
