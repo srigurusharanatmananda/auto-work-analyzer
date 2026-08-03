@@ -25,6 +25,17 @@ import { renderTasks } from "../src/formatting/ClickUpRenderer.js";
 import { renderMarkdown } from "../src/formatting/MarkdownRenderer.js";
 import { BUILTIN_TEMPLATES } from "../src/formatting/builtinTemplates.js";
 import { ClickUpService } from "../src/services/ClickUpService.js";
+import { TemplateStore } from "../src/services/TemplateStore.js";
+import {
+  CredentialCipher,
+  generateKeyBase64,
+} from "../src/destinations/CredentialCipher.js";
+import { DestinationStore } from "../src/destinations/DestinationStore.js";
+import { DestinationResolver } from "../src/destinations/DestinationResolver.js";
+import { annotateStatusMapping, buildPreview, createRenderedTasks } from "../src/routes/tasks.routes.js";
+import { mkdtempSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import type { ClickUpConfig } from "../src/types/index.js";
 
 const API = "https://api.clickup.com/api/v2";
@@ -241,6 +252,146 @@ async function main(): Promise<void> {
       // guaranteed to include "complete", and ClickUpService deliberately omits
       // an unknown status rather than failing the create.
       notes.push(`${label}: rendered status ${JSON.stringify(expected.status)}, ClickUp stored ${JSON.stringify(stored.status?.status)}`);
+    }
+
+    // Slice 2: creation now flows through a saved destination and the status
+    // mapper. Both are exactly what a stubbed test cannot check — the statuses
+    // being mapped against are whatever ClickUp really configured on this list,
+    // and a mapping is only proven correct by reading back what ClickUp stored.
+    console.log("\n=== 4b. Destination + status mapping, end to end ===");
+    const destinationDir = mkdtempSync(join(tmpdir(), "awa-e2e-dest-"));
+    const destinationDbPath = join(destinationDir, "e2e.db");
+    const cipher = new CredentialCipher(generateKeyBase64());
+    const destinationStore = new DestinationStore(destinationDbPath, cipher);
+    const templateStore = new TemplateStore(destinationDbPath);
+
+    try {
+      const destination = destinationStore.create("e2e-user", {
+        name: "e2e throwaway",
+        apiKey: API_KEY,
+        teamId: TEAM_ID,
+        teamName: team.team?.name,
+        spaceId: space.id,
+        spaceName: space.name,
+        listId,
+        listName,
+        defaultTemplateId: "builtin-standard",
+      });
+
+      check(
+        "a saved destination never carries the API key",
+        !JSON.stringify(destination).includes(API_KEY)
+      );
+      check(
+        "the stored key decrypts back to the original",
+        destinationStore.getApiKey(destination.id, "e2e-user") === API_KEY
+      );
+
+      const resolver = new DestinationResolver({
+        destinations: destinationStore,
+        templates: templateStore,
+        // Deliberately unusable: if resolution fell back to this instead of
+        // using the destination, the create below fails loudly rather than
+        // quietly writing to the wrong list.
+        envConfig: { teamId: "env-unused", apiKey: "pk_unused", projectName: "env" },
+      });
+
+      // No destinationId — the "user's default destination" path, which is what
+      // an ordinary run through the UI takes.
+      const resolved = resolver.resolve("e2e-user");
+      check("resolver picks the saved destination", resolved.destination?.id === destination.id);
+      check("resolver targets the throwaway list", resolved.listId === listId);
+      check(
+        "resolver used the destination's template",
+        resolved.template.id === "builtin-standard"
+      );
+
+      const realStatuses = await resolved.clickUp.getListStatuses(listId);
+      console.log(`  list statuses: ${JSON.stringify(realStatuses)}`);
+      check("the list reports at least one status", realStatuses.length > 0);
+
+      const preview = annotateStatusMapping(buildPreview(items, resolved.template), realStatuses);
+      console.log(`  status mapping: ${JSON.stringify(preview.statusMapping)}`);
+      check(
+        "the notes' 'complete' status was reconciled against the real list",
+        preview.statusMapping.some((m) => m.from === "complete"),
+        JSON.stringify(preview.statusMapping)
+      );
+
+      const mapped = preview.statusMapping.find((m) => m.from === "complete");
+      const outcome = await createRenderedTasks(preview.items, resolved.clickUp, resolved.listId);
+      check(
+        `created ${preview.items.length} tasks through the destination`,
+        outcome.created.length === preview.items.length,
+        JSON.stringify(outcome.failed)
+      );
+
+      // The payoff: whatever the mapper decided must be what ClickUp stored. A
+      // status ClickUp would reject shows up as a failed create above; one it
+      // silently ignores shows up right here.
+      if (outcome.created.length > 0) {
+        const storedFirst = await clickup(`/task/${outcome.created[0]!.id}`);
+        if (mapped?.to) {
+          check(
+            `mapped status "${mapped.from}" -> "${mapped.to}" is what ClickUp stored`,
+            storedFirst.status?.status?.toLowerCase() === mapped.to.toLowerCase(),
+            `ClickUp has ${JSON.stringify(storedFirst.status?.status)}`
+          );
+        } else {
+          notes.push(
+            `"complete" had no match in this list, so it was dropped and ClickUp applied its default (${JSON.stringify(
+              storedFirst.status?.status
+            )}) — the intended fallback`
+          );
+        }
+      }
+      // The drop path, against real ClickUp. A list that happens to define
+      // "complete" (as this one does) never exercises it, but it is the case
+      // that used to fail the whole create — so force it with a status no list
+      // will ever have. ClickUp must accept the task and apply its own default.
+      const absurd = "zzz-not-a-real-status";
+      const droppedPreview = annotateStatusMapping(
+        buildPreview([{ ...items[0]!, title: "E2E dropped-status probe", status: absurd }], resolved.template),
+        realStatuses
+      );
+      check(
+        "a status absent from the list is reported as unmatched",
+        droppedPreview.statusMapping.some((m) => m.from === absurd && m.to === null),
+        JSON.stringify(droppedPreview.statusMapping)
+      );
+      check(
+        "the unmatched status is stripped from the payload",
+        droppedPreview.items[0]!.task.status === undefined
+      );
+      check(
+        "the drop is warned about",
+        droppedPreview.warnings.some((w) => w.includes(absurd)),
+        JSON.stringify(droppedPreview.warnings)
+      );
+
+      const droppedOutcome = await createRenderedTasks(
+        droppedPreview.items,
+        resolved.clickUp,
+        resolved.listId
+      );
+      check(
+        "ClickUp accepts a task whose unmatched status was dropped",
+        droppedOutcome.created.length === 1,
+        JSON.stringify(droppedOutcome.failed)
+      );
+      if (droppedOutcome.created.length === 1) {
+        const storedDropped = await clickup(`/task/${droppedOutcome.created[0]!.id}`);
+        check(
+          "the dropped-status task landed on the list's default status",
+          typeof storedDropped.status?.status === "string" &&
+            storedDropped.status.status.toLowerCase() !== absurd,
+          `ClickUp has ${JSON.stringify(storedDropped.status?.status)}`
+        );
+      }
+    } finally {
+      destinationStore.close();
+      templateStore.close();
+      rmSync(destinationDir, { recursive: true, force: true });
     }
 
     console.log("\n=== 5. Markdown round-trip (export -> re-ingest) ===");

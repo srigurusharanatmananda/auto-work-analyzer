@@ -25,8 +25,10 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import {
+  Destination,
   DetectedWork,
   RenderedTaskPreview,
+  StatusMapping,
   Template,
   WorkAnalysisResult,
 } from '@/types';
@@ -86,7 +88,16 @@ interface TaskPreviewModalProps {
   projectPath: string;
   date: string;
   onClose: () => void;
-  onCreateTasks: (editedWorkItems: DetectedWork[], templateId: string) => void;
+  /**
+   * `destinationId` is empty when the user has no saved destinations — the
+   * backend then falls back to its .env configuration, which is what every run
+   * did before destinations existed.
+   */
+  onCreateTasks: (
+    editedWorkItems: DetectedWork[],
+    templateId: string,
+    destinationId: string
+  ) => void;
 }
 
 export default function TaskPreviewModal({
@@ -105,7 +116,15 @@ export default function TaskPreviewModal({
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE_ID);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinationId, setDestinationId] = useState('');
   const [rendered, setRendered] = useState<RenderedTaskPreview[]>([]);
+  const [target, setTarget] = useState<{
+    name: string;
+    listName?: string;
+    teamName?: string;
+  } | null>(null);
+  const [statusMapping, setStatusMapping] = useState<StatusMapping[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
@@ -132,8 +151,38 @@ export default function TaskPreviewModal({
     };
   }, [accessToken]);
 
-  // Re-renders the preview whenever the template OR the items change, so the
-  // pane always shows the output of the template that will actually be used.
+  // Destinations, defaulting to whichever one is marked default — the same one
+  // the backend would pick for a request that names none, so the picker opens
+  // showing what would happen anyway.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/destinations`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        });
+        const result = await response.json();
+        if (cancelled || !result.success) return;
+        const loaded = result.data as Destination[];
+        setDestinations(loaded);
+        const preferred = loaded.find((entry) => entry.isDefault) ?? loaded[0];
+        if (preferred) setDestinationId(preferred.id);
+      } catch (error) {
+        console.error('Failed to load destinations:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  // Re-renders the preview whenever the template, the destination OR the items
+  // change, so the pane always shows the output of the template that will
+  // actually be used, against the list it will actually be written to.
   useEffect(() => {
     if (!accessToken) return;
 
@@ -151,6 +200,9 @@ export default function TaskPreviewModal({
             workAnalysis: workAnalysisWithEditedItems(baseWorkAnalysis, workItems),
             repository: repositoryFromProjectPath(projectPath),
             templateId,
+            // Omitted rather than sent empty, so the backend takes its own
+            // default-then-.env fallback instead of being handed "".
+            ...(destinationId ? { destinationId } : {}),
           }),
         });
         const result = await response.json();
@@ -158,10 +210,14 @@ export default function TaskPreviewModal({
         if (result.success) {
           setRendered(result.data.items as RenderedTaskPreview[]);
           setWarnings((result.data.warnings as string[]) ?? []);
+          setStatusMapping((result.data.statusMapping as StatusMapping[]) ?? []);
+          setTarget(result.data.destination ?? null);
           setRenderError(null);
         } else {
           setRendered([]);
           setWarnings([]);
+          setStatusMapping([]);
+          setTarget(null);
           setRenderError(
             typeof result.details === 'string'
               ? result.details
@@ -178,7 +234,7 @@ export default function TaskPreviewModal({
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [accessToken, templateId, workItems, baseWorkAnalysis, projectPath]);
+  }, [accessToken, templateId, destinationId, workItems, baseWorkAnalysis, projectPath]);
 
   const handleEdit = (index: number, field: 'name' | 'description', value: string) => {
     const updated = [...workItems];
@@ -238,9 +294,10 @@ export default function TaskPreviewModal({
   const handleCreateTasks = async () => {
     setCreatingTasks(true);
     try {
-      // The chosen template goes out with the items — without it the picker
-      // would restyle the preview and leave the created tasks unchanged.
-      onCreateTasks(workItems, templateId);
+      // The chosen template AND destination go out with the items — without
+      // either, the pickers would restyle/retarget the preview and leave the
+      // created tasks unchanged.
+      onCreateTasks(workItems, templateId, destinationId);
     } catch (error) {
       console.error('Failed to create tasks:', error);
     } finally {
@@ -291,6 +348,28 @@ export default function TaskPreviewModal({
                 ))}
               </select>
             </div>
+            <div className="flex-1">
+              <label
+                htmlFor="destinationId"
+                className="block text-xs font-semibold text-foreground-secondary mb-1"
+              >
+                Destination
+              </label>
+              <select
+                id="destinationId"
+                value={destinationId}
+                onChange={(e) => setDestinationId(e.target.value)}
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Server default (from configuration)</option>
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id}>
+                    {destination.name}
+                    {destination.isDefault ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             {rendering && (
               <div className="flex items-center gap-2 text-xs text-foreground-tertiary pb-2">
                 <LoadingSpinner size="sm" />
@@ -298,6 +377,43 @@ export default function TaskPreviewModal({
               </div>
             )}
           </div>
+
+          {/* Where these tasks are about to land. Unmissable on purpose: the
+              whole risk of multiple destinations is creating in the wrong one. */}
+          <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm text-foreground">
+            <span className="font-semibold">Creating in:</span>{' '}
+            {target
+              ? [target.teamName, target.listName].filter(Boolean).join(' → ') || target.name
+              : 'the list configured on the server'}
+          </div>
+
+          {statusMapping.length > 0 && (
+            <div className="mt-3 rounded-lg border border-border bg-background-tertiary p-3">
+              <p className="mb-2 text-xs font-semibold text-foreground-secondary">
+                Status mapping for this list
+              </p>
+              <table className="w-full text-xs">
+                <tbody>
+                  {statusMapping.map((mapping) => (
+                    <tr key={mapping.from}>
+                      <td className="py-0.5 pr-3 text-foreground-secondary">{mapping.from}</td>
+                      <td className="py-0.5 pr-3 text-foreground-tertiary">→</td>
+                      <td className="py-0.5 text-foreground">
+                        {mapping.to ?? (
+                          <span className="text-warning">
+                            not in this list — will use the list default
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-0.5 pl-3 text-right text-foreground-tertiary">
+                        {mapping.method}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {warnings.length > 0 && (
             <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3">

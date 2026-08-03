@@ -21,6 +21,12 @@ import authRoutes from "./routes/auth.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
+import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
+import { runMigrations } from "./migrations/runMigrations.js";
+import { DestinationStore } from "./destinations/DestinationStore.js";
+import { createDestinationsRouter } from "./routes/destinations.routes.js";
+import { createClickUpRouter } from "./routes/clickup.routes.js";
+import { DestinationResolver } from "./destinations/DestinationResolver.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -96,22 +102,51 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // Authentication routes (public)
     app.use("/api/auth", authRoutes);
 
-    // Template CRUD (same .database/auto-work-analyzer.db as AuthDatabaseService)
-    const templatesDbDir = path.join(process.cwd(), ".database");
-    if (!fs.existsSync(templatesDbDir)) {
-      fs.mkdirSync(templatesDbDir, { recursive: true });
+    // One database for everything (same .database/auto-work-analyzer.db as
+    // AuthDatabaseService), so a destination and the user it belongs to cannot
+    // end up in different files.
+    const databaseDir = path.join(process.cwd(), ".database");
+    if (!fs.existsSync(databaseDir)) {
+      fs.mkdirSync(databaseDir, { recursive: true });
     }
-    const templateStore = new TemplateStore(path.join(templatesDbDir, "auto-work-analyzer.db"));
+    const dbPath = path.join(databaseDir, "auto-work-analyzer.db");
+
+    // Startup guard, deliberately before any store is opened: stored ClickUp
+    // keys are encrypted, and there is no "store them in the clear" fallback.
+    // An unconfigured install must fail here with instructions rather than
+    // discover the problem at the first write.
+    let cipher: CredentialCipher;
+    try {
+      cipher = loadCipherFromEnv();
+    } catch (error) {
+      console.error(`❌ ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
+    runMigrations(dbPath, cipher);
+
+    const templateStore = new TemplateStore(dbPath);
     app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Named ClickUp destinations, and the hierarchy browsing the picker needs.
+    const destinationStore = new DestinationStore(dbPath, cipher);
+    app.use("/api/destinations", createDestinationsRouter(destinationStore));
+    app.use("/api/clickup", createClickUpRouter(destinationStore));
 
     // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
     // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
     // router owns their formatting now instead of each handler doing its own.
+    // `envConfig` is the last fallback in the resolution chain, so a request
+    // that names no destination still creates tasks exactly where it used to.
+    const resolver = new DestinationResolver({
+      destinations: destinationStore,
+      templates: templateStore,
+      envConfig: config.clickup,
+    });
+
     app.use(
       "/api",
       createTasksRouter({
-        templateStore,
-        clickUpConfig: config.clickup,
+        resolver,
         defaultProjectPath: config.project.path,
       })
     );

@@ -7,7 +7,7 @@
  * under this repo's Bun version).
  */
 import { describe, expect, test } from "bun:test";
-import { buildPreview, createRenderedTasks } from "./tasks.routes.js";
+import { annotateStatusMapping, buildPreview, createRenderedTasks } from "./tasks.routes.js";
 import { makeWorkItem } from "../domain/WorkItem.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
 import type { RenderedTask } from "../formatting/ClickUpRenderer.js";
@@ -107,5 +107,62 @@ describe("createRenderedTasks", () => {
 
     expect(calls).toBe(0);
     expect(outcome).toEqual({ created: [], failed: [] });
+  });
+});
+
+/**
+ * The point of this pass is that a status the target list does not define never
+ * reaches ClickUp: sending one fails the whole create, so an unmatched status is
+ * dropped (ClickUp then applies the list default) and the drop is reported.
+ */
+describe("annotateStatusMapping", () => {
+  test("rewrites statuses to the list's real names", () => {
+    const preview = buildPreview([makeWorkItem({ status: "done" })], standard);
+    const annotated = annotateStatusMapping(preview, ["to do", "Complete"]);
+    expect(annotated.items[0]!.task.status).toBe("Complete");
+    expect(annotated.statusMapping[0]!.method).toBe("synonym");
+  });
+
+  test("removes an unmatched status and warns", () => {
+    const preview = buildPreview([makeWorkItem({ status: "nonsense-status" })], standard);
+    const annotated = annotateStatusMapping(preview, ["to do", "Complete"]);
+    expect(annotated.items[0]!.task.status).toBeUndefined();
+    expect(annotated.warnings.some((w) => w.includes("nonsense-status"))).toBe(true);
+  });
+
+  test("leaves items without a status untouched", () => {
+    const preview = buildPreview([makeWorkItem()], standard);
+    const annotated = annotateStatusMapping(preview, ["to do"]);
+    expect(annotated.items[0]!.task.status).toBeUndefined();
+    expect(annotated.statusMapping).toEqual([]);
+  });
+
+  test("drops every status when the list reports none", () => {
+    const preview = buildPreview([makeWorkItem({ status: "complete" })], standard);
+    const annotated = annotateStatusMapping(preview, []);
+    expect(annotated.items[0]!.task.status).toBeUndefined();
+  });
+
+  test("reports a repeated status once but rewrites every item", () => {
+    const preview = buildPreview(
+      [makeWorkItem({ title: "A", status: "done" }), makeWorkItem({ title: "B", status: "done" })],
+      standard
+    );
+    const annotated = annotateStatusMapping(preview, ["Complete"]);
+    expect(annotated.items.map((i) => i.task.status)).toEqual(["Complete", "Complete"]);
+    expect(annotated.statusMapping.length).toBe(1);
+  });
+
+  test("does not mutate the preview it was given", () => {
+    const preview = buildPreview([makeWorkItem({ status: "done" })], standard);
+    annotateStatusMapping(preview, ["Complete"]);
+    expect(preview.items[0]!.task.status).toBe("done");
+    expect(preview.warnings).toEqual([]);
+  });
+
+  test("keeps warnings the preview already carried", () => {
+    const preview = buildPreview([], standard);
+    const annotated = annotateStatusMapping(preview, ["Complete"]);
+    expect(annotated.warnings.some((w) => w.includes("No work items"))).toBe(true);
   });
 });

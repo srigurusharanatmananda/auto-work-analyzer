@@ -19,38 +19,36 @@ import { authenticate } from "../middleware/auth.middleware.js";
 import { WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { RenderedTask, renderTasks } from "../formatting/ClickUpRenderer.js";
 import { renderMarkdown } from "../formatting/MarkdownRenderer.js";
-import { Template } from "../formatting/Template.js";
+import { Template, UnknownTemplateError } from "../formatting/Template.js";
 import { TemplateError } from "../formatting/TemplateEngine.js";
-import { TemplateStore } from "../services/TemplateStore.js";
 import { workItemsFromNotes } from "../sources/NotesWorkSource.js";
 import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
 import { ClickUpService } from "../services/ClickUpService.js";
 import { GitWorkAnalyzer } from "../services/GitWorkAnalyzer.js";
-import { ClickUpConfig } from "../types/index.js";
+import { mapStatus, StatusMapping } from "../formatting/StatusMapper.js";
+import {
+  DestinationResolver,
+  ResolvedDestination,
+  UnknownDestinationError,
+} from "../destinations/DestinationResolver.js";
 
 /**
- * Used whenever a request omits `templateId`. Slice 2 replaces this with a
- * per-destination default; until then every unqualified request renders the
- * same way the old inline code did.
+ * Re-exported for callers that imported it from here before it moved to
+ * `formatting/Template.ts` (the resolver needs to throw it too).
  */
-const DEFAULT_TEMPLATE_ID = "builtin-standard";
+export { UnknownTemplateError };
 
 /** ClickUp rate-limits aggressively, so creates go out five at a time. */
 const BATCH_SIZE = 5;
 const BATCH_PAUSE_MS = 100;
 
-/** Raised when a request names a template that does not exist. */
-export class UnknownTemplateError extends Error {
-  constructor(templateId: string) {
-    super(`Template not found: ${templateId}`);
-    this.name = "UnknownTemplateError";
-  }
-}
-
 export interface PreviewResponse {
   items: RenderedTask[];
   markdown: string;
   template: { id: string; name: string };
+  /** Null when the request resolved to the .env configuration. */
+  destination?: { id: string; name: string; listName?: string; teamName?: string } | null;
+  statusMapping: StatusMapping[];
   warnings: string[];
 }
 
@@ -65,8 +63,57 @@ export function buildPreview(items: WorkItem[], template: Template): PreviewResp
     items: rendered,
     markdown: renderMarkdown(items, template),
     template: { id: template.id, name: template.name },
+    statusMapping: [],
     warnings,
   };
+}
+
+/**
+ * Rewrites each rendered task's status to the target list's real status,
+ * dropping any that cannot be matched so ClickUp applies the list default.
+ *
+ * Dropping rather than passing through is the whole point: ClickUp statuses are
+ * per-list, and sending one the list does not define makes it reject the create
+ * outright. The drop is reported in `statusMapping` and `warnings` so it shows
+ * up in the preview instead of being discovered afterwards.
+ *
+ * Pure, and does not mutate the preview it is given.
+ */
+export function annotateStatusMapping(
+  preview: PreviewResponse,
+  availableStatuses: string[]
+): PreviewResponse {
+  const mappings: StatusMapping[] = [];
+  const warnings = [...preview.warnings];
+
+  const items = preview.items.map((entry) => {
+    const desired = entry.task.status;
+    const mapping = mapStatus(desired, availableStatuses);
+    if (!mapping) return entry;
+
+    const alreadyReported = mappings.some(
+      (existing) => existing.from.toLowerCase() === mapping.from.toLowerCase()
+    );
+    if (!alreadyReported) {
+      mappings.push(mapping);
+    }
+
+    const task = { ...entry.task };
+    if (mapping.to) {
+      task.status = mapping.to;
+    } else {
+      delete task.status;
+      if (!alreadyReported) {
+        warnings.push(
+          `Status "${mapping.from}" does not exist in the target list — it will be left at the list default.`
+        );
+      }
+    }
+
+    return { ...entry, task };
+  });
+
+  return { ...preview, items, statusMapping: mappings, warnings };
 }
 
 export interface CreateOutcome {
@@ -210,8 +257,14 @@ function wantsCreation(value: unknown): boolean {
 }
 
 export interface TasksRouterDeps {
-  templateStore: TemplateStore;
-  clickUpConfig: ClickUpConfig;
+  /**
+   * Turns an optional `destinationId` + `templateId` into the ClickUp service,
+   * list and template to use. Replaces the old `templateStore` +
+   * `clickUpConfig` pair: both are now reached through the resolver, which is
+   * also where the "no destination named -> the user's default -> .env" fallback
+   * lives.
+   */
+  resolver: DestinationResolver;
   /**
    * Fallback repo path for the legacy `{ workAnalysis }` branch of
    * /api/create-tasks, used when the request omits `projectPath`. Only that
@@ -230,6 +283,25 @@ export interface TasksRouterDeps {
 
 /** The one method the legacy /api/create-tasks branch calls. */
 export type LegacyAnalyzer = Pick<GitWorkAnalyzer, "createTasksFromWork">;
+
+/**
+ * The target list's statuses, or null when they cannot be read.
+ *
+ * Null means "do not map", which is the pre-slice-2 behaviour — degrading to it
+ * is better than refusing to create anything because a status lookup failed.
+ */
+async function listStatusesOrNull(resolved: ResolvedDestination): Promise<string[] | null> {
+  if (!resolved.listId) return null;
+  try {
+    return await resolved.clickUp.getListStatuses(resolved.listId);
+  } catch (error) {
+    console.warn(
+      "Could not read the target list's statuses:",
+      error instanceof Error ? error.message : error
+    );
+    return null;
+  }
+}
 
 export function createTasksRouter(deps: TasksRouterDeps): Router {
   const router = Router();
@@ -257,24 +329,84 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     },
   });
 
-  const resolveTemplate = (templateId?: string): Template => {
-    const id = templateId || DEFAULT_TEMPLATE_ID;
-    const template = deps.templateStore.get(id);
-    if (!template) throw new UnknownTemplateError(id);
-    return template;
-  };
+  /**
+   * Where the destination is chosen, on every path that renders or creates.
+   * `destinationId` and `templateId` are both optional: omitting them resolves
+   * to the user's default destination and then to the .env configuration, which
+   * is what keeps every pre-destinations caller working untouched.
+   */
+  const resolveFor = (req: any): ResolvedDestination =>
+    deps.resolver.resolve(req.user!.userId, req.body.destinationId, req.body.templateId);
 
   /**
-   * A bad template or a bad template id is the caller's fault (400); anything
-   * else — a ClickUp outage, a programming error — is ours (500), and keeps the
-   * error text the endpoint returned before this refactor. Collapsing both into
-   * 400 would report infrastructure failures as client errors.
+   * Maps our statuses onto the target list's real ones, which needs a round trip
+   * to ClickUp — so it is skipped entirely when no item carries a status.
+   *
+   * A failure here is deliberately non-fatal. An unreadable status list is a
+   * reason to warn and send the statuses unmapped, not a reason to refuse to
+   * create anything: the worst case is the pre-slice-2 behaviour.
+   */
+  const withStatusMapping = async (
+    preview: PreviewResponse,
+    resolved: ResolvedDestination
+  ): Promise<PreviewResponse> => {
+    if (!preview.items.some((entry) => entry.task.status)) return preview;
+    if (!resolved.listId) return preview;
+
+    try {
+      const statuses = await resolved.clickUp.getListStatuses(resolved.listId);
+      return annotateStatusMapping(preview, statuses);
+    } catch (error) {
+      console.warn(
+        "Could not read the target list's statuses:",
+        error instanceof Error ? error.message : error
+      );
+      return {
+        ...preview,
+        warnings: [
+          ...preview.warnings,
+          "Could not read the target list's statuses; statuses will be sent unmapped.",
+        ],
+      };
+    }
+  };
+
+  /** Makes the chosen target visible in the response, so it can be shown before confirming. */
+  const withDestination = (
+    preview: PreviewResponse,
+    resolved: ResolvedDestination
+  ): PreviewResponse => ({
+    ...preview,
+    destination: resolved.destination
+      ? {
+          id: resolved.destination.id,
+          name: resolved.destination.name,
+          listName: resolved.destination.listName,
+          teamName: resolved.destination.teamName,
+        }
+      : null,
+  });
+
+  /**
+   * A bad template, a bad template id or a bad destination id is the caller's
+   * fault (400); anything else — a ClickUp outage, a programming error — is ours
+   * (500), and keeps the error text the endpoint returned before this refactor.
+   * Collapsing both into 400 would report infrastructure failures as client
+   * errors.
    */
   const handleError = (res: any, error: unknown, fallbackMessage: string): void => {
     if (error instanceof TemplateError || error instanceof UnknownTemplateError) {
       res.status(400).json({
         success: false,
         error: "Template render failed",
+        details: error.message,
+      });
+      return;
+    }
+    if (error instanceof UnknownDestinationError) {
+      res.status(400).json({
+        success: false,
+        error: "Unknown destination",
         details: error.message,
       });
       return;
@@ -347,10 +479,9 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     try {
       const items = await itemsFromBody(req, res);
       if (items === null) return;
-      res.json({
-        success: true,
-        data: buildPreview(items, resolveTemplate(req.body.templateId)),
-      });
+      const resolved = resolveFor(req);
+      const preview = await withStatusMapping(buildPreview(items, resolved.template), resolved);
+      res.json({ success: true, data: withDestination(preview, resolved) });
     } catch (error) {
       handleError(res, error, "Failed to build preview");
     }
@@ -360,8 +491,10 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     try {
       const items = await itemsFromBody(req, res);
       if (items === null) return;
-      const { templateId, title, period } = req.body;
-      const markdown = renderMarkdown(items, resolveTemplate(templateId), { title, period });
+      const { title, period } = req.body;
+      // Markdown export writes nothing to ClickUp, so it needs the resolved
+      // template but never the list or the credentials.
+      const markdown = renderMarkdown(items, resolveFor(req).template, { title, period });
       res.json({ success: true, data: { markdown } });
     } catch (error) {
       handleError(res, error, "Failed to export markdown");
@@ -394,16 +527,14 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
       const notesText = req.file ? req.file.buffer.toString("utf-8") : req.body.notes;
       const items = await workItemsFromNotes(notesText);
-      const preview = buildPreview(items, resolveTemplate(req.body.templateId));
+      const resolved = resolveFor(req);
+      const preview = await withStatusMapping(buildPreview(items, resolved.template), resolved);
 
       const createTasks = wantsCreation(req.body.createTasks);
       let outcome: CreateOutcome = { created: [], failed: [] };
 
       if (createTasks && preview.items.length > 0) {
-        outcome = await createRenderedTasks(
-          preview.items,
-          new ClickUpService(deps.clickUpConfig)
-        );
+        outcome = await createRenderedTasks(preview.items, resolved.clickUp, resolved.listId);
       }
 
       res.json({
@@ -461,7 +592,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    */
   router.post("/create-tasks", authenticate, async (req, res) => {
     try {
-      const { workAnalysis, workItems, templateId, projectPath } = req.body;
+      const { workAnalysis, workItems, projectPath } = req.body;
 
       // Order matters, and not cosmetically. `workItems` must not shadow
       // `workAnalysis`: a client that always sends `workItems` (an editor that
@@ -474,13 +605,19 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       // the canonical path.
       if (rejectConflictingShapes(req, res)) return;
 
+      const resolved = resolveFor(req);
+
       if (!workAnalysis && Array.isArray(workItems)) {
         const items = workItems as WorkItem[];
         if (rejectInvalidWorkItems(res, items)) return;
-        const preview = buildPreview(items, resolveTemplate(templateId));
+        const preview = await withStatusMapping(
+          buildPreview(items, resolved.template),
+          resolved
+        );
         const outcome = await createRenderedTasks(
           preview.items,
-          new ClickUpService(deps.clickUpConfig)
+          resolved.clickUp,
+          resolved.listId
         );
 
         res.json({
@@ -508,12 +645,21 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       // Legacy path — byte-identical to the handler this replaced, including
       // the absence of `failedTasks` (createTasksFromWork nulls out failures
       // internally and cannot report which ones).
+      // `resolved.config` — not the .env config — is what routes this branch to
+      // the destination the user picked: createTasksFromWork builds its own
+      // ClickUpService from it, and its `defaultListId` is the destination's
+      // list. It also renders internally, so the target list's statuses have to
+      // be handed in rather than mapped out here.
       const analyzer = makeAnalyzer(projectPath || deps.defaultProjectPath);
       const createdTasks = await analyzer.createTasksFromWork(
         workAnalysis,
-        deps.clickUpConfig,
+        resolved.config,
         undefined,
-        { template: resolveTemplate(templateId), repository: req.body.repository }
+        {
+          template: resolved.template,
+          repository: req.body.repository,
+          availableStatuses: await listStatusesOrNull(resolved),
+        }
       );
       const created = createdTasks.filter((task) => task !== null);
 

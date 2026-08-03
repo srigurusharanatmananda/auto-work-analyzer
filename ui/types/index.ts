@@ -122,3 +122,41 @@ export interface RenderedTaskPreview {
     timeEstimate?: number;
   };
 }
+
+/**
+ * A saved ClickUp destination. Mirrors `src/destinations/DestinationStore.ts`.
+ *
+ * There is deliberately no `apiKey` field: the backend never returns one, so a
+ * key cannot be rendered by accident. Editing a destination's key means typing
+ * a new one.
+ */
+export interface Destination {
+  id: string;
+  userId: string;
+  name: string;
+  teamId: string;
+  teamName?: string;
+  spaceId?: string;
+  spaceName?: string;
+  folderId?: string;
+  folderName?: string;
+  listId: string;
+  listName?: string;
+  defaultTemplateId?: string;
+  defaultAssignee?: string;
+  isDefault: boolean;
+}
+
+/** One entry of `POST /api/preview-tasks` -> `data.statusMapping`. */
+export interface StatusMapping {
+  from: string;
+  /** Null means the status will be dropped and the list's default applied. */
+  to: string | null;
+  method: 'exact' | 'synonym' | 'fuzzy' | 'unmatched';
+}
+
+/** `{ id, name }` pairs as returned by every `/api/clickup/*` browse endpoint. */
+export interface ClickUpNode {
+  id: string;
+  name: string;
+}
