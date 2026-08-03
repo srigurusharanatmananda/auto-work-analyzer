@@ -69,6 +69,9 @@ npx auto-work-analyzer webhook
 Create a `.env` file in your project root:
 
 ```bash
+# Credential encryption (REQUIRED)
+CREDENTIAL_ENCRYPTION_KEY=base64_32_byte_key
+
 # ClickUp Configuration (REQUIRED)
 CLICKUP_TEAM_ID=your_team_id_here
 CLICKUP_API_KEY=pk_your_api_key_here
@@ -90,6 +93,21 @@ TIME_ESTIMATE_MULTIPLIER=1.0
 LOG_LEVEL=info
 LOG_FILE=logs/auto-work-analyzer.log
 ```
+
+### Credential encryption key
+
+Saved ClickUp destinations keep their API key encrypted at rest (AES-256-GCM),
+so `CREDENTIAL_ENCRYPTION_KEY` is required and the server **refuses to start**
+without it — storing keys in the clear is not offered as a fallback. Generate
+one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Keep it somewhere durable. Losing it does not lose your ClickUp account, but
+every stored destination becomes undecryptable and its key has to be pasted in
+again.
 
 ### Getting ClickUp Credentials
 
