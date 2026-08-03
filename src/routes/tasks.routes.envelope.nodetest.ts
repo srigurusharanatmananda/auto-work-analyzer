@@ -1,0 +1,391 @@
+/**
+ * Pins the backward-compatibility contract of /api/notes and /api/create-tasks.
+ *
+ * Task 8 replaced both handlers' bodies wholesale, so these are the only tests
+ * standing between that refactor and a silently changed public response shape.
+ * They assert field names, nesting and status codes — not just `success: true`.
+ *
+ * Runs under `tsx --test` (Node), not `bun test`, because every assertion here
+ * needs `authenticate` to genuinely succeed, and `authenticate` constructs a
+ * real AuthService -> AuthDatabaseService -> better-sqlite3, which cannot open a
+ * database under this repo's Bun version (oven-sh/bun#4290). A real token is
+ * minted via JWTService directly — verifyAccessToken only checks the signature
+ * and the (empty) blacklist table, so no user row or login flow is needed.
+ *
+ * `createTasks` is false throughout, so no ClickUp call is ever made.
+ */
+import { after, before, describe, test } from "node:test";
+import assert from "node:assert/strict";
+import type { AddressInfo } from "node:net";
+import express from "express";
+import { createTasksRouter } from "./tasks.routes.js";
+import { JWTService } from "../services/JWTService.js";
+import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
+import type { TemplateStore } from "../services/TemplateStore.js";
+import type { ClickUpConfig } from "../types/index.js";
+
+/** Serves the real built-ins without opening a database. */
+const stubStore = {
+  get: (id: string) => BUILTIN_TEMPLATES.find((t) => t.id === id) ?? null,
+} as unknown as TemplateStore;
+
+// Never used: every test below leaves createTasks false, so ClickUpService is
+// never constructed and no request leaves the process.
+const clickUpConfig = {
+  teamId: "team",
+  apiKey: "unused",
+  projectName: "test",
+} as ClickUpConfig;
+
+const LEGACY_NOTES =
+  "Task 1: Try it\nPriority: HIGH\nEstimate: 2 hours\nDescription: Smoke test.\n\n---\n\nTask 2: Second\nDescription: Also.";
+
+let server: ReturnType<express.Express["listen"]>;
+let baseUrl: string;
+let authHeader: string;
+
+before(() => {
+  const app = express();
+  app.use(express.json());
+  app.use(
+    "/api",
+    createTasksRouter({
+      templateStore: stubStore,
+      clickUpConfig,
+      // Read only by the legacy {workAnalysis} branch, which no test below
+      // exercises — driving it would need a real GitWorkAnalyzer against a real
+      // repo and a real ClickUp.
+      defaultProjectPath: process.cwd(),
+    })
+  );
+
+  server = app.listen(0);
+  const { port } = server.address() as AddressInfo;
+  baseUrl = `http://localhost:${port}/api`;
+
+  const { accessToken } = JWTService.generateTokenPair({
+    userId: "user-1",
+    email: "test@example.com",
+    role: "user",
+    fullName: "Test User",
+  });
+  authHeader = `Bearer ${accessToken}`;
+});
+
+after(() => {
+  server.close();
+});
+
+function postJson(path: string, body: unknown, auth = true) {
+  return fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /api/notes — legacy response envelope", () => {
+  test("the documented envelope survives the refactor", async () => {
+    const res = await postJson("/notes", { notes: LEGACY_NOTES, createTasks: false });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+
+    assert.equal(body.success, true);
+    assert.equal(typeof body.message, "string");
+
+    // processedNotes.tasks[] keeps all five legacy fields, complexity included
+    // (WorkItem carries `priority`, so the route derives complexity back).
+    assert.equal(body.data.processedNotes.totalTasks, 2);
+    assert.equal(body.data.processedNotes.tasks.length, 2);
+    for (const task of body.data.processedNotes.tasks) {
+      assert.deepEqual(Object.keys(task).sort(), [
+        "complexity",
+        "estimatedHours",
+        "name",
+        "tags",
+        "type",
+      ]);
+    }
+
+    // "Priority: HIGH" on task 1 must come back as complexity "high".
+    assert.equal(body.data.processedNotes.tasks[0].complexity, "high");
+
+    assert.deepEqual(body.data.createdTasks, []);
+    assert.deepEqual(body.data.summary, {
+      tasksExtracted: 2,
+      tasksCreated: 0,
+      tasksFailed: 0,
+    });
+  });
+
+  test("returns the rendered markdown alongside the tasks", async () => {
+    const res = await postJson("/notes", { notes: LEGACY_NOTES, createTasks: false });
+    const body = await res.json();
+    assert.match(body.data.markdown, /Task 1: Try it/);
+  });
+
+  test("400 with the exact legacy message when no notes are supplied", async () => {
+    const res = await postJson("/notes", { createTasks: false });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.deepEqual(body, {
+      success: false,
+      error: "No notes provided. Send 'notes' in body or upload a text file.",
+    });
+  });
+
+  test("400 when the named template does not exist", async () => {
+    const res = await postJson("/notes", { notes: LEGACY_NOTES, templateId: "nope" });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.details, /nope/);
+  });
+
+  test("401 without a bearer token", async () => {
+    const res = await postJson("/notes", { notes: LEGACY_NOTES }, false);
+    assert.equal(res.status, 401);
+  });
+});
+
+describe("POST /api/notes — multipart upload", () => {
+  // Guards the middleware order: `upload.single("notes")` must run BEFORE
+  // `authenticate`, or multer never parses the body and req.file is undefined.
+  test("reads notes from an uploaded .txt file", async () => {
+    const form = new FormData();
+    form.append("notes", new Blob([LEGACY_NOTES], { type: "text/plain" }), "notes.txt");
+    form.append("createTasks", "false");
+
+    const res = await fetch(`${baseUrl}/notes`, {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: form,
+    });
+
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.summary.tasksExtracted, 2);
+  });
+
+  test("rejects a non-text upload (fileFilter is still enforced)", async () => {
+    const form = new FormData();
+    form.append("notes", new Blob(["\x89PNG"], { type: "image/png" }), "evil.png");
+
+    const res = await fetch(`${baseUrl}/notes`, {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: form,
+    });
+
+    assert.notEqual(res.status, 200);
+  });
+
+  // The old inline handler used a bare truthiness check, so the string "false"
+  // that multipart always sends counted as true and created tasks nobody asked
+  // for. Proof that it no longer does: with a bogus API key, any real ClickUp
+  // call would surface as a failure or a 500, so a clean zero-created 200 means
+  // no call happened.
+  test('createTasks="false" from a form does not trigger creation', async () => {
+    const form = new FormData();
+    form.append("notes", new Blob([LEGACY_NOTES], { type: "text/plain" }), "notes.txt");
+    form.append("createTasks", "false");
+
+    const res = await fetch(`${baseUrl}/notes`, {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: form,
+    });
+
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data.createdTasks, []);
+    assert.equal(body.data.summary.tasksCreated, 0);
+    assert.equal(body.data.summary.tasksFailed, 0);
+  });
+});
+
+describe("POST /api/create-tasks — legacy response envelope", () => {
+  test("400 when neither workAnalysis nor workItems is supplied", async () => {
+    const res = await postJson("/create-tasks", {});
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.error, /workAnalysis is required/);
+  });
+
+  test("401 without a bearer token", async () => {
+    const res = await postJson("/create-tasks", { workItems: [] }, false);
+    assert.equal(res.status, 401);
+  });
+
+  // An empty workItems array short-circuits before any ClickUp call, which lets
+  // the success envelope be asserted without touching the network.
+  test("success envelope keeps tasksCreated + tasks", async () => {
+    const res = await postJson("/create-tasks", { workItems: [] });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.success, true);
+    assert.equal(body.data.tasksCreated, 0);
+    assert.deepEqual(body.data.tasks, []);
+    assert.equal(body.message, "Created 0 tasks in ClickUp");
+  });
+});
+
+/**
+ * The point of ruling (c): a legacy `{ workAnalysis }` body must still reach
+ * GitWorkAnalyzer.createTasksFromWork, because that is what writes
+ * addAnalysisHistory / saveWorkItem / markCommitsAsProcessed. If it were
+ * rerouted through the canonical renderer those side effects would vanish and
+ * the analyzer would silently re-detect the same commits forever, creating
+ * duplicate tasks with no error to notice. These tests fail if that happens.
+ */
+describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
+  let legacyApp: ReturnType<express.Express["listen"]>;
+  let legacyUrl: string;
+  const calls: Array<{ projectPath: string; date: string }> = [];
+
+  before(() => {
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createTasksRouter({
+        templateStore: stubStore,
+        clickUpConfig,
+        defaultProjectPath: "/default/project",
+        analyzerFactory: (projectPath) => ({
+          createTasksFromWork: async (analysis: any) => {
+            calls.push({ projectPath, date: analysis.date });
+            // Shaped like the real return: created tasks plus a null for a
+            // failure, which the route must filter out.
+            return [
+              { id: "t1", name: "📊 Daily Work Summary - 2026-08-01", url: "http://x/1" },
+              { id: "t2", name: "✅ Something", url: "http://x/2" },
+              null,
+            ];
+          },
+        }),
+      })
+    );
+    legacyApp = app.listen(0);
+    legacyUrl = `http://localhost:${(legacyApp.address() as AddressInfo).port}/api`;
+  });
+
+  after(() => {
+    legacyApp.close();
+  });
+
+  function postLegacy(body: unknown) {
+    return fetch(`${legacyUrl}/create-tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: authHeader },
+      body: JSON.stringify(body),
+    });
+  }
+
+  test("delegates to createTasksFromWork rather than the renderer", async () => {
+    calls.length = 0;
+    const res = await postLegacy({ workAnalysis: { date: "2026-08-01", detectedWork: [] } });
+
+    assert.equal(res.status, 200);
+    assert.equal(calls.length, 1, "createTasksFromWork must be called exactly once");
+    assert.equal(calls[0]!.date, "2026-08-01");
+  });
+
+  test("honours an explicit projectPath, falling back to the default", async () => {
+    calls.length = 0;
+    await postLegacy({ workAnalysis: { date: "d", detectedWork: [] }, projectPath: "/explicit" });
+    assert.equal(calls[0]!.projectPath, "/explicit");
+
+    calls.length = 0;
+    await postLegacy({ workAnalysis: { date: "d", detectedWork: [] } });
+    assert.equal(calls[0]!.projectPath, "/default/project");
+  });
+
+  test("keeps the pre-refactor envelope: nulls filtered, no failedTasks key", async () => {
+    const res = await postLegacy({ workAnalysis: { date: "d", detectedWork: [] } });
+    const body = await res.json();
+
+    assert.equal(body.success, true);
+    assert.equal(body.data.tasksCreated, 2, "the null entry must be filtered out");
+    assert.equal(body.data.tasks.length, 2);
+    assert.equal(body.message, "Created 2 tasks in ClickUp");
+    // The old handler had no failedTasks key; createTasksFromWork nulls failures
+    // internally and cannot say which ones failed, so inventing an empty array
+    // here would be a claim we cannot support.
+    assert.ok(!("failedTasks" in body.data));
+    // Full ClickUpTask objects, not the {id,name,url} projection the new branch
+    // returns — the legacy branch passes through whatever the analyzer returned.
+    assert.equal(body.data.tasks[0].name, "📊 Daily Work Summary - 2026-08-01");
+  });
+
+  test("a legacy failure is a 500 with the original error string", async () => {
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createTasksRouter({
+        templateStore: stubStore,
+        clickUpConfig,
+        defaultProjectPath: "/p",
+        analyzerFactory: () => ({
+          createTasksFromWork: async () => {
+            throw new Error("ClickUp unreachable");
+          },
+        }),
+      })
+    );
+    const server = app.listen(0);
+    try {
+      const url = `http://localhost:${(server.address() as AddressInfo).port}/api/create-tasks`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({ workAnalysis: { date: "d", detectedWork: [] } }),
+      });
+
+      // Not the brief's blanket 400 "Template render failed" — an outage is ours.
+      assert.equal(res.status, 500);
+      const body = await res.json();
+      assert.equal(body.error, "Failed to create tasks");
+      assert.equal(body.details, "ClickUp unreachable");
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe("POST /api/preview-tasks", () => {
+  test("renders without creating anything", async () => {
+    const res = await postJson("/preview-tasks", { notes: LEGACY_NOTES });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.items.length, 2);
+    assert.equal(body.data.template.id, "builtin-standard");
+    assert.deepEqual(body.data.warnings, []);
+  });
+
+  test("400 when no input shape is supplied", async () => {
+    const res = await postJson("/preview-tasks", {});
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /workItems, notes, or workAnalysis/);
+  });
+});
+
+describe("POST /api/export-markdown", () => {
+  test("returns markdown with the supplied header", async () => {
+    const res = await postJson("/export-markdown", {
+      notes: LEGACY_NOTES,
+      title: "Weekly Report",
+      period: "2026-07-27 to 2026-08-02",
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.match(body.data.markdown, /# Weekly Report/);
+    assert.match(body.data.markdown, /# Period: 2026-07-27 to 2026-08-02/);
+  });
+});

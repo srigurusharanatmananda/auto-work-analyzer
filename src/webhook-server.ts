@@ -7,40 +7,22 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import multer from "multer";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 import { GitWorkAnalyzer } from "./services/GitWorkAnalyzer.js";
-import { NotesProcessor } from "./services/NotesProcessor.js";
 import { HistoryService } from "./services/HistoryService.js";
 import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
-import { ClickUpService } from "./services/ClickUpService.js";
 import authRoutes from "./routes/auth.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
+import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept text files only
-    if (file.mimetype === 'text/plain' || file.originalname.endsWith('.txt') || file.originalname.endsWith('.md')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only text files (.txt, .md) are allowed'));
-    }
-  },
-});
 
 const app = express();
 
@@ -121,6 +103,18 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     }
     const templateStore = new TemplateStore(path.join(templatesDbDir, "auto-work-analyzer.db"));
     app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
+    // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
+    // router owns their formatting now instead of each handler doing its own.
+    app.use(
+      "/api",
+      createTasksRouter({
+        templateStore,
+        clickUpConfig: config.clickup,
+        defaultProjectPath: config.project.path,
+      })
+    );
 
     // Browse directories endpoint
     app.get("/api/browse", authenticate, (req, res) => {
@@ -626,186 +620,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to retrieve report",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Notes upload endpoint
-    app.post("/api/notes", upload.single("notes"), authenticate, async (req, res) => {
-      try {
-        let notesText = '';
-
-        // Get notes from file upload or request body
-        if (req.file) {
-          notesText = req.file.buffer.toString('utf-8');
-        } else if (req.body.notes) {
-          notesText = req.body.notes;
-        } else {
-          res.status(400).json({
-            success: false,
-            error: "No notes provided. Send 'notes' in body or upload a text file.",
-          });
-          return;
-        }
-
-        const { createTasks = false } = req.body;
-
-        // Process the notes
-        const notesProcessor = new NotesProcessor();
-        const processedNotes = await notesProcessor.processNotes(notesText);
-
-        let createdTasks = [];
-
-        // Create tasks if requested
-        if (createTasks && processedNotes.tasks.length > 0) {
-          const clickUpService = new ClickUpService(config.clickup);
-
-          // Process tasks in batches for better performance
-          const BATCH_SIZE = 5; // Process 5 tasks at a time
-          const taskBatches = [];
-
-          for (let i = 0; i < processedNotes.tasks.length; i += BATCH_SIZE) {
-            taskBatches.push(processedNotes.tasks.slice(i, i + BATCH_SIZE));
-          }
-
-          // Track failed tasks
-          const failedTasks: Array<{ name: string; error: string }> = [];
-
-          for (const batch of taskBatches) {
-            const batchPromises = batch.map(async (task) => {
-              try {
-                // Use priority if available (from structured notes), otherwise map from complexity
-                const priority = (task as any).priority ||
-                  (task.complexity === "high" ? "high" :
-                   task.complexity === "medium" ? "normal" : "low");
-
-                // Use status if available (from structured/unstructured notes)
-                const status = (task as any).status;
-
-                // Use completion date if available
-                const completedDate = (task as any).completedDate;
-
-                // Add completion date to description if present
-                let description = task.description;
-                if (completedDate) {
-                  description += `\n\n**Completed Date:** ${completedDate}`;
-                }
-
-                const createdTask = await clickUpService.createTask({
-                  name: task.name,
-                  description: description,
-                  priority: priority,
-                  status: status,
-                  tags: task.tags,
-                  timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
-                });
-
-                return createdTask;
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error(`Failed to create task: ${task.name}`, errorMessage);
-                failedTasks.push({ name: task.name, error: errorMessage });
-                return null; // Return null for failed tasks
-              }
-            });
-
-            // Wait for all tasks in this batch to complete
-            const batchResults = await Promise.all(batchPromises);
-
-            // Filter out null results and add successful tasks
-            batchResults.forEach(result => {
-              if (result !== null) {
-                createdTasks.push(result);
-              }
-            });
-          }
-
-          // Log summary if there were failures
-          if (failedTasks.length > 0) {
-            console.warn(`Failed to create ${failedTasks.length} out of ${processedNotes.tasks.length} tasks`);
-          }
-        }
-
-        res.json({
-          success: true,
-          data: {
-            processedNotes: {
-              totalTasks: processedNotes.tasks.length,
-              tasks: processedNotes.tasks.map(task => ({
-                name: task.name,
-                type: task.type,
-                complexity: task.complexity,
-                estimatedHours: task.estimatedHours,
-                tags: task.tags,
-              })),
-            },
-            createdTasks: createdTasks
-              .filter(task => task !== null && task !== undefined)
-              .map(task => ({
-                id: task.id,
-                name: task.name,
-                url: task.url,
-              })),
-            summary: {
-              tasksExtracted: processedNotes.tasks.length,
-              tasksCreated: createdTasks.length,
-              tasksFailed: createTasks ? processedNotes.tasks.length - createdTasks.length : 0,
-            },
-          },
-          message: `Processed ${processedNotes.tasks.length} tasks from notes${
-            createTasks ? `, created ${createdTasks.length} ClickUp tasks` : ""
-          }${
-            createTasks && processedNotes.tasks.length > createdTasks.length
-              ? ` (${processedNotes.tasks.length - createdTasks.length} failed)`
-              : ""
-          }`,
-        });
-      } catch (error) {
-        console.error("Notes processing failed:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to process notes",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Create tasks endpoint
-    app.post("/api/create-tasks", authenticate, async (req, res) => {
-      try {
-        const { workAnalysis, projectPath } = req.body;
-
-        if (!workAnalysis) {
-          res.status(400).json({
-            success: false,
-            error: "workAnalysis is required",
-          });
-          return;
-        }
-
-        const targetProjectPath = projectPath || config.project.path;
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
-
-        // Create tasks from the work analysis
-        const createdTasks = await analyzer.createTasksFromWork(
-          workAnalysis,
-          config.clickup
-        );
-
-        res.json({
-          success: true,
-          data: {
-            tasksCreated: createdTasks.filter((t) => t !== null).length,
-            tasks: createdTasks.filter((t) => t !== null),
-          },
-          message: `Created ${createdTasks.filter((t) => t !== null).length} tasks in ClickUp`,
-        });
-      } catch (error) {
-        console.error("Failed to create tasks:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to create tasks",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }
