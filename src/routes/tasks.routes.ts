@@ -131,6 +131,76 @@ function complexityFromPriority(priority: WorkItemPriority): "high" | "medium" |
 }
 
 /**
+ * `workItems` arrives as untrusted JSON on three public endpoints and used to be
+ * cast straight to `WorkItem[]`, so a malformed item threw inside
+ * `buildRenderContext` and came back as a 500 — the server taking the blame for
+ * a bad request body.
+ *
+ * Scope is deliberate: only the fields the render path actually *dereferences*,
+ * because those are the ones that throw. `provenance.commits`/`provenance.files`
+ * (renderContext.buildRenderContext), `commit.hash` (`.slice(0, 7)`), `tags`
+ * (spread by ClickUpRenderer.resolveTags) and `subitems` (recursed into by
+ * renderOne). Everything else — a missing `title`, a bogus `type`, a
+ * non-numeric `estimateHours` — renders to "" or NaN without throwing, so it is
+ * not validated here; rejecting it would be a schema clone, and a task ClickUp
+ * refuses already comes back in `failedTasks` with a reason.
+ *
+ * Returns a message naming the offending path, or null when every item is
+ * renderable.
+ */
+export function validateWorkItems(items: unknown[]): string | null {
+  for (let index = 0; index < items.length; index += 1) {
+    const problem = validateWorkItem(items[index], `workItems[${index}]`);
+    if (problem) return problem;
+  }
+  return null;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateWorkItem(value: unknown, path: string): string | null {
+  if (!isPlainObject(value)) return `${path} must be an object`;
+
+  if (!isPlainObject(value.provenance)) {
+    return `${path}.provenance must be an object with commits[] and files[]`;
+  }
+  const { commits, files } = value.provenance;
+  if (!Array.isArray(commits)) return `${path}.provenance.commits must be an array`;
+  if (!Array.isArray(files)) return `${path}.provenance.files must be an array`;
+  if (!Array.isArray(value.tags)) return `${path}.tags must be an array`;
+
+  for (let index = 0; index < commits.length; index += 1) {
+    const commit = commits[index];
+    if (!isPlainObject(commit) || typeof commit.hash !== "string") {
+      return `${path}.provenance.commits[${index}].hash must be a string`;
+    }
+  }
+
+  if (value.subitems !== undefined) {
+    if (!Array.isArray(value.subitems)) return `${path}.subitems must be an array`;
+    for (let index = 0; index < value.subitems.length; index += 1) {
+      const problem = validateWorkItem(value.subitems[index], `${path}.subitems[${index}]`);
+      if (problem) return problem;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * `workItems` only counts as the caller's chosen input shape when it actually
+ * carries something. A client that initialises the field to `[]` and posts it
+ * alongside another shape has not asked for the canonical pipeline, and on
+ * /api/create-tasks letting `[]` win would silently skip the legacy branch's
+ * side effects (see the comment on that route).
+ */
+function suppliedWorkItems(body: any): unknown[] | null {
+  return Array.isArray(body.workItems) && body.workItems.length > 0 ? body.workItems : null;
+}
+
+/**
  * Multipart form fields arrive as strings, so `createTasks=false` would be a
  * truthy string under a plain truthiness check — the bug the old inline
  * handler had. Only an explicit true/"true" opts in.
@@ -217,16 +287,52 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     });
   };
 
+  /** 400s a `workItems` array that would throw inside the renderer. */
+  const rejectInvalidWorkItems = (res: any, items: unknown[]): boolean => {
+    const problem = validateWorkItems(items);
+    if (!problem) return false;
+    res.status(400).json({
+      success: false,
+      error: "Invalid workItems",
+      details: problem,
+    });
+    return true;
+  };
+
+  /**
+   * 400s a body that names two input shapes at once. Refusing is the point:
+   * either precedence rule silently discards half of what was asked for, and on
+   * /api/create-tasks picking `workItems` also skips the legacy side effects.
+   */
+  const rejectConflictingShapes = (req: any, res: any): boolean => {
+    if (!suppliedWorkItems(req.body) || !req.body.workAnalysis) return false;
+    res.status(400).json({
+      success: false,
+      error:
+        "Send either workItems or workAnalysis, not both — they describe the same work two different ways.",
+    });
+    return true;
+  };
+
   /**
    * The three accepted input shapes, in precedence order: already-canonical
-   * `workItems`, raw `notes` text, or a legacy `workAnalysis` result. Returns
-   * null once it has sent a 400, so callers just return.
+   * `workItems`, raw `notes` text, or a legacy `workAnalysis` result. An empty
+   * `workItems` yields to the other two so that a preview shows what
+   * /api/create-tasks would actually do with the same body. Returns null once it
+   * has sent a 400, so callers just return.
    */
   const itemsFromBody = async (req: any, res: any): Promise<WorkItem[] | null> => {
     const { notes, workAnalysis, workItems } = req.body;
-    if (Array.isArray(workItems)) return workItems;
+    if (rejectConflictingShapes(req, res)) return null;
+
+    const supplied = suppliedWorkItems(req.body);
+    if (supplied) {
+      if (rejectInvalidWorkItems(res, supplied)) return null;
+      return supplied as WorkItem[];
+    }
     if (typeof notes === "string") return workItemsFromNotes(notes);
     if (workAnalysis) return workItemsFromAnalysis(workAnalysis, req.body.repository);
+    if (Array.isArray(workItems)) return [];
 
     res.status(400).json({
       success: false,
@@ -270,8 +376,15 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   // a multipart body, and without it `req.body` is empty for file uploads.
   router.post("/notes", upload.single("notes"), authenticate, async (req, res) => {
     try {
-      const notesText = req.file ? req.file.buffer.toString("utf-8") : req.body.notes;
-      if (!notesText) {
+      // The guard is on *supplying* notes, not on the text being non-empty —
+      // deliberately, because that is what the inline handler this replaced did
+      // (`if (req.file) … else if (req.body.notes) … else 400`). An uploaded but
+      // empty .txt therefore still processes to zero tasks and returns 200:
+      // "your file had nothing in it" is a different answer from "you sent no
+      // notes", and callers that read 200/0-tasks as success predate this
+      // refactor. An empty JSON `notes` string keeps falling through to the 400,
+      // exactly as before.
+      if (!req.file && !req.body.notes) {
         res.status(400).json({
           success: false,
           error: "No notes provided. Send 'notes' in body or upload a text file.",
@@ -279,6 +392,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
         return;
       }
 
+      const notesText = req.file ? req.file.buffer.toString("utf-8") : req.body.notes;
       const items = await workItemsFromNotes(notesText);
       const preview = buildPreview(items, resolveTemplate(req.body.templateId));
 
@@ -349,8 +463,20 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     try {
       const { workAnalysis, workItems, templateId, projectPath } = req.body;
 
-      if (Array.isArray(workItems)) {
+      // Order matters, and not cosmetically. `workItems` must not shadow
+      // `workAnalysis`: a client that always sends `workItems` (an editor that
+      // initialises it to []) would otherwise take the new pipeline, get back a
+      // cheerful "Created 0 tasks in ClickUp", and never reach
+      // createTasksFromWork — the only caller of markCommitsAsProcessed. Those
+      // commits stay unprocessed and get re-reported forever, and nothing
+      // throws. So: an ambiguous body is refused outright, a workAnalysis wins
+      // over an empty workItems, and only a genuinely populated workItems takes
+      // the canonical path.
+      if (rejectConflictingShapes(req, res)) return;
+
+      if (!workAnalysis && Array.isArray(workItems)) {
         const items = workItems as WorkItem[];
+        if (rejectInvalidWorkItems(res, items)) return;
         const preview = buildPreview(items, resolveTemplate(templateId));
         const outcome = await createRenderedTasks(
           preview.items,

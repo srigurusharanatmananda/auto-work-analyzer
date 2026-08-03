@@ -40,6 +40,22 @@ const clickUpConfig = {
 const LEGACY_NOTES =
   "Task 1: Try it\nPriority: HIGH\nEstimate: 2 hours\nDescription: Smoke test.\n\n---\n\nTask 2: Second\nDescription: Also.";
 
+/**
+ * A minimally complete WorkItem as a client would post it. Every field the
+ * render path actually dereferences is present, so this must survive validation
+ * untouched — the guard has to reject malformed input without narrowing what a
+ * legitimate caller may send.
+ */
+const VALID_WORK_ITEM = {
+  title: "Ship the thing",
+  description: "Prose.",
+  type: "feature",
+  priority: "high",
+  estimateHours: 2,
+  tags: ["api"],
+  provenance: { commits: [] as unknown[], files: [] as string[], source: "notes" },
+};
+
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
@@ -137,6 +153,16 @@ describe("POST /api/notes — legacy response envelope", () => {
     });
   });
 
+  // The counterpart to the empty-file case below: no file and no `notes` key is
+  // still a 400, and so is an explicitly empty JSON `notes` string (the old
+  // handler's `else if (req.body.notes)` fell through to the 400 for both).
+  test("400 when the JSON notes field is an empty string", async () => {
+    const res = await postJson("/notes", { notes: "", createTasks: false });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error, "No notes provided. Send 'notes' in body or upload a text file.");
+  });
+
   test("400 when the named template does not exist", async () => {
     const res = await postJson("/notes", { notes: LEGACY_NOTES, templateId: "nope" });
     assert.equal(res.status, 400);
@@ -188,6 +214,30 @@ describe("POST /api/notes — multipart upload", () => {
   // for. Proof that it no longer does: with a bogus API key, any real ClickUp
   // call would surface as a failure or a 500, so a clean zero-created 200 means
   // no call happened.
+  // The old inline handler branched on `req.file` being present, not on the text
+  // being non-empty, so an empty .txt processed to zero tasks and returned 200.
+  // Restored deliberately: "you uploaded a file with nothing in it" is a
+  // different answer from "you sent no notes at all", and only the second is a
+  // 400. Changing it would break any caller that treats 200/0-tasks as success.
+  test("an empty uploaded file is 200 with zero tasks, not a 400", async () => {
+    const form = new FormData();
+    form.append("notes", new Blob([""], { type: "text/plain" }), "empty.txt");
+    form.append("createTasks", "false");
+
+    const res = await fetch(`${baseUrl}/notes`, {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: form,
+    });
+
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.success, true);
+    assert.equal(body.data.summary.tasksExtracted, 0);
+    assert.deepEqual(body.data.processedNotes.tasks, []);
+    assert.deepEqual(body.data.createdTasks, []);
+  });
+
   test('createTasks="false" from a form does not trigger creation', async () => {
     const form = new FormData();
     form.append("notes", new Blob([LEGACY_NOTES], { type: "text/plain" }), "notes.txt");
@@ -204,6 +254,80 @@ describe("POST /api/notes — multipart upload", () => {
     assert.deepEqual(body.data.createdTasks, []);
     assert.equal(body.data.summary.tasksCreated, 0);
     assert.equal(body.data.summary.tasksFailed, 0);
+  });
+});
+
+/**
+ * `workItems` arrives as untrusted JSON and used to be cast straight to
+ * WorkItem[], so a malformed item exploded inside buildRenderContext and came
+ * back as a 500 "Failed to create tasks" — the server taking the blame for the
+ * client's bad body. Validation covers exactly the fields the render path
+ * dereferences (renderContext.buildRenderContext reads provenance.commits /
+ * provenance.files, ClickUpRenderer.resolveTags spreads tags), not a whole
+ * schema clone.
+ */
+describe("workItems validation", () => {
+  test("an empty object is a 400 naming the missing field, not a 500", async () => {
+    const res = await postJson("/create-tasks", { workItems: [{}] });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.error, /workItems/);
+    assert.match(body.details, /workItems\[0\]/);
+    assert.match(body.details, /provenance/);
+  });
+
+  test("a missing provenance is a 400 naming provenance", async () => {
+    const { provenance, ...withoutProvenance } = VALID_WORK_ITEM;
+    const res = await postJson("/create-tasks", { workItems: [withoutProvenance] });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.details, /workItems\[0\]\.provenance/);
+  });
+
+  test("a provenance without commits/files arrays is a 400 naming them", async () => {
+    const noCommits = await postJson("/create-tasks", {
+      workItems: [{ ...VALID_WORK_ITEM, provenance: { files: [], source: "notes" } }],
+    });
+    assert.equal(noCommits.status, 400);
+    assert.match((await noCommits.json()).details, /provenance\.commits/);
+
+    const noFiles = await postJson("/create-tasks", {
+      workItems: [{ ...VALID_WORK_ITEM, provenance: { commits: [], source: "notes" } }],
+    });
+    assert.equal(noFiles.status, 400);
+    assert.match((await noFiles.json()).details, /provenance\.files/);
+  });
+
+  test("a missing tags array is a 400 (ClickUpRenderer spreads it)", async () => {
+    const { tags, ...withoutTags } = VALID_WORK_ITEM;
+    const res = await postJson("/create-tasks", { workItems: [withoutTags] });
+    assert.equal(res.status, 400);
+    assert.match((await res.json()).details, /workItems\[0\]\.tags/);
+  });
+
+  test("the index of the offending item is reported, not just the first", async () => {
+    const res = await postJson("/create-tasks", {
+      workItems: [VALID_WORK_ITEM, { ...VALID_WORK_ITEM, provenance: {} }],
+    });
+    assert.equal(res.status, 400);
+    assert.match((await res.json()).details, /workItems\[1\]/);
+  });
+
+  // Guards against an over-tight rule: a well-formed item must still render.
+  // Asserted on /preview-tasks so nothing is created and no ClickUp call is made.
+  test("a valid workItem passes validation unchanged", async () => {
+    const res = await postJson("/preview-tasks", { workItems: [VALID_WORK_ITEM] });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.items.length, 1);
+    assert.equal(body.data.items[0].task.name, "Ship the thing");
+  });
+
+  test("the same guard protects /export-markdown", async () => {
+    const res = await postJson("/export-markdown", { workItems: [{}] });
+    assert.equal(res.status, 400);
+    assert.match((await res.json()).details, /workItems\[0\]/);
   });
 });
 
@@ -360,6 +484,45 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     } finally {
       server.close();
     }
+  });
+
+  // The dangerous shape: a client that always sends `workItems` (an editor that
+  // initialises it to []) alongside the legacy `workAnalysis`. Under a bare
+  // Array.isArray check the empty array won the precedence race, the request
+  // returned a cheerful "Created 0 tasks in ClickUp", and createTasksFromWork —
+  // the ONLY caller of markCommitsAsProcessed — was never reached. Those commits
+  // then stay unprocessed and get re-reported forever, with nothing thrown.
+  test("an empty workItems array cannot bypass the legacy {workAnalysis} path", async () => {
+    calls.length = 0;
+    const res = await postLegacy({
+      workAnalysis: { date: "2026-08-02", detectedWork: [] },
+      workItems: [],
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(
+      calls.length,
+      1,
+      "createTasksFromWork must still be called — otherwise commit dedup silently stops"
+    );
+    assert.equal(calls[0]!.date, "2026-08-02");
+  });
+
+  // Ambiguity is refused rather than resolved by precedence: with a real
+  // workItems payload AND a workAnalysis, either choice silently discards half
+  // the request, so neither is made.
+  test("workAnalysis plus a non-empty workItems is a 400, not a silent choice", async () => {
+    calls.length = 0;
+    const res = await postLegacy({
+      workAnalysis: { date: "d", detectedWork: [] },
+      workItems: [VALID_WORK_ITEM],
+    });
+
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.error, /both/i);
+    assert.equal(calls.length, 0, "nothing may be created while the request is ambiguous");
   });
 
   test("a legacy failure is a 500 with the original error string", async () => {
