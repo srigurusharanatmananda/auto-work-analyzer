@@ -471,7 +471,11 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     setShowTaskPreview(true);
   };
 
-  const handleCreateTasksFromModal = async (editedWorkItems: DetectedWork[], templateId: string) => {
+  const handleCreateTasksFromModal = async (
+    editedWorkItems: DetectedWork[],
+    templateId: string,
+    destinationId: string
+  ) => {
     if (!accessToken) {
       toast.error('Not authenticated');
       return;
@@ -502,11 +506,16 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         //
         // Note there is no `workItems` key — sending both shapes is a deliberate
         // 400, because an ambiguous body could silently skip commit dedup.
+        // `destinationId` MUST be here for the same reason `templateId` is: this
+        // is the branch that creates the tasks, so a destination chosen in the
+        // modal but omitted here would retarget the preview and write to the old
+        // list. Omitted when empty so the backend takes its own fallback.
         body: JSON.stringify({
           workAnalysis: modifiedWorkAnalysis,
           projectPath: selectedProjectPath,
           repository: repositoryFromProjectPath(selectedProjectPath),
           templateId,
+          ...(destinationId ? { destinationId } : {}),
         }),
       });
 

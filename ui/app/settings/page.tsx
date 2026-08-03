@@ -324,6 +324,24 @@ export default function SettingsPage() {
             </p>
           </Card>
 
+          {/* ClickUp Destinations */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Destinations</h2>
+            <Link
+              href="/settings/destinations"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Manage ClickUp destinations
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Choose which ClickUp account, workspace and list tasks are created into
+            </p>
+          </Card>
+
           {/* API Information */}
           <Card className="p-6">
             <h2 className="mb-4 text-xl font-semibold text-foreground">API Information</h2>
