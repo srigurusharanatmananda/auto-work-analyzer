@@ -27,6 +27,22 @@ describe("templates router mount", () => {
     }
   });
 
+  test("GET /api/templates/schema without a token returns 401 (authenticated like its siblings)", async () => {
+    const app = express();
+    app.use(express.json());
+    const stubStore = {} as TemplateStore;
+    app.use("/api/templates", createTemplatesRouter(stubStore));
+
+    const server = app.listen(0);
+    const port = (server.address() as any).port;
+    try {
+      const res = await fetch(`http://localhost:${port}/api/templates/schema`);
+      expect(res.status).toBe(401);
+    } finally {
+      server.close();
+    }
+  });
+
   test("GET /api/other-path (not mounted) returns 404, proving 401 above is route-specific", async () => {
     const app = express();
     app.use(express.json());

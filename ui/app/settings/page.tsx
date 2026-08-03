@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
@@ -305,6 +306,23 @@ export default function SettingsPage() {
               )}
             </Button>
           </div>
+
+          {/* Task Templates */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Task Templates</h2>
+            <Link
+              href="/settings/templates"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Manage task templates
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Control how work items are rendered into ClickUp task names and descriptions
+            </p>
+          </Card>
 
           {/* API Information */}
           <Card className="p-6">

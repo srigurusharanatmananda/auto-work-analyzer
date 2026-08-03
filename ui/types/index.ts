@@ -60,3 +60,65 @@ export interface NotesResponse {
     tasksFailed?: number;
   };
 }
+
+/**
+ * Task templates. These mirror `src/formatting/Template.ts` — the unions below
+ * are the exact strings the renderer switches on, so a value the backend does
+ * not know silently falls through to its `default` branch. Keep them in step.
+ */
+export interface TemplateOptions {
+  emitSubtasks: boolean;
+  applyPriority: boolean;
+  applyTimeEstimate: boolean;
+  dueDateSource: 'completedDate' | 'lastCommitDate' | 'none';
+  statusMode: 'fromWorkItem' | 'destinationDefault' | 'fixed';
+  /** Required when statusMode === 'fixed'. */
+  fixedStatus?: string;
+  tagStrategy: {
+    mode: 'fromWorkItem' | 'none' | 'fixed' | 'merge';
+    fixed?: string[];
+  };
+}
+
+export interface Template {
+  id: string;
+  userId?: string;
+  name: string;
+  description?: string;
+  nameTemplate: string;
+  descriptionTemplate: string;
+  options: TemplateOptions;
+  isBuiltin: boolean;
+}
+
+export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
+  emitSubtasks: false,
+  applyPriority: true,
+  applyTimeEstimate: true,
+  dueDateSource: 'completedDate',
+  statusMode: 'fromWorkItem',
+  tagStrategy: { mode: 'fromWorkItem' },
+};
+
+/**
+ * The placeholder vocabulary, as served by `GET /api/templates/schema`. Never
+ * hardcode this list in a component — the backend owns it (see the route's
+ * comment for why a stale copy is worse than a fetch).
+ */
+export interface PlaceholderSchema {
+  scalars: string[];
+  sections: Record<string, PlaceholderSchema>;
+}
+
+/** One entry of `POST /api/preview-tasks` -> `data.items`. */
+export interface RenderedTaskPreview {
+  task: {
+    name: string;
+    description: string;
+    tags?: string[];
+    priority?: string;
+    status?: string;
+    dueDate?: string;
+    timeEstimate?: number;
+  };
+}

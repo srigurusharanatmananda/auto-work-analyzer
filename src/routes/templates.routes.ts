@@ -98,6 +98,23 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     res.json({ success: true, data: store.list(userIdOf(req)) });
   });
 
+  /**
+   * The placeholder vocabulary, served rather than duplicated in the editor.
+   *
+   * The template editor needs to tell users which `{{placeholders}}` are legal,
+   * and they cannot guess them. Hardcoding the list in the UI would drift in the
+   * worse direction: a placeholder REMOVED from this schema would stay
+   * advertised in the panel, so the UI would be the thing telling users to write
+   * templates that save-time validation then rejects.
+   *
+   * Mounted above the `/:id`-shaped routes deliberately. There is no `GET /:id`
+   * today, but if one is ever added, a param route declared first would swallow
+   * `/schema`.
+   */
+  router.get("/schema", authenticate, (_req, res) => {
+    res.json({ success: true, data: WORK_ITEM_SCHEMA });
+  });
+
   router.post("/", authenticate, (req, res) => {
     const errors = validateBody(req.body);
     if (errors.length > 0) {

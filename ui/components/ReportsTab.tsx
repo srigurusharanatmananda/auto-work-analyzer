@@ -2,9 +2,12 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { AnalysisResponse } from '@/types';
+import { AnalysisResponse, DetectedWork } from '@/types';
 import DirectoryBrowser from './DirectoryBrowser';
-import TaskPreviewModal from './TaskPreviewModal';
+import TaskPreviewModal, {
+  repositoryFromProjectPath,
+  workAnalysisWithEditedItems,
+} from './TaskPreviewModal';
 import { Button, Card, LoadingSpinner, EmptyState } from '@/lib/components/ui';
 import { useAuth } from '@/lib/context/AuthContext';
 
@@ -153,7 +156,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         setWorkAnalysis(result.data);
 
         // Populate editable work items
-        const workItems: EditableWorkItem[] = result.data.workAnalysis.detectedWork.map((work: any, index: number) => ({
+        const workItems: EditableWorkItem[] = result.data.workAnalysis.detectedWork.map((work: DetectedWork, index: number) => ({
           id: `work-${index}-${Date.now()}`,
           name: work.name,
           type: work.type,
@@ -173,7 +176,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
           summaryLines.push('- No work items detected for the selected period');
           detailedLines.push('- No work items detected for the selected period');
         } else {
-          result.data.workAnalysis.detectedWork.forEach((work: any) => {
+          result.data.workAnalysis.detectedWork.forEach((work: DetectedWork) => {
             const emoji = work.type === 'feature' ? '✨' : work.type === 'bug-fix' ? '🐛' : '🔧';
 
             // Summary: just the main point
@@ -424,8 +427,17 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     }
   };
 
-  // Transform editable work items to modal format
-  const getWorkItemsForModal = () => {
+  // Transform editable work items to modal format.
+  //
+  // `type` and `complexity` are narrowed here, at the one boundary where a loose
+  // string enters: `type` comes from a <select> with three fixed values, and
+  // `complexity` is copied off the analysis, which already produces the union.
+  //
+  // There is no filesCount/commitsCount here on purpose. `DetectedWork` has never
+  // carried them — they belong to saved reports — so the old
+  // `originalWork?.filesCount || 0` was reading a field that does not exist and
+  // always displayed 0. The modal derives the counts from the arrays instead.
+  const getWorkItemsForModal = (): DetectedWork[] => {
     const selectedItems = editableWorkItems.filter(item => item.selected);
 
     return selectedItems.map(item => {
@@ -436,14 +448,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
       return {
         name: item.name,
-        type: item.type,
+        type: item.type as DetectedWork['type'],
         description: item.description,
         estimatedHours: originalWork?.estimatedHours || 0,
         complexity: originalWork?.complexity || 'medium',
         files: originalWork?.files || [],
         commits: originalWork?.commits || [],
-        filesCount: originalWork?.filesCount || 0,
-        commitsCount: originalWork?.commitsCount || 0,
         tags: originalWork?.tags || [],
       };
     });
@@ -461,7 +471,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     setShowTaskPreview(true);
   };
 
-  const handleCreateTasksFromModal = async (editedWorkItems: any[]) => {
+  const handleCreateTasksFromModal = async (editedWorkItems: DetectedWork[], templateId: string) => {
     if (!accessToken) {
       toast.error('Not authenticated');
       return;
@@ -471,18 +481,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const toastId = toast.loading(`Creating ${editedWorkItems.length} tasks in ClickUp...`);
 
     try {
-      // Create a modified work analysis with edited items from modal
-      const modifiedWorkAnalysis = {
-        ...workAnalysis!.workAnalysis,
-        detectedWork: editedWorkItems.map(item => ({
-          name: item.name,
-          type: item.type,
-          description: item.description,
-          commits: item.commits || [],
-          tags: item.tags || [],
-          files: item.files || [],
-        })),
-      };
+      // Built by the same function the modal's preview request uses, so the
+      // tasks created here are rendered from byte-identical input.
+      const modifiedWorkAnalysis = workAnalysisWithEditedItems(
+        workAnalysis!.workAnalysis,
+        editedWorkItems
+      );
 
       const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
         method: 'POST',
@@ -491,9 +495,18 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
           'Authorization': `Bearer ${accessToken}`,
         },
         credentials: 'include',
+        // `templateId` MUST be here, not only on the preview request: this is the
+        // legacy `workAnalysis` branch, and it is what renders the tasks that are
+        // actually created. Omitting it would make the picker restyle the preview
+        // and change nothing in ClickUp.
+        //
+        // Note there is no `workItems` key — sending both shapes is a deliberate
+        // 400, because an ambiguous body could silently skip commit dedup.
         body: JSON.stringify({
           workAnalysis: modifiedWorkAnalysis,
           projectPath: selectedProjectPath,
+          repository: repositoryFromProjectPath(selectedProjectPath),
+          templateId,
         }),
       });
 
@@ -666,7 +679,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             ))}
           </select>
           <p className="text-xs text-foreground-tertiary mt-1">
-            💡 Select a specific branch to analyze, or leave as "All Branches" to analyze all commits
+            💡 Select a specific branch to analyze, or leave as &quot;All Branches&quot; to analyze all commits
           </p>
         </div>
 
@@ -1017,9 +1030,10 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         />
       )}
 
-      {showTaskPreview && (
+      {showTaskPreview && workAnalysis && (
         <TaskPreviewModal
           workItems={getWorkItemsForModal()}
+          baseWorkAnalysis={workAnalysis.workAnalysis}
           projectPath={selectedProjectPath}
           date={reportMetadata?.date || today}
           onClose={() => setShowTaskPreview(false)}

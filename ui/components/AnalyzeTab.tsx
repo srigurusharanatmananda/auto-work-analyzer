@@ -250,7 +250,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             ))}
           </select>
           <p className="text-xs text-foreground-tertiary mt-1">
-            💡 Select a specific branch to analyze, or leave as "All Branches" to analyze all commits
+            💡 Select a specific branch to analyze, or leave as &quot;All Branches&quot; to analyze all commits
           </p>
         </div>
 

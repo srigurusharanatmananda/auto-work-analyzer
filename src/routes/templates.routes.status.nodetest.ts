@@ -179,6 +179,38 @@ describe("DELETE /api/templates/:id status codes", () => {
   });
 });
 
+describe("GET /api/templates/schema", () => {
+  test("serves the placeholder vocabulary the editor's reference panel renders", async () => {
+    const res = await fetch(`${baseUrl}/schema`, { headers: { Authorization: authHeader } });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.success, true);
+    // The two shapes the reference panel reads: a flat scalar list and the
+    // section names. Asserting representative members rather than the whole
+    // list, so adding a placeholder does not fail this test.
+    assert.ok(Array.isArray(body.data.scalars));
+    assert.ok(body.data.scalars.includes("title"));
+    assert.ok(body.data.scalars.includes("repository"));
+    assert.deepEqual(Object.keys(body.data.sections).sort(), [
+      "commits",
+      "files",
+      "subitems",
+      "tags",
+    ]);
+    // A nested section carries its own scalars — the panel lists these too.
+    assert.ok(body.data.sections.commits.scalars.includes("shortHash"));
+  });
+
+  test("is not shadowed by a param route — /schema is a literal, not an :id", async () => {
+    // The stub store's `get` returns null for everything, so if a future
+    // `GET /:id` were ever mounted ahead of /schema this would come back 404
+    // rather than the schema payload.
+    const res = await fetch(`${baseUrl}/schema`, { headers: { Authorization: authHeader } });
+    const body = await res.json();
+    assert.ok(body.data?.scalars, "GET /schema must resolve to the schema route");
+  });
+});
+
 describe("POST /api/templates/preview", () => {
   test("renders without requiring `name`", async () => {
     const res = await fetch(`${baseUrl}/preview`, {

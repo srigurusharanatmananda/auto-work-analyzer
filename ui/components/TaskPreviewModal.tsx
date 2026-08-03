@@ -1,45 +1,184 @@
 'use client';
 
-import { useState } from 'react';
+/**
+ * Review-before-create, with a template picker.
+ *
+ * Two shapes meet here and it matters which one wins (see task-9 A2).
+ *
+ * The modal edits DETECTED WORK — `workAnalysis.detectedWork`, the legacy shape
+ * — because that is what it is handed (ReportsTab reads it straight off
+ * /api/analyze) and what it must hand back (/api/create-tasks' legacy branch is
+ * the only path that writes history and marks commits processed, and it takes
+ * `workAnalysis`). It deliberately does NOT adopt `src/domain/WorkItem`'s field
+ * names: there would be nothing to gain but a rename and an un-rename, and
+ * sending `workItems` alongside `workAnalysis` is a 400 by design (A5).
+ *
+ * The canonical conversion therefore happens SERVER-side. Both requests below
+ * send `workAnalysis`, so `/api/preview-tasks` derives its items through
+ * `workItemsFromAnalysis` — the very same adapter the create path uses. The
+ * preview cannot disagree with what gets created, because neither side maps
+ * anything itself.
+ */
+
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
+import {
+  DetectedWork,
+  RenderedTaskPreview,
+  Template,
+  WorkAnalysisResult,
+} from '@/types';
 
 const BACKEND_URL = 'http://localhost:3009';
 
-interface WorkItem {
-  name: string;
-  type: string;
-  description: string;
-  estimatedHours: number;
-  complexity: string;
-  files: string[];
-  commits: any[];
-  filesCount: number;
-  commitsCount: number;
-  tags: string[];
+/** Used until the user picks otherwise — matches the backend's own default. */
+const DEFAULT_TEMPLATE_ID = 'builtin-standard';
+
+/** Debounce on re-rendering the preview after an edit. */
+const PREVIEW_DEBOUNCE_MS = 400;
+
+/**
+ * The single definition of the body both `/api/preview-tasks` and
+ * `/api/create-tasks` are sent. Exported and used by ReportsTab for the create
+ * request too — if the two ever built their `detectedWork` separately, the
+ * preview would drift from what is created, which is the exact failure the
+ * canonical pipeline exists to remove.
+ *
+ * `estimatedHours` and `complexity` are carried through deliberately (A3): the
+ * mapping used to drop them, so a user's edits were discarded and the renderer
+ * fell back to a default estimate and the lowest priority.
+ */
+export function workAnalysisWithEditedItems(
+  base: WorkAnalysisResult,
+  items: DetectedWork[]
+): WorkAnalysisResult {
+  return {
+    ...base,
+    detectedWork: items.map((item) => ({
+      name: item.name,
+      type: item.type,
+      description: item.description,
+      commits: item.commits || [],
+      tags: item.tags || [],
+      files: item.files || [],
+      estimatedHours: item.estimatedHours,
+      complexity: item.complexity,
+    })),
+  };
+}
+
+/**
+ * Derives the `{{repository}}` placeholder value from the analysed project path.
+ * Sent on BOTH requests or neither (A6) — a repository name present in the
+ * preview but absent from the create call would render two different tasks.
+ */
+export function repositoryFromProjectPath(projectPath: string): string | undefined {
+  const name = projectPath.replace(/\/+$/, '').split('/').pop();
+  return name && name.length > 0 ? name : undefined;
 }
 
 interface TaskPreviewModalProps {
-  workItems: WorkItem[];
+  workItems: DetectedWork[];
+  /** The analysis the items came from; re-sent with the user's edits applied. */
+  baseWorkAnalysis: WorkAnalysisResult;
   projectPath: string;
   date: string;
   onClose: () => void;
-  onCreateTasks: (editedWorkItems: WorkItem[]) => void;
+  onCreateTasks: (editedWorkItems: DetectedWork[], templateId: string) => void;
 }
 
 export default function TaskPreviewModal({
   workItems: initialWorkItems,
+  baseWorkAnalysis,
   projectPath,
   date,
   onClose,
   onCreateTasks,
 }: TaskPreviewModalProps) {
   const { accessToken } = useAuth();
-  const [workItems, setWorkItems] = useState<WorkItem[]>(initialWorkItems);
+  const [workItems, setWorkItems] = useState<DetectedWork[]>(initialWorkItems);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
   const [creatingTasks, setCreatingTasks] = useState(false);
+
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE_ID);
+  const [rendered, setRendered] = useState<RenderedTaskPreview[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/templates`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        });
+        const result = await response.json();
+        if (!cancelled && result.success) setTemplates(result.data as Template[]);
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  // Re-renders the preview whenever the template OR the items change, so the
+  // pane always shows the output of the template that will actually be used.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const timer = setTimeout(async () => {
+      setRendering(true);
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/preview-tasks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            workAnalysis: workAnalysisWithEditedItems(baseWorkAnalysis, workItems),
+            repository: repositoryFromProjectPath(projectPath),
+            templateId,
+          }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          setRendered(result.data.items as RenderedTaskPreview[]);
+          setWarnings((result.data.warnings as string[]) ?? []);
+          setRenderError(null);
+        } else {
+          setRendered([]);
+          setWarnings([]);
+          setRenderError(
+            typeof result.details === 'string'
+              ? result.details
+              : result.error || 'Failed to render preview'
+          );
+        }
+      } catch (error) {
+        console.error('Failed to render preview:', error);
+        setRendered([]);
+        setRenderError('Could not reach the backend to render a preview.');
+      } finally {
+        setRendering(false);
+      }
+    }, PREVIEW_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [accessToken, templateId, workItems, baseWorkAnalysis, projectPath]);
 
   const handleEdit = (index: number, field: 'name' | 'description', value: string) => {
     const updated = [...workItems];
@@ -99,13 +238,18 @@ export default function TaskPreviewModal({
   const handleCreateTasks = async () => {
     setCreatingTasks(true);
     try {
-      onCreateTasks(workItems);
+      // The chosen template goes out with the items — without it the picker
+      // would restyle the preview and leave the created tasks unchanged.
+      onCreateTasks(workItems, templateId);
     } catch (error) {
       console.error('Failed to create tasks:', error);
     } finally {
       setCreatingTasks(false);
     }
   };
+
+  const selectedTemplateName =
+    templates.find((template) => template.id === templateId)?.name ?? templateId;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -121,6 +265,55 @@ export default function TaskPreviewModal({
           <div className="mt-3 text-xs text-foreground-tertiary">
             <span className="font-semibold">Project:</span> {projectPath} • <span className="font-semibold">Date:</span> {date}
           </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1">
+              <label
+                htmlFor="templateId"
+                className="block text-xs font-semibold text-foreground-secondary mb-1"
+              >
+                Task template
+              </label>
+              <select
+                id="templateId"
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {templates.length === 0 && (
+                  <option value={DEFAULT_TEMPLATE_ID}>Standard (default)</option>
+                )}
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                    {template.isBuiltin ? ' (built-in)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {rendering && (
+              <div className="flex items-center gap-2 text-xs text-foreground-tertiary pb-2">
+                <LoadingSpinner size="sm" />
+                <span>Rendering...</span>
+              </div>
+            )}
+          </div>
+
+          {warnings.length > 0 && (
+            <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
+              <ul className="list-disc list-inside space-y-1 text-sm text-warning">
+                {warnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {renderError && (
+            <div className="mt-3 rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">
+              {renderError}
+            </div>
+          )}
         </div>
 
         {/* Work Items List */}
@@ -172,10 +365,34 @@ export default function TaskPreviewModal({
                     )}
                   </div>
 
+                  {/* Rendered output — what the chosen template actually produces */}
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground-secondary mb-1">
+                      Rendered by &quot;{selectedTemplateName}&quot;
+                    </label>
+                    {rendered[index] ? (
+                      <div className="border border-primary/40 rounded-lg bg-background-secondary p-3 space-y-2">
+                        <div
+                          className="text-sm font-semibold text-foreground break-words"
+                          data-testid={`rendered-name-${index}`}
+                        >
+                          {rendered[index].task.name}
+                        </div>
+                        <pre className="text-xs text-foreground-secondary whitespace-pre-wrap font-mono max-h-40 overflow-y-auto">
+{rendered[index].task.description}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-foreground-tertiary">
+                        {rendering ? 'Rendering...' : 'No rendered output.'}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Metadata */}
                   <div className="flex gap-4 text-xs text-foreground-tertiary">
-                    <span>📁 {item.filesCount} files</span>
-                    <span>💾 {item.commitsCount} commits</span>
+                    <span>📁 {(item.files || []).length} files</span>
+                    <span>💾 {(item.commits || []).length} commits</span>
                     <span>⏱️ {item.estimatedHours}h</span>
                     <span className={`px-2 py-0.5 rounded ${
                       item.complexity === 'high' ? 'bg-red-500/10 text-red-500' :
