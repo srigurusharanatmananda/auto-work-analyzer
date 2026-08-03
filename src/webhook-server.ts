@@ -23,6 +23,9 @@ import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
 import { runMigrations } from "./migrations/runMigrations.js";
+import { DestinationStore } from "./destinations/DestinationStore.js";
+import { createDestinationsRouter } from "./routes/destinations.routes.js";
+import { createClickUpRouter } from "./routes/clickup.routes.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -122,6 +125,11 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     const templateStore = new TemplateStore(dbPath);
     app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Named ClickUp destinations, and the hierarchy browsing the picker needs.
+    const destinationStore = new DestinationStore(dbPath, cipher);
+    app.use("/api/destinations", createDestinationsRouter(destinationStore));
+    app.use("/api/clickup", createClickUpRouter(destinationStore));
 
     // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
     // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
