@@ -84,8 +84,22 @@ function parse(template: string): Node[] {
   return root;
 }
 
+/**
+ * Section truthiness, matching Mustache: null, undefined, false, "", 0 and the
+ * empty list are all empty.
+ *
+ * Numeric 0 counts as empty because templates use counts as presence guards —
+ * `{{#commitCount}}**Commits:** {{commitCount}}{{/commitCount}}` is asking "are
+ * there commits?", not "is commitCount defined?". Treating 0 as truthy made
+ * builtin-standard emit a literal "Commits: 0 across 0 files" for every
+ * notes-sourced item, which never has commits.
+ *
+ * Note this is section-only. `{{commitCount}}` as a scalar still renders "0"
+ * (see scalarToString) — asking for a number explicitly gets the number.
+ */
 function isEmpty(value: unknown): boolean {
   if (value === null || value === undefined || value === false || value === "") return true;
+  if (value === 0) return true;
   if (Array.isArray(value)) return value.length === 0;
   return false;
 }

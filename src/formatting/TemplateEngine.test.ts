@@ -97,3 +97,47 @@ describe("validateTemplate", () => {
     expect(validateTemplate("{{#nope}}x{{/nope}}", SCHEMA).length).toBe(1);
   });
 });
+
+/**
+ * Mustache section truthiness. The numeric-0 cases are the ones that matter:
+ * templates use counts as presence guards, so treating 0 as truthy made
+ * builtin-standard emit "Commits: 0 across 0 files" for every notes-sourced
+ * item (which never has commits).
+ */
+describe("section truthiness", () => {
+  // "priority" is a declared scalar, so {{#priority}} is a scalar guard.
+  const guard = "{{#priority}}shown{{/priority}}";
+  const inverted = "{{^priority}}fallback{{/priority}}";
+
+  test("numeric 0 is empty — a count guard suppresses its section", () => {
+    expect(renderTemplate(guard, { priority: 0 }, SCHEMA)).toBe("");
+  });
+
+  test("numeric 0 renders the inverted section", () => {
+    expect(renderTemplate(inverted, { priority: 0 }, SCHEMA)).toBe("fallback");
+  });
+
+  test("a non-zero count is still truthy", () => {
+    expect(renderTemplate(guard, { priority: 3 }, SCHEMA)).toBe("shown");
+    expect(renderTemplate(inverted, { priority: 3 }, SCHEMA)).toBe("");
+  });
+
+  test("0 as an explicit scalar still prints, unlike as a guard", () => {
+    // Section truthiness and scalar stringification are separate concerns:
+    // asking for the number explicitly must still yield "0".
+    expect(renderTemplate("{{priority}}", { priority: 0 }, SCHEMA)).toBe("0");
+  });
+
+  test("the other falsy values are empty too", () => {
+    for (const value of [null, undefined, false, ""]) {
+      expect(renderTemplate(guard, { priority: value }, SCHEMA)).toBe("");
+    }
+    expect(renderTemplate("{{#commits}}x{{/commits}}", { commits: [] }, SCHEMA)).toBe("");
+  });
+
+  test("truthy non-numbers are unaffected", () => {
+    expect(renderTemplate(guard, { priority: "HIGH" }, SCHEMA)).toBe("shown");
+    // A count of 0 must not be confused with the string "0".
+    expect(renderTemplate(guard, { priority: "0" }, SCHEMA)).toBe("shown");
+  });
+});

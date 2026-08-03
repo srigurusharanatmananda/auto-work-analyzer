@@ -12,6 +12,9 @@ ui/.next
 # Database
 .database/
 
+# Generated at runtime by the webhook server
+reports/
+
 # Test files
 test-*.ts
 test-*.js
