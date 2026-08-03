@@ -12,7 +12,7 @@ import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
 import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
 import { renderTasks } from "../formatting/ClickUpRenderer.js";
-import { Template } from "../formatting/Template.js";
+import type { Template } from "../formatting/Template.js";
 import {
   GitCommit,
   DetectedWork,
@@ -678,7 +678,7 @@ export class GitWorkAnalyzer {
     workAnalysis: WorkAnalysisResult,
     config: ClickUpConfig,
     batchSize: number = 5,
-    opts?: { template?: Template }
+    opts?: { template?: Template; repository?: string }
   ): Promise<any[]> {
     try {
       const clickUpService = new ClickUpService(config);
@@ -689,8 +689,16 @@ export class GitWorkAnalyzer {
       // stops formatting tasks with its own hand-rolled emoji/priority/
       // timeEstimate logic. Indexed to line up with workAnalysis.detectedWork
       // (workItemsFromAnalysis and renderTasks both map in input order).
+      // `repository` is threaded through so a template using {{repository}}
+      // renders the same value here as it does on /api/preview-tasks, which
+      // already passes it. Without it the preview showed the repo and the
+      // created task showed an empty string — the exact divergence this path
+      // exists to eliminate.
       const renderedTasks = opts?.template
-        ? renderTasks(workItemsFromAnalysis(workAnalysis), opts.template)
+        ? renderTasks(
+            workItemsFromAnalysis(workAnalysis, opts.repository),
+            opts.template
+          )
         : null;
 
       // Create summary task
@@ -722,13 +730,16 @@ export class GitWorkAnalyzer {
       // Batch process individual tasks for better performance
       const workItems = workAnalysis.detectedWork;
 
-      // On the rendered path, remember which created task belongs to which work
-      // item by index instead of re-deriving it from the task name later. Name
-      // matching mis-attributes commits whenever two rendered names collide —
-      // already possible with a built-in template (two work items sharing a
-      // 30-character prefix), and guaranteed by a user template whose
-      // nameTemplate omits {{title}}. The offset into `createdTasks` cannot be
-      // used for this: failed creations are filtered out of it below.
+      // Remember which created task belongs to which work item by index instead
+      // of re-deriving it from the task name later. Name matching mis-attributes
+      // commits whenever two names collide, which needs no custom template at
+      // all: `name.includes(name.substring(0, 30))` makes "Stabilize the
+      // meditation player layout" swallow "...layout v2", so the second item's
+      // commits get recorded against the first item's ClickUp task id. That hits
+      // the no-template callers (cli.ts, webhook-server.ts, the exported
+      // createTasksFromWork wrapper) too, so the index is built for both paths.
+      // The offset into `createdTasks` cannot be used for this: failed creations
+      // are filtered out of it below.
       const createdByItemIndex: (any | null)[] = new Array(workItems.length).fill(null);
 
       for (let i = 0; i < workItems.length; i += batchSize) {
@@ -778,11 +789,9 @@ export class GitWorkAnalyzer {
         const batchResults = await Promise.all(batchPromises);
 
         // batchResults is 1:1 with `batch`, which is workItems[i .. i+batchSize)
-        if (renderedTasks) {
-          batchResults.forEach((task, batchIndex) => {
-            createdByItemIndex[i + batchIndex] = task;
-          });
-        }
+        batchResults.forEach((task, batchIndex) => {
+          createdByItemIndex[i + batchIndex] = task;
+        });
 
         // Add successful tasks
         createdTasks.push(...batchResults.filter((task) => task !== null));
@@ -825,9 +834,7 @@ export class GitWorkAnalyzer {
 
         // Map commits to their created ClickUp tasks
         work.commits.forEach((commit) => {
-          const task = renderedTasks
-            ? createdByItemIndex[workIndex]
-            : createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
+          const task = createdByItemIndex[workIndex];
           if (task) {
             taskMapping.set(commit.hash, { id: task.id, name: task.name });
           }

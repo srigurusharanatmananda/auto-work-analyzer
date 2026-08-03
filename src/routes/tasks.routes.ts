@@ -513,7 +513,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
         workAnalysis,
         deps.clickUpConfig,
         undefined,
-        { template: resolveTemplate(templateId) }
+        { template: resolveTemplate(templateId), repository: req.body.repository }
       );
       const created = createdTasks.filter((task) => task !== null);
 

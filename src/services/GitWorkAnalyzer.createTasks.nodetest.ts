@@ -323,7 +323,7 @@ describe("createTasksFromWork without a template", () => {
     assert.equal(individual[0].due_date, new Date("2026-07-27").getTime());
   });
 
-  test("still maps commits to their created tasks by name", async () => {
+  test("still maps commits to their created tasks", async () => {
     const analysis = analysisWithTwoItems(["Add the meditation timer", "Add the pranayama timer"]);
 
     await analyzer.createTasksFromWork(analysis, CONFIG, 1);
@@ -331,5 +331,79 @@ describe("createTasksFromWork without a template", () => {
     const mapping = history.markCalls[0].taskMapping;
     assert.equal(mapping.get("aaa1110000")?.id, "task-2");
     assert.equal(mapping.get("bbb2220000")?.id, "task-3");
+  });
+
+  /**
+   * The name-collision mis-attribution needs no template at all — it was never
+   * specific to the rendered path. `name.includes(name.substring(0, 30))` makes
+   * the shorter name a prefix of the longer one, so `find` returned item 0's
+   * task for item 1's commits and those commits were recorded in
+   * processed_commits against the wrong ClickUp task id, silently. This is the
+   * path every non-HTTP caller uses (cli.ts, webhook-server.ts, the exported
+   * createTasksFromWork wrapper), so it was a live data-correctness bug there.
+   */
+  test("maps commits to their own task when two names collide, with no template", async () => {
+    const analysis = analysisWithTwoItems([
+      "Stabilize the meditation player layout",
+      "Stabilize the meditation player layout v2",
+    ]);
+
+    await analyzer.createTasksFromWork(analysis, CONFIG, 1);
+
+    const mapping = history.markCalls[0].taskMapping;
+    assert.equal(
+      mapping.get("bbb2220000")?.id,
+      "task-3",
+      "item 1's commit must map to item 1's task, not item 0's"
+    );
+    assert.equal(mapping.get("aaa1110000")?.id, "task-2");
+  });
+});
+
+describe("createTasksFromWork repository threading", () => {
+  /**
+   * Finding I2: /api/preview-tasks passes `repository` into
+   * workItemsFromAnalysis, but the create path did not, so a template using
+   * {{repository}} previewed the repo name and then created an empty string —
+   * the preview/created divergence Task 9A exists to remove.
+   */
+  test("a {{repository}} template renders the repository on the create path", async () => {
+    const repoTemplate: Template = {
+      id: "user-repo",
+      name: "With repo",
+      description: "Puts the repository in the description.",
+      nameTemplate: "{{title}}",
+      descriptionTemplate: "{{description}}\n\nRepo: {{repository}}",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS },
+      isBuiltin: false,
+    };
+
+    const analysis = analysisWithTwoItems(["Add the meditation timer", "Add the pranayama timer"]);
+
+    await analyzer.createTasksFromWork(analysis, CONFIG, 1, {
+      template: repoTemplate,
+      repository: "kailasa-ngpt/ask_nithyananda_app",
+    });
+
+    const individual = individualTaskPayloads();
+    assert.match(individual[0].description, /Repo: kailasa-ngpt\/ask_nithyananda_app/);
+  });
+
+  test("omitting repository still renders, leaving the placeholder empty", async () => {
+    const repoTemplate: Template = {
+      id: "user-repo",
+      name: "With repo",
+      description: "Puts the repository in the description.",
+      nameTemplate: "{{title}}",
+      descriptionTemplate: "Repo: {{repository}}",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS },
+      isBuiltin: false,
+    };
+
+    const analysis = analysisWithTwoItems(["Add the meditation timer", "Add the pranayama timer"]);
+
+    await analyzer.createTasksFromWork(analysis, CONFIG, 1, { template: repoTemplate });
+
+    assert.equal(individualTaskPayloads()[0].description, "Repo:");
   });
 });
