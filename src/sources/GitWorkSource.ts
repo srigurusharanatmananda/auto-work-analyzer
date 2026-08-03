@@ -1,12 +1,38 @@
-/** Adapts a WorkAnalysisResult onto canonical WorkItems. */
+/** Adapts git work — a WorkAnalysisResult, or raw commits — onto canonical WorkItems. */
 
 import { toWorkItemType, WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { WorkAnalysisResult } from "../types/index.js";
+import type { GitCommit } from "../types/index.js";
+import type {
+  CommitGrouper,
+  GroupingContext,
+  GroupingResult,
+} from "../grouping/CommitGrouper.js";
 
 function priorityFromComplexity(complexity: string): WorkItemPriority {
   if (complexity === "high") return "high";
   if (complexity === "medium") return "normal";
   return "low";
+}
+
+/**
+ * Groups raw commits into WorkItems using the supplied grouper.
+ *
+ * The grouper is injected rather than constructed here so tests never touch a
+ * provider and callers can force the heuristic path. Returns the whole
+ * GroupingResult, not just the items, because which grouper actually ran is
+ * information the caller has to be able to show a user — heuristic output
+ * mistaken for AI output is the failure this reporting exists to prevent.
+ *
+ * This is the entry point for input that has NOT been grouped yet.
+ * workItemsFromAnalysis below is the one for input that already has been.
+ */
+export async function workItemsFromCommits(
+  commits: GitCommit[],
+  context: GroupingContext,
+  grouper: CommitGrouper
+): Promise<GroupingResult> {
+  return grouper.group(commits, context);
 }
 
 export function workItemsFromAnalysis(
