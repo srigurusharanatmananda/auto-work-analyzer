@@ -46,6 +46,51 @@ describe("renderTasks", () => {
     expect(without!.task.timeEstimate).toBeUndefined();
   });
 
+  /**
+   * The engine treated only null/undefined/false/"" as empty, so `{{#commitCount}}`
+   * was truthy at 0 and every notes-sourced task shipped a literal
+   * "**Commits:** 0 across 0 files" line to ClickUp. The engine-level fix is
+   * pinned in TemplateEngine.test.ts, but nothing asserted it at the level a
+   * user could see — which is exactly why it survived Task 2's review with a
+   * green suite. This is that assertion: a real built-in template, a real
+   * 0-commit item, and the rendered description a user would read.
+   */
+  describe("zero-commit items (notes-sourced) omit commit metadata", () => {
+    const standard = BUILTIN_TEMPLATES.find((t) => t.id === "builtin-standard")!;
+
+    test("builtin-standard emits no Commits line for a 0-commit item", () => {
+      const [rendered] = renderTasks([makeWorkItem()], standard);
+      expect(rendered!.task.description).not.toContain("Commits:");
+      expect(rendered!.task.description).not.toContain("0 across 0 files");
+    });
+
+    test("builtin-standard still emits the Commits line when commits exist", () => {
+      const [rendered] = renderTasks(
+        [
+          makeWorkItem({
+            provenance: {
+              source: "git",
+              files: ["a.ts"],
+              commits: [
+                {
+                  hash: "abc1234",
+                  author: "d",
+                  date: "2026-07-29",
+                  message: "m",
+                  files: ["a.ts"],
+                  insertions: 1,
+                  deletions: 0,
+                },
+              ],
+            },
+          }),
+        ],
+        standard
+      );
+      expect(rendered!.task.description).toContain("**Commits:** 1 across 1 files");
+    });
+  });
+
   test("statusMode fromWorkItem passes the item status through", () => {
     const [rendered] = renderTasks([makeWorkItem({ status: "complete" })], template());
     expect(rendered!.task.status).toBe("complete");

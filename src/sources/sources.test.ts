@@ -41,6 +41,56 @@ describe("workItemsFromNotes", () => {
     expect(items[0]!.priority).toBe("normal");
   });
 
+  /**
+   * Unstructured notes are the gap the tests above missed: they all use the
+   * structured format, which is the one path where `priority` is already set.
+   * NotesProcessor's bullet/free-form paths set `complexity` only, and
+   * structured parsing needs BOTH a "---" and a "Task N:" heading — so a plain
+   * bullet list has no `priority` at all, and reading only that field collapsed
+   * every item to "normal", discarding the low/medium/high the source derived
+   * and flattening the created task's ClickUp priority with it.
+   */
+  describe("unstructured (plain bullet) notes derive priority from complexity", () => {
+    test("a high-complexity bullet becomes priority high", async () => {
+      const items = await workItemsFromNotes(
+        "- Refactor the database architecture for the payment system\n"
+      );
+      expect(items.length).toBe(1);
+      expect(items[0]!.priority).toBe("high");
+    });
+
+    test("a low-complexity bullet becomes priority low", async () => {
+      const items = await workItemsFromNotes("- Fix a simple typo in the footer label\n");
+      expect(items[0]!.priority).toBe("low");
+    });
+
+    test("a medium-complexity bullet becomes priority normal", async () => {
+      const items = await workItemsFromNotes(
+        "- Add a new endpoint for retrieving user notification preferences\n"
+      );
+      expect(items[0]!.priority).toBe("normal");
+    });
+
+    test("high and low are distinguished, not flattened to a single value", async () => {
+      // The regression this guards is specifically the *loss of distinction*:
+      // before the fix both of these returned "normal".
+      const [high] = await workItemsFromNotes("- Rewrite the integration layer\n");
+      const [low] = await workItemsFromNotes("- Update a small text label\n");
+      expect(high!.priority).not.toBe(low!.priority);
+    });
+  });
+
+  test("an explicit Priority: line wins over the complexity fallback", async () => {
+    // "urgent" is the discriminator: complexity has only three levels and the
+    // fallback can never produce it, so getting "urgent" proves the explicit
+    // branch ran. This item's complexity is "high", so the fallback would have
+    // returned "high" — a different, wrong answer.
+    const items = await workItemsFromNotes(
+      "Task 1: Fix payment processing\nPriority: CRITICAL\nEstimate: 4 hours\nDescription: x.\n\n---\n"
+    );
+    expect(items[0]!.priority).toBe("urgent");
+  });
+
   test("strips the Description: label whichever form the note uses", async () => {
     const inline = await workItemsFromNotes(
       "Task 1: A\nPriority: HIGH\nDescription: Inline body.\n\n---\n\nTask 2: B\nDescription: Other."

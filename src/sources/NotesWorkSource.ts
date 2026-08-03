@@ -6,7 +6,12 @@
  * so this adapter reads them defensively.
  */
 
-import { toWorkItemPriority, toWorkItemType, WorkItem } from "../domain/WorkItem.js";
+import {
+  toWorkItemPriority,
+  toWorkItemType,
+  WorkItem,
+  WorkItemPriority,
+} from "../domain/WorkItem.js";
 import { NotesProcessor } from "../services/NotesProcessor.js";
 import type { GitCommit } from "../types/index.js";
 
@@ -33,6 +38,26 @@ function stripDescriptionLabel(description: string): string {
   return description.replace(/^\s*Description:\s*/i, "").trim();
 }
 
+/**
+ * Only NotesProcessor's *structured* parser sets `priority`; its free-form and
+ * bullet-list paths set `complexity` alone (convertToDetectedWork /
+ * extractFromFreeForm), and structured parsing requires BOTH a "---" separator
+ * and a "Task N:" heading. So for any plain-bullet notes file `priority` is
+ * undefined, and reading it alone silently collapsed every item to "normal" —
+ * losing the low/medium/high distinction the source had actually derived, and
+ * with it the created task's ClickUp priority.
+ *
+ * This is the exact inverse of the route's complexityFromPriority. "urgent" is
+ * not recoverable — complexity has only three levels — which is correct: it can
+ * only ever come from an explicit `Priority:` line, and that path sets
+ * `priority` directly and never reaches here.
+ */
+function priorityFromComplexity(complexity: string | undefined): WorkItemPriority {
+  if (complexity === "high") return "high";
+  if (complexity === "low") return "low";
+  return "normal";
+}
+
 export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]> {
   const processed = await new NotesProcessor().processNotes(notesText);
 
@@ -42,7 +67,11 @@ export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]>
       title: loose.name,
       description: stripDescriptionLabel(loose.description ?? ""),
       type: toWorkItemType(loose.type),
-      priority: toWorkItemPriority(loose.priority),
+      // An explicit priority always wins; complexity is the fallback, not an
+      // override.
+      priority: loose.priority
+        ? toWorkItemPriority(loose.priority)
+        : priorityFromComplexity(loose.complexity),
       status: loose.status,
       estimateHours: loose.estimatedHours ?? 3,
       completedDate: loose.completedDate,
