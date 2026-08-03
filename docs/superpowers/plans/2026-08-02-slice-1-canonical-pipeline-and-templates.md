@@ -2769,9 +2769,117 @@ git commit -m "feat(ui): template management page and preview template picker
 
 ---
 
+### Task 9A: Make the legacy `{workAnalysis}` path honor the template
+
+> **Added after Task 8, and it EXECUTES BEFORE Task 9.** Task 8's ruling (c) kept
+> `{workAnalysis}` bodies on `GitWorkAnalyzer.createTasksFromWork` so the history
+> side effects — `addAnalysisHistory`, `saveWorkItem`, and above all
+> `markCommitsAsProcessed` — keep running. Correct, but it leaves the plan's own
+> Definition of Done ("All three creation paths produce identically-formatted
+> tasks for the same input") unmet, and it makes Task 9's picker a silent no-op:
+> `ui/components/ReportsTab.tsx:464` (`handleCreateTasksFromModal`) sends
+> `{workAnalysis}`, so a user could pick a template, watch the preview change,
+> confirm, and receive old-format tasks. Task 9 cannot be built honestly until
+> this lands.
+
+**Files:**
+- Modify: `src/services/GitWorkAnalyzer.ts` (`createTasksFromWork`, ~line 674)
+- Modify: `src/routes/tasks.routes.ts` (the `{workAnalysis}` branch)
+- Test: `src/routes/tasks.routes.envelope.nodetest.ts`
+
+**Interfaces:**
+- Consumes: `renderTasks` + `Template` (Tasks 2-4), `TemplateStore.get` (Task 7),
+  `workItemsFromAnalysis` (Task 8).
+- Produces: `createTasksFromWork(workAnalysis, config, batchSize?, opts?)` where
+  `opts?: { template?: Template }`.
+
+**The constraint that governs every step:** this task changes task *formatting*
+only. It must NOT change the response envelope, the task count, or any history
+side effect. Specifically the `📊 Daily Work Summary` parent task still gets
+created, so callers still receive N+1 tasks, and all three `historyService`
+calls still fire exactly once each.
+
+- [ ] **Step 1: Write the failing test**
+
+In `src/routes/tasks.routes.envelope.nodetest.ts`, using the existing
+`analyzerFactory` seam so no ClickUp call happens:
+
+```ts
+test("a {workAnalysis} body forwards the resolved template to the analyzer", async () => {
+  let received: any = "NOT_CALLED";
+  const res = await postJson("/create-tasks", {
+    workAnalysis: SAMPLE_ANALYSIS,
+    templateId: "builtin-terse",
+  }, {
+    analyzerFactory: () => ({
+      createTasksFromWork: async (_wa: any, _cfg: any, _batch?: number, opts?: any) => {
+        received = opts?.template ?? null;
+        return [];
+      },
+    }),
+  });
+  assert.equal(res.status, 200);
+  assert.equal(received?.id, "builtin-terse");
+});
+```
+
+- [ ] **Step 2: Run it and watch it fail**
+
+Run: `bun run test:db`
+Expected: FAIL — `received` is `null`, because the route passes no `opts`.
+
+- [ ] **Step 3: Add the opts parameter to `createTasksFromWork`**
+
+Widen the signature and derive each field from the rendered task when a template
+is supplied, falling back to today's inline logic when it is not — the seven
+other callers (`src/cli.ts` ×4, `src/index.ts:63`, its exported wrapper at
+`:78-85`, `webhook-server.ts:438`/`:688`) pass no `opts` and must be unaffected:
+
+```ts
+async createTasksFromWork(
+  workAnalysis: WorkAnalysisResult,
+  config: ClickUpConfig,
+  batchSize: number = 5,
+  opts?: { template?: Template }
+): Promise<any[]> {
+```
+
+Inside, when `opts?.template` is set, build the individual tasks by converting
+the analysis with `workItemsFromAnalysis` and rendering with
+`renderTasks(items, opts.template)`, then create from the rendered
+`RenderedTask` values instead of the hand-rolled emoji/priority/timeEstimate
+block. Leave the summary task and all three `historyService` calls exactly as
+they are. This also retires the duplicated inline `hours * 60 * 60 * 1000` and
+`dueDate` logic flagged as a deferred Minor in Task 4.
+
+- [ ] **Step 4: Pass the template from the route**
+
+In the `{workAnalysis}` branch of `/api/create-tasks`, resolve the template the
+same way the `{workItems}` branch does (`resolveTemplate(req.body.templateId)`)
+and hand it to the analyzer as `{ template }`.
+
+- [ ] **Step 5: Prove the envelope and the side effects did not move**
+
+Run: `bun run test:db` and `bun test`
+Both must be green, including the pre-existing legacy-branch envelope tests from
+Task 8 — they assert the byte-for-byte legacy envelope and no `failedTasks` key,
+and they must still pass **unchanged**. Do not edit them to accommodate this
+change; if one fails, the change is wrong.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/services/GitWorkAnalyzer.ts src/routes/tasks.routes.ts src/routes/tasks.routes.envelope.nodetest.ts
+git commit -m "feat(tasks): honor the selected template on the legacy workAnalysis path"
+```
+
+---
+
 ## Slice 1 Definition of Done
 
 - [ ] `bun test` passes, including the markdown round-trip test.
+- [ ] The template chosen in `TaskPreviewModal` changes the tasks that are
+      actually created, not merely the preview.
 - [ ] `bun run build` reports only the 3 pre-existing `auth.routes.ts` errors — no new ones, and the 2 `webhook-server.ts` `createdTasks` errors are gone.
 - [ ] `/api/notes` and `/api/create-tasks` accept their original request shapes unchanged.
 - [ ] All three creation paths produce identically-formatted tasks for the same input.
