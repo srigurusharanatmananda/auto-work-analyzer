@@ -165,4 +165,66 @@ describe("workItemsFromAnalysis", () => {
     };
     expect(workItemsFromAnalysis(withoutCommits)[0]!.completedDate).toBe("2026-07-29");
   });
+
+  /**
+   * Git-derived work is completed by definition — the commits exist — and the
+   * old inline formatter in GitWorkAnalyzer.createTasksFromWork encoded that by
+   * setting `status: "complete"` and tagging every task with
+   * [type, "git-analyzed", analysisDate, ...ownTags]. Once that path started
+   * rendering through a template, both came from the WorkItem instead, and this
+   * source supplied neither: completed work landed in the destination list's
+   * default (usually open) status and lost two tags. The faithful population of
+   * the canonical item belongs here, in the source.
+   */
+  describe("populates the fields the old inline git formatter used to set", () => {
+    test("marks git-derived items complete", () => {
+      expect(workItemsFromAnalysis(analysis)[0]!.status).toBe("complete");
+    });
+
+    test("an explicit status on the detected work wins", () => {
+      const explicit: WorkAnalysisResult = {
+        ...analysis,
+        detectedWork: [
+          { ...analysis.detectedWork[0]!, status: "in progress" } as (typeof analysis.detectedWork)[0],
+        ],
+      };
+      expect(workItemsFromAnalysis(explicit)[0]!.status).toBe("in progress");
+    });
+
+    test("tags with the type, git-analyzed, the analysis date, and the item's own tags", () => {
+      expect(workItemsFromAnalysis(analysis)[0]!.tags).toEqual([
+        "bug-fix",
+        "git-analyzed",
+        "2026-07-29",
+        "mobile",
+      ]);
+    });
+
+    test("does not duplicate a tag the detected work already carries", () => {
+      const dupes: WorkAnalysisResult = {
+        ...analysis,
+        detectedWork: [
+          { ...analysis.detectedWork[0]!, tags: ["bug-fix", "2026-07-29", "mobile"] },
+        ],
+      };
+      expect(workItemsFromAnalysis(dupes)[0]!.tags).toEqual([
+        "bug-fix",
+        "git-analyzed",
+        "2026-07-29",
+        "mobile",
+      ]);
+    });
+
+    test("tolerates detected work with no tags at all", () => {
+      const untagged: WorkAnalysisResult = {
+        ...analysis,
+        detectedWork: [{ ...analysis.detectedWork[0]!, tags: undefined as unknown as string[] }],
+      };
+      expect(workItemsFromAnalysis(untagged)[0]!.tags).toEqual([
+        "bug-fix",
+        "git-analyzed",
+        "2026-07-29",
+      ]);
+    });
+  });
 });

@@ -721,6 +721,16 @@ export class GitWorkAnalyzer {
 
       // Batch process individual tasks for better performance
       const workItems = workAnalysis.detectedWork;
+
+      // On the rendered path, remember which created task belongs to which work
+      // item by index instead of re-deriving it from the task name later. Name
+      // matching mis-attributes commits whenever two rendered names collide —
+      // already possible with a built-in template (two work items sharing a
+      // 30-character prefix), and guaranteed by a user template whose
+      // nameTemplate omits {{title}}. The offset into `createdTasks` cannot be
+      // used for this: failed creations are filtered out of it below.
+      const createdByItemIndex: (any | null)[] = new Array(workItems.length).fill(null);
+
       for (let i = 0; i < workItems.length; i += batchSize) {
         const batch = workItems.slice(i, i + batchSize);
 
@@ -767,6 +777,13 @@ export class GitWorkAnalyzer {
         // Wait for batch to complete
         const batchResults = await Promise.all(batchPromises);
 
+        // batchResults is 1:1 with `batch`, which is workItems[i .. i+batchSize)
+        if (renderedTasks) {
+          batchResults.forEach((task, batchIndex) => {
+            createdByItemIndex[i + batchIndex] = task;
+          });
+        }
+
         // Add successful tasks
         createdTasks.push(...batchResults.filter((task) => task !== null));
 
@@ -793,7 +810,7 @@ export class GitWorkAnalyzer {
       const taskMapping = new Map<string, { id: string; name: string }>();
 
       // Save each work item and map commits to their created tasks
-      workAnalysis.detectedWork.forEach((work) => {
+      workAnalysis.detectedWork.forEach((work, workIndex) => {
         // Save work item to database
         this.historyService.saveWorkItem(
           analysisId,
@@ -808,7 +825,9 @@ export class GitWorkAnalyzer {
 
         // Map commits to their created ClickUp tasks
         work.commits.forEach((commit) => {
-          const task = createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
+          const task = renderedTasks
+            ? createdByItemIndex[workIndex]
+            : createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
           if (task) {
             taskMapping.set(commit.hash, { id: task.id, name: task.name });
           }
