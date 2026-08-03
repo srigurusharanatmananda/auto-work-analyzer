@@ -322,6 +322,46 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     assert.equal(body.data.tasks[0].name, "📊 Daily Work Summary - 2026-08-01");
   });
 
+  // Task 9A: a picked template must reach createTasksFromWork on this branch
+  // too, or a user who selects a template in the UI (which posts
+  // `{ workAnalysis }`) sees the preview change but gets old-format tasks.
+  test("a {workAnalysis} body forwards the resolved template to the analyzer", async () => {
+    const app = express();
+    app.use(express.json());
+    let received: any = "NOT_CALLED";
+    app.use(
+      "/api",
+      createTasksRouter({
+        templateStore: stubStore,
+        clickUpConfig,
+        defaultProjectPath: "/p",
+        analyzerFactory: () => ({
+          createTasksFromWork: async (_wa: any, _cfg: any, _batch?: number, opts?: any) => {
+            received = opts?.template ?? null;
+            return [];
+          },
+        }),
+      })
+    );
+    const server = app.listen(0);
+    try {
+      const url = `http://localhost:${(server.address() as AddressInfo).port}/api/create-tasks`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({
+          workAnalysis: { date: "d", detectedWork: [] },
+          templateId: "builtin-terse",
+        }),
+      });
+
+      assert.equal(res.status, 200);
+      assert.equal(received?.id, "builtin-terse");
+    } finally {
+      server.close();
+    }
+  });
+
   test("a legacy failure is a 500 with the original error string", async () => {
     const app = express();
     app.use(express.json());

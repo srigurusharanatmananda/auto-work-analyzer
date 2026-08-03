@@ -10,6 +10,9 @@ import { promisify } from "util";
 import { distance as levenshteinDistance } from "fastest-levenshtein";
 import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
+import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
+import { renderTasks } from "../formatting/ClickUpRenderer.js";
+import { Template } from "../formatting/Template.js";
 import {
   GitCommit,
   DetectedWork,
@@ -674,11 +677,21 @@ export class GitWorkAnalyzer {
   async createTasksFromWork(
     workAnalysis: WorkAnalysisResult,
     config: ClickUpConfig,
-    batchSize: number = 5
+    batchSize: number = 5,
+    opts?: { template?: Template }
   ): Promise<any[]> {
     try {
       const clickUpService = new ClickUpService(config);
       const createdTasks: any[] = [];
+
+      // When a template is supplied, run the individual work items through the
+      // same canonical renderer the {workItems} path uses, so this legacy path
+      // stops formatting tasks with its own hand-rolled emoji/priority/
+      // timeEstimate logic. Indexed to line up with workAnalysis.detectedWork
+      // (workItemsFromAnalysis and renderTasks both map in input order).
+      const renderedTasks = opts?.template
+        ? renderTasks(workItemsFromAnalysis(workAnalysis), opts.template)
+        : null;
 
       // Create summary task
       const summaryTask = await clickUpService.createTask({
@@ -712,7 +725,15 @@ export class GitWorkAnalyzer {
         const batch = workItems.slice(i, i + batchSize);
 
         // Process batch in parallel
-        const batchPromises = batch.map((work) => {
+        const batchPromises = batch.map((work, batchIndex) => {
+          if (renderedTasks) {
+            const taskData = renderedTasks[i + batchIndex].task;
+            return clickUpService.createTask(taskData).catch((error): null => {
+              console.error(`Failed to create task for ${work.name}:`, error);
+              return null; // Return null for failed tasks
+            });
+          }
+
           // Get the most recent commit date for due date
           const commitDate = work.commits.length > 0
             ? work.commits[work.commits.length - 1].date

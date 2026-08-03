@@ -385,7 +385,9 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       const analyzer = makeAnalyzer(projectPath || deps.defaultProjectPath);
       const createdTasks = await analyzer.createTasksFromWork(
         workAnalysis,
-        deps.clickUpConfig
+        deps.clickUpConfig,
+        undefined,
+        { template: resolveTemplate(templateId) }
       );
       const created = createdTasks.filter((task) => task !== null);
 
