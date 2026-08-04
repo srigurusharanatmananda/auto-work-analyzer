@@ -26,6 +26,11 @@ import { runMigrations } from "./migrations/runMigrations.js";
 import { DestinationStore } from "./destinations/DestinationStore.js";
 import { createDestinationsRouter } from "./routes/destinations.routes.js";
 import { createClickUpRouter } from "./routes/clickup.routes.js";
+import { ScanRegistry } from "./scanning/ScanRegistry.js";
+import { DailyScanner } from "./scanning/DailyScanner.js";
+import { ScanScheduler } from "./scanning/ScanScheduler.js";
+import { createScanningRouter } from "./routes/scanning.routes.js";
+import { AuthDatabaseService } from "./services/AuthDatabaseService.js";
 import { DestinationResolver } from "./destinations/DestinationResolver.js";
 import { createAiClientFromEnv } from "./ai/AiClient.js";
 import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
@@ -169,6 +174,51 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         grouper,
       })
     );
+
+    // Org-wide daily scan. Shares the one database, so a repo binding and the
+    // destination it names cannot land in different files.
+    const scanRegistry = new ScanRegistry(dbPath);
+    const dailyScanner = new DailyScanner({
+      registry: scanRegistry,
+      resolver,
+      grouper,
+    });
+
+    app.use(
+      "/api/scanning",
+      createScanningRouter({ registry: scanRegistry, scanner: dailyScanner })
+    );
+
+    const scanScheduler = new ScanScheduler({
+      registry: scanRegistry,
+      userIds: () => {
+        // AuthDatabaseService directly rather than AuthService, whose `db` is
+        // private — reaching through it is what produces the three pre-existing
+        // TS2341 errors in auth.routes.ts, and this must not add a fourth.
+        //
+        // getAllUsers is paginated with a default limit of 50; pass an explicit
+        // large limit so a growing user table does not silently stop being
+        // scheduled past the first page.
+        const users = new AuthDatabaseService(dbPath);
+        try {
+          return users.getAllUsers(10_000, 0).map((user) => user.id);
+        } finally {
+          users.close();
+        }
+      },
+      runScan: async (userId, date) => {
+        const summary = await dailyScanner.run(userId, { date });
+        // Persist the summary BEFORE marking the day complete: it is the only
+        // record a scheduled run leaves, and it must survive even if the settings
+        // write fails.
+        scanRegistry.saveRun(userId, summary);
+        scanRegistry.saveSettings(userId, { lastCompletedDate: date });
+        console.log(
+          `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`
+        );
+      },
+    });
+    scanScheduler.start();
 
     // Browse directories endpoint
     app.get("/api/browse", authenticate, (req, res) => {
