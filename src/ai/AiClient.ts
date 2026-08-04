@@ -94,9 +94,19 @@ export function createAiClientFromEnv(): AiClient {
       },
     });
 
-    providers.push(gemini("Google Gemini 1.5 Flash Latest", "gemini-1.5-flash-latest"));
-    providers.push(gemini("Google Gemini 1.5 Pro Latest", "gemini-1.5-pro-latest"));
-    providers.push(gemini("Google Gemini Pro", "gemini-pro"));
+    // All three previous ids (gemini-1.5-flash-latest, gemini-1.5-pro-latest,
+    // gemini-pro) were retired and returned 404 "not found for API version
+    // v1beta". Because the chain falls through on failure, nothing broke
+    // visibly — every AI request just made three doomed round-trips to Google
+    // before Groq served it. That affected commit grouping AND the
+    // manager-summary endpoint, and the only symptom was latency.
+    //
+    // These two are floating aliases, verified present via ListModels. Aliases
+    // rather than pinned versions deliberately: a pinned id is what rotted last
+    // time. If an alias is ever retired too, the fall-through still keeps the
+    // feature working via Groq.
+    providers.push(gemini("Google Gemini Flash", "gemini-flash-latest"));
+    providers.push(gemini("Google Gemini Pro", "gemini-pro-latest"));
   }
 
   // Provider 2: Groq (Free, no credit card)
