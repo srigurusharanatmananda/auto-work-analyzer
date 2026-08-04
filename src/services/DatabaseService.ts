@@ -283,15 +283,25 @@ export class DatabaseService implements IDatabaseService {
   }
 
   /**
-   * Check if commit is processed
+   * Keyed on the hash alone, deliberately.
+   *
+   * `processed_commits.hash` is the PRIMARY KEY, so a hash can exist at most
+   * once — but this predicate also filtered on project_path while writes used
+   * INSERT OR REPLACE. Two clones of one repository therefore flip-flopped
+   * forever, each run re-creating the other's commits with nothing thrown.
+   *
+   * One commit becomes one task, whichever clone observed it. `project_path`
+   * stays on the row as provenance and is still recorded; it is simply not part
+   * of the identity. `projectPath` is accepted and ignored so existing callers
+   * are unchanged.
    */
-  isCommitProcessed(hash: string, projectPath: string): boolean {
+  isCommitProcessed(hash: string, _projectPath?: string): boolean {
     const stmt = this.db.prepare(`
       SELECT 1 FROM processed_commits
-      WHERE hash = ? AND project_path = ?
+      WHERE hash = ?
     `);
 
-    return stmt.get(hash, projectPath) !== undefined;
+    return stmt.get(hash) !== undefined;
   }
 
   /**

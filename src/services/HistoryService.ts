@@ -47,14 +47,17 @@ export class HistoryService {
   /**
    * Check if a commit has already been processed
    */
-  isCommitProcessed(commitHash: string, projectPath: string): boolean {
+  isCommitProcessed(commitHash: string, projectPath?: string): boolean {
     return this.db.isCommitProcessed(commitHash, projectPath);
   }
 
   /**
    * Filter out already processed commits
+   *
+   * `projectPath` is accepted for call-site compatibility and ignored: dedup is
+   * keyed on the commit hash alone. See DatabaseService.isCommitProcessed.
    */
-  filterUnprocessedCommits(commits: GitCommit[], projectPath: string): GitCommit[] {
+  filterUnprocessedCommits(commits: GitCommit[], projectPath?: string): GitCommit[] {
     return commits.filter((commit) => !this.isCommitProcessed(commit.hash, projectPath));
   }
 
