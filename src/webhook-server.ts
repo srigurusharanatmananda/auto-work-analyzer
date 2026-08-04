@@ -27,6 +27,9 @@ import { DestinationStore } from "./destinations/DestinationStore.js";
 import { createDestinationsRouter } from "./routes/destinations.routes.js";
 import { createClickUpRouter } from "./routes/clickup.routes.js";
 import { DestinationResolver } from "./destinations/DestinationResolver.js";
+import { createAiClientFromEnv } from "./ai/AiClient.js";
+import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
+import { HeuristicCommitGrouper } from "./grouping/HeuristicCommitGrouper.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -143,11 +146,27 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       envConfig: config.clickup,
     });
 
+    // Built here, inside startup, rather than at module scope:
+    // createAiClientFromEnv reads process.env eagerly, so constructing it before
+    // dotenv has loaded would yield an empty provider chain and silently pin
+    // every request to the heuristic path with no error to notice.
+    const aiClient = createAiClientFromEnv();
+    const useAiGrouping = aiClient.isConfigured && process.env.AI_GROUPING !== "false";
+    const grouper = useAiGrouping
+      ? new AiCommitGrouper(aiClient)
+      : new HeuristicCommitGrouper();
+    console.log(
+      `📦 Commit grouping: ${
+        useAiGrouping ? `AI (${aiClient.providerNames.join(", ")})` : "heuristic"
+      }`
+    );
+
     app.use(
       "/api",
       createTasksRouter({
         resolver,
         defaultProjectPath: config.project.path,
+        grouper,
       })
     );
 

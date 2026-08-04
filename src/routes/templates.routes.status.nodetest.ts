@@ -14,6 +14,9 @@
  */
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import { createTemplatesRouter } from "./templates.routes.js";
@@ -78,6 +81,19 @@ let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
 
+/**
+ * Each of these files opens `process.cwd()/.database` via `authenticate` ->
+ * AuthService -> better-sqlite3, and `node --test` runs test FILES in parallel.
+ * Sharing one SQLite file made whole files die intermittently with node:test's
+ * "Unable to deserialize cloned data due to invalid or unsupported version"
+ * (a crashed child, never a failed assertion) — ~1 run in 3 on a fresh checkout,
+ * where the schema still has to be created concurrently. Own temp cwd per file,
+ * the same fix GitWorkAnalyzer.createTasks.nodetest.ts already used.
+ */
+const originalCwd = process.cwd();
+const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-nodetest-"));
+process.chdir(tmpDbDir);
+
 before(() => {
   const app = express();
   app.use(express.json());
@@ -100,6 +116,8 @@ before(() => {
 });
 
 after(() => {
+  process.chdir(originalCwd);
+  rmSync(tmpDbDir, { recursive: true, force: true });
   server.close();
 });
 

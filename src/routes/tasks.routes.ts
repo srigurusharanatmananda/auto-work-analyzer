@@ -22,7 +22,8 @@ import { renderMarkdown } from "../formatting/MarkdownRenderer.js";
 import { Template, UnknownTemplateError } from "../formatting/Template.js";
 import { TemplateError } from "../formatting/TemplateEngine.js";
 import { workItemsFromNotes } from "../sources/NotesWorkSource.js";
-import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
+import { workItemsFromAnalysis, workItemsFromCommits } from "../sources/GitWorkSource.js";
+import type { CommitGrouper } from "../grouping/CommitGrouper.js";
 import { ClickUpService } from "../services/ClickUpService.js";
 import { GitWorkAnalyzer } from "../services/GitWorkAnalyzer.js";
 import { mapStatus, StatusMapping } from "../formatting/StatusMapper.js";
@@ -50,6 +51,12 @@ export interface PreviewResponse {
   destination?: { id: string; name: string; listName?: string; teamName?: string } | null;
   statusMapping: StatusMapping[];
   warnings: string[];
+  /**
+   * Only present when this request supplied raw `commits` and therefore had to be
+   * grouped. `workItems` and `workAnalysis` bodies arrive pre-grouped, so they
+   * report nothing rather than claiming a mode they did not exercise.
+   */
+  grouping?: { mode: "ai" | "heuristic"; fallbackReason?: string };
 }
 
 /** Pure: renders items for preview. Performs no I/O. */
@@ -279,10 +286,26 @@ export interface TasksRouterDeps {
    * the real GitWorkAnalyzer.
    */
   analyzerFactory?: (projectPath: string) => LegacyAnalyzer;
+  /**
+   * Groups raw `commits` into work items. Required, not optional, so the
+   * compiler finds every construction site rather than letting one silently
+   * default to the heuristic path.
+   */
+  grouper: CommitGrouper;
 }
 
 /** The one method the legacy /api/create-tasks branch calls. */
 export type LegacyAnalyzer = Pick<GitWorkAnalyzer, "createTasksFromWork">;
+
+/**
+ * What a request body resolved to. `grouping` is carried separately from the
+ * items because only the raw-`commits` shape has a mode to report, and
+ * /api/export-markdown discards it.
+ */
+interface ResolvedItems {
+  items: WorkItem[];
+  grouping?: PreviewResponse["grouping"];
+}
 
 /**
  * The target list's statuses, or null when they cannot be read.
@@ -437,11 +460,13 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * /api/create-tasks picking `workItems` also skips the legacy side effects.
    */
   const rejectConflictingShapes = (req: any, res: any): boolean => {
-    if (!suppliedWorkItems(req.body) || !req.body.workAnalysis) return false;
+    const suppliedCommits = Array.isArray(req.body.commits) && req.body.commits.length > 0;
+    const pregrouped = Boolean(suppliedWorkItems(req.body)) || suppliedCommits;
+    if (!pregrouped || !req.body.workAnalysis) return false;
     res.status(400).json({
       success: false,
       error:
-        "Send either workItems or workAnalysis, not both — they describe the same work two different ways.",
+        "Send either workItems, commits, or workAnalysis — not more than one. They describe the same work different ways.",
     });
     return true;
   };
@@ -453,22 +478,40 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * /api/create-tasks would actually do with the same body. Returns null once it
    * has sent a 400, so callers just return.
    */
-  const itemsFromBody = async (req: any, res: any): Promise<WorkItem[] | null> => {
-    const { notes, workAnalysis, workItems } = req.body;
+  const itemsFromBody = async (req: any, res: any): Promise<ResolvedItems | null> => {
+    const { notes, workAnalysis, workItems, commits } = req.body;
     if (rejectConflictingShapes(req, res)) return null;
 
     const supplied = suppliedWorkItems(req.body);
     if (supplied) {
       if (rejectInvalidWorkItems(res, supplied)) return null;
-      return supplied as WorkItem[];
+      return { items: supplied as WorkItem[] };
     }
-    if (typeof notes === "string") return workItemsFromNotes(notes);
-    if (workAnalysis) return workItemsFromAnalysis(workAnalysis, req.body.repository);
-    if (Array.isArray(workItems)) return [];
+    // Raw commits are the only shape that still needs grouping, so it is the
+    // only one that reports a grouping mode.
+    if (Array.isArray(commits) && commits.length > 0) {
+      const result = await workItemsFromCommits(
+        commits,
+        {
+          analysisDate: req.body.analysisDate ?? new Date().toISOString().split("T")[0],
+          repository: req.body.repository,
+        },
+        deps.grouper
+      );
+      return {
+        items: result.items,
+        grouping: { mode: result.mode, fallbackReason: result.fallbackReason },
+      };
+    }
+    if (typeof notes === "string") return { items: await workItemsFromNotes(notes) };
+    if (workAnalysis) {
+      return { items: workItemsFromAnalysis(workAnalysis, req.body.repository) };
+    }
+    if (Array.isArray(workItems) || Array.isArray(commits)) return { items: [] };
 
     res.status(400).json({
       success: false,
-      error: "Provide one of: workItems, notes, or workAnalysis",
+      error: "Provide one of: workItems, commits, notes, or workAnalysis",
     });
     return null;
   };
@@ -477,11 +520,20 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   // exactly what would be created before they commit to creating it.
   router.post("/preview-tasks", authenticate, async (req, res) => {
     try {
-      const items = await itemsFromBody(req, res);
-      if (items === null) return;
+      const resolvedItems = await itemsFromBody(req, res);
+      if (resolvedItems === null) return;
       const resolved = resolveFor(req);
-      const preview = await withStatusMapping(buildPreview(items, resolved.template), resolved);
-      res.json({ success: true, data: withDestination(preview, resolved) });
+      const preview = await withStatusMapping(
+        buildPreview(resolvedItems.items, resolved.template),
+        resolved
+      );
+      // Spread the grouping on rather than threading it through buildPreview,
+      // which is pure and whose existing tests should stay untouched. Suppressed
+      // when nothing was produced: AiCommitGrouper returns early on an empty
+      // commit list and reports "heuristic" without calling the model, so a
+      // badge here would claim a mode that was never exercised.
+      const grouping = resolvedItems.items.length > 0 ? resolvedItems.grouping : undefined;
+      res.json({ success: true, data: { ...withDestination(preview, resolved), grouping } });
     } catch (error) {
       handleError(res, error, "Failed to build preview");
     }
@@ -489,8 +541,9 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
   router.post("/export-markdown", authenticate, async (req, res) => {
     try {
-      const items = await itemsFromBody(req, res);
-      if (items === null) return;
+      const resolvedItems = await itemsFromBody(req, res);
+      if (resolvedItems === null) return;
+      const items = resolvedItems.items;
       const { title, period } = req.body;
       // Markdown export writes nothing to ClickUp, so it needs the resolved
       // template but never the list or the credentials.

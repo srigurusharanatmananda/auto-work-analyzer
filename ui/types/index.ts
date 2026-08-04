@@ -160,3 +160,13 @@ export interface ClickUpNode {
   id: string;
   name: string;
 }
+
+/**
+ * Present on a preview response only when the request supplied raw `commits`
+ * and the server therefore had to group them. `fallbackReason` is raw
+ * provider/validator text — render it escaped and expect it to be multi-line.
+ */
+export interface GroupingInfo {
+  mode: 'ai' | 'heuristic';
+  fallbackReason?: string;
+}

@@ -27,6 +27,7 @@ import toast from 'react-hot-toast';
 import {
   Destination,
   DetectedWork,
+  GroupingInfo,
   RenderedTaskPreview,
   StatusMapping,
   Template,
@@ -126,6 +127,7 @@ export default function TaskPreviewModal({
   } | null>(null);
   const [statusMapping, setStatusMapping] = useState<StatusMapping[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [grouping, setGrouping] = useState<GroupingInfo | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
 
@@ -211,6 +213,11 @@ export default function TaskPreviewModal({
           setRendered(result.data.items as RenderedTaskPreview[]);
           setWarnings((result.data.warnings as string[]) ?? []);
           setStatusMapping((result.data.statusMapping as StatusMapping[]) ?? []);
+          // Absent unless the request supplied raw commits, which is the only
+          // shape that needed grouping. This modal posts a workAnalysis, so it is
+          // normally null — the badge appears only when the server actually
+          // grouped something.
+          setGrouping((result.data.grouping as GroupingInfo) ?? null);
           setTarget(result.data.destination ?? null);
           setRenderError(null);
         } else {
@@ -412,6 +419,26 @@ export default function TaskPreviewModal({
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {grouping && (
+            <div className="mt-3 rounded-lg border border-border bg-background-tertiary p-3">
+              <p className="text-xs font-semibold text-foreground-secondary">
+                {grouping.mode === 'ai'
+                  ? '🤖 Commits grouped by AI'
+                  : '🔤 Commits grouped by keyword rules'}
+              </p>
+              {grouping.fallbackReason && (
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-warning">
+                  {/* Raw provider/validator text: rendered as escaped content, and
+                      truncated because an all-providers-failed reason lists four. */}
+                  AI grouping was unavailable, so keyword rules were used:{' '}
+                  {grouping.fallbackReason.length > 300
+                    ? `${grouping.fallbackReason.slice(0, 300)}…`
+                    : grouping.fallbackReason}
+                </p>
+              )}
             </div>
           )}
 

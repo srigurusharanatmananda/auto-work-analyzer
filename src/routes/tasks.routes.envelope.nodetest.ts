@@ -16,9 +16,13 @@
  */
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import { createTasksRouter } from "./tasks.routes.js";
+import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
 import { JWTService } from "../services/JWTService.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
 import { UnknownTemplateError } from "../formatting/Template.js";
@@ -95,6 +99,19 @@ let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
 
+/**
+ * Each of these files opens `process.cwd()/.database` via `authenticate` ->
+ * AuthService -> better-sqlite3, and `node --test` runs test FILES in parallel.
+ * Sharing one SQLite file made whole files die intermittently with node:test's
+ * "Unable to deserialize cloned data due to invalid or unsupported version"
+ * (a crashed child, never a failed assertion) — ~1 run in 3 on a fresh checkout,
+ * where the schema still has to be created concurrently. Own temp cwd per file,
+ * the same fix GitWorkAnalyzer.createTasks.nodetest.ts already used.
+ */
+const originalCwd = process.cwd();
+const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-nodetest-"));
+process.chdir(tmpDbDir);
+
 before(() => {
   const app = express();
   app.use(express.json());
@@ -106,6 +123,7 @@ before(() => {
       // exercises — driving it would need a real GitWorkAnalyzer against a real
       // repo and a real ClickUp.
       defaultProjectPath: process.cwd(),
+      grouper: new HeuristicCommitGrouper(),
     })
   );
 
@@ -123,6 +141,8 @@ before(() => {
 });
 
 after(() => {
+  process.chdir(originalCwd);
+  rmSync(tmpDbDir, { recursive: true, force: true });
   server.close();
 });
 
@@ -413,6 +433,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
       createTasksRouter({
         resolver: stubResolver(),
         defaultProjectPath: "/default/project",
+        grouper: new HeuristicCommitGrouper(),
         analyzerFactory: (projectPath) => ({
           createTasksFromWork: async (analysis: any) => {
             calls.push({ projectPath, date: analysis.date });
@@ -491,6 +512,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
       createTasksRouter({
         resolver: stubResolver(),
         defaultProjectPath: "/p",
+        grouper: new HeuristicCommitGrouper(),
         analyzerFactory: () => ({
           createTasksFromWork: async (_wa: any, _cfg: any, _batch?: number, opts?: any) => {
             received = opts?.template ?? null;
@@ -553,7 +575,11 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.success, false);
-    assert.match(body.error, /both/i);
+    // Matches on the shape names rather than the phrasing: the message gained a
+    // third shape (`commits`) when slice 3 landed, and what must not regress is
+    // the refusal, not the wording.
+    assert.match(body.error, /workItems/);
+    assert.match(body.error, /workAnalysis/);
     assert.equal(calls.length, 0, "nothing may be created while the request is ambiguous");
   });
 
@@ -565,6 +591,7 @@ describe("POST /api/create-tasks — legacy {workAnalysis} branch", () => {
       createTasksRouter({
         resolver: stubResolver(),
         defaultProjectPath: "/p",
+        grouper: new HeuristicCommitGrouper(),
         analyzerFactory: () => ({
           createTasksFromWork: async () => {
             throw new Error("ClickUp unreachable");
@@ -606,7 +633,10 @@ describe("POST /api/preview-tasks", () => {
     const res = await postJson("/preview-tasks", {});
     assert.equal(res.status, 400);
     const body = await res.json();
-    assert.match(body.error, /workItems, notes, or workAnalysis/);
+    // Deliberately updated when `commits` became a fourth accepted shape: the
+    // message enumerates what the endpoint takes, so leaving `commits` out of it
+    // would send a caller looking for a shape that already works.
+    assert.equal(body.error, "Provide one of: workItems, commits, notes, or workAnalysis");
   });
 });
 
@@ -655,7 +685,11 @@ describe("destination selection", () => {
     app.use(express.json());
     app.use(
       "/api",
-      createTasksRouter({ resolver: stubResolver(destination), defaultProjectPath: "/p" })
+      createTasksRouter({
+        resolver: stubResolver(destination),
+        defaultProjectPath: "/p",
+        grouper: new HeuristicCommitGrouper(),
+      })
     );
     const server = app.listen(0);
     try {
@@ -709,6 +743,7 @@ describe("destination selection", () => {
       createTasksRouter({
         resolver: stubResolver(destination),
         defaultProjectPath: "/p",
+        grouper: new HeuristicCommitGrouper(),
         analyzerFactory: () => ({
           createTasksFromWork: async (_wa: any, cfg: any) => {
             receivedConfig = cfg;
@@ -735,5 +770,106 @@ describe("destination selection", () => {
     } finally {
       server.close();
     }
+  });
+});
+
+/**
+ * The `commits` request shape is the seam between slice 3's grouping and the
+ * route. Slice 3 built and tested the grouper; these pin the wiring, which is
+ * the part no unit test could reach — including that a pre-grouped body does NOT
+ * claim a grouping mode it never exercised.
+ */
+describe("POST /api/preview-tasks — raw commits are grouped", () => {
+  const commits = [
+    {
+      hash: "aaa1111000",
+      author: "dev",
+      date: "2026-08-01",
+      message: "fix: crash when opening the player",
+      files: ["player.ts"],
+      insertions: 4,
+      deletions: 1,
+    },
+    {
+      hash: "bbb2222000",
+      author: "dev",
+      date: "2026-08-02",
+      message: "feat: add a meditation timer",
+      files: ["timer.ts"],
+      insertions: 40,
+      deletions: 0,
+    },
+  ];
+
+  test("produces items and reports the grouping mode", async () => {
+    const res = await postJson("/preview-tasks", { commits });
+    assert.equal(res.status, 200);
+    const { data } = await res.json();
+
+    assert.ok(data.items.length > 0, "commits must produce work items");
+    assert.equal(data.grouping.mode, "heuristic");
+    assert.equal(data.grouping.fallbackReason, undefined);
+  });
+
+  test("every commit is accounted for exactly once", async () => {
+    const res = await postJson("/preview-tasks", { commits });
+    const { data } = await res.json();
+
+    // The invariant that matters most about grouping: no commit may be lost or
+    // duplicated on its way to becoming a task. Asserted unconditionally — an
+    // earlier version guarded this on `seen.length > 0` and passed vacuously
+    // because the field is `workItem`, not `item`.
+    const seen = data.items.flatMap((entry: any) =>
+      entry.workItem.provenance.commits.map((c: any) => c.hash)
+    );
+    assert.equal(seen.length, commits.length, `saw ${JSON.stringify(seen)}`);
+    assert.equal(new Set(seen).size, commits.length, "a commit was duplicated across groups");
+    for (const commit of commits) {
+      assert.ok(seen.includes(commit.hash), `commit ${commit.hash} was dropped by grouping`);
+    }
+  });
+
+  test("a pre-grouped workAnalysis body reports no grouping at all", async () => {
+    const res = await postJson("/preview-tasks", {
+      workAnalysis: {
+        date: "2026-08-02",
+        summary: "s",
+        detectedWork: [
+          {
+            name: "Already grouped",
+            type: "feature",
+            description: "d",
+            complexity: "medium",
+            estimatedHours: 2,
+            commits: [],
+            files: [],
+            tags: [],
+          },
+        ],
+      },
+    });
+    assert.equal(res.status, 200);
+    const { data } = await res.json();
+    assert.equal(data.grouping, undefined);
+  });
+
+  test("commits and workAnalysis together are refused, not silently resolved", async () => {
+    const res = await postJson("/preview-tasks", {
+      commits,
+      workAnalysis: { date: "2026-08-02", summary: "s", detectedWork: [] },
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /not more than one/);
+  });
+
+  test("an empty commits array claims no grouping mode", async () => {
+    const res = await postJson("/preview-tasks", { commits: [] });
+    assert.equal(res.status, 200);
+    const { data } = await res.json();
+    // AiCommitGrouper returns early on an empty list without calling the model,
+    // so reporting "heuristic" here would advertise a path never taken.
+    assert.equal(data.grouping, undefined);
+    assert.equal(data.items.length, 0);
   });
 });
