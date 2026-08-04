@@ -14,6 +14,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const KEY_BYTES = 32;
 const IV_BYTES = 12;
+/** GCM's full tag. Node would accept 4 or 8; a short tag is cheap to forge. */
+const AUTH_TAG_BYTES = 16;
 
 export class CredentialCipher {
   private readonly key: Buffer;
@@ -46,8 +48,19 @@ export class CredentialCipher {
       throw new Error("Stored credential is malformed and cannot be decrypted.");
     }
     const [ivPart, tagPart, dataPart] = parts as [string, string, string];
+
+    // Node accepts GCM auth tags of 4, 8, or 12–16 bytes. A shorter tag is
+    // dramatically cheaper to forge, so an attacker who could write to
+    // clickup_destinations.api_key_encrypted could otherwise substitute a
+    // 4-byte tag and brute-force it. We only ever emit 16, so anything else is
+    // either corruption or tampering.
+    const authTag = Buffer.from(tagPart, "base64");
+    if (authTag.length !== AUTH_TAG_BYTES) {
+      throw new Error("Stored credential is malformed and cannot be decrypted.");
+    }
+
     const decipher = createDecipheriv(ALGORITHM, this.key, Buffer.from(ivPart, "base64"));
-    decipher.setAuthTag(Buffer.from(tagPart, "base64"));
+    decipher.setAuthTag(authTag);
     return Buffer.concat([
       decipher.update(Buffer.from(dataPart, "base64")),
       decipher.final(),

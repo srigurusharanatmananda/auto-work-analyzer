@@ -353,6 +353,27 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   });
 
   /**
+   * Multer signals a rejected upload — over the 5 MB limit, or a non-text
+   * mimetype — by calling back with an Error. Left alone that reaches Express's
+   * global handler and answers 500 "Internal server error", blaming the server
+   * for a bad request. This turns both into a 400 naming the cause.
+   */
+  const uploadNotes = (req: any, res: any, next: any): void => {
+    upload.single("notes")(req, res, (error: any) => {
+      if (!error) return next();
+      const tooLarge = error?.code === "LIMIT_FILE_SIZE";
+      res.status(400).json({
+        success: false,
+        error: tooLarge
+          ? "That file is larger than the 5 MB limit."
+          : error instanceof Error
+            ? error.message
+            : "Upload rejected",
+      });
+    });
+  };
+
+  /**
    * Where the destination is chosen, on every path that renders or creates.
    * `destinationId` and `templateId` are both optional: omitting them resolves
    * to the user's default destination and then to the .env configuration, which
@@ -560,7 +581,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   //
   // NOTE: `upload.single` MUST run before `authenticate`. Multer is what parses
   // a multipart body, and without it `req.body` is empty for file uploads.
-  router.post("/notes", upload.single("notes"), authenticate, async (req, res) => {
+  router.post("/notes", uploadNotes, authenticate, async (req, res) => {
     try {
       // The guard is on *supplying* notes, not on the text being non-empty —
       // deliberately, because that is what the inline handler this replaced did

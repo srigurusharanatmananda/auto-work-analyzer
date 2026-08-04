@@ -70,7 +70,14 @@ function stubResolver(destination: Destination | null = null): DestinationResolv
         } as unknown as ClickUpService,
         listId: undefined as string | undefined,
         template,
-        config: clickUpConfig,
+        // Mirrors the real resolver: a resolved destination contributes its own
+        // teamId, the .env config is only the fallback. Without this the stub
+        // returned the same config either way, so asserting on it could not
+        // distinguish "the destination reached createTasksFromWork" from "it
+        // did not".
+        config: destination
+          ? { ...clickUpConfig, teamId: destination.teamId }
+          : clickUpConfig,
       };
     },
   } as unknown as DestinationResolver;
@@ -260,7 +267,33 @@ describe("POST /api/notes — multipart upload", () => {
       body: form,
     });
 
-    assert.notEqual(res.status, 200);
+    // Was `assert.notEqual(res.status, 200)`, which passed on the 500 the
+    // global error handler used to produce — so it pinned "not a success"
+    // without noticing the server was blaming itself for a client's bad upload.
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /text files/i);
+  });
+
+  test("a file over the 5 MB limit is a 400 naming the limit", async () => {
+    // The limit was carried across in the refactor but never tested, so a future
+    // edit could drop it and let an authenticated caller push arbitrary bytes
+    // into memory.
+    const form = new FormData();
+    form.append(
+      "notes",
+      new Blob(["x".repeat(6 * 1024 * 1024)], { type: "text/plain" }),
+      "big.txt"
+    );
+    const res = await fetch(`${baseUrl}/notes`, {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: form,
+    });
+
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /5 MB/);
   });
 
   // The old inline handler used a bare truthiness check, so the string "false"
@@ -766,7 +799,9 @@ describe("destination selection", () => {
       // The resolved config, not the raw .env one — this is what makes the
       // legacy branch write to the chosen list instead of CLICKUP_DEFAULT_LIST_ID.
       assert.notEqual(receivedConfig, "NOT_CALLED");
-      assert.equal(receivedConfig.teamId, "team");
+      // "t1" is the destination's teamId; "team" is the .env fallback's. The
+      // assertion now fails if the legacy branch is handed the fallback config.
+      assert.equal(receivedConfig.teamId, "t1");
     } finally {
       server.close();
     }

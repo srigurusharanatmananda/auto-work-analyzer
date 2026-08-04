@@ -12,7 +12,6 @@ const BACKEND_URL = 'http://localhost:3009';
 interface UserSettings {
   default_assignee?: string;
   backend_url?: string;
-  clickup_api_key?: string;
   clickup_team_id?: string;
   clickup_list_id?: string;
 }
@@ -23,10 +22,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [assignee, setAssignee] = useState('');
   const [backendUrl, setBackendUrl] = useState('http://localhost:3009');
-  const [clickupApiKey, setClickupApiKey] = useState('');
   const [clickupTeamId, setClickupTeamId] = useState('');
   const [clickupListId, setClickupListId] = useState('');
-  const [showClickupKey, setShowClickupKey] = useState(false);
 
   // Load settings from backend
   useEffect(() => {
@@ -55,7 +52,6 @@ export default function SettingsPage() {
         const settings: UserSettings = result.data;
         setAssignee(settings.default_assignee || '');
         setBackendUrl(settings.backend_url || 'http://localhost:3009');
-        setClickupApiKey(settings.clickup_api_key || '');
         setClickupTeamId(settings.clickup_team_id || '');
         setClickupListId(settings.clickup_list_id || '');
       }
@@ -87,7 +83,6 @@ export default function SettingsPage() {
         body: JSON.stringify({
           default_assignee: assignee,
           backend_url: backendUrl,
-          clickup_api_key: clickupApiKey,
           clickup_team_id: clickupTeamId,
           clickup_list_id: clickupListId,
         }),
@@ -229,30 +224,21 @@ export default function SettingsPage() {
             <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Integration</h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="clickupApiKey" className="block text-sm font-medium text-foreground mb-2">
-                  API Key
-                </label>
-                <div className="relative">
-                  <input
-                    id="clickupApiKey"
-                    type={showClickupKey ? 'text' : 'password'}
-                    value={clickupApiKey}
-                    onChange={(e) => setClickupApiKey(e.target.value)}
-                    placeholder="Enter your ClickUp API key"
-                    className="w-full px-4 py-3 pr-12 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowClickupKey(!showClickupKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-secondary hover:text-foreground transition-colors"
-                  >
-                    {showClickupKey ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                <p className="text-xs text-foreground-tertiary mt-1">
-                  Your ClickUp personal API token for creating tasks
+              {/*
+                The API-key field is gone: ClickUp credentials are stored
+                encrypted per destination now, and the settings endpoint refuses
+                a plaintext key rather than round-tripping one.
+              */}
+              <div className="rounded-xl border border-border bg-background-tertiary p-4">
+                <p className="text-sm text-foreground">
+                  ClickUp API keys are managed per destination and stored encrypted.
                 </p>
+                <a
+                  href="/settings/destinations"
+                  className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                >
+                  Manage destinations &rarr;
+                </a>
               </div>
 
               <div>

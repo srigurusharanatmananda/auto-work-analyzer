@@ -422,14 +422,21 @@ router.get('/settings', authenticate, async (req: Request, res: Response) => {
     const defaultSettings = {
       default_assignee: '',
       backend_url: 'http://localhost:3009',
-      clickup_api_key: '',
       clickup_team_id: '',
       clickup_list_id: '',
     };
 
+    // `clickup_api_key` is deliberately stripped. ClickUp credentials live in
+    // clickup_destinations, encrypted; this endpoint used to hand the plaintext
+    // column straight back, so PUT-then-GET was a working round trip for an
+    // unencrypted credential — beside a destinations subsystem built on the
+    // premise that a key not present on an object cannot leak through one.
+    // Migration 002 nulls the column; this stops it being read.
+    const { clickup_api_key: _omitted, ...safeSettings } = (settings ?? defaultSettings) as Record<string, unknown>;
+
     res.json({
       success: true,
-      data: settings || defaultSettings,
+      data: safeSettings,
     });
   } catch (error) {
     console.error('Get settings error:', error);
@@ -449,11 +456,22 @@ router.put('/settings', authenticate, async (req: Request, res: Response) => {
     const userId = req.user!.userId;
     const { default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id } = req.body;
 
+    // Refused rather than ignored: silently dropping it would leave a caller
+    // believing their key was saved. Storing it would reintroduce a plaintext
+    // credential that migration 002 exists to remove.
+    if (clickup_api_key) {
+      res.status(400).json({
+        success: false,
+        error:
+          'ClickUp API keys are no longer stored here. Add a destination at /settings/destinations — keys are encrypted per destination.',
+      });
+      return;
+    }
+
     const authService = new AuthService();
     authService.db.upsertUserSettings(userId, {
       default_assignee,
       backend_url,
-      clickup_api_key,
       clickup_team_id,
       clickup_list_id,
     });
@@ -461,9 +479,11 @@ router.put('/settings', authenticate, async (req: Request, res: Response) => {
     const updatedSettings = authService.db.getUserSettings(userId);
     authService.close();
 
+    const { clickup_api_key: _stripped, ...safeUpdated } = (updatedSettings ?? {}) as Record<string, unknown>;
+
     res.json({
       success: true,
-      data: updatedSettings,
+      data: safeUpdated,
       message: 'Settings updated successfully',
     });
   } catch (error) {

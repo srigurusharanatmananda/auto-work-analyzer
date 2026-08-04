@@ -219,14 +219,6 @@ describe("GET /api/templates/schema", () => {
     assert.ok(body.data.sections.commits.scalars.includes("shortHash"));
   });
 
-  test("is not shadowed by a param route — /schema is a literal, not an :id", async () => {
-    // The stub store's `get` returns null for everything, so if a future
-    // `GET /:id` were ever mounted ahead of /schema this would come back 404
-    // rather than the schema payload.
-    const res = await fetch(`${baseUrl}/schema`, { headers: { Authorization: authHeader } });
-    const body = await res.json();
-    assert.ok(body.data?.scalars, "GET /schema must resolve to the schema route");
-  });
 });
 
 describe("POST /api/templates/preview", () => {

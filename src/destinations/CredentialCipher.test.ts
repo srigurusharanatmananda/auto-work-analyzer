@@ -47,7 +47,17 @@ describe("CredentialCipher", () => {
     const cipher = new CredentialCipher(KEY);
     const payload = cipher.encrypt("secret");
     const parts = payload.split(":");
-    const tampered = [parts[0], parts[1], "00" + parts[2]!.slice(2)].join(":");
+
+    // Flip a bit in the ciphertext rather than overwriting its first two base64
+    // characters with "00": if the ciphertext already began "00" (~1 in 4096)
+    // the payload was unchanged, decrypt succeeded, and this test failed for a
+    // reason that had nothing to do with the auth tag. Mutating a byte is
+    // unconditional.
+    const data = Buffer.from(parts[2]!, "base64");
+    data[0] = data[0]! ^ 0xff;
+    const tampered = [parts[0], parts[1], data.toString("base64")].join(":");
+
+    expect(tampered).not.toBe(payload);
     expect(() => cipher.decrypt(tampered)).toThrow();
   });
 
@@ -70,5 +80,26 @@ describe("loadCipherFromEnv", () => {
     process.env.CREDENTIAL_ENCRYPTION_KEY = KEY;
     const cipher = loadCipherFromEnv();
     expect(cipher.decrypt(cipher.encrypt("x"))).toBe("x");
+  });
+});
+
+describe("auth tag length", () => {
+  /**
+   * Node's setAuthTag accepts 4-, 8- and 12–16-byte GCM tags. A 4-byte tag is
+   * enormously cheaper to forge than a 16-byte one, so an attacker able to write
+   * to the stored column could downgrade the tag and brute-force a forgery. We
+   * only ever emit 16 bytes, so anything else is corruption or tampering.
+   */
+  test("a truncated auth tag is rejected rather than accepted as a shorter tag", () => {
+    const cipher = new CredentialCipher(generateKeyBase64());
+    const [iv, tag, data] = cipher.encrypt("pk_live_example").split(":");
+
+    const shortTag = Buffer.from(tag!, "base64").subarray(0, 4).toString("base64");
+    expect(() => cipher.decrypt([iv, shortTag, data].join(":"))).toThrow();
+  });
+
+  test("a full-length tag still round-trips", () => {
+    const cipher = new CredentialCipher(generateKeyBase64());
+    expect(cipher.decrypt(cipher.encrypt("pk_live_example"))).toBe("pk_live_example");
   });
 });

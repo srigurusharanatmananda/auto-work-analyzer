@@ -111,6 +111,10 @@ export function createTemplatesRouter(store: TemplateStore): Router {
    * today, but if one is ever added, a param route declared first would swallow
    * `/schema`.
    */
+  // ORDERING CONSTRAINT: keep this above any `/:id`-shaped GET. Express
+  // matches in declaration order, so a `router.get("/:id")` declared first
+  // would swallow "/schema" and answer 404 for it. There is no such route
+  // today, which is why no test can pin this — hence the comment.
   router.get("/schema", authenticate, (_req, res) => {
     res.json({ success: true, data: WORK_ITEM_SCHEMA });
   });
