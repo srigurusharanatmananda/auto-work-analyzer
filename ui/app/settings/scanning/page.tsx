@@ -327,7 +327,18 @@ export default function ScanningSettingsPage() {
                               aria-label={`Scan ${repo.slug}`}
                             />
                           </td>
-                          <td className="py-2 pr-4 font-medium text-foreground">{repo.slug}</td>
+                          <td className="py-2 pr-4">
+                            <div className="font-medium text-foreground">{repo.slug}</div>
+                            {/*
+                              The directory, because the same repository can be
+                              cloned twice under different names. Without this the
+                              two rows are indistinguishable — and they share one
+                              binding, since bindings are keyed by slug.
+                            */}
+                            <div className="text-xs text-foreground-tertiary">
+                              {repo.path.split('/').pop()}
+                            </div>
+                          </td>
                           <td className="py-2 pr-4">
                             <select
                               value={repo.destinationId ?? ''}
