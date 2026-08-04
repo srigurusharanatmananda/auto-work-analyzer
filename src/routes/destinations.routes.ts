@@ -9,6 +9,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
+import { TemplateStore } from "../services/TemplateStore.js";
 import { ClickUpService } from "../services/ClickUpService.js";
 
 const REQUIRED_ON_CREATE = ["name", "apiKey", "teamId", "listId"] as const;
@@ -35,9 +36,32 @@ function destinationInputFrom(body: any) {
   };
 }
 
-export function createDestinationsRouter(destinations: DestinationStore): Router {
+export function createDestinationsRouter(
+  destinations: DestinationStore,
+  templates: TemplateStore
+): Router {
   const router = Router();
   const userIdOf = (req: any): string => req.user!.userId;
+
+  /**
+   * A `defaultTemplateId` must name a template the caller can actually see.
+   *
+   * TemplateStore.get is user-scoped, so a foreign id already resolves to null
+   * and quietly falls back to the built-in default — no cross-tenant read. But
+   * storing an id that can never resolve leaves the destination configured with
+   * a template it will never use and no indication why, so it is refused here
+   * instead. Returns true once it has answered.
+   */
+  const rejectUnusableTemplate = (req: any, res: any): boolean => {
+    const id = req.body?.defaultTemplateId;
+    if (!id) return false;
+    if (templates.get(id, userIdOf(req))) return false;
+    res.status(400).json({
+      success: false,
+      error: `Unknown template: ${id}`,
+    });
+    return true;
+  };
 
   const fail = (res: any, error: unknown, status = 400): void => {
     res.status(status).json({
@@ -59,6 +83,7 @@ export function createDestinationsRouter(destinations: DestinationStore): Router
       });
       return;
     }
+    if (rejectUnusableTemplate(req, res)) return;
     try {
       res.status(201).json({
         success: true,
@@ -70,6 +95,7 @@ export function createDestinationsRouter(destinations: DestinationStore): Router
   });
 
   router.put("/:id", authenticate, (req, res) => {
+    if (rejectUnusableTemplate(req, res)) return;
     try {
       res.json({
         success: true,

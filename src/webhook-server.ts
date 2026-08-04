@@ -132,7 +132,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(dbPath, cipher);
-    app.use("/api/destinations", createDestinationsRouter(destinationStore));
+    app.use("/api/destinations", createDestinationsRouter(destinationStore, templateStore));
     app.use("/api/clickup", createClickUpRouter(destinationStore));
 
     // Every path that creates a ClickUp task. Mounted at "/api" so the legacy

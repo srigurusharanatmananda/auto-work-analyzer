@@ -131,7 +131,33 @@ export class TemplateStore {
     return rows.map(toTemplate);
   }
 
-  get(id: string): Template | null {
+  /**
+   * Scoped to the caller: a built-in, or a template they own. Nothing else.
+   *
+   * This used to take no `userId`, and `DestinationResolver.resolveTemplate`
+   * passed `req.body.templateId` straight through — so any authenticated caller
+   * who knew another user's template id could render their own work with that
+   * user's templates on /api/preview-tasks, /api/create-tasks and /api/notes,
+   * and see its name in the response. `list`, `update` and `remove` were all
+   * scoped; only this one was not. The unscoped read exists because built-ins
+   * have user_id NULL and must be visible to everyone — that requirement is
+   * real, the ownership half was just missing.
+   *
+   * Returns null rather than throwing for a template belonging to someone else,
+   * which is indistinguishable from a genuine miss: no enumeration oracle.
+   */
+  get(id: string, userId: string): Template | null {
+    const row = this.db
+      .prepare(`SELECT * FROM task_templates WHERE id = ? AND (is_builtin = 1 OR user_id = ?)`)
+      .get(id, userId) as Row | undefined;
+    return row ? toTemplate(row) : null;
+  }
+
+  /**
+   * Unscoped read for this class's own post-write read-backs, where ownership
+   * was already established by the calling method. Never exposed.
+   */
+  private getUnscoped(id: string): Template | null {
     const row = this.db.prepare(`SELECT * FROM task_templates WHERE id = ?`).get(id) as
       | Row
       | undefined;
@@ -158,11 +184,11 @@ export class TemplateStore {
         now,
         now
       );
-    return this.get(id)!;
+    return this.getUnscoped(id)!;
   }
 
   update(id: string, userId: string, input: Partial<TemplateInput>): Template {
-    const existing = this.get(id);
+    const existing = this.getUnscoped(id);
     if (existing && existing.isBuiltin) {
       throw new TemplateStoreError(
         "Cannot modify a built-in template. Duplicate it first.",
@@ -198,11 +224,11 @@ export class TemplateStore {
         userId
       );
 
-    return this.get(id)!;
+    return this.getUnscoped(id)!;
   }
 
   remove(id: string, userId: string): void {
-    const existing = this.get(id);
+    const existing = this.getUnscoped(id);
     if (existing && existing.isBuiltin) {
       throw new TemplateStoreError("Cannot delete a built-in template", "builtin_immutable");
     }

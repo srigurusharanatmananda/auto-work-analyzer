@@ -119,4 +119,50 @@ describe("HeuristicCommitGrouper", () => {
     expect(new Set(covered).size).toBe(60);
     expect(covered.sort()).toEqual(commits.map((c) => c.hash).sort());
   });
+  /**
+   * The four "covers every commit exactly once" tests above all pass vacuously
+   * against the bug this pins: every one of their fixtures gives each commit a
+   * distinct name, so no two entries ever competed for a workMap slot.
+   *
+   * findSimilarWorkItem skips candidates of a different type, so a same-named
+   * pair of different types never merged — and the insert then overwrote the
+   * earlier entry on an identical key. "fix X" then "improve X" over one subject
+   * is ordinary in real history, and the commit vanished: no task, never marked
+   * processed, nothing thrown, nothing logged.
+   */
+  describe("same normalized name, different type", () => {
+    const colliding = [
+      commit({ hash: "aaa1111", message: "fix the meditation player layout" }),
+      commit({ hash: "bbb2222", message: "improve the meditation player layout" }),
+    ];
+
+    test("loses neither commit", async () => {
+      const result = await new HeuristicCommitGrouper().group(colliding, context);
+      const covered = result.items.flatMap((i) => i.provenance.commits.map((c) => c.hash));
+
+      expect(covered.sort()).toEqual(["aaa1111", "bbb2222"]);
+      expect(new Set(covered).size).toBe(2);
+    });
+
+    test("keeps them as separate items, since their types differ", async () => {
+      const result = await new HeuristicCommitGrouper().group(colliding, context);
+      expect(result.items.length).toBe(2);
+      expect(new Set(result.items.map((i) => i.type)).size).toBe(2);
+    });
+
+    test("still merges a same-name same-type pair rather than splitting it", async () => {
+      // The other half of the contract: adding the type to the key must not
+      // stop genuine duplicates merging, or the fix trades a dropped commit for
+      // a flood of one-commit tasks.
+      const result = await new HeuristicCommitGrouper().group(
+        [
+          commit({ hash: "ccc3333", message: "fix the meditation player layout" }),
+          commit({ hash: "ddd4444", message: "fix the meditation player layout" }),
+        ],
+        context
+      );
+      expect(result.items.length).toBe(1);
+      expect(result.items[0]!.provenance.commits.length).toBe(2);
+    });
+  });
 });

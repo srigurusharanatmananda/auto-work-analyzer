@@ -11,6 +11,11 @@ ui/.next
 
 # Database
 .database/
+# Any hand-made DB backup: these carry password hashes and refresh tokens,
+# and the bare `.database/` pattern did not match a sibling backup directory.
+.database.backup*/
+.database.aside/
+
 
 # Generated at runtime by the webhook server
 reports/

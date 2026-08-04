@@ -63,7 +63,7 @@ describe("TemplateStore", () => {
     assert.ok(created.id);
     assert.equal(created.isBuiltin, false);
 
-    const fetched = store.get(created.id);
+    const fetched = store.get(created.id, "user-1");
     assert.equal(fetched!.name, "Mine");
     assert.equal(fetched!.options.dueDateSource, "completedDate");
   });
@@ -114,7 +114,7 @@ describe("TemplateStore", () => {
       options: { ...DEFAULT_TEMPLATE_OPTIONS },
     });
     store.remove(created.id, "user-1");
-    assert.equal(store.get(created.id), null);
+    assert.equal(store.get(created.id, "user-1"), null);
     assert.throws(() => store.remove("builtin-standard", "user-1"), /built-in/i);
   });
 
@@ -147,5 +147,30 @@ describe("TemplateStore", () => {
       "builtin_immutable"
     );
     assert.equal(codeOf(() => store.remove("no-such-id", "user-1")), "not_found");
+  });
+
+  /**
+   * `get` was the one unscoped read on this store. Without a userId, any
+   * authenticated caller who knew another user's template uuid could render with
+   * it through /api/preview-tasks, /api/create-tasks and /api/notes. list,
+   * update and remove were all scoped; nothing covered get.
+   */
+  test("get refuses another user's template but still serves built-ins", () => {
+    const mine = store.create("user-1", {
+      name: "Mine",
+      nameTemplate: "{{title}}",
+      descriptionTemplate: "x",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS },
+    });
+
+    assert.equal(store.get(mine.id, "user-1")!.name, "Mine");
+    assert.equal(
+      store.get(mine.id, "user-2"),
+      null,
+      "user-2 must not read user-1's template"
+    );
+    // Built-ins have user_id NULL and must stay readable by everyone — the
+    // reason this method was unscoped in the first place.
+    assert.ok(store.get("builtin-standard", "user-2"));
   });
 });

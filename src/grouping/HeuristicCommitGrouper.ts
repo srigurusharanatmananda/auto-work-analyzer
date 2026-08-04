@@ -84,9 +84,22 @@ export class HeuristicCommitGrouper implements CommitGrouper {
           // Merge tags (avoid duplicates)
           existing.tags = [...new Set([...existing.tags, ...workItem.tags])];
         } else {
-          // Add as new work item
-          const key = this.normalizeWorkName(workItem.name);
-          workMap.set(key, workItem);
+          // Keyed by type AND name, not name alone.
+          //
+          // findSimilarWorkItem skips candidates whose type differs, so two
+          // commits producing the same normalized name with different types
+          // never merge — and this branch then overwrote the earlier entry on
+          // an identical key, silently discarding it and every commit it
+          // carried. "fix the player layout" (bug-fix) followed by "improve the
+          // player layout" (improvement) lost the first commit outright: absent
+          // from /api/analyze, absent from allCommits, no task created, and
+          // never marked processed. Nothing threw and nothing logged.
+          //
+          // CommitGrouper's contract requires each input commit to appear in
+          // exactly one returned item, and AiCommitGrouper falls back to this
+          // grouper on every rejection — so its guarantee was only as strong as
+          // this line.
+          workMap.set(this.workMapKey(workItem.type, workItem.name), workItem);
         }
       }
     }
@@ -110,8 +123,11 @@ export class HeuristicCommitGrouper implements CommitGrouper {
         continue;
       }
 
-      // Calculate similarity
-      const similarity = this.calculateSimilarity(normalizedNewName, key);
+      // Compare against the NAME portion of the key. The key gained a `type::`
+      // prefix to stop different-typed items colliding; comparing the whole key
+      // would measure the prefix as part of the name and skew every similarity
+      // score.
+      const similarity = this.calculateSimilarity(normalizedNewName, this.keyName(key));
 
       if (similarity >= SIMILARITY_THRESHOLD) {
         return key;
@@ -119,6 +135,21 @@ export class HeuristicCommitGrouper implements CommitGrouper {
     }
 
     return null;
+  }
+
+  /**
+   * `workMap` key: type and normalized name together, so two same-named items
+   * of different types cannot occupy the same slot. `::` is safe as a separator
+   * because normalizeWorkName strips punctuation.
+   */
+  private workMapKey(type: DetectedWork["type"], name: string): string {
+    return `${type}::${this.normalizeWorkName(name)}`;
+  }
+
+  /** The normalized-name half of a workMap key. */
+  private keyName(key: string): string {
+    const separator = key.indexOf("::");
+    return separator === -1 ? key : key.slice(separator + 2);
   }
 
   /** Similarity between two strings (0 to 1, where 1 is identical). */

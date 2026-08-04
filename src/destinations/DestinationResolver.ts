@@ -60,7 +60,7 @@ export class DestinationResolver {
       destination = this.deps.destinations.getDefault(userId);
     }
 
-    const template = this.resolveTemplate(templateId, destination);
+    const template = this.resolveTemplate(templateId, destination, userId);
 
     if (!destination) {
       return {
@@ -98,20 +98,21 @@ export class DestinationResolver {
    */
   private resolveTemplate(
     templateId: string | undefined,
-    destination: Destination | null
+    destination: Destination | null,
+    userId: string
   ): Template {
     if (templateId) {
-      const requested = this.deps.templates.get(templateId);
+      const requested = this.deps.templates.get(templateId, userId);
       if (!requested) throw new UnknownTemplateError(templateId);
       return requested;
     }
 
     const stored = destination?.defaultTemplateId
-      ? this.deps.templates.get(destination.defaultTemplateId)
+      ? this.deps.templates.get(destination.defaultTemplateId, userId)
       : null;
     if (stored) return stored;
 
-    const fallback = this.deps.templates.get(DEFAULT_TEMPLATE_ID);
+    const fallback = this.deps.templates.get(DEFAULT_TEMPLATE_ID, userId);
     if (!fallback) throw new Error("No template available — built-in templates are missing");
     return fallback;
   }

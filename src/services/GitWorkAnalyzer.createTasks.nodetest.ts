@@ -407,3 +407,73 @@ describe("createTasksFromWork repository threading", () => {
     assert.equal(individualTaskPayloads()[0].description, "Repo:");
   });
 });
+
+/**
+ * Slice 2's headline fix had no test at all: nothing in src/ mentioned
+ * `availableStatuses` or `mapRenderedStatuses` outside the two files that
+ * implement them. It matters because on the real list slice 2 browsed
+ * ([researching, developing, testing, deployed]) EVERY create failed before the
+ * fix — ClickUp answers 400 "Status not found" for a status a list does not
+ * define — and the e2e missed it because a freshly created list happens to
+ * include "complete".
+ */
+describe("createTasksFromWork status mapping", () => {
+  const analysis = () =>
+    analysisWithTwoItems(["Add the meditation timer", "Add the pranayama timer"]);
+
+  test("rewrites the status to the list's real name", async () => {
+    await analyzer.createTasksFromWork(analysis(), CONFIG, 1, {
+      template: builtin("builtin-standard"),
+      availableStatuses: ["researching", "Closed"],
+    });
+
+    // Git items carry status "complete", which is a synonym of "closed", so the
+    // payload must carry the list's own capitalisation rather than "complete" —
+    // ClickUp rejects a status the list does not define, and the list here does
+    // not define "complete".
+    for (const payload of individualTaskPayloads()) {
+      assert.equal(payload.status, "Closed");
+    }
+  });
+
+  test("omits the status entirely when the list defines nothing close", async () => {
+    await analyzer.createTasksFromWork(analysis(), CONFIG, 1, {
+      template: builtin("builtin-standard"),
+      // Neither is a synonym of "complete", and both are far outside the fuzzy
+      // threshold, so the mapper must refuse to guess.
+      availableStatuses: ["researching", "developing"],
+    });
+
+    for (const payload of individualTaskPayloads()) {
+      assert.ok(
+        !("status" in payload),
+        `status must be absent so ClickUp applies the list default, got ${JSON.stringify(payload.status)}`
+      );
+    }
+  });
+
+  test("an empty status list drops the status rather than sending it", async () => {
+    // [] means "read the list, it defines no statuses" — distinct from null
+    // ("could not read"). Conflating them made the preview promise a dropped
+    // status while the create sent it anyway.
+    await analyzer.createTasksFromWork(analysis(), CONFIG, 1, {
+      template: builtin("builtin-standard"),
+      availableStatuses: [],
+    });
+
+    for (const payload of individualTaskPayloads()) {
+      assert.ok(!("status" in payload), "an empty status list must drop the status");
+    }
+  });
+
+  test("omitting availableStatuses leaves the status untouched", async () => {
+    // The pre-slice-2 path: unknown statuses, so send what we rendered.
+    await analyzer.createTasksFromWork(analysis(), CONFIG, 1, {
+      template: builtin("builtin-standard"),
+    });
+
+    for (const payload of individualTaskPayloads()) {
+      assert.equal(payload.status, "complete");
+    }
+  });
+});

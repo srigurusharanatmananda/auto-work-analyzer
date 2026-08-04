@@ -36,14 +36,22 @@ interface CacheEntry<T> {
  * tasks.routes.ts — this path renders internally, so it cannot reuse it, but it
  * must not disagree with it either.
  *
- * A null/empty status list means "unknown", and is left alone rather than
- * treated as "the list has no statuses".
+ * `null`/`undefined` means "could not read the list's statuses" — leave every
+ * status alone, which is the pre-slice-2 behaviour and the safe degradation.
+ *
+ * An EMPTY ARRAY is different and must not be conflated with it: the caller
+ * read the list successfully and it defines no statuses, so any status we send
+ * is a guaranteed `400 {"err":"Status not found"}` from ClickUp. This used to
+ * return `rendered` unchanged for `[]` while `annotateStatusMapping` dropped
+ * the status, so the preview promised "will be left at the list default" and
+ * then every create failed — the exact failure slice 2 exists to prevent,
+ * surviving on the path slice 2 added `availableStatuses` to.
  */
 function mapRenderedStatuses(
   rendered: RenderedTask[],
   availableStatuses?: string[] | null
 ): RenderedTask[] {
-  if (!availableStatuses || availableStatuses.length === 0) return rendered;
+  if (!availableStatuses) return rendered;
 
   return rendered.map((entry) => {
     const mapping = mapStatus(entry.task.status, availableStatuses);
