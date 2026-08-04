@@ -25,6 +25,7 @@ recorded because the reasoning is the useful part.
 | Task routing | **Per-repo destination, default fallback** | A single shared list mixes projects and makes per-project reporting depend on tags. A parent-task-per-repo shape deepens the N+1 problem the codebase already has. |
 | Trigger | **In-app scheduler + Run now** | OS-level cron puts configuration outside the app where failures are invisible. Manual-only is not automatic. |
 | Attribution | **Multiple configured author identities** | One hardcoded email silently returns zero for every repo where the user's git identity differs — a wrong report that does not look wrong. |
+| Dedup key | **Commit hash alone** | Keying on `(hash, path)` is what the code appears to do but cannot, since `hash` is the primary key — the two disagree and produce endless duplicate creation across clones. |
 | Freshness | **`git fetch` per repo, failures reported** | Scanning whatever is on disk silently misses work pushed from another machine. Fetching only "recently active" repos misses exactly the repos worked on elsewhere. |
 
 ### Assumptions
@@ -66,29 +67,52 @@ see below — the commit-dedup key. A repo whose remote is absent, non-GitHub, o
 owned by another org is skipped, and the skip reason is recorded so the settings
 page can explain why a directory the user expected is not listed.
 
-### Commit dedup must move off the filesystem path
+### Commit dedup: drop the path from the key, do not add a slug
 
-`HistoryService.markCommitsAsProcessed(commits, projectPath, taskMapping)` and
-`filterUnprocessedCommits(commits, projectPath)` key on the **local path**
-(`HistoryService.ts:50-66`). Two clones of one repo at different paths would each
-create tasks for the same commits, and the key is meaningless across machines.
+**This section was rewritten after verifying the actual behaviour. The first
+draft was wrong, and the migration it proposed is impossible.**
 
-The scan passes the repo **slug** where the analyzer currently passes a path.
-`GitWorkAnalyzer` gains an optional `dedupKey` that defaults to `projectPath`, so
-every existing caller is unchanged and existing `processed_commits` rows keep
-matching. Only the scanner opts into slug keying.
+`processed_commits` declares `hash TEXT PRIMARY KEY` — the hash **alone**
+(`DatabaseService.ts:83-93`). But `isCommitProcessed` filters on hash *and*
+`project_path` (`DatabaseService.ts:288-295`), and writes use
+`INSERT OR REPLACE` (`:268`). Verified against an in-memory copy of the real
+schema:
 
-This is the one change with a data-migration flavour, and it is additive — no
-existing row is rewritten. But a repo previously scanned via the Reports tab
-(keyed by path) and then scanned by the scanner (keyed by slug) would create
-duplicate tasks once, for commits already processed.
+```
+clone one records abc123                      -> 1 row
+isProcessed(abc123, /clone/one)  = true
+isProcessed(abc123, /clone/two)  = false      <- clone two re-creates the task
+clone two records abc123                      -> still 1 row (hash is PK: REPLACED)
+isProcessed(abc123, /clone/one)  = false      <- clone one now re-creates too
+```
 
-**Decision: migrate, do not accept the overlap.** Migration `003-dedup-by-slug`
-reads each distinct `project_path` in `processed_commits`, resolves its remote to
-a slug, and inserts slug-keyed rows mirroring the existing path-keyed ones. Paths
-that no longer exist or have no org remote are left alone. Accepting a "one-time"
-duplicate would mean knowingly shipping the silent-double-creation this key change
-exists to prevent.
+Two clones of one repository therefore **flip-flop forever**, each run
+re-creating the other's commits. That is a live bug today for anyone with a
+second clone, and org-wide discovery walks a directory tree that can easily
+contain one.
+
+It also rules out the mirroring migration this spec originally proposed: with
+`hash` as the primary key, inserting a slug-keyed row *replaces* the path-keyed
+row rather than sitting beside it.
+
+**Decision: dedup on `hash` alone.** Remove `project_path` from the
+`isCommitProcessed` predicate and from `filterUnprocessedCommits`. The primary
+key already enforces one row per commit, which is the correct semantic — a given
+commit should become a ClickUp task once, no matter which clone observed it.
+`project_path` stays on the row as provenance, and `markCommitsAsProcessed` keeps
+recording it.
+
+Consequences, all of them good:
+
+- **No migration.** Existing rows keep matching, because the predicate only gets
+  weaker. Migration `003-dedup-by-slug` is deleted from this design.
+- **No `dedupKey` parameter** on `GitWorkAnalyzer`. Deleted from this design too;
+  the scanner needs no special casing.
+- The pre-existing flip-flop is fixed for the Reports tab as well, not only for
+  the scanner.
+
+The plan pins this with a test asserting that a commit recorded under one path is
+seen as processed when queried under a different path — which fails today.
 
 ### Shell-injection fix, in scope
 
