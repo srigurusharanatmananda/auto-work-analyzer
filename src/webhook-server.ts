@@ -481,7 +481,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // Use provided project path or default from config
         const targetProjectPath = projectPath || config.project.path;
 
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
+        // `grouper` is what makes AI grouping reachable from the product: this
+        // is the endpoint the UI's whole flow starts from, and before it was
+        // passed here the injected grouper had no consumer any client could hit.
+        const analyzer = new GitWorkAnalyzer(targetProjectPath, undefined, grouper);
         // Include processed commits for reports (createTasks = false)
         // Only filter processed commits when creating tasks to prevent duplicates
         const includeProcessed = !createTasks;
@@ -713,7 +716,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           commitHash,
         });
 
-        const analyzer = new GitWorkAnalyzer(config.project.path);
+        const analyzer = new GitWorkAnalyzer(config.project.path, undefined, grouper);
 
         // Determine date range based on webhook type
         let analysisDate = date;

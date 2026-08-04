@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { workItemsFromNotes } from "./NotesWorkSource.js";
-import { workItemsFromAnalysis } from "./GitWorkSource.js";
+import { detectedWorkFromItems, workItemsFromAnalysis } from "./GitWorkSource.js";
 import { WorkAnalysisResult } from "../types/index.js";
 
 describe("workItemsFromNotes", () => {
@@ -270,5 +270,90 @@ describe("workItemsFromAnalysis", () => {
         "2026-07-29",
       ]);
     });
+  });
+});
+
+describe("detectedWorkFromItems", () => {
+  /**
+   * The inverse adapter exists so an injected CommitGrouper (which speaks
+   * canonical WorkItems) can reach analyzeWork (which speaks DetectedWork).
+   * Without it AI grouping had no route into /api/analyze at all, which is why
+   * it shipped unreachable from every client.
+   */
+  test("round-trips through workItemsFromAnalysis without losing fields", () => {
+    const original = {
+      date: "2026-08-01",
+      totalCommits: 1,
+      totalFilesChanged: 1,
+      totalLinesAdded: 1,
+      totalLinesDeleted: 0,
+      summary: "s",
+      detectedWork: [
+        {
+          type: "bug-fix" as const,
+          name: "Fix the player",
+          description: "It crashed.",
+          files: ["a.ts"],
+          complexity: "high" as const,
+          estimatedHours: 4,
+          tags: ["mobile"],
+          commits: [],
+        },
+      ],
+    };
+
+    const back = detectedWorkFromItems(workItemsFromAnalysis(original));
+
+    expect(back.length).toBe(1);
+    expect(back[0]!.name).toBe("Fix the player");
+    expect(back[0]!.description).toBe("It crashed.");
+    expect(back[0]!.type).toBe("bug-fix");
+    expect(back[0]!.estimatedHours).toBe(4);
+    expect(back[0]!.files).toEqual(["a.ts"]);
+    // complexity -> priority -> complexity must be stable for all three levels.
+    expect(back[0]!.complexity).toBe("high");
+  });
+
+  test("keeps low and medium distinct on the way back", () => {
+    const item = (complexity: "low" | "medium" | "high") => ({
+      type: "feature" as const,
+      name: `n-${complexity}`,
+      description: "d",
+      files: [],
+      complexity,
+      estimatedHours: 1,
+      tags: [],
+      commits: [],
+    });
+    const analysis = {
+      date: "2026-08-01",
+      totalCommits: 0,
+      totalFilesChanged: 0,
+      totalLinesAdded: 0,
+      totalLinesDeleted: 0,
+      summary: "s",
+      detectedWork: [item("low"), item("medium"), item("high")],
+    };
+
+    const back = detectedWorkFromItems(workItemsFromAnalysis(analysis));
+    expect(back.map((w) => w.complexity)).toEqual(["low", "medium", "high"]);
+  });
+
+  test("maps a type DetectedWork cannot express onto improvement", () => {
+    // WorkItemType is wider than DetectedWork["type"] — slice 3's design added
+    // chore/release. Emitting them would produce a legacy object its consumers
+    // cannot handle.
+    const back = detectedWorkFromItems([
+      {
+        title: "t",
+        description: "d",
+        type: "chore" as never,
+        priority: "normal",
+        estimateHours: 1,
+        tags: [],
+        provenance: { commits: [], files: [], source: "git" },
+      },
+    ]);
+    expect(back[0]!.type).toBe("improvement");
   });
 });

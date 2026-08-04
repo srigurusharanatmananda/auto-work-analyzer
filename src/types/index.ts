@@ -29,6 +29,16 @@ export interface DetectedWork {
   tags: string[];
 }
 
+/**
+ * How a WorkAnalysisResult's commits were grouped. Optional: absent when the
+ * analyzer ran without an injected grouper (the CLI and the exported helpers),
+ * so every existing consumer of WorkAnalysisResult is unaffected.
+ */
+export interface GroupingInfo {
+  mode: "ai" | "heuristic";
+  fallbackReason?: string;
+}
+
 export interface WorkAnalysisResult {
   date: string;
   totalCommits: number;
@@ -37,6 +47,7 @@ export interface WorkAnalysisResult {
   totalLinesDeleted: number;
   detectedWork: DetectedWork[];
   summary: string;
+  grouping?: GroupingInfo;
 }
 
 export interface ClickUpConfig {

@@ -9,8 +9,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
-import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
+import { detectedWorkFromItems, workItemsFromAnalysis } from "../sources/GitWorkSource.js";
 import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
+import type { CommitGrouper } from "../grouping/CommitGrouper.js";
 import { renderTasks } from "../formatting/ClickUpRenderer.js";
 import type { RenderedTask } from "../formatting/ClickUpRenderer.js";
 import { mapStatus } from "../formatting/StatusMapper.js";
@@ -18,6 +19,7 @@ import type { Template } from "../formatting/Template.js";
 import {
   GitCommit,
   DetectedWork,
+  GroupingInfo,
   WorkAnalysisResult,
   ClickUpConfig,
 } from "../types/index.js";
@@ -78,13 +80,26 @@ export class GitWorkAnalyzer {
   /** Owns the keyword grouping this class used to inline. */
   private heuristics = new HeuristicCommitGrouper();
 
-  constructor(projectPath: string = process.cwd(), cacheTTL?: number) {
+  /**
+   * Optional. When supplied, `analyzeWork` groups commits with it instead of the
+   * keyword heuristic — which is what makes AI grouping reachable from
+   * /api/analyze, and therefore from the product at all. Left unset by the CLI
+   * and the exported helpers so their output is unchanged.
+   */
+  private grouper?: CommitGrouper;
+
+  constructor(
+    projectPath: string = process.cwd(),
+    cacheTTL?: number,
+    grouper?: CommitGrouper
+  ) {
     this.projectPath = projectPath;
     this.cache = new Map();
     this.historyService = new HistoryService();
     if (cacheTTL !== undefined) {
       this.cacheTTL = cacheTTL;
     }
+    this.grouper = grouper;
   }
 
   /**
@@ -163,7 +178,18 @@ export class GitWorkAnalyzer {
       );
 
       // Analyze the commits to detect work patterns
-      const detectedWork = await this.detectWorkFromCommits(commits);
+      const analysisDate = date || new Date().toISOString().split("T")[0]!;
+      const { work: detectedWork, grouping } = await this.detectWorkFromCommits(
+        commits,
+        analysisDate
+      );
+      if (grouping) {
+        console.log(
+          `📦 Grouped by ${grouping.mode}${
+            grouping.fallbackReason ? ` (AI unavailable: ${grouping.fallbackReason})` : ""
+          }`
+        );
+      }
 
       // Calculate summary statistics (optimized with Set)
       const totalFilesChanged = new Set(commits.flatMap((c) => c.files)).size;
@@ -183,6 +209,7 @@ export class GitWorkAnalyzer {
         totalLinesDeleted,
         detectedWork,
         summary,
+        grouping,
       };
 
       // Store in cache
@@ -396,8 +423,27 @@ export class GitWorkAnalyzer {
    * and fuzzy merge this class used to inline. Same logic, one copy — the AI
    * grouper's fallback path and /api/analyze cannot drift apart.
    */
-  private async detectWorkFromCommits(commits: GitCommit[]): Promise<DetectedWork[]> {
-    return this.heuristics.detectWork(commits);
+  private async detectWorkFromCommits(
+    commits: GitCommit[],
+    analysisDate: string
+  ): Promise<{ work: DetectedWork[]; grouping?: GroupingInfo }> {
+    if (!this.grouper) {
+      return { work: this.heuristics.detectWork(commits) };
+    }
+
+    // The grouper speaks canonical WorkItems; this path and everything
+    // downstream of analyzeWork speaks DetectedWork, hence the adapter. A
+    // grouper that fails internally already falls back to the heuristic and
+    // reports why, so there is nothing to catch here.
+    const result = await this.grouper.group(commits, {
+      analysisDate,
+      repository: this.projectPath.split("/").filter(Boolean).pop(),
+    });
+
+    return {
+      work: detectedWorkFromItems(result.items),
+      grouping: { mode: result.mode, fallbackReason: result.fallbackReason },
+    };
   }
 
   /**

@@ -1,7 +1,7 @@
 /** Adapts git work — a WorkAnalysisResult, or raw commits — onto canonical WorkItems. */
 
 import { toWorkItemType, WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
-import { WorkAnalysisResult } from "../types/index.js";
+import { DetectedWork, WorkAnalysisResult } from "../types/index.js";
 import type { GitCommit } from "../types/index.js";
 import type {
   CommitGrouper,
@@ -69,4 +69,56 @@ export function workItemsFromAnalysis(
       },
     };
   });
+}
+
+/**
+ * The inverse of `workItemsFromAnalysis`: canonical items back into the legacy
+ * `DetectedWork` shape.
+ *
+ * Needed because `CommitGrouper` speaks `WorkItem[]` while `analyzeWork` — and
+ * therefore `/api/analyze`, `/api/reports` and every existing consumer of a
+ * `WorkAnalysisResult` — speaks `DetectedWork[]`. Without this, an injected
+ * grouper could not reach the analyze path at all, which is exactly why AI
+ * grouping shipped unreachable from any client.
+ *
+ * `complexity` is derived back from `priority`, mirroring
+ * `priorityFromComplexity` above so a round trip is stable. "urgent" collapses
+ * to "high" because complexity has only three levels — the same asymmetry the
+ * forward direction already documents.
+ */
+export function detectedWorkFromItems(items: WorkItem[]): DetectedWork[] {
+  return items.map((item) => ({
+    type: toDetectedWorkType(item.type),
+    name: item.title,
+    description: item.description,
+    files: item.provenance.files,
+    complexity: complexityFromPriority(item.priority),
+    estimatedHours: item.estimateHours,
+    tags: item.tags,
+    commits: item.provenance.commits,
+  }));
+}
+
+function complexityFromPriority(priority: WorkItemPriority): DetectedWork["complexity"] {
+  if (priority === "urgent" || priority === "high") return "high";
+  if (priority === "low") return "low";
+  return "medium";
+}
+
+/**
+ * `WorkItemType` is the wider vocabulary — slice 3's design added `chore` and
+ * `release`, which `DetectedWork["type"]` does not have. Mapping them onto
+ * "improvement" keeps the legacy shape valid rather than emitting a type its
+ * consumers cannot handle.
+ */
+function toDetectedWorkType(type: WorkItem["type"]): DetectedWork["type"] {
+  const allowed: DetectedWork["type"][] = [
+    "feature",
+    "bug-fix",
+    "improvement",
+    "documentation",
+    "test",
+    "refactor",
+  ];
+  return (allowed as string[]).includes(type) ? (type as DetectedWork["type"]) : "improvement";
 }
