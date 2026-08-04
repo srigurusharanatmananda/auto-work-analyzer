@@ -49,4 +49,36 @@ describe("parseRemote", () => {
       "Kailasa-NGPT/Ask_App"
     );
   });
+
+  test("parses HTTPS remotes with credentials (userinfo)", () => {
+    // Credentialed HTTPS URLs must be parsed correctly, extracting only owner/name.
+    expect(parseRemote("https://x-access-token:ghp_TOKEN@github.com/kailasa-ngpt/soma_v2.git")!.slug).toBe(
+      "kailasa-ngpt/soma_v2"
+    );
+    expect(parseRemote("https://user@github.com/kailasa-ngpt/x")!.slug).toBe(
+      "kailasa-ngpt/x"
+    );
+  });
+
+  test("parses HTTPS remotes with an explicit port", () => {
+    expect(parseRemote("https://github.com:443/kailasa-ngpt/x")!.slug).toBe(
+      "kailasa-ngpt/x"
+    );
+  });
+
+  test("does not leak credentials into the returned object", () => {
+    // A critical security requirement: tokens and passwords must not survive
+    // into any field of RepoSlug. They would otherwise appear in UI messages
+    // for unparseable remotes in a later task.
+    const credentialedUrl = "https://x-access-token:ghp_TOKEN@github.com/kailasa-ngpt/soma_v2.git";
+    const result = parseRemote(credentialedUrl);
+    const stringified = JSON.stringify(result);
+    expect(stringified).not.toContain("ghp_TOKEN");
+    expect(stringified).not.toContain("x-access-token");
+  });
+
+  test("returns null for credentialed non-GitHub hosts", () => {
+    expect(parseRemote("https://user:pass@gitlab.com/owner/repo")).toBeNull();
+    expect(parseRemote("git@bitbucket.org:user:token@owner/repo.git")).toBeNull();
+  });
 });

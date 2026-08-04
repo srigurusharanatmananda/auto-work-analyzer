@@ -38,13 +38,18 @@ export function parseRemote(url: string): RepoSlug | null {
   return null;
 }
 
-function fromHostAndPath(host: string, path: string): RepoSlug | null {
-  if (!GITHUB_HOSTS.has(host.toLowerCase())) return null;
+function fromHostAndPath(authority: string, path: string): RepoSlug | null {
+  // Extract hostname from authority by stripping userinfo (before @) and port (after :).
+  // This handles: github.com, user@github.com, user:pass@github.com, github.com:443, etc.
+  const hostWithPort = authority.includes("@") ? authority.split("@")[1]! : authority;
+  const hostname = hostWithPort.split(":")[0]!;
+
+  if (!GITHUB_HOSTS.has(hostname.toLowerCase())) return null;
 
   const [owner, name] = path.split("/");
   if (!owner || !name) return null;
 
   // Case is preserved: the slug becomes a ClickUp tag, and lowercasing it would
-  // produce tags that do not match the repository.
+  // produce tags that do not match the repository. Credentials are never passed through.
   return { owner, name, slug: `${owner}/${name}` };
 }
