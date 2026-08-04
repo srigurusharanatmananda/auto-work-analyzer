@@ -5,7 +5,7 @@
  * and create appropriate ClickUp tasks based on actual development activity.
  */
 
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
@@ -25,6 +25,7 @@ import {
 } from "../types/index.js";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Simple cache interface
 interface CacheEntry<T> {
@@ -141,7 +142,7 @@ export class GitWorkAnalyzer {
   async analyzeWork(
     date?: string,
     endDate?: string,
-    author?: string,
+    author?: string | string[],
     branch?: string,
     includeProcessed: boolean = false
   ): Promise<WorkAnalysisResult> {
@@ -296,12 +297,14 @@ export class GitWorkAnalyzer {
   private async getCommitsForDateRange(
     startDate?: string,
     endDate?: string,
-    author?: string,
+    author?: string | string[],
     branch?: string
   ): Promise<GitCommit[]> {
     try {
+      const authors = author === undefined ? [] : Array.isArray(author) ? author : [author];
+
       // Create cache key for commits
-      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${author || ""}:${branch || ""}`;
+      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${authors.join(",")}:${branch || ""}`;
 
       // Check cache
       const cached = this.getCached<GitCommit[]>(cacheKey);
@@ -309,29 +312,34 @@ export class GitWorkAnalyzer {
         return cached;
       }
 
-      // Optimize git command - add --no-merges to skip merge commits at git level
-      let gitCommand =
-        'git log --pretty=format:"%H|%an|%ad|%s" --date=short --numstat --no-merges';
+      // argv, not a shell string. The previous form interpolated `author` and
+      // `branch` into a command run through a shell, so a value containing shell
+      // metacharacters would have been executed. Nothing exploited it — author
+      // came from an authenticated user and branch from a dropdown — but the
+      // org-wide scanner feeds this a configurable identity list across
+      // discovered directories, and argv removes the question entirely.
+      //
+      // Note the --pretty value has no surrounding quotes here: those were shell
+      // quoting. Passing them in an argv element would make git treat them as
+      // literal characters in the format string.
+      const args = [
+        "log",
+        "--pretty=format:%H|%an|%ad|%s",
+        "--date=short",
+        "--numstat",
+        "--no-merges",
+      ];
 
-      // Add date filtering
-      if (startDate) {
-        gitCommand += ` --since="${startDate} 00:00:00"`;
-      }
-      if (endDate) {
-        gitCommand += ` --until="${endDate} 23:59:59"`;
-      }
+      if (startDate) args.push(`--since=${startDate} 00:00:00`);
+      if (endDate) args.push(`--until=${endDate} 23:59:59`);
+      // Repeated --author flags OR together in git, and each matches the author
+      // name as well as the email — which is what makes multi-identity
+      // attribution work for someone who commits as a work address in one repo
+      // and a personal one in another.
+      for (const identity of authors) args.push(`--author=${identity}`);
+      if (branch) args.push(branch);
 
-      // Add author filtering
-      if (author) {
-        gitCommand += ` --author="${author}"`;
-      }
-
-      // Add branch filtering (add branch name at the end)
-      if (branch) {
-        gitCommand += ` ${branch}`;
-      }
-
-      const { stdout } = await execAsync(gitCommand, {
+      const { stdout } = await execFileAsync("git", args, {
         cwd: this.projectPath,
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large repos
       });
@@ -478,6 +486,20 @@ export class GitWorkAnalyzer {
   /**
    * Create ClickUp tasks from detected work (with batch processing)
    */
+  /**
+   * Records the analysed commits as processed, without creating tasks.
+   *
+   * The org-wide scanner creates tasks itself through the canonical renderer, so
+   * it cannot use createTasksFromWork — but the dedup bookkeeping that method
+   * performs is exactly what makes a second run of the same day a no-op. This
+   * exposes only that half.
+   */
+  markScanCommitsProcessed(analysis: WorkAnalysisResult, projectPath: string): void {
+    const commits = analysis.detectedWork.flatMap((work) => work.commits);
+    if (commits.length === 0) return;
+    this.historyService.markCommitsAsProcessed(commits, projectPath);
+  }
+
   async createTasksFromWork(
     workAnalysis: WorkAnalysisResult,
     config: ClickUpConfig,
