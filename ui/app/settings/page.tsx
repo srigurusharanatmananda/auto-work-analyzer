@@ -328,6 +328,23 @@ export default function SettingsPage() {
             </p>
           </Card>
 
+          {/* Daily repo scan */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Daily Repo Scan</h2>
+            <Link
+              href="/settings/scanning"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Configure the daily repo scan
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Scan every local clone in your organisation and create the day&apos;s tasks
+            </p>
+          </Card>
+
           {/* API Information */}
           <Card className="p-6">
             <h2 className="mb-4 text-xl font-semibold text-foreground">API Information</h2>

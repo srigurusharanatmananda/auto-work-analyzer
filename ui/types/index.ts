@@ -170,3 +170,48 @@ export interface GroupingInfo {
   mode: 'ai' | 'heuristic';
   fallbackReason?: string;
 }
+
+// ---- Org-wide daily scan ----
+
+export interface ScanSettings {
+  root: string;
+  owner: string;
+  authorIdentities: string[];
+  /** "HH:MM", local time. */
+  scanTime: string;
+  enabled: boolean;
+  lastCompletedDate?: string;
+}
+
+export interface ScannedRepo {
+  slug: string;
+  path: string;
+  enabled: boolean;
+  destinationId: string | null;
+  templateId: string | null;
+  lastScannedDate: string | null;
+}
+
+export interface SkippedDir {
+  path: string;
+  reason: string;
+}
+
+export interface RepoScanResult {
+  slug: string;
+  commits: number;
+  workItems: number;
+  tasksCreated: number;
+  destination: string | null;
+  fetchFailed?: string;
+  error?: string;
+  wouldCreate?: Array<{ name: string; description: string }>;
+}
+
+export interface ScanRunSummary {
+  date: string;
+  dryRun: boolean;
+  repos: RepoScanResult[];
+  skipped: SkippedDir[];
+  totalTasksCreated: number;
+}
