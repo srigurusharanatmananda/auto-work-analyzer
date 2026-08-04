@@ -2138,7 +2138,7 @@ describe("scanning routes", () => {
     assert.match(runCalls[0]!.date, /^\d{4}-\d{2}-\d{2}$/);
   });
 
-  test("GET /last-run is null before any run, and returns the last real one after", async () => {
+  test("GET /last-run returns the most recent real run", async () => {
     // Same user across this file, so assert on a date this test owns rather
     // than on emptiness.
     await authed("/run", { method: "POST", body: JSON.stringify({ date: "2026-07-31" }) });
