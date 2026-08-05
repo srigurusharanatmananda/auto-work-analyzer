@@ -22,6 +22,7 @@ import { JWTService } from "./services/JWTService.js";
 import { anyRole } from "./middleware/policy.js";
 import { checkWebhookSecret } from "./middleware/webhookSecret.js";
 import { createUsersRouter } from "./routes/users.routes.js";
+import { createReportsRouter } from "./routes/reports.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
@@ -134,6 +135,11 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // Admin user management. The only genuinely admin-only surface in the API:
     // every other resource is per-user and bounded by ownership.
     app.use("/api/users", createUsersRouter());
+
+    // Saved analyses. Extracted from inline handlers here so they could be
+    // tested at all — this module self-starts a server on import. Every read is
+    // scoped to the calling user; see the header of reports.routes.ts.
+    app.use("/api", createReportsRouter());
 
     // One database for everything (same .database/auto-work-analyzer.db as
     // AuthDatabaseService), so a destination and the user it belongs to cannot
@@ -302,32 +308,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to browse directory",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // History endpoint
-    app.get("/api/history", authenticate, anyRole, (req, res) => {
-      try {
-        const historyService = new HistoryService();
-        const limit = parseInt(req.query.limit as string) || 50;
-
-        const history = historyService.getAnalysisHistory(limit);
-        const stats = historyService.getStatistics();
-
-        res.json({
-          success: true,
-          data: {
-            history,
-            statistics: stats,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to get history:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve history",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }
@@ -575,7 +555,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
         // Save analysis to database
         const historyService = new HistoryService();
-        const analysisId = historyService.addAnalysisHistory({
+        const analysisId = historyService.addAnalysisHistory(req.user!.userId, {
           projectPath: targetProjectPath,
           date: workAnalysis.date,
           endDate: endDate || undefined,
@@ -622,136 +602,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         res.status(500).json({
           success: false,
           error: "Failed to analyze work",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Save report endpoint
-    app.post("/api/save-report", authenticate, anyRole, async (req, res) => {
-      try {
-        const { projectPath, date, endDate, author, branch, workItems, summary } = req.body;
-
-        if (!projectPath || !date || !workItems || !Array.isArray(workItems)) {
-          res.status(400).json({
-            success: false,
-            error: "Missing required fields: projectPath, date, and workItems array are required",
-          });
-          return;
-        }
-
-        const historyService = new HistoryService();
-
-        // Save analysis to database
-        const analysisId = historyService.addAnalysisHistory({
-          projectPath,
-          date,
-          endDate,
-          author,
-          totalCommits: summary?.totalCommits || 0,
-          totalWorkItems: workItems.length,
-          tasksCreated: 0, // Reports don't create tasks
-          summary: summary?.summary || `Report generated for ${date}`,
-        });
-
-        // Save all work items
-        let savedCount = 0;
-        for (const item of workItems) {
-          if (item.name && item.type) {
-            historyService.saveWorkItem(
-              analysisId,
-              item.name,
-              item.type,
-              item.description || '',
-              item.estimatedHours || 0,
-              item.complexity || 'medium',
-              item.filesCount || 0,
-              item.commitsCount || 0
-            );
-            savedCount++;
-          }
-        }
-
-        historyService.close();
-
-        res.json({
-          success: true,
-          data: {
-            analysisId,
-            savedWorkItems: savedCount,
-          },
-          message: `Report saved successfully with ${savedCount} work items`,
-        });
-      } catch (error) {
-        console.error("Failed to save report:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to save report",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Get saved reports endpoint
-    app.get("/api/reports", authenticate, anyRole, async (req, res) => {
-      try {
-        const limit = parseInt(req.query.limit as string) || 10;
-        const offset = parseInt(req.query.offset as string) || 0;
-
-        const { DatabaseService } = await import('./services/DatabaseService.js');
-        const db = new DatabaseService();
-
-        const reports = db.getPaginatedReports(limit, offset);
-        const stats = db.getStatistics();
-
-        db.close();
-
-        res.json({
-          success: true,
-          data: {
-            reports,
-            hasMore: reports.length === limit, // If we got a full page, there might be more
-            total: stats.totalAnalyses,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to get reports:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve reports",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Get single report by ID
-    app.get("/api/reports/:id", authenticate, anyRole, async (req, res) => {
-      try {
-        const { id } = req.params;
-
-        const { DatabaseService } = await import('./services/DatabaseService.js');
-        const db = new DatabaseService();
-
-        const report = db.getCompleteReport(id);
-        db.close();
-
-        if (!report) {
-          res.status(404).json({
-            success: false,
-            error: "Report not found",
-          });
-          return;
-        }
-
-        res.json({
-          success: true,
-          data: report,
-        });
-      } catch (error) {
-        console.error("Failed to get report:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve report",
           details: error instanceof Error ? error.message : "Unknown error",
         });
       }

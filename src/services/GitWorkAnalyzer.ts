@@ -518,6 +518,12 @@ export class GitWorkAnalyzer {
        * Omit, or pass null, to send statuses unmapped as before.
        */
       availableStatuses?: string[] | null;
+      /**
+       * Who the analysis row this writes belongs to. Undefined for callers with
+       * no session — the CLI and the secret-authenticated webhook — whose rows
+       * are unowned and visible only to admins.
+       */
+      userId?: string;
     }
   ): Promise<any[]> {
     try {
@@ -646,7 +652,7 @@ export class GitWorkAnalyzer {
       }
 
       // Save analysis to history first and get the analysis ID
-      const analysisId = this.historyService.addAnalysisHistory({
+      const analysisId = this.historyService.addAnalysisHistory(opts?.userId, {
         projectPath: this.projectPath,
         date: workAnalysis.date,
         endDate: undefined,

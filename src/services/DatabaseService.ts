@@ -11,13 +11,14 @@ import fs from 'fs';
 import {
   IDatabaseService,
   AnalysisRecord,
+  AnalysisScope,
   WorkItemRecord,
   ProcessedCommitRecord,
   DatabaseStatistics,
 } from './IDatabaseService.js';
 
 // Re-export types for backwards compatibility
-export type { AnalysisRecord, WorkItemRecord, ProcessedCommitRecord };
+export type { AnalysisRecord, AnalysisScope, WorkItemRecord, ProcessedCommitRecord };
 
 export class DatabaseService implements IDatabaseService {
   private db: Database.Database;
@@ -47,6 +48,7 @@ export class DatabaseService implements IDatabaseService {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS analysis_history (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         timestamp TEXT NOT NULL,
         project_path TEXT NOT NULL,
         date TEXT NOT NULL,
@@ -92,14 +94,97 @@ export class DatabaseService implements IDatabaseService {
       )
     `);
 
+    // `CREATE TABLE IF NOT EXISTS` above is a no-op against a database that
+    // already has the table, so a new column never appears in an existing
+    // install — silently, with no error to notice. Every entry point
+    // constructs a DatabaseService (server, CLI, scripts, tests), so the
+    // add-if-missing lives here rather than in the migration runner, which only
+    // the server invokes.
+    this.addColumnIfMissing('analysis_history', 'user_id', 'TEXT');
+
     // Create indexes for better performance
     this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_analysis_user ON analysis_history(user_id);
       CREATE INDEX IF NOT EXISTS idx_analysis_timestamp ON analysis_history(timestamp);
       CREATE INDEX IF NOT EXISTS idx_analysis_project ON analysis_history(project_path);
       CREATE INDEX IF NOT EXISTS idx_work_items_analysis ON work_items(analysis_id);
       CREATE INDEX IF NOT EXISTS idx_processed_commits_project ON processed_commits(project_path);
       CREATE INDEX IF NOT EXISTS idx_processed_commits_date ON processed_commits(date);
     `);
+  }
+
+  /**
+   * Adds a column to an existing table if it is not already there.
+   *
+   * Idempotent by inspection rather than by catching the duplicate-column
+   * error, so a genuine failure still surfaces instead of being swallowed.
+   */
+  private addColumnIfMissing(table: string, column: string, type: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+      name: string;
+    }>;
+
+    if (columns.some((c) => c.name === column)) return;
+
+    this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+
+  /**
+   * Builds the ownership predicate for a scoped read.
+   *
+   * Returns SQL fragment and parameters together so the two cannot drift apart
+   * — the failure mode of hand-assembling them is a query that silently matches
+   * everything.
+   */
+  private scopeClause(scope: AnalysisScope): { sql: string; params: string[] } {
+    return scope.includeUnowned
+      ? { sql: '(user_id = ? OR user_id IS NULL)', params: [scope.userId] }
+      : { sql: 'user_id = ?', params: [scope.userId] };
+  }
+
+  /**
+   * Every analysis, ignoring ownership.
+   *
+   * Only for the two callers that legitimately have no user: `exportToJSON`
+   * (a whole-database dump) and the one-off JSON→SQLite migration script's
+   * summary. Named unmistakably so it cannot be reached for by mistake from a
+   * request handler — those must go through a scope.
+   */
+  allAnalysesUnscoped(limit: number = 10000, offset: number = 0): AnalysisRecord[] {
+    return this.db
+      .prepare(
+        `SELECT
+           id, user_id as userId, timestamp, project_path as projectPath, date,
+           end_date as endDate, author, branch, total_commits as totalCommits,
+           total_work_items as totalWorkItems, tasks_created as tasksCreated, summary
+         FROM analysis_history
+         ORDER BY timestamp DESC
+         LIMIT ? OFFSET ?`
+      )
+      .all(limit, offset) as AnalysisRecord[];
+  }
+
+  /** Whole-database totals, ignoring ownership. See allAnalysesUnscoped. */
+  globalStatisticsUnscoped(): DatabaseStatistics {
+    const result = this.db
+      .prepare(
+        `SELECT
+           COUNT(*) as totalAnalyses,
+           SUM(total_commits) as totalCommitsProcessed,
+           SUM(tasks_created) as totalTasksCreated,
+           SUM(total_work_items) as totalWorkItems,
+           COUNT(DISTINCT project_path) as projectsAnalyzed
+         FROM analysis_history`
+      )
+      .get() as any;
+
+    return {
+      totalAnalyses: result.totalAnalyses || 0,
+      totalCommitsProcessed: result.totalCommitsProcessed || 0,
+      totalTasksCreated: result.totalTasksCreated || 0,
+      totalWorkItems: result.totalWorkItems || 0,
+      projectsAnalyzed: result.projectsAnalyzed || 0,
+    };
   }
 
   // ==================== Analysis History Methods ====================
@@ -110,13 +195,17 @@ export class DatabaseService implements IDatabaseService {
   saveAnalysis(analysis: AnalysisRecord): void {
     const stmt = this.db.prepare(`
       INSERT INTO analysis_history (
-        id, timestamp, project_path, date, end_date, author, branch,
+        id, user_id, timestamp, project_path, date, end_date, author, branch,
         total_commits, total_work_items, tasks_created, summary
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       analysis.id,
+      // Null rather than a placeholder: an unowned row is a real state (the
+      // secret-authenticated webhook has no user), and null is what the read
+      // predicate's `includeUnowned` branch looks for.
+      analysis.userId || null,
       analysis.timestamp,
       analysis.projectPath,
       analysis.date,
@@ -133,40 +222,54 @@ export class DatabaseService implements IDatabaseService {
   /**
    * Get analysis history with pagination
    */
-  getAnalysisHistory(limit: number = 50, offset: number = 0): AnalysisRecord[] {
+  getAnalysisHistory(
+    scope: AnalysisScope,
+    limit: number = 50,
+    offset: number = 0
+  ): AnalysisRecord[] {
+    const { sql, params } = this.scopeClause(scope);
+
     const stmt = this.db.prepare(`
       SELECT
-        id, timestamp, project_path as projectPath, date, end_date as endDate,
-        author, branch, total_commits as totalCommits,
+        id, user_id as userId, timestamp, project_path as projectPath, date,
+        end_date as endDate, author, branch, total_commits as totalCommits,
         total_work_items as totalWorkItems, tasks_created as tasksCreated, summary
       FROM analysis_history
+      WHERE ${sql}
       ORDER BY timestamp DESC
       LIMIT ? OFFSET ?
     `);
 
-    return stmt.all(limit, offset) as AnalysisRecord[];
+    return stmt.all(...params, limit, offset) as AnalysisRecord[];
   }
 
   /**
    * Get analysis by ID
    */
-  getAnalysisById(id: string): AnalysisRecord | undefined {
+  getAnalysisById(id: string, scope: AnalysisScope): AnalysisRecord | undefined {
+    const { sql, params } = this.scopeClause(scope);
+
+    // The scope is part of the WHERE clause rather than a check on the result,
+    // so someone else's id reads as "no such report" — the same 404 an id that
+    // does not exist produces. A 403 here would confirm the id is real.
     const stmt = this.db.prepare(`
       SELECT
-        id, timestamp, project_path as projectPath, date, end_date as endDate,
-        author, branch, total_commits as totalCommits,
+        id, user_id as userId, timestamp, project_path as projectPath, date,
+        end_date as endDate, author, branch, total_commits as totalCommits,
         total_work_items as totalWorkItems, tasks_created as tasksCreated, summary
       FROM analysis_history
-      WHERE id = ?
+      WHERE id = ? AND ${sql}
     `);
 
-    return stmt.get(id) as AnalysisRecord | undefined;
+    return stmt.get(id, ...params) as AnalysisRecord | undefined;
   }
 
   /**
    * Get analysis statistics
    */
-  getStatistics(): DatabaseStatistics {
+  getStatistics(scope: AnalysisScope): DatabaseStatistics {
+    const { sql, params } = this.scopeClause(scope);
+
     const result = this.db.prepare(`
       SELECT
         COUNT(*) as totalAnalyses,
@@ -175,7 +278,8 @@ export class DatabaseService implements IDatabaseService {
         SUM(total_work_items) as totalWorkItems,
         COUNT(DISTINCT project_path) as projectsAnalyzed
       FROM analysis_history
-    `).get() as any;
+      WHERE ${sql}
+    `).get(...params) as any;
 
     return {
       totalAnalyses: result.totalAnalyses || 0,
@@ -232,8 +336,11 @@ export class DatabaseService implements IDatabaseService {
   /**
    * Get complete report (analysis + work items) by ID
    */
-  getCompleteReport(analysisId: string): { analysis: AnalysisRecord; workItems: WorkItemRecord[] } | null {
-    const analysis = this.getAnalysisById(analysisId);
+  getCompleteReport(
+    analysisId: string,
+    scope: AnalysisScope
+  ): { analysis: AnalysisRecord; workItems: WorkItemRecord[] } | null {
+    const analysis = this.getAnalysisById(analysisId, scope);
     if (!analysis) {
       return null;
     }
@@ -246,11 +353,13 @@ export class DatabaseService implements IDatabaseService {
   /**
    * Get paginated reports with work items
    */
-  getPaginatedReports(limit: number = 10, offset: number = 0): Array<{
+  getPaginatedReports(scope: AnalysisScope, limit: number = 10, offset: number = 0): Array<{
     analysis: AnalysisRecord;
     workItems: WorkItemRecord[];
   }> {
-    const analyses = this.getAnalysisHistory(limit, offset);
+    // Work items are reached only through an analysis the scope already
+    // admitted, so they need no predicate of their own.
+    const analyses = this.getAnalysisHistory(scope, limit, offset);
 
     return analyses.map(analysis => ({
       analysis,
@@ -361,7 +470,7 @@ export class DatabaseService implements IDatabaseService {
     analyses: AnalysisRecord[];
     processedCommits: ProcessedCommitRecord[];
   } {
-    const analyses = this.getAnalysisHistory(10000); // Get all
+    const analyses = this.allAnalysesUnscoped(10000); // Get all
     const processedCommits = this.getProcessedCommits(undefined, 10000); // Get all
 
     return {

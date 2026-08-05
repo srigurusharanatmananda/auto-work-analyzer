@@ -5,8 +5,29 @@
  * between different database systems (SQLite, PostgreSQL, MySQL, etc.)
  */
 
+/**
+ * Who a stored analysis belongs to, and what they may see.
+ *
+ * `analysis_history` had no owner column at all, so `GET /api/reports` and
+ * `GET /api/history` returned every user's rows to any authenticated caller.
+ * Reads now take a scope rather than defaulting to "everything", so a caller
+ * has to say whose data it wants and cannot omit the question by accident.
+ *
+ * `includeUnowned` covers rows written before the column existed and rows
+ * written by the machine paths that have no user — the webhook, driven by a
+ * shared secret rather than a session. Attributing those to an arbitrary
+ * account would be a guess; hiding them from everyone would lose them. They
+ * are shown to admins.
+ */
+export interface AnalysisScope {
+  userId: string;
+  includeUnowned?: boolean;
+}
+
 export interface AnalysisRecord {
   id: string;
+  /** Undefined for legacy rows and for machine-driven runs with no session. */
+  userId?: string;
   timestamp: string;
   projectPath: string;
   date: string;
@@ -67,17 +88,17 @@ export interface IDatabaseService {
   /**
    * Get analysis history with pagination
    */
-  getAnalysisHistory(limit?: number, offset?: number): AnalysisRecord[];
+  getAnalysisHistory(scope: AnalysisScope, limit?: number, offset?: number): AnalysisRecord[];
 
   /**
    * Get analysis by ID
    */
-  getAnalysisById(id: string): AnalysisRecord | undefined;
+  getAnalysisById(id: string, scope: AnalysisScope): AnalysisRecord | undefined;
 
   /**
    * Get analysis statistics
    */
-  getStatistics(): DatabaseStatistics;
+  getStatistics(scope: AnalysisScope): DatabaseStatistics;
 
   // ==================== Work Items Methods ====================
 

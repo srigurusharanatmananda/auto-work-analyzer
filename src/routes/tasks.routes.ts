@@ -734,6 +734,10 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
           template: resolved.template,
           repository: req.body.repository,
           availableStatuses: await listStatusesOrNull(resolved),
+          // This path writes an analysis_history row (see the comment above),
+          // and a row with no owner is visible only to admins. The caller is
+          // authenticated here, so it has one.
+          userId: req.user!.userId,
         }
       );
       const created = createdTasks.filter((task) => task !== null);

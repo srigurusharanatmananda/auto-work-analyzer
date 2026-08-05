@@ -109,7 +109,9 @@ async function migrateToDatabase() {
   }
 
   // Show statistics
-  const stats = db.getStatistics();
+  // A one-off CLI migration of pre-multi-user data: there is no caller to
+  // scope to, and the point is the whole-database total.
+  const stats = db.globalStatisticsUnscoped();
 
   // Create backup of JSON files
   if (hasAnalysisHistory || hasProcessedCommits) {

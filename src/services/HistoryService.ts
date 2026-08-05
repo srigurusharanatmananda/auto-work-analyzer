@@ -4,7 +4,7 @@
  */
 
 import { GitCommit } from '../types/index.js';
-import { DatabaseService, AnalysisRecord, ProcessedCommitRecord } from './DatabaseService.js';
+import { DatabaseService, AnalysisRecord, AnalysisScope, ProcessedCommitRecord } from './DatabaseService.js';
 
 interface ProcessedCommit {
   hash: string;
@@ -19,6 +19,8 @@ interface ProcessedCommit {
 
 interface AnalysisHistory {
   id: string;
+  /** Undefined for legacy rows and machine-driven runs with no session. */
+  userId?: string;
   timestamp: string;
   projectPath: string;
   date: string;
@@ -88,16 +90,27 @@ export class HistoryService {
   /**
    * Get analysis history
    */
-  getAnalysisHistory(limit: number = 50): AnalysisHistory[] {
-    return this.db.getAnalysisHistory(limit);
+  getAnalysisHistory(scope: AnalysisScope, limit: number = 50): AnalysisHistory[] {
+    return this.db.getAnalysisHistory(scope, limit);
   }
 
   /**
    * Add analysis to history
    */
-  addAnalysisHistory(analysis: Omit<AnalysisHistory, 'id' | 'timestamp'>): string {
+  /**
+   * `userId` is a required first parameter rather than a field on the object,
+   * and undefined has to be written out. Ownership is the thing that keeps one
+   * user's reports out of another's hands, and a caller that forgets an
+   * optional field writes an unowned row with nothing to notice; a caller that
+   * has to type `undefined` has decided.
+   */
+  addAnalysisHistory(
+    userId: string | undefined,
+    analysis: Omit<AnalysisHistory, 'id' | 'timestamp' | 'userId'>
+  ): string {
     const newEntry: AnalysisRecord = {
       id: `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
       timestamp: new Date().toISOString(),
       ...analysis,
     };
@@ -154,8 +167,8 @@ export class HistoryService {
   /**
    * Get statistics
    */
-  getStatistics() {
-    const dbStats = this.db.getStatistics();
+  getStatistics(scope: AnalysisScope) {
+    const dbStats = this.db.getStatistics(scope);
     const processedCommits = this.db.getProcessedCommits(undefined, 10000);
 
     const projectStats = new Map<string, number>();
