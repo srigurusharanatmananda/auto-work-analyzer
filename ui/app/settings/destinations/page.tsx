@@ -92,6 +92,8 @@ export default function DestinationsSettingsPage() {
   const [lists, setLists] = useState<ClickUpNode[]>([]);
   const [browsing, setBrowsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pastedUrl, setPastedUrl] = useState('');
+  const [resolvingUrl, setResolvingUrl] = useState(false);
 
   const authHeaders = useCallback(
     (json = false): HeadersInit => ({
@@ -193,6 +195,76 @@ export default function DestinationsSettingsPage() {
     }
     setTeams(found);
     setStep('team');
+  };
+
+  /**
+   * The shortcut past the four-level picker: paste the URL of the list you are
+   * already looking at and let the server resolve the ids.
+   *
+   * Still needs the key — a ClickUp URL carries no credential — so it runs from
+   * the same step, reusing whatever key is in the field above.
+   */
+  const useUrl = async () => {
+    if (!draft.apiKey.trim()) {
+      toast.error('Paste a ClickUp API key first — a URL does not contain one');
+      return;
+    }
+    if (!pastedUrl.trim()) {
+      toast.error('Paste a ClickUp list URL');
+      return;
+    }
+
+    setResolvingUrl(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/destinations/resolve-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ url: pastedUrl.trim(), apiKey: draft.apiKey }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        // The server's message is the product here: which workspace the key
+        // cannot see, or that a space was pasted instead of a list.
+        toast.error(body.error ?? 'Could not read that URL', { duration: 8000 });
+        return;
+      }
+
+      const resolved = body.data;
+      setDraft((current) => ({
+        ...current,
+        teamId: resolved.teamId ?? '',
+        teamName: resolved.teamName ?? '',
+        spaceId: resolved.spaceId ?? '',
+        spaceName: resolved.spaceName ?? '',
+        folderId: resolved.folderId ?? '',
+        folderName: resolved.folderName ?? '',
+        listId: resolved.listId,
+        listName: resolved.listName,
+        name: current.name || resolved.listName,
+      }));
+
+      // Straight to naming: the URL answered everything the picker would ask.
+      setStep('name');
+      toast.success(`Found "${resolved.listName}"`);
+
+      const statuses: string[] = resolved.statuses ?? [];
+      if (statuses.length > 0 && !statuses.includes('complete')) {
+        // Said up front rather than discovered later: git-derived tasks carry
+        // "complete", and ClickUp rejects a status a list does not define.
+        toast(
+          `This list has no "complete" status (${statuses.join(', ')}). Completed work will be mapped to the closest match, or left at the list default.`,
+          { duration: 9000 }
+        );
+      }
+    } catch {
+      toast.error('Could not reach the server');
+    } finally {
+      setResolvingUrl(false);
+    }
   };
 
   const chooseTeam = async (team: ClickUpNode) => {
@@ -508,6 +580,33 @@ export default function DestinationsSettingsPage() {
                   Stored encrypted. It is never shown again after saving.
                 </p>
               </div>
+
+              {step === 'key' && (
+                <div className="rounded-xl border border-border bg-background-tertiary p-4">
+                  <label
+                    htmlFor="clickupUrl"
+                    className="mb-1 block text-xs font-semibold text-foreground-secondary"
+                  >
+                    Or paste a ClickUp list URL
+                  </label>
+                  <p className="mb-2 text-xs text-foreground-tertiary">
+                    Open the list you want in ClickUp and copy the address. This fills in the
+                    workspace, space, folder and list for you, so you do not have to know which
+                    is which. A URL contains no API key, so the field above is still required.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="clickupUrl"
+                      placeholder="https://app.clickup.com/9012168250/v/li/901216016381"
+                      value={pastedUrl}
+                      onChange={(e) => setPastedUrl(e.target.value)}
+                    />
+                    <Button onClick={useUrl} variant="secondary" disabled={resolvingUrl}>
+                      {resolvingUrl ? <LoadingSpinner size="sm" /> : 'Use URL'}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {step !== 'key' && (
                 <div className="text-xs text-foreground-secondary">

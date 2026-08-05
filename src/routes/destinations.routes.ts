@@ -10,6 +10,7 @@ import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
 import { TemplateStore } from "../services/TemplateStore.js";
+import { resolveClickUpUrl } from "../destinations/resolveClickUpUrl.js";
 import { ClickUpService } from "../services/ClickUpService.js";
 
 const REQUIRED_ON_CREATE = ["name", "apiKey", "teamId", "listId"] as const;
@@ -103,6 +104,43 @@ export function createDestinationsRouter(
       });
     } catch (error) {
       fail(res, error, 404);
+    }
+  });
+
+  /**
+   * Resolves a pasted ClickUp URL into the ids a destination needs, so the user
+   * can skip the four-level picker. Takes a raw `apiKey` in the body — the URL
+   * carries no credential, and nothing is stored until the user saves the
+   * destination, so this deliberately does not persist anything.
+   *
+   * Declared before `/:id/...` routes only for readability; "resolve-url" cannot
+   * collide with them because those all carry a second path segment.
+   */
+  router.post("/resolve-url", authenticate, async (req, res) => {
+    const { url, apiKey } = req.body ?? {};
+    if (!url || typeof url !== "string") {
+      return fail(res, new Error("A ClickUp URL is required"));
+    }
+    if (!apiKey || typeof apiKey !== "string") {
+      return fail(
+        res,
+        new Error("An API key is required — a ClickUp URL does not contain one")
+      );
+    }
+
+    try {
+      const resolved = await resolveClickUpUrl(
+        url,
+        // teamId is a placeholder: every call resolveClickUpUrl makes addresses a
+        // resource directly or asks /team, so the configured team is never used.
+        new ClickUpService({ apiKey, teamId: "", projectName: "url-resolve" })
+      );
+      res.json({ success: true, data: resolved });
+    } catch (error) {
+      // The message is the product here — it tells the user which workspace they
+      // are missing, or that they pasted a space instead of a list. Never echo the
+      // key, in the message or anywhere else.
+      fail(res, error);
     }
   });
 
