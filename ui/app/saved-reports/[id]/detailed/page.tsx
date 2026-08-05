@@ -71,7 +71,7 @@ export default function ReportDetailedPage() {
       <div className="bg-background-secondary rounded-lg border border-border p-6">
         <h4 className="text-sm font-semibold text-foreground mb-3">How to use</h4>
         <ul className="text-sm text-foreground-secondary space-y-2">
-          <li>• Click "Copy Detailed" to copy the complete report to your clipboard</li>
+          <li>• Click &quot;Copy Detailed&quot; to copy the complete report to your clipboard</li>
           <li>• This format includes both titles and detailed descriptions</li>
           <li>• Perfect for detailed status reports and documentation</li>
           <li>• Share with stakeholders who need comprehensive information</li>

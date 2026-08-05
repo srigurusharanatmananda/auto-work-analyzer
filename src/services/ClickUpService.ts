@@ -399,6 +399,161 @@ export class ClickUpService {
   }
 
   /**
+   * Every workspace this API key can see.
+   *
+   * Unlike `getTeamInfo`, this needs no configured `teamId` — it is what the
+   * destination picker calls first, when the user has pasted a key and nothing
+   * else is known yet.
+   */
+  async getTeams(): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/team`, "teams");
+    return (result as any[]).map((team) => ({ id: team.id, name: team.name }));
+  }
+
+  /**
+   * Folders within a space.
+   */
+  async getFolders(spaceId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/space/${spaceId}/folder`, "folders");
+    return (result as any[]).map((folder) => ({ id: folder.id, name: folder.name }));
+  }
+
+  /**
+   * Lists inside a folder.
+   */
+  async getListsInFolder(folderId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/folder/${folderId}/list`, "lists");
+    return (result as any[]).map((list) => ({ id: list.id, name: list.name }));
+  }
+
+  /**
+   * Lists that sit directly under a space with no folder. ClickUp allows these
+   * and a folder-only picker would hide them.
+   */
+  async getFolderlessLists(spaceId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/space/${spaceId}/list`, "lists");
+    return (result as any[]).map((list) => ({ id: list.id, name: list.name }));
+  }
+
+  /**
+   * The status names configured on a list, in board order.
+   *
+   * This is what makes the status mapping possible: statuses are per-list in
+   * ClickUp, so the only way to know whether "complete" exists is to ask.
+   */
+  async getListStatuses(listId: string): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/list/${listId}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch list: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const list = await response.json();
+    const statuses = (list.statuses || []) as Array<{ status: string; orderindex?: number }>;
+    return statuses
+      .slice()
+      .sort((a, b) => (a.orderindex ?? 0) - (b.orderindex ?? 0))
+      .map((entry) => entry.status);
+  }
+
+  /**
+   * A list's own details: its name, and the space and folder it sits under.
+   *
+   * This is what lets a pasted URL fill in a whole destination. A list URL names
+   * only the list, but a destination wants the space and folder too — and
+   * `GET /list/{id}` already returns both, so there is no need to walk the
+   * hierarchy downwards guessing.
+   */
+  async getListDetails(listId: string): Promise<{
+    id: string;
+    name: string;
+    spaceId?: string;
+    spaceName?: string;
+    folderId?: string;
+    folderName?: string;
+    statuses: string[];
+  }> {
+    const list = (await this.getSingle(`/list/${listId}`)) as any;
+    // ClickUp reports a synthetic "hidden" folder for folderless lists; treating
+    // that as a real folder would store a folder id the picker cannot show.
+    const folder = list.folder && list.folder.hidden !== true ? list.folder : undefined;
+    return {
+      id: list.id,
+      name: list.name,
+      spaceId: list.space?.id,
+      spaceName: list.space?.name,
+      folderId: folder?.id,
+      folderName: folder?.name,
+      statuses: ((list.statuses || []) as Array<{ status: string }>).map((s) => s.status),
+    };
+  }
+
+  /**
+   * A view's parent. Needed because a ClickUp list-view URL carries a view id of
+   * the form `{type}-{parentId}-{n}`, and only type 6 means list — slicing the
+   * middle segment out of the URL would silently produce a wrong id for any other
+   * view type. Asking is authoritative.
+   */
+  async getViewParent(viewId: string): Promise<{ id: string; type: number }> {
+    const result = (await this.getSingle(`/view/${viewId}`)) as any;
+    const parent = result.view?.parent;
+    if (!parent?.id) {
+      throw new Error("That view has no parent list — pick a list view, or paste a list URL.");
+    }
+    return { id: String(parent.id), type: Number(parent.type) };
+  }
+
+  /** GET helper for single-object endpoints. */
+  private async getSingle(path: string): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `ClickUp GET ${path} failed: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    return response.json();
+  }
+
+  /** Shared GET helper for collection endpoints. */
+  private async getJson(path: string, collectionKey: string): Promise<unknown[]> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch ${collectionKey}: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    return result[collectionKey] || [];
+  }
+
+  /**
    * Map priority string to ClickUp priority number
    */
   private mapPriority(priority?: string): number {

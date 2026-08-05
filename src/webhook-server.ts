@@ -7,38 +7,36 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import multer from "multer";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 import { GitWorkAnalyzer } from "./services/GitWorkAnalyzer.js";
-import { NotesProcessor } from "./services/NotesProcessor.js";
 import { HistoryService } from "./services/HistoryService.js";
 import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
-import { ClickUpService } from "./services/ClickUpService.js";
 import authRoutes from "./routes/auth.routes.js";
+import { createTemplatesRouter } from "./routes/templates.routes.js";
+import { createTasksRouter } from "./routes/tasks.routes.js";
+import { TemplateStore } from "./services/TemplateStore.js";
+import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
+import { runMigrations } from "./migrations/runMigrations.js";
+import { DestinationStore } from "./destinations/DestinationStore.js";
+import { createDestinationsRouter } from "./routes/destinations.routes.js";
+import { createClickUpRouter } from "./routes/clickup.routes.js";
+import { ScanRegistry } from "./scanning/ScanRegistry.js";
+import { DailyScanner } from "./scanning/DailyScanner.js";
+import { ScanScheduler } from "./scanning/ScanScheduler.js";
+import { createScanningRouter } from "./routes/scanning.routes.js";
+import { AuthDatabaseService } from "./services/AuthDatabaseService.js";
+import { DestinationResolver } from "./destinations/DestinationResolver.js";
+import { createAiClientFromEnv } from "./ai/AiClient.js";
+import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
+import { HeuristicCommitGrouper } from "./grouping/HeuristicCommitGrouper.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept text files only
-    if (file.mimetype === 'text/plain' || file.originalname.endsWith('.txt') || file.originalname.endsWith('.md')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only text files (.txt, .md) are allowed'));
-    }
-  },
-});
 
 const app = express();
 
@@ -111,6 +109,116 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     // Authentication routes (public)
     app.use("/api/auth", authRoutes);
+
+    // One database for everything (same .database/auto-work-analyzer.db as
+    // AuthDatabaseService), so a destination and the user it belongs to cannot
+    // end up in different files.
+    const databaseDir = path.join(process.cwd(), ".database");
+    if (!fs.existsSync(databaseDir)) {
+      fs.mkdirSync(databaseDir, { recursive: true });
+    }
+    const dbPath = path.join(databaseDir, "auto-work-analyzer.db");
+
+    // Startup guard, deliberately before any store is opened: stored ClickUp
+    // keys are encrypted, and there is no "store them in the clear" fallback.
+    // An unconfigured install must fail here with instructions rather than
+    // discover the problem at the first write.
+    let cipher: CredentialCipher;
+    try {
+      cipher = loadCipherFromEnv();
+    } catch (error) {
+      console.error(`❌ ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
+    runMigrations(dbPath, cipher);
+
+    const templateStore = new TemplateStore(dbPath);
+    app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Named ClickUp destinations, and the hierarchy browsing the picker needs.
+    const destinationStore = new DestinationStore(dbPath, cipher);
+    app.use("/api/destinations", createDestinationsRouter(destinationStore, templateStore));
+    app.use("/api/clickup", createClickUpRouter(destinationStore));
+
+    // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
+    // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
+    // router owns their formatting now instead of each handler doing its own.
+    // `envConfig` is the last fallback in the resolution chain, so a request
+    // that names no destination still creates tasks exactly where it used to.
+    const resolver = new DestinationResolver({
+      destinations: destinationStore,
+      templates: templateStore,
+      envConfig: config.clickup,
+    });
+
+    // Built here, inside startup, rather than at module scope:
+    // createAiClientFromEnv reads process.env eagerly, so constructing it before
+    // dotenv has loaded would yield an empty provider chain and silently pin
+    // every request to the heuristic path with no error to notice.
+    const aiClient = createAiClientFromEnv();
+    const useAiGrouping = aiClient.isConfigured && process.env.AI_GROUPING !== "false";
+    const grouper = useAiGrouping
+      ? new AiCommitGrouper(aiClient)
+      : new HeuristicCommitGrouper();
+    console.log(
+      `📦 Commit grouping: ${
+        useAiGrouping ? `AI (${aiClient.providerNames.join(", ")})` : "heuristic"
+      }`
+    );
+
+    app.use(
+      "/api",
+      createTasksRouter({
+        resolver,
+        defaultProjectPath: config.project.path,
+        grouper,
+      })
+    );
+
+    // Org-wide daily scan. Shares the one database, so a repo binding and the
+    // destination it names cannot land in different files.
+    const scanRegistry = new ScanRegistry(dbPath);
+    const dailyScanner = new DailyScanner({
+      registry: scanRegistry,
+      resolver,
+      grouper,
+    });
+
+    app.use(
+      "/api/scanning",
+      createScanningRouter({ registry: scanRegistry, scanner: dailyScanner })
+    );
+
+    const scanScheduler = new ScanScheduler({
+      registry: scanRegistry,
+      userIds: () => {
+        // AuthDatabaseService directly rather than AuthService, whose `db` is
+        // private — reaching through it is what produces the three pre-existing
+        // TS2341 errors in auth.routes.ts, and this must not add a fourth.
+        //
+        // getAllUsers is paginated with a default limit of 50; pass an explicit
+        // large limit so a growing user table does not silently stop being
+        // scheduled past the first page.
+        const users = new AuthDatabaseService(dbPath);
+        try {
+          return users.getAllUsers(10_000, 0).map((user) => user.id);
+        } finally {
+          users.close();
+        }
+      },
+      runScan: async (userId, date) => {
+        const summary = await dailyScanner.run(userId, { date });
+        // Persist the summary BEFORE marking the day complete: it is the only
+        // record a scheduled run leaves, and it must survive even if the settings
+        // write fails.
+        scanRegistry.saveRun(userId, summary);
+        scanRegistry.saveSettings(userId, { lastCompletedDate: date });
+        console.log(
+          `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`
+        );
+      },
+    });
+    scanScheduler.start();
 
     // Browse directories endpoint
     app.get("/api/browse", authenticate, (req, res) => {
@@ -423,7 +531,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // Use provided project path or default from config
         const targetProjectPath = projectPath || config.project.path;
 
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
+        // `grouper` is what makes AI grouping reachable from the product: this
+        // is the endpoint the UI's whole flow starts from, and before it was
+        // passed here the injected grouper had no consumer any client could hit.
+        const analyzer = new GitWorkAnalyzer(targetProjectPath, undefined, grouper);
         // Include processed commits for reports (createTasks = false)
         // Only filter processed commits when creating tasks to prevent duplicates
         const includeProcessed = !createTasks;
@@ -621,186 +732,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
-    // Notes upload endpoint
-    app.post("/api/notes", upload.single("notes"), authenticate, async (req, res) => {
-      try {
-        let notesText = '';
-
-        // Get notes from file upload or request body
-        if (req.file) {
-          notesText = req.file.buffer.toString('utf-8');
-        } else if (req.body.notes) {
-          notesText = req.body.notes;
-        } else {
-          res.status(400).json({
-            success: false,
-            error: "No notes provided. Send 'notes' in body or upload a text file.",
-          });
-          return;
-        }
-
-        const { createTasks = false } = req.body;
-
-        // Process the notes
-        const notesProcessor = new NotesProcessor();
-        const processedNotes = await notesProcessor.processNotes(notesText);
-
-        let createdTasks = [];
-
-        // Create tasks if requested
-        if (createTasks && processedNotes.tasks.length > 0) {
-          const clickUpService = new ClickUpService(config.clickup);
-
-          // Process tasks in batches for better performance
-          const BATCH_SIZE = 5; // Process 5 tasks at a time
-          const taskBatches = [];
-
-          for (let i = 0; i < processedNotes.tasks.length; i += BATCH_SIZE) {
-            taskBatches.push(processedNotes.tasks.slice(i, i + BATCH_SIZE));
-          }
-
-          // Track failed tasks
-          const failedTasks: Array<{ name: string; error: string }> = [];
-
-          for (const batch of taskBatches) {
-            const batchPromises = batch.map(async (task) => {
-              try {
-                // Use priority if available (from structured notes), otherwise map from complexity
-                const priority = (task as any).priority ||
-                  (task.complexity === "high" ? "high" :
-                   task.complexity === "medium" ? "normal" : "low");
-
-                // Use status if available (from structured/unstructured notes)
-                const status = (task as any).status;
-
-                // Use completion date if available
-                const completedDate = (task as any).completedDate;
-
-                // Add completion date to description if present
-                let description = task.description;
-                if (completedDate) {
-                  description += `\n\n**Completed Date:** ${completedDate}`;
-                }
-
-                const createdTask = await clickUpService.createTask({
-                  name: task.name,
-                  description: description,
-                  priority: priority,
-                  status: status,
-                  tags: task.tags,
-                  timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
-                });
-
-                return createdTask;
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error(`Failed to create task: ${task.name}`, errorMessage);
-                failedTasks.push({ name: task.name, error: errorMessage });
-                return null; // Return null for failed tasks
-              }
-            });
-
-            // Wait for all tasks in this batch to complete
-            const batchResults = await Promise.all(batchPromises);
-
-            // Filter out null results and add successful tasks
-            batchResults.forEach(result => {
-              if (result !== null) {
-                createdTasks.push(result);
-              }
-            });
-          }
-
-          // Log summary if there were failures
-          if (failedTasks.length > 0) {
-            console.warn(`Failed to create ${failedTasks.length} out of ${processedNotes.tasks.length} tasks`);
-          }
-        }
-
-        res.json({
-          success: true,
-          data: {
-            processedNotes: {
-              totalTasks: processedNotes.tasks.length,
-              tasks: processedNotes.tasks.map(task => ({
-                name: task.name,
-                type: task.type,
-                complexity: task.complexity,
-                estimatedHours: task.estimatedHours,
-                tags: task.tags,
-              })),
-            },
-            createdTasks: createdTasks
-              .filter(task => task !== null && task !== undefined)
-              .map(task => ({
-                id: task.id,
-                name: task.name,
-                url: task.url,
-              })),
-            summary: {
-              tasksExtracted: processedNotes.tasks.length,
-              tasksCreated: createdTasks.length,
-              tasksFailed: createTasks ? processedNotes.tasks.length - createdTasks.length : 0,
-            },
-          },
-          message: `Processed ${processedNotes.tasks.length} tasks from notes${
-            createTasks ? `, created ${createdTasks.length} ClickUp tasks` : ""
-          }${
-            createTasks && processedNotes.tasks.length > createdTasks.length
-              ? ` (${processedNotes.tasks.length - createdTasks.length} failed)`
-              : ""
-          }`,
-        });
-      } catch (error) {
-        console.error("Notes processing failed:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to process notes",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Create tasks endpoint
-    app.post("/api/create-tasks", authenticate, async (req, res) => {
-      try {
-        const { workAnalysis, projectPath } = req.body;
-
-        if (!workAnalysis) {
-          res.status(400).json({
-            success: false,
-            error: "workAnalysis is required",
-          });
-          return;
-        }
-
-        const targetProjectPath = projectPath || config.project.path;
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
-
-        // Create tasks from the work analysis
-        const createdTasks = await analyzer.createTasksFromWork(
-          workAnalysis,
-          config.clickup
-        );
-
-        res.json({
-          success: true,
-          data: {
-            tasksCreated: createdTasks.filter((t) => t !== null).length,
-            tasks: createdTasks.filter((t) => t !== null),
-          },
-          message: `Created ${createdTasks.filter((t) => t !== null).length} tasks in ClickUp`,
-        });
-      } catch (error) {
-        console.error("Failed to create tasks:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to create tasks",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
     // Webhook endpoint
     app.post("/api/webhook", async (req, res) => {
       try {
@@ -835,7 +766,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           commitHash,
         });
 
-        const analyzer = new GitWorkAnalyzer(config.project.path);
+        const analyzer = new GitWorkAnalyzer(config.project.path, undefined, grouper);
 
         // Determine date range based on webhook type
         let analysisDate = date;

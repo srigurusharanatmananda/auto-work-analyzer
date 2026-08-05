@@ -170,7 +170,7 @@ export default function ReportManagerSummaryPage() {
               <div className="text-4xl mb-3">📊</div>
               <p className="text-foreground mb-2">No manager summary generated yet</p>
               <p className="text-sm text-foreground-secondary">
-                Click "Generate Summary" to create a business-friendly version of this report
+                Click &quot;Generate Summary&quot; to create a business-friendly version of this report
               </p>
             </div>
           )}

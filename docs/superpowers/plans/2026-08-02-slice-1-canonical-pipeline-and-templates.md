@@ -17,6 +17,15 @@
 - **No new runtime dependencies.** The template engine is hand-written; `fastest-levenshtein`, `better-sqlite3`, `express`, and `uuid` are already present.
 - **No network in tests.** ClickUp is mocked at `fetch`.
 - **`strictNullChecks` is `false`** in `tsconfig.json`. Do not enable it; do not write code that depends on it.
+- **`bun run build` does not exit 0 on this repo, and did not before this work started.** Five errors pre-exist on the base commit:
+  ```
+  src/routes/auth.routes.ts(418,34): error TS2341: Property 'db' is private and only accessible within class 'AuthService'.
+  src/routes/auth.routes.ts(453,17): error TS2341: Property 'db' is private ...
+  src/routes/auth.routes.ts(461,41): error TS2341: Property 'db' is private ...
+  src/webhook-server.ts(648,13): error TS7034: Variable 'createdTasks' implicitly has type 'any[]' ...
+  src/webhook-server.ts(733,27): error TS7005: Variable 'createdTasks' implicitly has an 'any[]' type.
+  ```
+  The bar for every task is **no NEW errors**, not a clean build. Do not fix the `auth.routes.ts` three — that is unrelated refactoring. The two `webhook-server.ts` ones disappear in Task 8, which deletes the code containing them.
 - **Backward compatibility:** `POST /api/notes` and `POST /api/create-tasks` MUST keep working with their current request shapes when the new optional fields are omitted.
 - **Commit trailer:** every commit message in this plan ends with:
   ```
@@ -56,7 +65,7 @@
 
 **Interfaces:**
 - Consumes: `GitCommit` from `src/types/index.js` (already exists).
-- Produces: `WorkItem`, `WorkItemType`, `WorkItemPriority`, `WorkItemProvenance`, `TYPE_LABELS`, `TYPE_EMOJI`, `PRIORITY_LABELS`, and the test helper `makeWorkItem(overrides?: Partial<WorkItem>): WorkItem`. Every later task uses these.
+- Produces: `WorkItem`, `WorkItemType`, `WorkItemPriority`, `WorkItemProvenance`, `TYPE_LABELS`, `TYPE_EMOJI`, `PRIORITY_LABELS`, `ALL_WORK_ITEM_TYPES`, `ALL_WORK_ITEM_PRIORITIES`, `toWorkItemType(value)`, `toWorkItemPriority(value)`, and the test helper `makeWorkItem(overrides?: Partial<WorkItem>): WorkItem`. Every later task uses these — the narrowing helpers exist here so Task 6's two sources share one copy instead of each declaring their own type list.
 
 - [ ] **Step 1: Add the test script**
 
@@ -218,6 +227,29 @@ export const PRIORITY_LABELS: Record<WorkItemPriority, string> = {
   low: "LOW",
 };
 
+export const ALL_WORK_ITEM_TYPES: WorkItemType[] = Object.keys(TYPE_LABELS) as WorkItemType[];
+
+export const ALL_WORK_ITEM_PRIORITIES: WorkItemPriority[] = [
+  "urgent",
+  "high",
+  "normal",
+  "low",
+];
+
+/** Narrows an untrusted string to a WorkItemType, falling back to `improvement`. */
+export function toWorkItemType(value: string | undefined): WorkItemType {
+  return ALL_WORK_ITEM_TYPES.includes(value as WorkItemType)
+    ? (value as WorkItemType)
+    : "improvement";
+}
+
+/** Narrows an untrusted string to a WorkItemPriority, falling back to `normal`. */
+export function toWorkItemPriority(value: string | undefined): WorkItemPriority {
+  return ALL_WORK_ITEM_PRIORITIES.includes(value as WorkItemPriority)
+    ? (value as WorkItemPriority)
+    : "normal";
+}
+
 /** Test fixture builder. Not used by production code. */
 export function makeWorkItem(overrides: Partial<WorkItem> = {}): WorkItem {
   return {
@@ -241,7 +273,7 @@ Expected: PASS, 4 tests.
 - [ ] **Step 6: Verify the build still compiles**
 
 Run: `bun run build`
-Expected: exit 0, no errors. (Confirms the `*.test.ts` exclusion works.)
+Expected: **exactly the 5 pre-existing errors listed in Global Constraints and no others** — in particular nothing referencing `src/domain/`. This confirms the `*.test.ts` exclusion works and that the new files typecheck.
 
 - [ ] **Step 7: Commit**
 
@@ -1416,9 +1448,12 @@ describe("round trip through NotesProcessor", () => {
     }
   });
 
-  test("multi-line descriptions survive the round trip", async () => {
+  test("the parsed description has no leftover label prefix", async () => {
     const md = renderMarkdown([items[0]!], standard);
     const parsed = await new NotesProcessor().processNotes(md);
+    // Exact equality, not toContain: a "Description: " prefix leaking into the
+    // parsed body is precisely the bug this guards.
+    expect(parsed.tasks[0]!.description.startsWith("Description:")).toBe(false);
     expect(parsed.tasks[0]!.description).toContain("Users were locked out after an update.");
     expect(parsed.tasks[0]!.description).toContain("Keychain entry was invalidated.");
   });
@@ -1474,7 +1509,13 @@ function renderBlock(
   lines.push(`Estimate: ${item.estimateHours} hours`);
   if (item.status) lines.push(`Status: ${item.status}`);
   if (item.completedDate) lines.push(`Completed: ${item.completedDate}`);
-  lines.push(`Description: ${description}`);
+
+  // The label goes on its own line and the body follows. NotesProcessor only
+  // recognises a bare "Description:" as a label; "Description: text" falls
+  // through to its catch-all branch and the literal prefix ends up inside the
+  // parsed description.
+  lines.push("Description:");
+  lines.push(description);
 
   return lines.join("\n");
 }
@@ -1665,7 +1706,7 @@ Expected: FAIL — `Cannot find module './NotesWorkSource.js'`
  * so this adapter reads them defensively.
  */
 
-import { WorkItem, WorkItemPriority, WorkItemType } from "../domain/WorkItem.js";
+import { toWorkItemPriority, toWorkItemType, WorkItem } from "../domain/WorkItem.js";
 import { NotesProcessor } from "../services/NotesProcessor.js";
 
 interface LooseDetectedWork {
@@ -1681,29 +1722,6 @@ interface LooseDetectedWork {
   completedDate?: string;
 }
 
-const KNOWN_TYPES: WorkItemType[] = [
-  "feature",
-  "bug-fix",
-  "improvement",
-  "refactor",
-  "documentation",
-  "test",
-  "chore",
-  "release",
-];
-
-const KNOWN_PRIORITIES: WorkItemPriority[] = ["urgent", "high", "normal", "low"];
-
-function toType(value: string | undefined): WorkItemType {
-  return KNOWN_TYPES.includes(value as WorkItemType) ? (value as WorkItemType) : "improvement";
-}
-
-function toPriority(value: string | undefined): WorkItemPriority {
-  return KNOWN_PRIORITIES.includes(value as WorkItemPriority)
-    ? (value as WorkItemPriority)
-    : "normal";
-}
-
 export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]> {
   const processed = await new NotesProcessor().processNotes(notesText);
 
@@ -1712,8 +1730,8 @@ export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]>
     return {
       title: loose.name,
       description: loose.description ?? "",
-      type: toType(loose.type),
-      priority: toPriority(loose.priority),
+      type: toWorkItemType(loose.type),
+      priority: toWorkItemPriority(loose.priority),
       status: loose.status,
       estimateHours: loose.estimatedHours ?? 3,
       completedDate: loose.completedDate,
@@ -1733,23 +1751,8 @@ export async function workItemsFromNotes(notesText: string): Promise<WorkItem[]>
 ```ts
 /** Adapts a WorkAnalysisResult onto canonical WorkItems. */
 
-import { WorkItem, WorkItemPriority, WorkItemType } from "../domain/WorkItem.js";
+import { toWorkItemType, WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { WorkAnalysisResult } from "../types/index.js";
-
-const KNOWN_TYPES: WorkItemType[] = [
-  "feature",
-  "bug-fix",
-  "improvement",
-  "refactor",
-  "documentation",
-  "test",
-  "chore",
-  "release",
-];
-
-function toType(value: string): WorkItemType {
-  return KNOWN_TYPES.includes(value as WorkItemType) ? (value as WorkItemType) : "improvement";
-}
 
 function priorityFromComplexity(complexity: string): WorkItemPriority {
   if (complexity === "high") return "high";
@@ -1769,7 +1772,7 @@ export function workItemsFromAnalysis(
     return {
       title: work.name,
       description: work.description,
-      type: toType(work.type),
+      type: toWorkItemType(work.type),
       priority: loose.priority ?? priorityFromComplexity(work.complexity),
       status: loose.status,
       estimateHours: work.estimatedHours,
@@ -2487,7 +2490,6 @@ export async function createRenderedTasks(
 export interface TasksRouterDeps {
   templateStore: TemplateStore;
   clickUpConfig: ClickUpConfig;
-  projectPath: string;
 }
 
 export function createTasksRouter(deps: TasksRouterDeps): Router {
@@ -2670,7 +2672,6 @@ app.use(
   createTasksRouter({
     templateStore,
     clickUpConfig: config.clickup,
-    projectPath: config.project.path,
   })
 );
 ```
@@ -2681,8 +2682,8 @@ Mounting at `/api` preserves the existing paths `/api/notes` and `/api/create-ta
 
 - [ ] **Step 6: Verify the build and full suite**
 
-Run: `bun run build && bun test`
-Expected: build exit 0; all tests pass.
+Run: `bun test && bun run build`
+Expected: all tests pass. The build should now report **3** errors, not 5 — deleting the inline `/api/notes` handler removes the two `createdTasks` implicit-any errors in `webhook-server.ts`. The 3 remaining `auth.routes.ts` private-`db` errors are pre-existing and out of scope.
 
 - [ ] **Step 7: Verify backward compatibility by hand**
 
@@ -2768,10 +2769,118 @@ git commit -m "feat(ui): template management page and preview template picker
 
 ---
 
+### Task 9A: Make the legacy `{workAnalysis}` path honor the template
+
+> **Added after Task 8, and it EXECUTES BEFORE Task 9.** Task 8's ruling (c) kept
+> `{workAnalysis}` bodies on `GitWorkAnalyzer.createTasksFromWork` so the history
+> side effects — `addAnalysisHistory`, `saveWorkItem`, and above all
+> `markCommitsAsProcessed` — keep running. Correct, but it leaves the plan's own
+> Definition of Done ("All three creation paths produce identically-formatted
+> tasks for the same input") unmet, and it makes Task 9's picker a silent no-op:
+> `ui/components/ReportsTab.tsx:464` (`handleCreateTasksFromModal`) sends
+> `{workAnalysis}`, so a user could pick a template, watch the preview change,
+> confirm, and receive old-format tasks. Task 9 cannot be built honestly until
+> this lands.
+
+**Files:**
+- Modify: `src/services/GitWorkAnalyzer.ts` (`createTasksFromWork`, ~line 674)
+- Modify: `src/routes/tasks.routes.ts` (the `{workAnalysis}` branch)
+- Test: `src/routes/tasks.routes.envelope.nodetest.ts`
+
+**Interfaces:**
+- Consumes: `renderTasks` + `Template` (Tasks 2-4), `TemplateStore.get` (Task 7),
+  `workItemsFromAnalysis` (Task 8).
+- Produces: `createTasksFromWork(workAnalysis, config, batchSize?, opts?)` where
+  `opts?: { template?: Template }`.
+
+**The constraint that governs every step:** this task changes task *formatting*
+only. It must NOT change the response envelope, the task count, or any history
+side effect. Specifically the `📊 Daily Work Summary` parent task still gets
+created, so callers still receive N+1 tasks, and all three `historyService`
+calls still fire exactly once each.
+
+- [ ] **Step 1: Write the failing test**
+
+In `src/routes/tasks.routes.envelope.nodetest.ts`, using the existing
+`analyzerFactory` seam so no ClickUp call happens:
+
+```ts
+test("a {workAnalysis} body forwards the resolved template to the analyzer", async () => {
+  let received: any = "NOT_CALLED";
+  const res = await postJson("/create-tasks", {
+    workAnalysis: SAMPLE_ANALYSIS,
+    templateId: "builtin-terse",
+  }, {
+    analyzerFactory: () => ({
+      createTasksFromWork: async (_wa: any, _cfg: any, _batch?: number, opts?: any) => {
+        received = opts?.template ?? null;
+        return [];
+      },
+    }),
+  });
+  assert.equal(res.status, 200);
+  assert.equal(received?.id, "builtin-terse");
+});
+```
+
+- [ ] **Step 2: Run it and watch it fail**
+
+Run: `bun run test:db`
+Expected: FAIL — `received` is `null`, because the route passes no `opts`.
+
+- [ ] **Step 3: Add the opts parameter to `createTasksFromWork`**
+
+Widen the signature and derive each field from the rendered task when a template
+is supplied, falling back to today's inline logic when it is not — the seven
+other callers (`src/cli.ts` ×4, `src/index.ts:63`, its exported wrapper at
+`:78-85`, `webhook-server.ts:438`/`:688`) pass no `opts` and must be unaffected:
+
+```ts
+async createTasksFromWork(
+  workAnalysis: WorkAnalysisResult,
+  config: ClickUpConfig,
+  batchSize: number = 5,
+  opts?: { template?: Template }
+): Promise<any[]> {
+```
+
+Inside, when `opts?.template` is set, build the individual tasks by converting
+the analysis with `workItemsFromAnalysis` and rendering with
+`renderTasks(items, opts.template)`, then create from the rendered
+`RenderedTask` values instead of the hand-rolled emoji/priority/timeEstimate
+block. Leave the summary task and all three `historyService` calls exactly as
+they are. This also retires the duplicated inline `hours * 60 * 60 * 1000` and
+`dueDate` logic flagged as a deferred Minor in Task 4.
+
+- [ ] **Step 4: Pass the template from the route**
+
+In the `{workAnalysis}` branch of `/api/create-tasks`, resolve the template the
+same way the `{workItems}` branch does (`resolveTemplate(req.body.templateId)`)
+and hand it to the analyzer as `{ template }`.
+
+- [ ] **Step 5: Prove the envelope and the side effects did not move**
+
+Run: `bun run test:db` and `bun test`
+Both must be green, including the pre-existing legacy-branch envelope tests from
+Task 8 — they assert the byte-for-byte legacy envelope and no `failedTasks` key,
+and they must still pass **unchanged**. Do not edit them to accommodate this
+change; if one fails, the change is wrong.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/services/GitWorkAnalyzer.ts src/routes/tasks.routes.ts src/routes/tasks.routes.envelope.nodetest.ts
+git commit -m "feat(tasks): honor the selected template on the legacy workAnalysis path"
+```
+
+---
+
 ## Slice 1 Definition of Done
 
 - [ ] `bun test` passes, including the markdown round-trip test.
-- [ ] `bun run build` exits 0.
+- [ ] The template chosen in `TaskPreviewModal` changes the tasks that are
+      actually created, not merely the preview.
+- [ ] `bun run build` reports only the 3 pre-existing `auth.routes.ts` errors — no new ones, and the 2 `webhook-server.ts` `createdTasks` errors are gone.
 - [ ] `/api/notes` and `/api/create-tasks` accept their original request shapes unchanged.
 - [ ] All three creation paths produce identically-formatted tasks for the same input.
 - [ ] `/api/export-markdown` returns markdown that `/api/notes` can re-ingest.

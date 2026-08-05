@@ -5,19 +5,27 @@
  * and create appropriate ClickUp tasks based on actual development activity.
  */
 
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
-import { distance as levenshteinDistance } from "fastest-levenshtein";
 import { ClickUpService } from "./ClickUpService.js";
 import { HistoryService } from "./HistoryService.js";
+import { detectedWorkFromItems, workItemsFromAnalysis } from "../sources/GitWorkSource.js";
+import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
+import type { CommitGrouper } from "../grouping/CommitGrouper.js";
+import { renderTasks } from "../formatting/ClickUpRenderer.js";
+import type { RenderedTask } from "../formatting/ClickUpRenderer.js";
+import { mapStatus } from "../formatting/StatusMapper.js";
+import type { Template } from "../formatting/Template.js";
 import {
   GitCommit,
   DetectedWork,
+  GroupingInfo,
   WorkAnalysisResult,
   ClickUpConfig,
 } from "../types/index.js";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Simple cache interface
 interface CacheEntry<T> {
@@ -25,19 +33,74 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
+/**
+ * Rewrites each rendered task's status to the target list's real status,
+ * dropping any that cannot be matched. Mirrors `annotateStatusMapping` in
+ * tasks.routes.ts — this path renders internally, so it cannot reuse it, but it
+ * must not disagree with it either.
+ *
+ * `null`/`undefined` means "could not read the list's statuses" — leave every
+ * status alone, which is the pre-slice-2 behaviour and the safe degradation.
+ *
+ * An EMPTY ARRAY is different and must not be conflated with it: the caller
+ * read the list successfully and it defines no statuses, so any status we send
+ * is a guaranteed `400 {"err":"Status not found"}` from ClickUp. This used to
+ * return `rendered` unchanged for `[]` while `annotateStatusMapping` dropped
+ * the status, so the preview promised "will be left at the list default" and
+ * then every create failed — the exact failure slice 2 exists to prevent,
+ * surviving on the path slice 2 added `availableStatuses` to.
+ */
+function mapRenderedStatuses(
+  rendered: RenderedTask[],
+  availableStatuses?: string[] | null
+): RenderedTask[] {
+  if (!availableStatuses) return rendered;
+
+  return rendered.map((entry) => {
+    const mapping = mapStatus(entry.task.status, availableStatuses);
+    if (!mapping) return entry;
+
+    const task = { ...entry.task };
+    if (mapping.to) {
+      task.status = mapping.to;
+    } else {
+      delete task.status;
+      console.warn(
+        `Status "${mapping.from}" does not exist in the target list — leaving "${task.name}" at the list default.`
+      );
+    }
+    return { ...entry, task };
+  });
+}
+
 export class GitWorkAnalyzer {
   private projectPath: string;
   private cache: Map<string, CacheEntry<any>>;
   private cacheTTL: number = 5 * 60 * 1000; // 5 minutes
   private historyService: HistoryService;
+  /** Owns the keyword grouping this class used to inline. */
+  private heuristics = new HeuristicCommitGrouper();
 
-  constructor(projectPath: string = process.cwd(), cacheTTL?: number) {
+  /**
+   * Optional. When supplied, `analyzeWork` groups commits with it instead of the
+   * keyword heuristic — which is what makes AI grouping reachable from
+   * /api/analyze, and therefore from the product at all. Left unset by the CLI
+   * and the exported helpers so their output is unchanged.
+   */
+  private grouper?: CommitGrouper;
+
+  constructor(
+    projectPath: string = process.cwd(),
+    cacheTTL?: number,
+    grouper?: CommitGrouper
+  ) {
     this.projectPath = projectPath;
     this.cache = new Map();
     this.historyService = new HistoryService();
     if (cacheTTL !== undefined) {
       this.cacheTTL = cacheTTL;
     }
+    this.grouper = grouper;
   }
 
   /**
@@ -79,7 +142,7 @@ export class GitWorkAnalyzer {
   async analyzeWork(
     date?: string,
     endDate?: string,
-    author?: string,
+    author?: string | string[],
     branch?: string,
     includeProcessed: boolean = false
   ): Promise<WorkAnalysisResult> {
@@ -116,7 +179,18 @@ export class GitWorkAnalyzer {
       );
 
       // Analyze the commits to detect work patterns
-      const detectedWork = await this.detectWorkFromCommits(commits);
+      const analysisDate = date || new Date().toISOString().split("T")[0]!;
+      const { work: detectedWork, grouping } = await this.detectWorkFromCommits(
+        commits,
+        analysisDate
+      );
+      if (grouping) {
+        console.log(
+          `📦 Grouped by ${grouping.mode}${
+            grouping.fallbackReason ? ` (AI unavailable: ${grouping.fallbackReason})` : ""
+          }`
+        );
+      }
 
       // Calculate summary statistics (optimized with Set)
       const totalFilesChanged = new Set(commits.flatMap((c) => c.files)).size;
@@ -136,6 +210,7 @@ export class GitWorkAnalyzer {
         totalLinesDeleted,
         detectedWork,
         summary,
+        grouping,
       };
 
       // Store in cache
@@ -222,12 +297,14 @@ export class GitWorkAnalyzer {
   private async getCommitsForDateRange(
     startDate?: string,
     endDate?: string,
-    author?: string,
+    author?: string | string[],
     branch?: string
   ): Promise<GitCommit[]> {
     try {
+      const authors = author === undefined ? [] : Array.isArray(author) ? author : [author];
+
       // Create cache key for commits
-      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${author || ""}:${branch || ""}`;
+      const cacheKey = `commits:${startDate || ""}:${endDate || ""}:${authors.join(",")}:${branch || ""}`;
 
       // Check cache
       const cached = this.getCached<GitCommit[]>(cacheKey);
@@ -235,29 +312,34 @@ export class GitWorkAnalyzer {
         return cached;
       }
 
-      // Optimize git command - add --no-merges to skip merge commits at git level
-      let gitCommand =
-        'git log --pretty=format:"%H|%an|%ad|%s" --date=short --numstat --no-merges';
+      // argv, not a shell string. The previous form interpolated `author` and
+      // `branch` into a command run through a shell, so a value containing shell
+      // metacharacters would have been executed. Nothing exploited it — author
+      // came from an authenticated user and branch from a dropdown — but the
+      // org-wide scanner feeds this a configurable identity list across
+      // discovered directories, and argv removes the question entirely.
+      //
+      // Note the --pretty value has no surrounding quotes here: those were shell
+      // quoting. Passing them in an argv element would make git treat them as
+      // literal characters in the format string.
+      const args = [
+        "log",
+        "--pretty=format:%H|%an|%ad|%s",
+        "--date=short",
+        "--numstat",
+        "--no-merges",
+      ];
 
-      // Add date filtering
-      if (startDate) {
-        gitCommand += ` --since="${startDate} 00:00:00"`;
-      }
-      if (endDate) {
-        gitCommand += ` --until="${endDate} 23:59:59"`;
-      }
+      if (startDate) args.push(`--since=${startDate} 00:00:00`);
+      if (endDate) args.push(`--until=${endDate} 23:59:59`);
+      // Repeated --author flags OR together in git, and each matches the author
+      // name as well as the email — which is what makes multi-identity
+      // attribution work for someone who commits as a work address in one repo
+      // and a personal one in another.
+      for (const identity of authors) args.push(`--author=${identity}`);
+      if (branch) args.push(branch);
 
-      // Add author filtering
-      if (author) {
-        gitCommand += ` --author="${author}"`;
-      }
-
-      // Add branch filtering (add branch name at the end)
-      if (branch) {
-        gitCommand += ` ${branch}`;
-      }
-
-      const { stdout } = await execAsync(gitCommand, {
+      const { stdout } = await execFileAsync("git", args, {
         cwd: this.projectPath,
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large repos
       });
@@ -343,300 +425,33 @@ export class GitWorkAnalyzer {
   }
 
   /**
-   * Detect work patterns from commits with intelligent duplicate detection
+   * Detect work patterns from commits.
+   *
+   * Delegates to HeuristicCommitGrouper, which owns the keyword classification
+   * and fuzzy merge this class used to inline. Same logic, one copy — the AI
+   * grouper's fallback path and /api/analyze cannot drift apart.
    */
   private async detectWorkFromCommits(
-    commits: GitCommit[]
-  ): Promise<DetectedWork[]> {
-    const workMap = new Map<string, DetectedWork>();
-
-    for (const commit of commits) {
-      const workItems = this.analyzeCommit(commit);
-
-      for (const workItem of workItems) {
-        const matchingKey = this.findSimilarWorkItem(workItem, workMap);
-
-        if (matchingKey) {
-          // Merge with existing similar work
-          const existing = workMap.get(matchingKey)!;
-
-          // Merge files (avoid duplicates)
-          const existingFileSet = new Set(existing.files);
-          for (const file of workItem.files) {
-            existingFileSet.add(file);
-          }
-          existing.files = Array.from(existingFileSet);
-
-          // Merge commits (avoid duplicates)
-          const existingCommitHashes = new Set(existing.commits.map(c => c.hash));
-          for (const newCommit of workItem.commits) {
-            if (!existingCommitHashes.has(newCommit.hash)) {
-              existing.commits.push(newCommit);
-            }
-          }
-
-          // Add estimated hours
-          existing.estimatedHours += workItem.estimatedHours;
-
-          // Merge tags (avoid duplicates)
-          existing.tags = [...new Set([...existing.tags, ...workItem.tags])];
-        } else {
-          // Add as new work item
-          const key = this.normalizeWorkName(workItem.name);
-          workMap.set(key, workItem);
-        }
-      }
+    commits: GitCommit[],
+    analysisDate: string
+  ): Promise<{ work: DetectedWork[]; grouping?: GroupingInfo }> {
+    if (!this.grouper) {
+      return { work: this.heuristics.detectWork(commits) };
     }
 
-    return Array.from(workMap.values());
-  }
-
-  /**
-   * Find similar work item using fuzzy matching
-   * Returns the key of a similar work item if found, null otherwise
-   */
-  private findSimilarWorkItem(
-    newWork: DetectedWork,
-    workMap: Map<string, DetectedWork>
-  ): string | null {
-    const normalizedNewName = this.normalizeWorkName(newWork.name);
-    const similarityThreshold = 0.8; // 80% similarity required
-
-    for (const [key, existingWork] of workMap.entries()) {
-      // Check if same work type
-      if (existingWork.type !== newWork.type) {
-        continue;
-      }
-
-      // Calculate similarity
-      const similarity = this.calculateSimilarity(normalizedNewName, key);
-
-      if (similarity >= similarityThreshold) {
-        return key;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Calculate similarity between two strings (0 to 1, where 1 is identical)
-   */
-  private calculateSimilarity(str1: string, str2: string): number {
-    if (str1 === str2) return 1;
-
-    const maxLength = Math.max(str1.length, str2.length);
-    if (maxLength === 0) return 1;
-
-    const distance = levenshteinDistance(str1, str2);
-    return 1 - distance / maxLength;
-  }
-
-  /**
-   * Normalize work name for comparison
-   */
-  private normalizeWorkName(name: string): string {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s]/g, '') // Remove special characters
-      .replace(/\s+/g, ' ');    // Normalize whitespace
-  }
-
-  /**
-   * Analyze a single commit to detect work
-   */
-  private analyzeCommit(commit: GitCommit): DetectedWork[] {
-    const workItems: DetectedWork[] = [];
-    const message = commit.message.toLowerCase();
-    const files = commit.files;
-
-    // Feature detection patterns
-    const featurePatterns = [
-      /add\s+(.+)/i,
-      /implement\s+(.+)/i,
-      /create\s+(.+)/i,
-      /build\s+(.+)/i,
-      /develop\s+(.+)/i,
-    ];
-
-    // Bug fix patterns
-    const bugFixPatterns = [
-      /fix\s+(.+)/i,
-      /resolve\s+(.+)/i,
-      /correct\s+(.+)/i,
-      /repair\s+(.+)/i,
-      /bug\s+(.+)/i,
-    ];
-
-    // Improvement patterns
-    const improvementPatterns = [
-      /improve\s+(.+)/i,
-      /enhance\s+(.+)/i,
-      /optimize\s+(.+)/i,
-      /refactor\s+(.+)/i,
-      /update\s+(.+)/i,
-    ];
-
-    // Test patterns
-    const testPatterns = [
-      /test\s+(.+)/i,
-      /add\s+test/i,
-      /unit\s+test/i,
-      /integration\s+test/i,
-    ];
-
-    // Documentation patterns
-    const docPatterns = [/doc\s+(.+)/i, /document\s+(.+)/i, /readme/i, /docs/i];
-
-    // Determine work type and name
-    let workType: DetectedWork["type"] = "improvement";
-    let workName = commit.message;
-
-    if (bugFixPatterns.some((pattern) => pattern.test(message))) {
-      workType = "bug-fix";
-      const match = bugFixPatterns.find((pattern) => pattern.test(message));
-      if (match) {
-        const result = message.match(match);
-        workName = result ? result[1] ?? commit.message : commit.message;
-      }
-    } else if (featurePatterns.some((pattern) => pattern.test(message))) {
-      workType = "feature";
-      const match = featurePatterns.find((pattern) => pattern.test(message));
-      if (match) {
-        const result = message.match(match);
-        workName = result ? result[1] ?? commit.message : commit.message;
-      }
-    } else if (testPatterns.some((pattern) => pattern.test(message))) {
-      workType = "test";
-      workName = `Test: ${commit.message}`;
-    } else if (docPatterns.some((pattern) => pattern.test(message))) {
-      workType = "documentation";
-      workName = `Documentation: ${commit.message}`;
-    } else if (improvementPatterns.some((pattern) => pattern.test(message))) {
-      workType = "improvement";
-      const match = improvementPatterns.find((pattern) =>
-        pattern.test(message)
-      );
-      if (match) {
-        const result = message.match(match);
-        workName = result ? result[1] ?? commit.message : commit.message;
-      }
-    }
-
-    // Determine complexity based on file changes and lines
-    const complexity = this.determineComplexity(commit);
-    const estimatedHours = this.estimateHours(commit, complexity);
-
-    // Generate tags based on file types and patterns
-    const tags = this.generateTags(files, message);
-
-    workItems.push({
-      type: workType,
-      name: workName,
-      description: this.generateDescription(commit, workType),
-      files,
-      commits: [commit],
-      complexity,
-      estimatedHours,
-      tags,
+    // The grouper speaks canonical WorkItems; this path and everything
+    // downstream of analyzeWork speaks DetectedWork, hence the adapter. A
+    // grouper that fails internally already falls back to the heuristic and
+    // reports why, so there is nothing to catch here.
+    const result = await this.grouper.group(commits, {
+      analysisDate,
+      repository: this.projectPath.split("/").filter(Boolean).pop(),
     });
 
-    return workItems;
-  }
-
-  /**
-   * Determine work complexity based on commit data
-   */
-  private determineComplexity(commit: GitCommit): "low" | "medium" | "high" {
-    const totalChanges = commit.insertions + commit.deletions;
-    const fileCount = commit.files.length;
-
-    if (totalChanges < 50 && fileCount <= 3) {
-      return "low";
-    } else if (totalChanges < 200 && fileCount <= 10) {
-      return "medium";
-    } else {
-      return "high";
-    }
-  }
-
-  /**
-   * Estimate hours based on commit complexity
-   */
-  private estimateHours(
-    commit: GitCommit,
-    complexity: "low" | "medium" | "high"
-  ): number {
-    const baseHours = {
-      low: 0.5,
-      medium: 2,
-      high: 4,
+    return {
+      work: detectedWorkFromItems(result.items),
+      grouping: { mode: result.mode, fallbackReason: result.fallbackReason },
     };
-
-    const fileMultiplier = Math.min(commit.files.length / 5, 2); // Cap at 2x
-    return baseHours[complexity] * (1 + fileMultiplier);
-  }
-
-  /**
-   * Generate tags based on file types and commit message
-   */
-  private generateTags(files: string[], message: string): string[] {
-    const tags: string[] = [];
-
-    // File type tags
-    if (files.some((f) => f.includes(".tsx") || f.includes(".jsx")))
-      tags.push("frontend");
-    if (files.some((f) => f.includes(".ts") && !f.includes(".tsx")))
-      tags.push("backend");
-    if (files.some((f) => f.includes(".css") || f.includes(".scss")))
-      tags.push("styling");
-    if (files.some((f) => f.includes(".test.") || f.includes(".spec.")))
-      tags.push("testing");
-    if (files.some((f) => f.includes("api/") || f.includes("routes/")))
-      tags.push("api");
-    if (files.some((f) => f.includes("components/"))) tags.push("components");
-    if (files.some((f) => f.includes("utils/") || f.includes("services/")))
-      tags.push("utilities");
-
-    // Message-based tags
-    if (message.includes("auth")) tags.push("authentication");
-    if (message.includes("payment")) tags.push("payment");
-    if (message.includes("analytics")) tags.push("analytics");
-    if (message.includes("clickup")) tags.push("clickup");
-    if (message.includes("admin")) tags.push("admin");
-    if (message.includes("ui") || message.includes("ux")) tags.push("ui-ux");
-
-    return [...new Set(tags)]; // Remove duplicates
-  }
-
-  /**
-   * Generate description for work item
-   */
-  private generateDescription(
-    commit: GitCommit,
-    workType: DetectedWork["type"]
-  ): string {
-    const fileCount = commit.files.length;
-    const totalChanges = commit.insertions + commit.deletions;
-
-    let description = `${commit.message}\n\n`;
-    description += `Files changed: ${fileCount}\n`;
-    description += `Lines added: ${commit.insertions}\n`;
-    description += `Lines deleted: ${commit.deletions}\n`;
-    description += `Total changes: ${totalChanges}\n\n`;
-
-    if (commit.files.length > 0) {
-      description += `Key files:\n${commit.files
-        .slice(0, 5)
-        .map((f) => `- ${f}`)
-        .join("\n")}`;
-      if (commit.files.length > 5) {
-        description += `\n... and ${commit.files.length - 5} more files`;
-      }
-    }
-
-    return description;
   }
 
   /**
@@ -671,14 +486,63 @@ export class GitWorkAnalyzer {
   /**
    * Create ClickUp tasks from detected work (with batch processing)
    */
+  /**
+   * Records the analysed commits as processed, without creating tasks.
+   *
+   * The org-wide scanner creates tasks itself through the canonical renderer, so
+   * it cannot use createTasksFromWork — but the dedup bookkeeping that method
+   * performs is exactly what makes a second run of the same day a no-op. This
+   * exposes only that half.
+   */
+  markScanCommitsProcessed(analysis: WorkAnalysisResult, projectPath: string): void {
+    const commits = analysis.detectedWork.flatMap((work) => work.commits);
+    if (commits.length === 0) return;
+    this.historyService.markCommitsAsProcessed(commits, projectPath);
+  }
+
   async createTasksFromWork(
     workAnalysis: WorkAnalysisResult,
     config: ClickUpConfig,
-    batchSize: number = 5
+    batchSize: number = 5,
+    opts?: {
+      template?: Template;
+      repository?: string;
+      /**
+       * The target list's real statuses. Rendered statuses are mapped onto
+       * these, and any that cannot be matched are dropped so ClickUp applies
+       * the list default.
+       *
+       * This matters more here than on the canonical path: git-derived work
+       * items default to `status: "complete"` (see GitWorkSource), and a list
+       * whose done column is named anything else rejects the create outright.
+       * Omit, or pass null, to send statuses unmapped as before.
+       */
+      availableStatuses?: string[] | null;
+    }
   ): Promise<any[]> {
     try {
       const clickUpService = new ClickUpService(config);
       const createdTasks: any[] = [];
+
+      // When a template is supplied, run the individual work items through the
+      // same canonical renderer the {workItems} path uses, so this legacy path
+      // stops formatting tasks with its own hand-rolled emoji/priority/
+      // timeEstimate logic. Indexed to line up with workAnalysis.detectedWork
+      // (workItemsFromAnalysis and renderTasks both map in input order).
+      // `repository` is threaded through so a template using {{repository}}
+      // renders the same value here as it does on /api/preview-tasks, which
+      // already passes it. Without it the preview showed the repo and the
+      // created task showed an empty string — the exact divergence this path
+      // exists to eliminate.
+      const renderedTasks = opts?.template
+        ? mapRenderedStatuses(
+            renderTasks(
+              workItemsFromAnalysis(workAnalysis, opts.repository),
+              opts.template
+            ),
+            opts.availableStatuses
+          )
+        : null;
 
       // Create summary task
       const summaryTask = await clickUpService.createTask({
@@ -708,11 +572,32 @@ export class GitWorkAnalyzer {
 
       // Batch process individual tasks for better performance
       const workItems = workAnalysis.detectedWork;
+
+      // Remember which created task belongs to which work item by index instead
+      // of re-deriving it from the task name later. Name matching mis-attributes
+      // commits whenever two names collide, which needs no custom template at
+      // all: `name.includes(name.substring(0, 30))` makes "Stabilize the
+      // meditation player layout" swallow "...layout v2", so the second item's
+      // commits get recorded against the first item's ClickUp task id. That hits
+      // the no-template callers (cli.ts, webhook-server.ts, the exported
+      // createTasksFromWork wrapper) too, so the index is built for both paths.
+      // The offset into `createdTasks` cannot be used for this: failed creations
+      // are filtered out of it below.
+      const createdByItemIndex: (any | null)[] = new Array(workItems.length).fill(null);
+
       for (let i = 0; i < workItems.length; i += batchSize) {
         const batch = workItems.slice(i, i + batchSize);
 
         // Process batch in parallel
-        const batchPromises = batch.map((work) => {
+        const batchPromises = batch.map((work, batchIndex) => {
+          if (renderedTasks) {
+            const taskData = renderedTasks[i + batchIndex].task;
+            return clickUpService.createTask(taskData).catch((error): null => {
+              console.error(`Failed to create task for ${work.name}:`, error);
+              return null; // Return null for failed tasks
+            });
+          }
+
           // Get the most recent commit date for due date
           const commitDate = work.commits.length > 0
             ? work.commits[work.commits.length - 1].date
@@ -746,6 +631,11 @@ export class GitWorkAnalyzer {
         // Wait for batch to complete
         const batchResults = await Promise.all(batchPromises);
 
+        // batchResults is 1:1 with `batch`, which is workItems[i .. i+batchSize)
+        batchResults.forEach((task, batchIndex) => {
+          createdByItemIndex[i + batchIndex] = task;
+        });
+
         // Add successful tasks
         createdTasks.push(...batchResults.filter((task) => task !== null));
 
@@ -772,7 +662,7 @@ export class GitWorkAnalyzer {
       const taskMapping = new Map<string, { id: string; name: string }>();
 
       // Save each work item and map commits to their created tasks
-      workAnalysis.detectedWork.forEach((work) => {
+      workAnalysis.detectedWork.forEach((work, workIndex) => {
         // Save work item to database
         this.historyService.saveWorkItem(
           analysisId,
@@ -787,7 +677,7 @@ export class GitWorkAnalyzer {
 
         // Map commits to their created ClickUp tasks
         work.commits.forEach((commit) => {
-          const task = createdTasks.find((t) => t && t.name && t.name.includes(work.name.substring(0, 30)));
+          const task = createdByItemIndex[workIndex];
           if (task) {
             taskMapping.set(commit.hash, { id: task.id, name: task.name });
           }

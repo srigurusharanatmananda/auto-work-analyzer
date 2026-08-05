@@ -69,6 +69,9 @@ npx auto-work-analyzer webhook
 Create a `.env` file in your project root:
 
 ```bash
+# Credential encryption (REQUIRED)
+CREDENTIAL_ENCRYPTION_KEY=base64_32_byte_key
+
 # ClickUp Configuration (REQUIRED)
 CLICKUP_TEAM_ID=your_team_id_here
 CLICKUP_API_KEY=pk_your_api_key_here
@@ -90,6 +93,21 @@ TIME_ESTIMATE_MULTIPLIER=1.0
 LOG_LEVEL=info
 LOG_FILE=logs/auto-work-analyzer.log
 ```
+
+### Credential encryption key
+
+Saved ClickUp destinations keep their API key encrypted at rest (AES-256-GCM),
+so `CREDENTIAL_ENCRYPTION_KEY` is required and the server **refuses to start**
+without it — storing keys in the clear is not offered as a fallback. Generate
+one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Keep it somewhere durable. Losing it does not lose your ClickUp account, but
+every stored destination becomes undecryptable and its key has to be pasted in
+again.
 
 ### Getting ClickUp Credentials
 
@@ -290,6 +308,51 @@ curl -X POST http://localhost:3000/webhook \
   -H "Content-Type: application/json" \
   -d '{"type": "manual", "secret": "your_secret_here"}'
 ```
+
+## 📅 Daily Repo Scan
+
+Scans every locally-cloned repository in your GitHub organisation and creates the
+day's ClickUp tasks — so working across a dozen repos does not mean running a
+report a dozen times.
+
+Configure it at **Settings → Daily Repo Scan** (`/settings/scanning`).
+
+**How repositories are found.** The scan walks a root directory one level deep and
+reads each clone's `git remote`. A clone whose remote owner matches your configured
+organisation is in scope; everything else is listed as skipped, with a reason, so a
+repository you expected but do not see explains itself. There is **no GitHub token
+and no GitHub API call** — a clone already states its owner.
+
+Consequently: **a repository must be cloned locally to be scanned.** Work pushed
+from another machine to a repo you have never cloned here is invisible.
+
+**Whose commits.** Add every identity you commit under — work email, personal
+email, a GitHub noreply address. A single identity silently finds nothing in
+repositories where you commit as someone else, which looks identical to having done
+no work. With no identities set, every commit by everyone is reported.
+
+**Where tasks go.** Each repository can be bound to a ClickUp destination and a
+template; anything unbound uses your default destination. Every task is tagged with
+the `owner/repo` slug.
+
+**Freshness.** Each repository is `git fetch`ed before scanning. A fetch that fails
+— no credentials, no network — is reported and the repository is still scanned
+against its local history, flagged so you know it may be stale.
+
+**Safety.**
+
+- Scanning ships **disabled**. Nothing is created unattended until you enable it.
+- **Dry run** reports exactly what would be created and writes nothing — not to
+  ClickUp, not to the database. It is the safe way to try this.
+- Re-running is safe: commits already turned into tasks are skipped, so a second
+  run the same day creates nothing.
+- A repository that fails does not stop the others, and every outcome appears in
+  the run summary.
+
+**Scheduling.** The scan fires at your configured local time. Because the scheduler
+only runs while the server does, a missed day is caught up the next time the server
+starts — each missed day scanned as itself, bounded to the last 7 days. A run that
+fails is not marked complete, so it retries rather than being skipped.
 
 ## 🛠️ Troubleshooting
 

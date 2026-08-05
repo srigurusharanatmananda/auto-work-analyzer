@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
@@ -11,7 +12,6 @@ const BACKEND_URL = 'http://localhost:3009';
 interface UserSettings {
   default_assignee?: string;
   backend_url?: string;
-  clickup_api_key?: string;
   clickup_team_id?: string;
   clickup_list_id?: string;
 }
@@ -22,10 +22,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [assignee, setAssignee] = useState('');
   const [backendUrl, setBackendUrl] = useState('http://localhost:3009');
-  const [clickupApiKey, setClickupApiKey] = useState('');
   const [clickupTeamId, setClickupTeamId] = useState('');
   const [clickupListId, setClickupListId] = useState('');
-  const [showClickupKey, setShowClickupKey] = useState(false);
 
   // Load settings from backend
   useEffect(() => {
@@ -54,7 +52,6 @@ export default function SettingsPage() {
         const settings: UserSettings = result.data;
         setAssignee(settings.default_assignee || '');
         setBackendUrl(settings.backend_url || 'http://localhost:3009');
-        setClickupApiKey(settings.clickup_api_key || '');
         setClickupTeamId(settings.clickup_team_id || '');
         setClickupListId(settings.clickup_list_id || '');
       }
@@ -86,7 +83,6 @@ export default function SettingsPage() {
         body: JSON.stringify({
           default_assignee: assignee,
           backend_url: backendUrl,
-          clickup_api_key: clickupApiKey,
           clickup_team_id: clickupTeamId,
           clickup_list_id: clickupListId,
         }),
@@ -228,30 +224,21 @@ export default function SettingsPage() {
             <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Integration</h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="clickupApiKey" className="block text-sm font-medium text-foreground mb-2">
-                  API Key
-                </label>
-                <div className="relative">
-                  <input
-                    id="clickupApiKey"
-                    type={showClickupKey ? 'text' : 'password'}
-                    value={clickupApiKey}
-                    onChange={(e) => setClickupApiKey(e.target.value)}
-                    placeholder="Enter your ClickUp API key"
-                    className="w-full px-4 py-3 pr-12 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowClickupKey(!showClickupKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-secondary hover:text-foreground transition-colors"
-                  >
-                    {showClickupKey ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                <p className="text-xs text-foreground-tertiary mt-1">
-                  Your ClickUp personal API token for creating tasks
+              {/*
+                The API-key field is gone: ClickUp credentials are stored
+                encrypted per destination now, and the settings endpoint refuses
+                a plaintext key rather than round-tripping one.
+              */}
+              <div className="rounded-xl border border-border bg-background-tertiary p-4">
+                <p className="text-sm text-foreground">
+                  ClickUp API keys are managed per destination and stored encrypted.
                 </p>
+                <a
+                  href="/settings/destinations"
+                  className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                >
+                  Manage destinations &rarr;
+                </a>
               </div>
 
               <div>
@@ -305,6 +292,58 @@ export default function SettingsPage() {
               )}
             </Button>
           </div>
+
+          {/* Task Templates */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Task Templates</h2>
+            <Link
+              href="/settings/templates"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Manage task templates
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Control how work items are rendered into ClickUp task names and descriptions
+            </p>
+          </Card>
+
+          {/* ClickUp Destinations */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Destinations</h2>
+            <Link
+              href="/settings/destinations"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Manage ClickUp destinations
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Choose which ClickUp account, workspace and list tasks are created into
+            </p>
+          </Card>
+
+          {/* Daily repo scan */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Daily Repo Scan</h2>
+            <Link
+              href="/settings/scanning"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Configure the daily repo scan
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Scan every local clone in your organisation and create the day&apos;s tasks
+            </p>
+          </Card>
 
           {/* API Information */}
           <Card className="p-6">

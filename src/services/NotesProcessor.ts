@@ -148,6 +148,7 @@ export class NotesProcessor {
       let estimateHours = 3; // Default
       let status: string | undefined = undefined;
       let completedDate: string | undefined = undefined;
+      const explicitTags: string[] = [];
       const descriptionLines: string[] = [];
       let parsingDescription = false;
 
@@ -235,14 +236,37 @@ export class NotesProcessor {
           continue;
         }
 
+        // Parse an explicit tag list: "Tags: mobile, meditation".
+        // Without this branch the whole line fell through to the description
+        // catch-all below, so every task written in the documented format got a
+        // description literally beginning "Tags: ...", and — because the Tags
+        // line preceded "Description:" — the label was no longer leading, so the
+        // label-stripping downstream could not remove it either.
+        const tagsMatch = line.match(/^Tags:\s*(.+)$/i);
+        if (tagsMatch) {
+          explicitTags.push(
+            ...tagsMatch[1]
+              .split(/[,;]/)
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          );
+          continue;
+        }
+
         // Skip assignee line (we use app default)
         if (line.match(/^Assignee:/i)) {
           continue;
         }
 
-        // Skip "Description:" label
-        if (line.match(/^Description:\s*$/i)) {
+        // Skip "Description:" label, on its own line or introducing text on the
+        // same line. The inline form used to keep its label, which only looked
+        // harmless because a downstream strip removed a *leading* one.
+        const descLabelMatch = line.match(/^Description:\s*(.*)$/i);
+        if (descLabelMatch) {
           parsingDescription = true;
+          if (descLabelMatch[1].trim()) {
+            descriptionLines.push(descLabelMatch[1].trim());
+          }
           continue;
         }
 
@@ -277,8 +301,10 @@ export class NotesProcessor {
                         priority === 'high' ? 'high' :
                         priority === 'low' ? 'low' : 'medium';
 
-      // Generate tags
-      const tags = this.generateTags(taskTitle + ' ' + description);
+      // The author's own tags come first and are never dropped; the keyword
+      // heuristics only add to them. Previously an explicit "Tags:" line was
+      // discarded entirely and replaced by guesses.
+      const tags = [...explicitTags, ...this.generateTags(taskTitle + ' ' + description)];
       tags.push('structured-notes');
 
       // Deduplicate tags
