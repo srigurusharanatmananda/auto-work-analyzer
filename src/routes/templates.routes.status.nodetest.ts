@@ -5,12 +5,10 @@
  *
  * Runs under `tsx --test` (Node), not `bun test`, because reaching these
  * codes requires `authenticate` to actually succeed — and `authenticate`
- * unconditionally constructs a real `AuthService` (-> AuthDatabaseService ->
- * better-sqlite3), which cannot open a database under this repo's Bun
- * version (see task-7-report.md). A real, unblacklisted JWT is minted via
- * JWTService directly (no login flow / user row needed — verifyAccessToken
- * only checks the signature and the token_blacklist table) so `authenticate`
- * passes for real, exactly as it does in production.
+ * uses a real `AuthService` (-> AuthDatabaseService -> better-sqlite3), which
+ * cannot open a database under this repo's Bun version (see task-7-report.md).
+ * `createTestUser` supplies both a real user row and an unblacklisted JWT, so
+ * `authenticate` passes for real, exactly as it does in production.
  */
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +19,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createTemplatesRouter } from "./templates.routes.js";
 import { TemplateStoreError, type TemplateInput, type TemplateStore } from "../services/TemplateStore.js";
-import { JWTService } from "../services/JWTService.js";
+import { createTestUser } from "../testing/authFixture.js";
 import { DEFAULT_TEMPLATE_OPTIONS, type Template } from "../formatting/Template.js";
 
 const VALID_BODY = {
@@ -103,16 +101,10 @@ before(() => {
   const { port } = server.address() as AddressInfo;
   baseUrl = `http://localhost:${port}/api/templates`;
 
-  // Minted directly, not via a login flow — verifyAccessToken only checks
-  // the JWT signature and an (empty) blacklist table, so this is a real,
-  // valid token `authenticate` will accept exactly as in production.
-  const { accessToken } = JWTService.generateTokenPair({
-    userId: "user-1",
-    email: "test@example.com",
-    role: "user",
-    fullName: "Test User",
-  });
-  authHeader = `Bearer ${accessToken}`;
+  // A real user row, not just a signature: `authenticate` re-reads the user on
+  // every request, so a token for an id that exists in no users table is
+  // correctly rejected.
+  authHeader = createTestUser().authHeader;
 });
 
 after(() => {

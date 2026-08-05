@@ -12,7 +12,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createScanningRouter } from "./scanning.routes.js";
 import { ScanRegistry } from "../scanning/ScanRegistry.js";
-import { JWTService } from "../services/JWTService.js";
+import { createTestUser } from "../testing/authFixture.js";
 import type { DailyScanner, ScanRunSummary } from "../scanning/DailyScanner.js";
 
 const originalCwd = process.cwd();
@@ -61,13 +61,10 @@ before(() => {
 
   server = app.listen(0);
   baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/api/scanning`;
-  const { accessToken } = JWTService.generateTokenPair({
-    userId: "user-1",
-    email: "test@example.com",
-    role: "user",
-    fullName: "Test User",
-  });
-  authHeader = `Bearer ${accessToken}`;
+  // A real user row, not just a signature: `authenticate` re-reads the user on
+  // every request, so a token for an id that exists in no users table is
+  // correctly rejected.
+  authHeader = createTestUser().authHeader;
 });
 
 after(() => {

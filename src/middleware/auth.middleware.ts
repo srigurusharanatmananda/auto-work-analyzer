@@ -4,7 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/AuthService.js';
+import { getSharedAuthService } from '../services/AuthService.js';
 import { TokenPayload } from '../services/JWTService.js';
 
 // Extend Express Request to include user
@@ -14,6 +14,35 @@ declare global {
       user?: TokenPayload;
     }
   }
+}
+
+/**
+ * Resolves a bearer token to the identity a request should act as, or null.
+ *
+ * Signature, expiry, issuer, audience, type and blacklist are checked by
+ * `verifyAccessToken`. This adds the part that cannot be carried in a token:
+ * the current state of the account.
+ *
+ * Two things follow from re-reading the row, and both are the point:
+ *  - a deleted or deactivated user is rejected immediately, instead of keeping
+ *    access for the remainder of a 15-minute access token — precisely the
+ *    window in which deactivation needs to work;
+ *  - the role is taken from the row, not the token, so demoting a user takes
+ *    effect on their next request rather than at their next login.
+ *
+ * The cost is one indexed primary-key lookup on a local SQLite file, on a
+ * connection that is already open.
+ */
+function resolveIdentity(token: string): TokenPayload | null {
+  const authService = getSharedAuthService();
+
+  const tokenPayload = authService.verifyAccessToken(token);
+  if (!tokenPayload) return null;
+
+  const user = authService.getUserById(tokenPayload.userId);
+  if (!user || !user.is_active) return null;
+
+  return { ...tokenPayload, role: user.role };
 }
 
 /**
@@ -35,12 +64,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token
-    const authService = new AuthService();
-    const tokenPayload = authService.verifyAccessToken(token);
-    authService.close();
+    const tokenPayload = resolveIdentity(token);
 
     if (!tokenPayload) {
+      // One message for every failure mode. Distinguishing "expired" from
+      // "deactivated" from "no such user" would tell a caller which of those it
+      // is, and none of them is information they are owed.
       res.status(401).json({
         success: false,
         error: 'Unauthorized',
@@ -75,9 +104,7 @@ export function authenticateOptional(req: Request, res: Response, next: NextFunc
     }
 
     const token = authHeader.substring(7);
-    const authService = new AuthService();
-    const tokenPayload = authService.verifyAccessToken(token);
-    authService.close();
+    const tokenPayload = resolveIdentity(token);
 
     if (tokenPayload) {
       req.user = tokenPayload;

@@ -21,7 +21,7 @@ import { createDestinationsRouter } from "./destinations.routes.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
 import { TemplateStore } from "../services/TemplateStore.js";
 import { CredentialCipher, generateKeyBase64 } from "../destinations/CredentialCipher.js";
-import { JWTService } from "../services/JWTService.js";
+import { createTestUser } from "../testing/authFixture.js";
 
 const originalCwd = process.cwd();
 const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-resolveurl-"));
@@ -91,13 +91,10 @@ before(() => {
   server = app.listen(0);
   baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/api/destinations`;
 
-  const { accessToken } = JWTService.generateTokenPair({
-    userId: "user-1",
-    email: "test@example.com",
-    role: "user",
-    fullName: "Test User",
-  });
-  authHeader = `Bearer ${accessToken}`;
+  // A real user row, not just a signature: `authenticate` re-reads the user on
+  // every request, so a token for an id that exists in no users table is
+  // correctly rejected.
+  authHeader = createTestUser().authHeader;
 
   originalFetch = globalThis.fetch;
   stubClickUp();

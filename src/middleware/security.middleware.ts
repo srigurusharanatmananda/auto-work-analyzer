@@ -85,10 +85,9 @@ export const registerValidation: ValidationChain[] = [
     .matches(/^[a-zA-Z\s'-]+$/)
     .withMessage('Full name can only contain letters, spaces, hyphens, and apostrophes'),
 
-  body('role')
-    .optional()
-    .isIn(['admin', 'manager', 'user'])
-    .withMessage('Role must be admin, manager, or user'),
+  // No `role` rule. Registration does not accept a role at all (see the comment
+  // on POST /api/auth/register), and validating one here would wrongly imply
+  // that supplying it is a supported thing to do.
 ];
 
 /**

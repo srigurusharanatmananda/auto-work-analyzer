@@ -36,14 +36,19 @@ router.post(
   validate,
   async (req: Request, res: Response) => {
     try {
-      const { email, password, fullName, role } = req.body;
+      // `role` is deliberately NOT read from the body. This endpoint is public
+      // and unauthenticated, so honouring a caller-supplied role would let
+      // anyone who can reach the port mint themselves an admin. A role field in
+      // the request is ignored, not rejected — rejecting it would tell an
+      // attacker the field exists. Roles are assigned by an admin afterwards
+      // (PUT /api/users/:id/role) or by the one-time /setup bootstrap.
+      const { email, password, fullName } = req.body;
 
       const authService = new AuthService();
       const result = await authService.register({
         email,
         password,
         fullName,
-        role,
       });
       authService.close();
 

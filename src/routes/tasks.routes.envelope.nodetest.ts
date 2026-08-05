@@ -8,9 +8,9 @@
  * Runs under `tsx --test` (Node), not `bun test`, because every assertion here
  * needs `authenticate` to genuinely succeed, and `authenticate` constructs a
  * real AuthService -> AuthDatabaseService -> better-sqlite3, which cannot open a
- * database under this repo's Bun version (oven-sh/bun#4290). A real token is
- * minted via JWTService directly — verifyAccessToken only checks the signature
- * and the (empty) blacklist table, so no user row or login flow is needed.
+ * database under this repo's Bun version (oven-sh/bun#4290). The token comes
+ * from `createTestUser`, which writes a real user row: `authenticate` re-reads
+ * the user on every request, so a bare signature is not enough.
  *
  * `createTasks` is false throughout, so no ClickUp call is ever made.
  */
@@ -23,7 +23,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createTasksRouter } from "./tasks.routes.js";
 import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
-import { JWTService } from "../services/JWTService.js";
+import { createTestUser } from "../testing/authFixture.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
 import { UnknownTemplateError } from "../formatting/Template.js";
 import {
@@ -138,13 +138,10 @@ before(() => {
   const { port } = server.address() as AddressInfo;
   baseUrl = `http://localhost:${port}/api`;
 
-  const { accessToken } = JWTService.generateTokenPair({
-    userId: "user-1",
-    email: "test@example.com",
-    role: "user",
-    fullName: "Test User",
-  });
-  authHeader = `Bearer ${accessToken}`;
+  // A real user row, not just a signature: `authenticate` re-reads the user on
+  // every request, so a token for an id that exists in no users table is
+  // correctly rejected.
+  authHeader = createTestUser().authHeader;
 });
 
 after(() => {

@@ -13,6 +13,12 @@ export interface RegisterInput {
   email: string;
   password: string;
   fullName: string;
+  /**
+   * PRIVILEGED. Must never be populated from an untrusted request body — doing
+   * so is privilege escalation, since /api/auth/register is public. Only the
+   * one-time /setup bootstrap and scripts/setup-admin.ts may set it. Defaults
+   * to 'user'.
+   */
   role?: 'admin' | 'manager' | 'user';
 }
 
@@ -426,4 +432,35 @@ export class AuthService {
   close(): void {
     this.db.close();
   }
+}
+
+let sharedAuthService: AuthService | null = null;
+
+/**
+ * A single long-lived AuthService for callers on the hot path.
+ *
+ * The auth middleware runs on every authenticated request, and constructing an
+ * AuthService opens a new better-sqlite3 connection and re-runs five
+ * `CREATE TABLE IF NOT EXISTS` statements — per request. Worse, better-sqlite3
+ * is a synchronous single writer with no `busy_timeout` configured here, so
+ * fanning out connections invites `SQLITE_BUSY` under concurrency.
+ *
+ * Deliberately never closed: it lives for the process. Callers must NOT call
+ * `close()` on it. Request handlers that construct their own short-lived
+ * AuthService (and close it) are unaffected.
+ *
+ * Lazy rather than eager because AuthDatabaseService resolves its file from
+ * `process.cwd()`, and tests chdir into a temp directory before first use.
+ */
+export function getSharedAuthService(): AuthService {
+  if (!sharedAuthService) {
+    sharedAuthService = new AuthService();
+  }
+  return sharedAuthService;
+}
+
+/** Test-only: drops the shared instance so a suite can point at a new cwd. */
+export function resetSharedAuthService(): void {
+  sharedAuthService?.close();
+  sharedAuthService = null;
 }

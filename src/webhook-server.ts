@@ -18,6 +18,7 @@ import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import authRoutes from "./routes/auth.routes.js";
+import { JWTService } from "./services/JWTService.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
@@ -95,6 +96,23 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     if (!validation.isValid) {
       console.error("❌ Configuration invalid:");
       validation.errors.forEach((error) => console.error(`  - ${error}`));
+      process.exit(1);
+    }
+
+    // Second startup guard, and it must come before any route that issues or
+    // accepts a token. JWTService falls back to hard-coded 'change-this-…'
+    // secrets, so without this the server boots and happily signs tokens that
+    // anyone who has read the source can forge. Refusing to start is the only
+    // safe behaviour: a running server with a known secret is worse than none.
+    const jwtConfig = JWTService.validateConfig();
+    if (!jwtConfig.isValid) {
+      console.error("❌ JWT configuration invalid:");
+      jwtConfig.errors.forEach((error) => console.error(`  - ${error}`));
+      console.error(
+        "\n  Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET in .env to two different\n" +
+          "  random strings of at least 32 characters, e.g.\n" +
+          "    openssl rand -base64 48"
+      );
       process.exit(1);
     }
 
