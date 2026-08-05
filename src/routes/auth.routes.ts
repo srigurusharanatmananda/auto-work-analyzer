@@ -8,7 +8,8 @@ import cookieParser from 'cookie-parser';
 import { AuthService } from '../services/AuthService.js';
 import { JWTService } from '../services/JWTService.js';
 import { PasswordService } from '../services/PasswordService.js';
-import { authenticate, authorize } from '../middleware/auth.middleware.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { anyRole } from '../middleware/policy.js';
 import {
   authRateLimiter,
   validate,
@@ -203,7 +204,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
  * POST /api/auth/logout
  * Requires authentication
  */
-router.post('/logout', authenticate, async (req: Request, res: Response) => {
+router.post('/logout', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const accessToken = req.headers.authorization?.substring(7); // Remove 'Bearer '
@@ -241,7 +242,7 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
  * POST /api/auth/logout-all
  * Requires authentication
  */
-router.post('/logout-all', authenticate, async (req: Request, res: Response) => {
+router.post('/logout-all', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
     authService.logoutAll(req.user!.userId);
@@ -268,7 +269,7 @@ router.post('/logout-all', authenticate, async (req: Request, res: Response) => 
  * GET /api/auth/me
  * Requires authentication
  */
-router.get('/me', authenticate, async (req: Request, res: Response) => {
+router.get('/me', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
     const user = authService.getUserById(req.user!.userId);
@@ -303,6 +304,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
 router.put(
   '/password',
   authenticate,
+  anyRole,
   passwordUpdateValidation,
   validate,
   async (req: Request, res: Response) => {
@@ -415,7 +417,7 @@ router.post('/setup', async (req: Request, res: Response) => {
  * Get user settings
  * GET /api/auth/settings
  */
-router.get('/settings', authenticate, async (req: Request, res: Response) => {
+router.get('/settings', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
 
@@ -456,7 +458,7 @@ router.get('/settings', authenticate, async (req: Request, res: Response) => {
  * Update user settings
  * PUT /api/auth/settings
  */
-router.put('/settings', authenticate, async (req: Request, res: Response) => {
+router.put('/settings', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
     const { default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id } = req.body;

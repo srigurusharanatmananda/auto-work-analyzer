@@ -8,6 +8,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
+import { anyRole } from "../middleware/policy.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
 import { TemplateStore } from "../services/TemplateStore.js";
 import { resolveClickUpUrl } from "../destinations/resolveClickUpUrl.js";
@@ -71,11 +72,11 @@ export function createDestinationsRouter(
     });
   };
 
-  router.get("/", authenticate, (req, res) => {
+  router.get("/", authenticate, anyRole, (req, res) => {
     res.json({ success: true, data: destinations.list(userIdOf(req)) });
   });
 
-  router.post("/", authenticate, (req, res) => {
+  router.post("/", authenticate, anyRole, (req, res) => {
     const missing = REQUIRED_ON_CREATE.filter((key) => !req.body[key]);
     if (missing.length > 0) {
       res.status(400).json({
@@ -95,7 +96,7 @@ export function createDestinationsRouter(
     }
   });
 
-  router.put("/:id", authenticate, (req, res) => {
+  router.put("/:id", authenticate, anyRole, (req, res) => {
     if (rejectUnusableTemplate(req, res)) return;
     try {
       res.json({
@@ -116,7 +117,7 @@ export function createDestinationsRouter(
    * Declared before `/:id/...` routes only for readability; "resolve-url" cannot
    * collide with them because those all carry a second path segment.
    */
-  router.post("/resolve-url", authenticate, async (req, res) => {
+  router.post("/resolve-url", authenticate, anyRole, async (req, res) => {
     const { url, apiKey } = req.body ?? {};
     if (!url || typeof url !== "string") {
       return fail(res, new Error("A ClickUp URL is required"));
@@ -144,7 +145,7 @@ export function createDestinationsRouter(
     }
   });
 
-  router.post("/:id/default", authenticate, (req, res) => {
+  router.post("/:id/default", authenticate, anyRole, (req, res) => {
     try {
       destinations.setDefault(req.params.id!, userIdOf(req));
       res.json({ success: true });
@@ -153,7 +154,7 @@ export function createDestinationsRouter(
     }
   });
 
-  router.delete("/:id", authenticate, (req, res) => {
+  router.delete("/:id", authenticate, anyRole, (req, res) => {
     try {
       destinations.remove(req.params.id!, userIdOf(req));
       res.json({ success: true });
@@ -165,7 +166,7 @@ export function createDestinationsRouter(
   // Confirms the credentials work and the target list is reachable. Returns the
   // list's real statuses, which is also the answer to "why did my status get
   // dropped in the preview".
-  router.post("/:id/test", authenticate, async (req, res) => {
+  router.post("/:id/test", authenticate, anyRole, async (req, res) => {
     try {
       const userId = userIdOf(req);
       const destination = destinations.get(req.params.id!, userId);

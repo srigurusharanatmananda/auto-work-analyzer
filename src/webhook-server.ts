@@ -19,6 +19,9 @@ import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
 import authRoutes from "./routes/auth.routes.js";
 import { JWTService } from "./services/JWTService.js";
+import { anyRole } from "./middleware/policy.js";
+import { checkWebhookSecret } from "./middleware/webhookSecret.js";
+import { createUsersRouter } from "./routes/users.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
@@ -127,6 +130,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     // Authentication routes (public)
     app.use("/api/auth", authRoutes);
+
+    // Admin user management. The only genuinely admin-only surface in the API:
+    // every other resource is per-user and bounded by ownership.
+    app.use("/api/users", createUsersRouter());
 
     // One database for everything (same .database/auto-work-analyzer.db as
     // AuthDatabaseService), so a destination and the user it belongs to cannot
@@ -239,7 +246,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     scanScheduler.start();
 
     // Browse directories endpoint
-    app.get("/api/browse", authenticate, (req, res) => {
+    app.get("/api/browse", authenticate, anyRole, (req, res) => {
       try {
         const requestedPath = (req.query.path as string) || os.homedir();
 
@@ -301,7 +308,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // History endpoint
-    app.get("/api/history", authenticate, (req, res) => {
+    app.get("/api/history", authenticate, anyRole, (req, res) => {
       try {
         const historyService = new HistoryService();
         const limit = parseInt(req.query.limit as string) || 50;
@@ -327,7 +334,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // AI Enhancement endpoint - enhance work item description with Claude
-    app.post("/api/ai-enhance", authenticate, async (req, res) => {
+    app.post("/api/ai-enhance", authenticate, anyRole, async (req, res) => {
       try {
         const { workItemName, description, commits, filesChanged } = req.body;
 
@@ -383,7 +390,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Generate manager-friendly summary from work items
-    app.post("/api/manager-summary", authenticate, async (req, res) => {
+    app.post("/api/manager-summary", authenticate, anyRole, async (req, res) => {
       try {
         const { workItems, reportDate } = req.body;
 
@@ -435,7 +442,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Git info endpoint - fetch branches and user info
-    app.get("/api/git-info", authenticate, (req, res) => {
+    app.get("/api/git-info", authenticate, anyRole, (req, res) => {
       try {
         const projectPath = (req.query.path as string) || process.cwd();
 
@@ -542,7 +549,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Analyze work endpoint (protected - requires authentication)
-    app.post("/api/analyze", authenticate, async (req, res) => {
+    app.post("/api/analyze", authenticate, anyRole, async (req, res) => {
       try {
         const { date, endDate, author, branch, createTasks = false, projectPath } = req.body;
 
@@ -621,7 +628,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Save report endpoint
-    app.post("/api/save-report", authenticate, async (req, res) => {
+    app.post("/api/save-report", authenticate, anyRole, async (req, res) => {
       try {
         const { projectPath, date, endDate, author, branch, workItems, summary } = req.body;
 
@@ -686,7 +693,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Get saved reports endpoint
-    app.get("/api/reports", authenticate, async (req, res) => {
+    app.get("/api/reports", authenticate, anyRole, async (req, res) => {
       try {
         const limit = parseInt(req.query.limit as string) || 10;
         const offset = parseInt(req.query.offset as string) || 0;
@@ -718,7 +725,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Get single report by ID
-    app.get("/api/reports/:id", authenticate, async (req, res) => {
+    app.get("/api/reports/:id", authenticate, anyRole, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -765,11 +772,15 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           secret,
         }: WebhookPayload = req.body;
 
-        // Verify webhook secret if provided
-        if (config.webhook.secret && secret !== config.webhook.secret) {
-          res.status(401).json({
+        // This endpoint creates real ClickUp tasks and has no user session, so
+        // the shared secret is the only thing standing in front of it. An unset
+        // WEBHOOK_SECRET disables the endpoint rather than opening it — see
+        // src/middleware/webhookSecret.ts.
+        const secretCheck = checkWebhookSecret(config.webhook.secret, secret);
+        if (!secretCheck.ok) {
+          res.status(secretCheck.status).json({
             success: false,
-            error: "Invalid webhook secret",
+            error: secretCheck.error,
           });
           return;
         }

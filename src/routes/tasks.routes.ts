@@ -16,6 +16,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { authenticate } from "../middleware/auth.middleware.js";
+import { anyRole } from "../middleware/policy.js";
 import { WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { RenderedTask, renderTasks } from "../formatting/ClickUpRenderer.js";
 import { renderMarkdown } from "../formatting/MarkdownRenderer.js";
@@ -539,7 +540,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
   // Render only. Writes nothing — this is what the editor calls to show a user
   // exactly what would be created before they commit to creating it.
-  router.post("/preview-tasks", authenticate, async (req, res) => {
+  router.post("/preview-tasks", authenticate, anyRole, async (req, res) => {
     try {
       const resolvedItems = await itemsFromBody(req, res);
       if (resolvedItems === null) return;
@@ -560,7 +561,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     }
   });
 
-  router.post("/export-markdown", authenticate, async (req, res) => {
+  router.post("/export-markdown", authenticate, anyRole, async (req, res) => {
     try {
       const resolvedItems = await itemsFromBody(req, res);
       if (resolvedItems === null) return;
@@ -581,7 +582,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   //
   // NOTE: `upload.single` MUST run before `authenticate`. Multer is what parses
   // a multipart body, and without it `req.body` is empty for file uploads.
-  router.post("/notes", uploadNotes, authenticate, async (req, res) => {
+  router.post("/notes", uploadNotes, authenticate, anyRole, async (req, res) => {
     try {
       // The guard is on *supplying* notes, not on the text being non-empty —
       // deliberately, because that is what the inline handler this replaced did
@@ -664,7 +665,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * commits processed. Acceptable only because the branch is new — nothing that
    * used to happen has stopped happening.
    */
-  router.post("/create-tasks", authenticate, async (req, res) => {
+  router.post("/create-tasks", authenticate, anyRole, async (req, res) => {
     try {
       const { workAnalysis, workItems, projectPath } = req.body;
 

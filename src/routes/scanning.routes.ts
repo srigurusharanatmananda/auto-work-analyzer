@@ -8,6 +8,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
+import { anyRole } from "../middleware/policy.js";
 import { ScanRegistry } from "../scanning/ScanRegistry.js";
 import { DailyScanner } from "../scanning/DailyScanner.js";
 import { discoverRepos } from "../scanning/RepoDiscovery.js";
@@ -30,11 +31,11 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
     res.status(status).json({ success: false, error });
   };
 
-  router.get("/settings", authenticate, (req, res) => {
+  router.get("/settings", authenticate, anyRole, (req, res) => {
     res.json({ success: true, data: deps.registry.getSettings(userIdOf(req)) });
   });
 
-  router.put("/settings", authenticate, (req, res) => {
+  router.put("/settings", authenticate, anyRole, (req, res) => {
     const { root, owner, authorIdentities, scanTime, enabled } = req.body ?? {};
 
     if (scanTime !== undefined && !TIME_PATTERN.test(String(scanTime))) {
@@ -56,7 +57,7 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
     });
   });
 
-  router.get("/repos", authenticate, async (req, res) => {
+  router.get("/repos", authenticate, anyRole, async (req, res) => {
     try {
       const userId = userIdOf(req);
       const settings = deps.registry.getSettings(userId);
@@ -87,7 +88,7 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
   });
 
   // The slug contains a slash, which a single :param will not match.
-  router.put("/repos/:owner/:name", authenticate, (req, res) => {
+  router.put("/repos/:owner/:name", authenticate, anyRole, (req, res) => {
     const slug = `${req.params.owner}/${req.params.name}`;
     const { destinationId, templateId, enabled } = req.body ?? {};
     res.json({
@@ -105,11 +106,11 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
    * run's failures exist only in the server log, and an unattended job whose
    * errors are invisible is worse than no job.
    */
-  router.get("/last-run", authenticate, (req, res) => {
+  router.get("/last-run", authenticate, anyRole, (req, res) => {
     res.json({ success: true, data: deps.registry.getLastRun(userIdOf(req)) });
   });
 
-  router.post("/run", authenticate, async (req, res) => {
+  router.post("/run", authenticate, anyRole, async (req, res) => {
     const { date, dryRun } = req.body ?? {};
     if (date !== undefined && !DATE_PATTERN.test(String(date))) {
       return fail(res, "date must be YYYY-MM-DD");

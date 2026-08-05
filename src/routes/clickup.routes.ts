@@ -11,6 +11,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
+import { anyRole } from "../middleware/policy.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
 import { ClickUpService } from "../services/ClickUpService.js";
 
@@ -60,6 +61,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   router.post(
     "/teams",
     authenticate,
+    anyRole,
     handle(async (service, body) => {
       if (!body.teamId) return service.getTeams();
       const info = await service.getTeamInfo();
@@ -70,6 +72,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   router.post(
     "/spaces",
     authenticate,
+    anyRole,
     handle(async (service) => {
       const spaces = await service.getSpaces();
       return spaces.map((space: any) => ({ id: space.id, name: space.name }));
@@ -79,6 +82,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   router.post(
     "/folders",
     authenticate,
+    anyRole,
     handle((service, body) => service.getFolders(body.spaceId))
   );
 
@@ -88,6 +92,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   router.post(
     "/lists",
     authenticate,
+    anyRole,
     handle((service, body) =>
       body.folderId
         ? service.getListsInFolder(body.folderId)
@@ -98,6 +103,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   router.post(
     "/statuses",
     authenticate,
+    anyRole,
     handle((service, body) => service.getListStatuses(body.listId))
   );
 

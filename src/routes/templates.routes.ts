@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
+import { anyRole } from "../middleware/policy.js";
 import { TemplateStore, TemplateStoreError } from "../services/TemplateStore.js";
 import { DEFAULT_TEMPLATE_OPTIONS, Template, TemplateOptions } from "../formatting/Template.js";
 import { validateTemplate } from "../formatting/TemplateEngine.js";
@@ -94,7 +95,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     });
   };
 
-  router.get("/", authenticate, (req, res) => {
+  router.get("/", authenticate, anyRole, (req, res) => {
     res.json({ success: true, data: store.list(userIdOf(req)) });
   });
 
@@ -115,11 +116,11 @@ export function createTemplatesRouter(store: TemplateStore): Router {
   // matches in declaration order, so a `router.get("/:id")` declared first
   // would swallow "/schema" and answer 404 for it. There is no such route
   // today, which is why no test can pin this — hence the comment.
-  router.get("/schema", authenticate, (_req, res) => {
+  router.get("/schema", authenticate, anyRole, (_req, res) => {
     res.json({ success: true, data: WORK_ITEM_SCHEMA });
   });
 
-  router.post("/", authenticate, (req, res) => {
+  router.post("/", authenticate, anyRole, (req, res) => {
     const errors = validateBody(req.body);
     if (errors.length > 0) {
       res.status(400).json({ success: false, error: "Invalid template", details: errors });
@@ -135,7 +136,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     res.status(201).json({ success: true, data: created });
   });
 
-  router.put("/:id", authenticate, (req, res) => {
+  router.put("/:id", authenticate, anyRole, (req, res) => {
     const errors = validateBody(req.body);
     if (errors.length > 0) {
       res.status(400).json({ success: false, error: "Invalid template", details: errors });
@@ -155,7 +156,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     }
   });
 
-  router.delete("/:id", authenticate, (req, res) => {
+  router.delete("/:id", authenticate, anyRole, (req, res) => {
     try {
       store.remove(req.params.id!, userIdOf(req));
       res.json({ success: true });
@@ -166,7 +167,7 @@ export function createTemplatesRouter(store: TemplateStore): Router {
 
   // Renders an unsaved template against a fixture (or supplied items) so the
   // editor can show live output before the user commits to saving.
-  router.post("/preview", authenticate, (req, res) => {
+  router.post("/preview", authenticate, anyRole, (req, res) => {
     // Preview renders an unsaved template — it never reads `name`, so it
     // validates only nameTemplate/descriptionTemplate, not the full
     // save-time validateBody (Task 9's live-preview editor must not force a
