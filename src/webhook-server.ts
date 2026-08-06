@@ -224,6 +224,9 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         resolver,
         defaultProjectPath: config.project.path,
         grouper,
+        // The same provider chain the grouper uses, so a transcript posted to
+        // /api/preview-tasks can be turned into action items.
+        aiClient,
       })
     );
 

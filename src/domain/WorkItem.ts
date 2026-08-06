@@ -21,11 +21,23 @@ export type WorkItemType =
 export type WorkItemPriority = "urgent" | "high" | "normal" | "low";
 
 export interface WorkItemProvenance {
-  /** Empty for notes-sourced items. */
+  /** Empty for notes- and transcript-sourced items. */
   commits: GitCommit[];
   files: string[];
   repository?: string;
-  source: "git" | "notes" | "manual";
+  source: "git" | "notes" | "manual" | "transcript";
+  /**
+   * The sentence this item was extracted from, quoted verbatim from the source.
+   *
+   * Only transcript-sourced items carry it, and for those it is mandatory —
+   * `validateActionItems` refuses any item whose quote is not present in the
+   * transcript. It is the difference between "someone asked for this" and "a
+   * model thought this sounded plausible", and it is what a reviewer checks
+   * before agreeing to a task.
+   */
+  quote?: string;
+  /** Who the transcript attributes the request to, when it is identifiable. */
+  speaker?: string;
 }
 
 export interface WorkItem {

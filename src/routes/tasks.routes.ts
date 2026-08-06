@@ -23,6 +23,8 @@ import { renderMarkdown } from "../formatting/MarkdownRenderer.js";
 import { Template, UnknownTemplateError } from "../formatting/Template.js";
 import { TemplateError } from "../formatting/TemplateEngine.js";
 import { workItemsFromNotes } from "../sources/NotesWorkSource.js";
+import { workItemsFromTranscript } from "../sources/TranscriptWorkSource.js";
+import type { AiClient } from "../ai/AiClient.js";
 import { workItemsFromAnalysis, workItemsFromCommits } from "../sources/GitWorkSource.js";
 import type { CommitGrouper } from "../grouping/CommitGrouper.js";
 import { ClickUpService } from "../services/ClickUpService.js";
@@ -293,6 +295,13 @@ export interface TasksRouterDeps {
    * default to the heuristic path.
    */
   grouper: CommitGrouper;
+  /**
+   * Extracts action items from a `transcript` body. Optional: every other input
+   * shape works without it, and a construction site that never sees a
+   * transcript should not have to supply one. A transcript sent to a router
+   * without a client gets an explanatory 400 rather than silently no tasks.
+   */
+  aiClient?: AiClient;
 }
 
 /** The one method the legacy /api/create-tasks branch calls. */
@@ -306,6 +315,13 @@ export type LegacyAnalyzer = Pick<GitWorkAnalyzer, "createTasksFromWork">;
 interface ResolvedItems {
   items: WorkItem[];
   grouping?: PreviewResponse["grouping"];
+  /**
+   * Problems the source hit that did not stop it producing a list. Merged into
+   * the preview's own warnings, because "extraction partly failed" and "this
+   * call had no action items" produce an identical empty list and mean
+   * completely different things.
+   */
+  warnings?: string[];
 }
 
 /**
@@ -494,14 +510,19 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
   };
 
   /**
-   * The three accepted input shapes, in precedence order: already-canonical
-   * `workItems`, raw `notes` text, or a legacy `workAnalysis` result. An empty
-   * `workItems` yields to the other two so that a preview shows what
-   * /api/create-tasks would actually do with the same body. Returns null once it
-   * has sent a 400, so callers just return.
+   * The accepted input shapes, in precedence order: already-canonical
+   * `workItems`, raw `commits`, `notes` text, a call `transcript`, or a legacy
+   * `workAnalysis` result. An empty `workItems` yields to the others so that a
+   * preview shows what /api/create-tasks would actually do with the same body.
+   * Returns null once it has sent a 400, so callers just return.
+   *
+   * A transcript is deliberately just another shape here rather than an
+   * endpoint of its own. Everything after this point — templates, status
+   * mapping, destination resolution, the preview/create parity — then applies
+   * to call-derived work with no second implementation to keep in step.
    */
   const itemsFromBody = async (req: any, res: any): Promise<ResolvedItems | null> => {
-    const { notes, workAnalysis, workItems, commits } = req.body;
+    const { notes, transcript, workAnalysis, workItems, commits } = req.body;
     if (rejectConflictingShapes(req, res)) return null;
 
     const supplied = suppliedWorkItems(req.body);
@@ -526,6 +547,32 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       };
     }
     if (typeof notes === "string") return { items: await workItemsFromNotes(notes) };
+
+    if (typeof transcript === "string") {
+      if (!deps.aiClient) {
+        res.status(400).json({
+          success: false,
+          error:
+            "Extracting tasks from a transcript needs an AI provider, and none is " +
+            "configured. Add a provider key to .env — see env.example.",
+        });
+        return null;
+      }
+
+      const extracted = await workItemsFromTranscript(transcript, deps.aiClient, {
+        callDate: req.body.callDate,
+        callTitle: req.body.callTitle,
+      });
+
+      // Surfaced as a warning rather than swallowed: an empty list because
+      // extraction broke looks exactly like an empty list because the call had
+      // no action items, and the user needs to be able to tell them apart
+      // before concluding the call produced nothing.
+      return {
+        items: extracted.items,
+        ...(extracted.reason ? { warnings: [extracted.reason] } : {}),
+      };
+    }
     if (workAnalysis) {
       return { items: workItemsFromAnalysis(workAnalysis, req.body.repository) };
     }
@@ -533,7 +580,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
     res.status(400).json({
       success: false,
-      error: "Provide one of: workItems, commits, notes, or workAnalysis",
+      error: "Provide one of: workItems, commits, notes, transcript, or workAnalysis",
     });
     return null;
   };
@@ -555,7 +602,14 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       // commit list and reports "heuristic" without calling the model, so a
       // badge here would claim a mode that was never exercised.
       const grouping = resolvedItems.items.length > 0 ? resolvedItems.grouping : undefined;
-      res.json({ success: true, data: { ...withDestination(preview, resolved), grouping } });
+      const withSourceWarnings = resolvedItems.warnings
+        ? { ...preview, warnings: [...preview.warnings, ...resolvedItems.warnings] }
+        : preview;
+
+      res.json({
+        success: true,
+        data: { ...withDestination(withSourceWarnings, resolved), grouping },
+      });
     } catch (error) {
       handleError(res, error, "Failed to build preview");
     }

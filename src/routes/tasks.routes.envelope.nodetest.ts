@@ -670,7 +670,7 @@ describe("POST /api/preview-tasks", () => {
     // Deliberately updated when `commits` became a fourth accepted shape: the
     // message enumerates what the endpoint takes, so leaving `commits` out of it
     // would send a caller looking for a shape that already works.
-    assert.equal(body.error, "Provide one of: workItems, commits, notes, or workAnalysis");
+    assert.equal(body.error, "Provide one of: workItems, commits, notes, transcript, or workAnalysis");
   });
 });
 
