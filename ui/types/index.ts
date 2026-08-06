@@ -110,6 +110,71 @@ export interface PlaceholderSchema {
   sections: Record<string, PlaceholderSchema>;
 }
 
+/** What `GET /api/git-info?path=…` returns. All fields absent for a non-repo. */
+export interface GitInfo {
+  branches?: string[];
+  currentBranch?: string;
+  userEmail?: string;
+}
+
+/**
+ * What `POST /api/ai-enhance` returns. Mirrors `EnhancedDescription` in
+ * `src/services/AIDescriptionService.ts`.
+ *
+ * `improvedTitle` is `''` rather than absent when the model does not supply one
+ * — callers must fall back to the existing title, not overwrite it with empty.
+ */
+export interface EnhancedWorkItem {
+  improvedTitle: string;
+  description: string;
+  suggestedTags: string[];
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  businessValue: string;
+  technicalSummary: string;
+}
+
+/** One analysis run, as listed by `GET /api/history`. */
+export interface AnalysisHistoryEntry {
+  id: string;
+  timestamp: string;
+  projectPath: string;
+  date: string;
+  endDate?: string;
+  author?: string;
+  totalCommits: number;
+  totalWorkItems: number;
+  tasksCreated: number;
+  summary: string;
+}
+
+export interface ProjectStats {
+  path: string;
+  commitsProcessed: number;
+}
+
+/**
+ * Mirrors `DatabaseService.getStatistics`.
+ *
+ * Shared rather than redeclared per component for a concrete reason: the
+ * dashboard used to read `statistics.totalTasks`, which the backend has never
+ * sent — the field is `totalTasksCreated` — so that tile silently displayed 0
+ * forever. An untyped `data.data.statistics` cannot catch that; this can.
+ */
+export interface HistoryStatistics {
+  totalAnalyses: number;
+  totalCommitsProcessed: number;
+  totalTasksCreated: number;
+  totalWorkItems: number;
+  projectStats: ProjectStats[];
+  oldestEntry?: string;
+  newestEntry?: string;
+}
+
+export interface HistoryData {
+  history: AnalysisHistoryEntry[];
+  statistics: HistoryStatistics;
+}
+
 /**
  * Where a work item came from. Mirrors `src/domain/WorkItem.ts`.
  *

@@ -19,13 +19,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { ClickUpNode, Destination, Template } from '@/types';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 /** The value the folder `<select>` uses for "no folder — a list under the space". */
 const NO_FOLDER = '__none__';
@@ -73,7 +71,6 @@ function pathOf(destination: Destination): string {
 }
 
 export default function DestinationsSettingsPage() {
-  const { accessToken } = useAuth();
 
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -95,46 +92,26 @@ export default function DestinationsSettingsPage() {
   const [pastedUrl, setPastedUrl] = useState('');
   const [resolvingUrl, setResolvingUrl] = useState(false);
 
-  const authHeaders = useCallback(
-    (json = false): HeadersInit => ({
-      ...(json ? { 'Content-Type': 'application/json' } : {}),
-      Authorization: `Bearer ${accessToken}`,
-    }),
-    [accessToken]
-  );
-
   const loadDestinations = useCallback(async () => {
-    if (!accessToken) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/api/destinations`, {
-        headers: authHeaders(),
-        credentials: 'include',
-      });
-      const result = await response.json();
-      if (result.success) setDestinations(result.data as Destination[]);
-      else toast.error(result.error || 'Failed to load destinations');
-    } catch {
-      toast.error('Could not reach the backend to load destinations.');
+      setDestinations(await api.get<Destination[]>('/destinations'));
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to load destinations'));
     } finally {
       setLoading(false);
     }
-  }, [accessToken, authHeaders]);
+  }, []);
 
   useEffect(() => {
     loadDestinations();
   }, [loadDestinations]);
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/templates`, {
-          headers: authHeaders(),
-          credentials: 'include',
-        });
-        const result = await response.json();
-        if (!cancelled && result.success) setTemplates(result.data as Template[]);
+        const loaded = await api.get<Template[]>('/templates');
+        if (!cancelled) setTemplates(loaded);
       } catch {
         // A missing template list only costs the optional default-template
         // picker; it must not block destination management.
@@ -143,29 +120,38 @@ export default function DestinationsSettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authHeaders]);
+  }, []);
 
-  /** Every browse call shares this shape; `body` carries whatever the step knows. */
+  /**
+ * What `POST /api/destinations/resolve-url` returns: the ids a ClickUp URL maps
+ * to, plus the target list's statuses so the "no complete status" warning can be
+ * raised before anything is saved.
+ */
+interface ResolvedUrl {
+  teamId?: string;
+  teamName?: string;
+  spaceId?: string;
+  spaceName?: string;
+  folderId?: string;
+  folderName?: string;
+  listId: string;
+  listName: string;
+  statuses?: string[];
+}
+
+/** Every browse call shares this shape; `body` carries whatever the step knows. */
   const browse = async (
     endpoint: string,
     body: Record<string, string | undefined>
   ): Promise<ClickUpNode[] | null> => {
     setBrowsing(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/clickup/${endpoint}`, {
-        method: 'POST',
-        headers: authHeaders(true),
-        credentials: 'include',
-        body: JSON.stringify({ apiKey: draft.apiKey, ...body }),
+      return await api.post<ClickUpNode[]>(`/clickup/${endpoint}`, {
+        apiKey: draft.apiKey,
+        ...body,
       });
-      const result = await response.json();
-      if (!result.success) {
-        toast.error(result.error || 'ClickUp request failed');
-        return null;
-      }
-      return result.data as ClickUpNode[];
-    } catch {
-      toast.error('Could not reach the backend.');
+    } catch (caught) {
+      toast.error(messageFor(caught, 'ClickUp request failed'));
       return null;
     } finally {
       setBrowsing(false);
@@ -216,24 +202,10 @@ export default function DestinationsSettingsPage() {
 
     setResolvingUrl(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/destinations/resolve-url`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({ url: pastedUrl.trim(), apiKey: draft.apiKey }),
+      const resolved = await api.post<ResolvedUrl>('/destinations/resolve-url', {
+        url: pastedUrl.trim(),
+        apiKey: draft.apiKey,
       });
-      const body = await res.json();
-      if (!res.ok) {
-        // The server's message is the product here: which workspace the key
-        // cannot see, or that a space was pasted instead of a list.
-        toast.error(body.error ?? 'Could not read that URL', { duration: 8000 });
-        return;
-      }
-
-      const resolved = body.data;
       setDraft((current) => ({
         ...current,
         teamId: resolved.teamId ?? '',
@@ -323,36 +295,27 @@ export default function DestinationsSettingsPage() {
     setSaving(true);
     const toastId = toast.loading('Saving destination...');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/destinations`, {
-        method: 'POST',
-        headers: authHeaders(true),
-        credentials: 'include',
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          apiKey: draft.apiKey,
-          teamId: draft.teamId,
-          teamName: draft.teamName || undefined,
-          spaceId: draft.spaceId || undefined,
-          spaceName: draft.spaceName || undefined,
-          folderId: draft.folderId || undefined,
-          folderName: draft.folderName || undefined,
-          listId: draft.listId,
-          listName: draft.listName || undefined,
-          defaultTemplateId: draft.defaultTemplateId || undefined,
-        }),
+      await api.post('/destinations', {
+        name: draft.name.trim(),
+        apiKey: draft.apiKey,
+        teamId: draft.teamId,
+        teamName: draft.teamName || undefined,
+        spaceId: draft.spaceId || undefined,
+        spaceName: draft.spaceName || undefined,
+        folderId: draft.folderId || undefined,
+        folderName: draft.folderName || undefined,
+        listId: draft.listId,
+        listName: draft.listName || undefined,
+        defaultTemplateId: draft.defaultTemplateId || undefined,
       });
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Destination saved', { id: toastId });
-        setAdding(false);
-        // Drops the typed key from component state as soon as it is stored.
-        setDraft(EMPTY_DRAFT);
-        await loadDestinations();
-      } else {
-        toast.error(result.error || 'Failed to save destination', { id: toastId });
-      }
-    } catch {
-      toast.error('Could not reach the backend.', { id: toastId });
+
+      toast.success('Destination saved', { id: toastId });
+      setAdding(false);
+      // Drops the typed key from component state as soon as it is stored.
+      setDraft(EMPTY_DRAFT);
+      await loadDestinations();
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to save destination'), { id: toastId });
     } finally {
       setSaving(false);
     }
@@ -362,25 +325,18 @@ export default function DestinationsSettingsPage() {
     setBusyId(destination.id);
     const toastId = toast.loading(`Testing ${destination.name}...`);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/destinations/${destination.id}/test`, {
-        method: 'POST',
-        headers: authHeaders(true),
-        credentials: 'include',
-      });
-      const result = await response.json();
-      if (result.success) {
-        const statuses = (result.data.statuses as string[]) ?? [];
-        toast.success(
-          statuses.length > 0
-            ? `Reachable. List statuses: ${statuses.join(', ')}`
-            : 'Reachable, but the list reports no statuses.',
-          { id: toastId, duration: 6000 }
-        );
-      } else {
-        toast.error(result.error || 'Test failed', { id: toastId, duration: 6000 });
-      }
-    } catch {
-      toast.error('Could not reach the backend.', { id: toastId });
+      const result = await api.post<{ statuses?: string[] }>(
+        `/destinations/${destination.id}/test`
+      );
+      const statuses = result.statuses ?? [];
+      toast.success(
+        statuses.length > 0
+          ? `Reachable. List statuses: ${statuses.join(', ')}`
+          : 'Reachable, but the list reports no statuses.',
+        { id: toastId, duration: 6000 }
+      );
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Test failed'), { id: toastId, duration: 6000 });
     } finally {
       setBusyId(null);
     }
@@ -389,19 +345,11 @@ export default function DestinationsSettingsPage() {
   const makeDefault = async (destination: Destination) => {
     setBusyId(destination.id);
     try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/destinations/${destination.id}/default`,
-        { method: 'POST', headers: authHeaders(true), credentials: 'include' }
-      );
-      const result = await response.json();
-      if (result.success) {
-        toast.success(`${destination.name} is now the default`);
-        await loadDestinations();
-      } else {
-        toast.error(result.error || 'Failed to set the default');
-      }
-    } catch {
-      toast.error('Could not reach the backend.');
+      await api.post(`/destinations/${destination.id}/default`);
+      toast.success(`${destination.name} is now the default`);
+      await loadDestinations();
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to set the default'));
     } finally {
       setBusyId(null);
     }
@@ -410,21 +358,12 @@ export default function DestinationsSettingsPage() {
   const remove = async (destination: Destination) => {
     setBusyId(destination.id);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/destinations/${destination.id}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-        credentials: 'include',
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success(`Deleted ${destination.name}`);
-        setPendingDeleteId(null);
-        await loadDestinations();
-      } else {
-        toast.error(result.error || 'Failed to delete');
-      }
-    } catch {
-      toast.error('Could not reach the backend.');
+      await api.delete(`/destinations/${destination.id}`);
+      toast.success(`Deleted ${destination.name}`);
+      setPendingDeleteId(null);
+      await loadDestinations();
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to delete'));
     } finally {
       setBusyId(null);
     }

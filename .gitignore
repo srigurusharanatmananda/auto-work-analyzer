@@ -1,10 +1,16 @@
 node_modules
 ui/node_modules
 .env
+# Next.js reads these in the ui/ package; `.env` alone does not match them, so
+# without these a developer's local config would be committed.
+.env.local
+.env.*.local
 .DS_Store
 dist
 ui/dist
 ui/.next
+# tsc --noEmit incremental cache
+*.tsbuildinfo
 
 # History data
 .history/

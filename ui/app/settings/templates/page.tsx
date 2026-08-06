@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, ApiError, messageFor } from '@/lib/api';
 import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -26,8 +26,6 @@ import {
   Template,
   TemplateOptions,
 } from '@/types';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 /** How long to wait after a keystroke before re-rendering the live preview. */
 const PREVIEW_DEBOUNCE_MS = 500;
@@ -53,8 +51,6 @@ function toDraft(template: Template): Draft {
 }
 
 export default function TemplatesSettingsPage() {
-  const { accessToken } = useAuth();
-
   const [templates, setTemplates] = useState<Template[]>([]);
   const [schema, setSchema] = useState<PlaceholderSchema | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,61 +66,33 @@ export default function TemplatesSettingsPage() {
   const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const [previewing, setPreviewing] = useState(false);
 
-  const authHeaders = useCallback(
-    (json = false): HeadersInit => ({
-      ...(json ? { 'Content-Type': 'application/json' } : {}),
-      Authorization: `Bearer ${accessToken}`,
-    }),
-    [accessToken]
-  );
-
   const loadTemplates = useCallback(async () => {
-    if (!accessToken) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/api/templates`, {
-        headers: authHeaders(),
-        credentials: 'include',
-      });
-      const result = await response.json();
-      if (result.success) {
-        setTemplates(result.data as Template[]);
-      } else {
-        toast.error(`Failed to load templates: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to load templates:', error);
-      toast.error('Failed to load templates');
+      setTemplates(await api.get<Template[]>('/templates'));
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to load templates'));
     }
-  }, [accessToken, authHeaders]);
+  }, []);
 
   const loadSchema = useCallback(async () => {
-    if (!accessToken) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/api/templates/schema`, {
-        headers: authHeaders(),
-        credentials: 'include',
-      });
-      const result = await response.json();
-      if (result.success) setSchema(result.data as PlaceholderSchema);
+      setSchema(await api.get<PlaceholderSchema>('/templates/schema'));
     } catch (error) {
+      // Only costs the placeholder reference panel.
       console.error('Failed to load placeholder schema:', error);
     }
-  }, [accessToken, authHeaders]);
+  }, []);
 
   useEffect(() => {
-    if (!accessToken) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     Promise.all([loadTemplates(), loadSchema()]).finally(() => setLoading(false));
-  }, [accessToken, loadTemplates, loadSchema]);
+  }, [loadTemplates, loadSchema]);
 
   // Live preview. Debounced so a typed template does not fire a request per
   // keystroke, and re-run on `options` too — dueDateSource/statusMode/tags all
   // change the rendered task even though they are not in either textarea.
   useEffect(() => {
-    if (!draft || !accessToken) {
+    if (!draft) {
       setPreview(null);
       setPreviewErrors([]);
       return;
@@ -133,39 +101,25 @@ export default function TemplatesSettingsPage() {
     const timer = setTimeout(async () => {
       setPreviewing(true);
       try {
-        const response = await fetch(`${BACKEND_URL}/api/templates/preview`, {
-          method: 'POST',
-          headers: authHeaders(true),
-          credentials: 'include',
-          body: JSON.stringify({
-            nameTemplate: draft.nameTemplate,
-            descriptionTemplate: draft.descriptionTemplate,
-            options: draft.options,
-          }),
+        const rendered = await api.post<{ items: RenderedTaskPreview[] }>('/templates/preview', {
+          nameTemplate: draft.nameTemplate,
+          descriptionTemplate: draft.descriptionTemplate,
+          options: draft.options,
         });
-        const result = await response.json();
 
-        if (result.success) {
-          const first = (result.data.items as RenderedTaskPreview[])[0];
-          setPreview(
-            first ? { name: first.task.name, description: first.task.description } : null
-          );
-          setPreviewErrors([]);
-        } else {
-          setPreview(null);
-          setPreviewErrors(detailsToLines(result));
-        }
-      } catch (error) {
-        console.error('Failed to render preview:', error);
+        const first = rendered.items[0];
+        setPreview(first ? { name: first.task.name, description: first.task.description } : null);
+        setPreviewErrors([]);
+      } catch (caught) {
         setPreview(null);
-        setPreviewErrors(['Could not reach the backend to render a preview.']);
+        setPreviewErrors(detailsToLines(caught));
       } finally {
         setPreviewing(false);
       }
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [draft, accessToken, authHeaders]);
+  }, [draft]);
 
   const updateDraft = (patch: Partial<Draft>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current));
@@ -178,40 +132,24 @@ export default function TemplatesSettingsPage() {
   };
 
   const handleDuplicate = async (template: Template) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setDuplicatingId(template.id);
     const toastId = toast.loading(`Duplicating "${template.name}"...`);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/templates`, {
-        method: 'POST',
-        headers: authHeaders(true),
-        credentials: 'include',
-        body: JSON.stringify({
-          name: `${template.name} (copy)`,
-          description: template.description,
-          nameTemplate: template.nameTemplate,
-          descriptionTemplate: template.descriptionTemplate,
-          options: template.options,
-        }),
+      const copy = await api.post<Template>('/templates', {
+        name: `${template.name} (copy)`,
+        description: template.description,
+        nameTemplate: template.nameTemplate,
+        descriptionTemplate: template.descriptionTemplate,
+        options: template.options,
       });
-      const result = await response.json();
 
-      if (result.success) {
-        toast.success('Duplicated — now editable', { id: toastId });
-        await loadTemplates();
-        setValidationErrors([]);
-        setDraft(toDraft(result.data as Template));
-      } else {
-        toast.error(`Failed to duplicate: ${result.error}`, { id: toastId });
-        setValidationErrors(detailsToLines(result));
-      }
-    } catch (error) {
-      console.error('Failed to duplicate template:', error);
-      toast.error('Failed to duplicate template', { id: toastId });
+      toast.success('Duplicated — now editable', { id: toastId });
+      await loadTemplates();
+      setValidationErrors([]);
+      setDraft(toDraft(copy));
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to duplicate template'), { id: toastId });
+      setValidationErrors(detailsToLines(caught));
     } finally {
       setDuplicatingId(null);
     }
@@ -219,75 +157,44 @@ export default function TemplatesSettingsPage() {
 
   const handleSave = async () => {
     if (!draft) return;
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
 
     setSaving(true);
     setValidationErrors([]);
     const toastId = toast.loading('Saving template...');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/templates/${draft.id}`, {
-        method: 'PUT',
-        headers: authHeaders(true),
-        credentials: 'include',
-        body: JSON.stringify({
-          name: draft.name,
-          description: draft.description,
-          nameTemplate: draft.nameTemplate,
-          descriptionTemplate: draft.descriptionTemplate,
-          options: draft.options,
-        }),
+      await api.put(`/templates/${draft.id}`, {
+        name: draft.name,
+        description: draft.description,
+        nameTemplate: draft.nameTemplate,
+        descriptionTemplate: draft.descriptionTemplate,
+        options: draft.options,
       });
-      const result = await response.json();
 
-      if (result.success) {
-        toast.success('Template saved', { id: toastId });
-        await loadTemplates();
-      } else {
-        // `details` is the array of named validation failures. Rendering it is
-        // the entire point of save-time validation — a bare "Invalid template"
-        // tells the user nothing about which placeholder is wrong.
-        const lines = detailsToLines(result);
-        setValidationErrors(lines);
-        toast.error(result.error || 'Failed to save template', { id: toastId });
-        lines.forEach((line) => toast.error(line, { duration: 6000 }));
-      }
-    } catch (error) {
-      console.error('Failed to save template:', error);
-      toast.error('Failed to save template', { id: toastId });
+      toast.success('Template saved', { id: toastId });
+      await loadTemplates();
+    } catch (caught) {
+      // `details` is the array of named validation failures. Rendering it is
+      // the entire point of save-time validation — a bare "Invalid template"
+      // tells the user nothing about which placeholder is wrong.
+      const lines = detailsToLines(caught);
+      setValidationErrors(lines);
+      toast.error(messageFor(caught, 'Failed to save template'), { id: toastId });
+      lines.forEach((line) => toast.error(line, { duration: 6000 }));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (template: Template) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     const toastId = toast.loading(`Deleting "${template.name}"...`);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/templates/${template.id}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success('Template deleted', { id: toastId });
-        setPendingDeleteId(null);
-        if (draft?.id === template.id) setDraft(null);
-        await loadTemplates();
-      } else {
-        toast.error(result.error || 'Failed to delete template', { id: toastId });
-      }
-    } catch (error) {
-      console.error('Failed to delete template:', error);
-      toast.error('Failed to delete template', { id: toastId });
+      await api.delete(`/templates/${template.id}`);
+      toast.success('Template deleted', { id: toastId });
+      setPendingDeleteId(null);
+      if (draft?.id === template.id) setDraft(null);
+      await loadTemplates();
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to delete template'), { id: toastId });
     }
   };
 
@@ -615,12 +522,16 @@ export default function TemplatesSettingsPage() {
  * A 400 from the template routes carries `details`: an array of named validation
  * errors for create/update, or a single message string for a render failure.
  * Normalising both to lines means neither is swallowed.
+ *
+ * Takes the thrown value rather than a response body, because `ApiClient` turns
+ * a failed envelope into an `ApiError` that carries `details` through.
  */
-function detailsToLines(result: { details?: unknown; error?: unknown }): string[] {
-  if (Array.isArray(result?.details)) return result.details.map(String);
-  if (typeof result?.details === 'string') return [result.details];
-  if (result?.error) return [String(result.error)];
-  return ['Unknown error'];
+function detailsToLines(error: unknown): string[] {
+  if (error instanceof ApiError) {
+    if (Array.isArray(error.details)) return error.details.map(String);
+    if (typeof error.details === 'string') return [error.details];
+  }
+  return [messageFor(error, 'Unknown error')];
 }
 
 function ErrorList({ title, lines }: { title: string; lines: string[] }) {

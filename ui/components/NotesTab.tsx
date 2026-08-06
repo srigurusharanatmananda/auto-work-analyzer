@@ -5,9 +5,7 @@ import toast from 'react-hot-toast';
 import { NotesResponse } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
 import { Card, Button } from '@/lib/components/ui';
-import { useAuth } from '@/lib/context/AuthContext';
-
-const BACKEND_URL = 'http://localhost:3009';
+import { api, messageFor } from '@/lib/api';
 
 // Sample content for downloads
 const SAMPLE_UNSTRUCTURED = `# Tasks with Status Markers and Dates
@@ -155,7 +153,6 @@ const downloadTextFile = (content: string, filename: string) => {
 };
 
 export default function NotesTab() {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<NotesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -190,11 +187,6 @@ export default function NotesTab() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResults(null);
@@ -220,66 +212,37 @@ export default function NotesTab() {
     );
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
+      const processed = await api.post<NotesResponse>('/notes', data);
+      setResults(processed);
+
+      toast.success(`✅ Extracted ${processed.summary.tasksExtracted} tasks from your notes!`, {
+        id: toastId,
+        duration: 4000,
       });
 
-      const result = await response.json();
+      if (data.createTasks) {
+        const failed = processed.summary.tasksFailed || 0;
+        const created = processed.summary.tasksCreated || 0;
 
-      if (result.success) {
-        setResults(result.data);
-
-        toast.success(
-          `✅ Extracted ${result.data.summary.tasksExtracted} tasks from your notes!`,
-          { id: toastId, duration: 4000 }
-        );
-
-        if (data.createTasks && result.data.summary.tasksCreated > 0) {
-          setTimeout(() => {
-            const failedCount = result.data.summary.tasksFailed || 0;
-            if (failedCount > 0) {
-              toast.success(
-                `🎉 Created ${result.data.summary.tasksCreated} tasks in ClickUp! (${failedCount} failed)`,
-                { duration: 5000 }
-              );
-              // Show warning about failures
-              setTimeout(() => {
-                toast.error(
-                  `⚠️ ${failedCount} task${failedCount > 1 ? 's' : ''} failed to create. Check console for details.`,
-                  { duration: 5000 }
-                );
-              }, 500);
-            } else {
-              toast.success(
-                `🎉 Created ${result.data.summary.tasksCreated} tasks in ClickUp!`,
-                { duration: 4000 }
-              );
-            }
-          }, 500);
-        } else if (data.createTasks && result.data.summary.tasksFailed > 0) {
-          // All tasks failed
-          setTimeout(() => {
-            toast.error(
-              `❌ Failed to create all ${result.data.summary.tasksFailed} tasks. Check console for details.`,
-              { duration: 6000 }
+        // Deferred so it does not replace the extraction toast mid-read.
+        setTimeout(() => {
+          if (created > 0) {
+            toast.success(
+              `🎉 Created ${created} tasks in ClickUp!` + (failed > 0 ? ` (${failed} failed)` : ''),
+              { duration: failed > 0 ? 5000 : 4000 }
             );
-          }, 500);
-        }
-      } else {
-        const errorMessage = result.error || 'Processing failed';
-        setError(errorMessage);
-        toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+          }
+          if (failed > 0 && created === 0) {
+            toast.error(`❌ Failed to create all ${failed} tasks. Check the console for details.`, {
+              duration: 6000,
+            });
+          }
+        }, 500);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      const message = messageFor(caught, 'Processing failed');
+      setError(message);
+      toast.error(`❌ ${message}`, { id: toastId, duration: 5000 });
     } finally {
       setLoading(false);
     }

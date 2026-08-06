@@ -33,10 +33,8 @@
 import { useMemo, useState, ChangeEvent } from 'react';
 import toast from 'react-hot-toast';
 import { Card, Button } from '@/lib/components/ui';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import { CreatedTask, PreviewWorkItem, RenderedTaskPreview } from '@/types';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 interface PreviewState {
   items: RenderedTaskPreview[];
@@ -52,9 +50,21 @@ Sam: Noted, but that's a bigger piece of work. Let's size it next sprint.
 Priya: Fine. We should probably rewrite the whole reporting module at some point.
 Sam: Maybe next quarter. Not committing to that today.`;
 
-export default function TranscriptTab() {
-  const { accessToken } = useAuth();
+/** What `POST /api/preview-tasks` returns for a transcript. */
+interface PreviewPayload {
+  items: RenderedTaskPreview[];
+  warnings?: string[];
+  destination?: PreviewState['destination'];
+  template: PreviewState['template'];
+}
 
+interface CreatePayload {
+  tasksCreated: number;
+  tasks: CreatedTask[];
+  failedTasks?: unknown[];
+}
+
+export default function TranscriptTab() {
   const [transcript, setTranscript] = useState('');
   const [fileName, setFileName] = useState('');
   const [callTitle, setCallTitle] = useState('');
@@ -95,10 +105,6 @@ export default function TranscriptTab() {
   };
 
   const handleExtract = async () => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
     if (!transcript.trim()) {
       toast.error('Paste a transcript first');
       return;
@@ -109,34 +115,18 @@ export default function TranscriptTab() {
     const toastId = toast.loading('Reading the transcript…');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/preview-tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          transcript,
-          ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
-          ...(callDate ? { callDate } : {}),
-        }),
+      const payload = await api.post<PreviewPayload>('/preview-tasks', {
+        transcript,
+        ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
+        ...(callDate ? { callDate } : {}),
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        setError(result.error || 'Extraction failed');
-        toast.error(result.error || 'Extraction failed', { id: toastId, duration: 5000 });
-        return;
-      }
-
-      const items: RenderedTaskPreview[] = result.data.items ?? [];
+      const items = payload.items ?? [];
       setPreview({
         items,
-        warnings: result.data.warnings ?? [],
-        destination: result.data.destination ?? null,
-        template: result.data.template,
+        warnings: payload.warnings ?? [],
+        destination: payload.destination ?? null,
+        template: payload.template,
       });
       setApproved(new Set(items.map((_, index) => index)));
 
@@ -147,7 +137,7 @@ export default function TranscriptTab() {
         { id: toastId, duration: 4000 }
       );
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : 'An error occurred';
+      const message = messageFor(caught, 'Extraction failed');
       setError(message);
       toast.error(message, { id: toastId, duration: 5000 });
     } finally {
@@ -156,41 +146,28 @@ export default function TranscriptTab() {
   };
 
   const handleCreate = async () => {
-    if (!accessToken || approvedItems.length === 0) return;
+    if (approvedItems.length === 0) return;
 
     setCreating(true);
     const toastId = toast.loading(`Creating ${approvedItems.length} task(s) in ClickUp…`);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
+      // The approved items, exactly as the preview returned them. See the
+      // header: sending `transcript` here would re-run extraction.
+      const response = await api.send<CreatePayload>('/create-tasks', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        // The approved items, exactly as the preview returned them. See the
-        // header: sending `transcript` here would re-run extraction.
-        body: JSON.stringify({ workItems: approvedItems }),
+        body: { workItems: approvedItems },
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        setError(result.error || 'Creation failed');
-        toast.error(result.error || 'Creation failed', { id: toastId, duration: 5000 });
-        return;
-      }
-
-      setCreated(result.data.tasks ?? []);
-      const failed = result.data.failedTasks?.length ?? 0;
-      toast.success(
-        `Created ${result.data.tasksCreated} task${result.data.tasksCreated === 1 ? '' : 's'}` +
-          (failed > 0 ? ` (${failed} failed)` : ''),
-        { id: toastId, duration: 5000 }
-      );
+      setCreated(response.data.tasks ?? []);
+      // The backend's own sentence — it already counts failures, and phrasing it
+      // twice is how the two drift apart.
+      toast.success(response.message ?? `Created ${response.data.tasksCreated} tasks`, {
+        id: toastId,
+        duration: 5000,
+      });
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : 'An error occurred';
+      const message = messageFor(caught, 'Creation failed');
       setError(message);
       toast.error(message, { id: toastId, duration: 5000 });
     } finally {

@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useReport } from '@/lib/hooks/useReport';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function ReportManagerSummaryPage() {
   const params = useParams();
@@ -51,12 +51,7 @@ export default function ReportManagerSummaryPage() {
 
   const handleCopyQuickList = async () => {
     const quickList = extractQuickList(managerSummary);
-    try {
-      await navigator.clipboard.writeText(quickList);
-      toast.success('📋 Quick list copied to clipboard!', { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy quick list');
-    }
+    await copyToClipboard(quickList, 'Quick list');
   };
 
   if (loading) {

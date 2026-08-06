@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
-import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
+import { api, messageFor, DEFAULT_API_BASE_URL } from '@/lib/api';
+import { Card, Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 interface UserSettings {
   default_assignee?: string;
@@ -17,87 +16,50 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assignee, setAssignee] = useState('');
-  const [backendUrl, setBackendUrl] = useState('http://localhost:3009');
+  const [backendUrl, setBackendUrl] = useState(DEFAULT_API_BASE_URL);
   const [clickupTeamId, setClickupTeamId] = useState('');
   const [clickupListId, setClickupListId] = useState('');
 
-  // Load settings from backend
+  // No token gate: `ProtectedRoute` below does not render this page until a
+  // session exists.
   useEffect(() => {
-    if (accessToken) {
-      loadSettings();
-    }
-  }, [accessToken]);
+    void loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadSettings = async () => {
-    if (!accessToken) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/settings`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        const settings: UserSettings = result.data;
-        setAssignee(settings.default_assignee || '');
-        setBackendUrl(settings.backend_url || 'http://localhost:3009');
-        setClickupTeamId(settings.clickup_team_id || '');
-        setClickupListId(settings.clickup_list_id || '');
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-      toast.error('Failed to load settings');
+      const settings = await api.get<UserSettings | null>('/auth/settings');
+      setAssignee(settings?.default_assignee || '');
+      setBackendUrl(settings?.backend_url || DEFAULT_API_BASE_URL);
+      setClickupTeamId(settings?.clickup_team_id || '');
+      setClickupListId(settings?.clickup_list_id || '');
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to load settings'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setSaving(true);
     const toastId = toast.loading('Saving settings...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          default_assignee: assignee,
-          backend_url: backendUrl,
-          clickup_team_id: clickupTeamId,
-          clickup_list_id: clickupListId,
-        }),
+      await api.put('/auth/settings', {
+        default_assignee: assignee,
+        backend_url: backendUrl,
+        clickup_team_id: clickupTeamId,
+        clickup_list_id: clickupListId,
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success('Settings saved successfully!', { id: toastId });
-      } else {
-        toast.error(`Failed to save settings: ${result.error}`, { id: toastId });
-      }
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      toast.error('Failed to save settings', { id: toastId });
+      toast.success('Settings saved successfully!', { id: toastId });
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to save settings'), { id: toastId });
     } finally {
       setSaving(false);
     }

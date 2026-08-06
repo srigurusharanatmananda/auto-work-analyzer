@@ -21,20 +21,19 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, ApiError, messageFor } from '@/lib/api';
 import { Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import {
   Destination,
   DetectedWork,
+  EnhancedWorkItem,
   GroupingInfo,
   RenderedTaskPreview,
   StatusMapping,
   Template,
   WorkAnalysisResult,
 } from '@/types';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 /** Used until the user picks otherwise — matches the backend's own default. */
 const DEFAULT_TEMPLATE_ID = 'builtin-standard';
@@ -82,6 +81,15 @@ export function repositoryFromProjectPath(projectPath: string): string | undefin
   return name && name.length > 0 ? name : undefined;
 }
 
+/** What `POST /api/preview-tasks` returns. */
+interface PreviewPayload {
+  items: RenderedTaskPreview[];
+  warnings?: string[];
+  statusMapping?: StatusMapping[];
+  grouping?: GroupingInfo | null;
+  destination?: { id: string; name: string; listName?: string; teamName?: string } | null;
+}
+
 interface TaskPreviewModalProps {
   workItems: DetectedWork[];
   /** The analysis the items came from; re-sent with the user's edits applied. */
@@ -109,7 +117,6 @@ export default function TaskPreviewModal({
   onClose,
   onCreateTasks,
 }: TaskPreviewModalProps) {
-  const { accessToken } = useAuth();
   const [workItems, setWorkItems] = useState<DetectedWork[]>(initialWorkItems);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
@@ -132,18 +139,14 @@ export default function TaskPreviewModal({
   const [rendering, setRendering] = useState(false);
 
   useEffect(() => {
-    if (!accessToken) return;
-
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/templates`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          credentials: 'include',
-        });
-        const result = await response.json();
-        if (!cancelled && result.success) setTemplates(result.data as Template[]);
+        const loaded = await api.get<Template[]>('/templates');
+        if (!cancelled) setTemplates(loaded);
       } catch (error) {
+        // Non-fatal: the picker falls back to the built-in default, which is
+        // what the backend would have used anyway.
         console.error('Failed to load templates:', error);
       }
     })();
@@ -151,28 +154,23 @@ export default function TaskPreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, []);
 
   // Destinations, defaulting to whichever one is marked default — the same one
   // the backend would pick for a request that names none, so the picker opens
   // showing what would happen anyway.
   useEffect(() => {
-    if (!accessToken) return;
-
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/destinations`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          credentials: 'include',
-        });
-        const result = await response.json();
-        if (cancelled || !result.success) return;
-        const loaded = result.data as Destination[];
+        const loaded = await api.get<Destination[]>('/destinations');
+        if (cancelled) return;
         setDestinations(loaded);
         const preferred = loaded.find((entry) => entry.isDefault) ?? loaded[0];
         if (preferred) setDestinationId(preferred.id);
       } catch (error) {
+        // Non-fatal: with no destination chosen the backend falls back to its
+        // .env configuration, which is the pre-destinations behaviour.
         console.error('Failed to load destinations:', error);
       }
     })();
@@ -180,68 +178,53 @@ export default function TaskPreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, []);
 
   // Re-renders the preview whenever the template, the destination OR the items
   // change, so the pane always shows the output of the template that will
   // actually be used, against the list it will actually be written to.
   useEffect(() => {
-    if (!accessToken) return;
-
     const timer = setTimeout(async () => {
       setRendering(true);
       try {
-        const response = await fetch(`${BACKEND_URL}/api/preview-tasks`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            workAnalysis: workAnalysisWithEditedItems(baseWorkAnalysis, workItems),
-            repository: repositoryFromProjectPath(projectPath),
-            templateId,
-            // Omitted rather than sent empty, so the backend takes its own
-            // default-then-.env fallback instead of being handed "".
-            ...(destinationId ? { destinationId } : {}),
-          }),
+        const preview = await api.post<PreviewPayload>('/preview-tasks', {
+          workAnalysis: workAnalysisWithEditedItems(baseWorkAnalysis, workItems),
+          repository: repositoryFromProjectPath(projectPath),
+          templateId,
+          // Omitted rather than sent empty, so the backend takes its own
+          // default-then-.env fallback instead of being handed "".
+          ...(destinationId ? { destinationId } : {}),
         });
-        const result = await response.json();
 
-        if (result.success) {
-          setRendered(result.data.items as RenderedTaskPreview[]);
-          setWarnings((result.data.warnings as string[]) ?? []);
-          setStatusMapping((result.data.statusMapping as StatusMapping[]) ?? []);
-          // Absent unless the request supplied raw commits, which is the only
-          // shape that needed grouping. This modal posts a workAnalysis, so it is
-          // normally null — the badge appears only when the server actually
-          // grouped something.
-          setGrouping((result.data.grouping as GroupingInfo) ?? null);
-          setTarget(result.data.destination ?? null);
-          setRenderError(null);
-        } else {
-          setRendered([]);
-          setWarnings([]);
-          setStatusMapping([]);
-          setTarget(null);
-          setRenderError(
-            typeof result.details === 'string'
-              ? result.details
-              : result.error || 'Failed to render preview'
-          );
-        }
+        setRendered(preview.items);
+        setWarnings(preview.warnings ?? []);
+        setStatusMapping(preview.statusMapping ?? []);
+        // Absent unless the request supplied raw commits, which is the only
+        // shape that needed grouping. This modal posts a workAnalysis, so it is
+        // normally null — the badge appears only when the server actually
+        // grouped something.
+        setGrouping(preview.grouping ?? null);
+        setTarget(preview.destination ?? null);
+        setRenderError(null);
       } catch (error) {
-        console.error('Failed to render preview:', error);
         setRendered([]);
-        setRenderError('Could not reach the backend to render a preview.');
+        setWarnings([]);
+        setStatusMapping([]);
+        setTarget(null);
+        // A validation failure names the offending field in `details`, which is
+        // far more useful than the generic message that accompanies it.
+        setRenderError(
+          error instanceof ApiError && typeof error.details === 'string'
+            ? error.details
+            : messageFor(error, 'Failed to render preview')
+        );
       } finally {
         setRendering(false);
       }
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [accessToken, templateId, destinationId, workItems, baseWorkAnalysis, projectPath]);
+  }, [templateId, destinationId, workItems, baseWorkAnalysis, projectPath]);
 
   const handleEdit = (index: number, field: 'name' | 'description', value: string) => {
     const updated = [...workItems];
@@ -250,49 +233,28 @@ export default function TaskPreviewModal({
   };
 
   const handleEnhanceWithAI = async (index: number) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setEnhancingIndex(index);
     const toastId = toast.loading('✨ Enhancing with AI...');
     const item = workItems[index];
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItemName: item.name,
-          description: item.description,
-          commits: item.commits || [],
-          filesChanged: item.files || [],
-        }),
+      const enhanced = await api.post<EnhancedWorkItem>('/ai-enhance', {
+        workItemName: item.name,
+        description: item.description,
+        commits: item.commits || [],
+        filesChanged: item.files || [],
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        const enhanced = result.data;
-        const updated = [...workItems];
-        updated[index] = {
-          ...updated[index],
-          name: enhanced.improvedTitle || item.name,
-          description: enhanced.description,
-        };
-        setWorkItems(updated);
-        toast.success('✨ Enhanced with AI!', { id: toastId });
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId });
-      }
+      const updated = [...workItems];
+      updated[index] = {
+        ...updated[index],
+        name: enhanced.improvedTitle || item.name,
+        description: enhanced.description,
+      };
+      setWorkItems(updated);
+      toast.success('✨ Enhanced with AI!', { id: toastId });
     } catch (error) {
-      console.error('Failed to enhance with AI:', error);
-      toast.error('❌ Failed to enhance with AI', { id: toastId });
+      toast.error(`❌ ${messageFor(error, 'Failed to enhance with AI')}`, { id: toastId });
     } finally {
       setEnhancingIndex(null);
     }

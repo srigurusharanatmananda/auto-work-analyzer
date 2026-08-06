@@ -2,8 +2,8 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/lib/context/AuthContext';
-import { AnalysisResponse } from '@/types';
+import { api, messageFor } from '@/lib/api';
+import { AnalysisResponse, GitInfo } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
 import DirectoryBrowser from './DirectoryBrowser';
 import { Button, LoadingSpinner } from '@/lib/components/ui';
@@ -13,11 +13,7 @@ interface AnalyzeTabProps {
   setSelectedProjectPath: (path: string) => void;
 }
 
-// Backend API URL (webhook server runs on port 3009)
-const BACKEND_URL = 'http://localhost:3009';
-
 export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath }: AnalyzeTabProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,33 +35,16 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setLoadingGitInfo(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setBranches(result.data.branches || []);
-        setCurrentBranch(result.data.currentBranch || '');
-        setUserEmail(result.data.userEmail || '');
-      } else {
-        // Not a git repo or error - clear state
-        setBranches([]);
-        setCurrentBranch('');
-        setUserEmail('');
-      }
-    } catch (err) {
-      console.error('Failed to fetch git info:', err);
+      const info = await api.get<GitInfo>('/git-info', { query: { path } });
+      setBranches(info.branches ?? []);
+      setCurrentBranch(info.currentBranch ?? '');
+      setUserEmail(info.userEmail ?? '');
+    } catch (caught) {
+      // Expected whenever the chosen directory is not a git repository, so this
+      // clears the fields rather than shouting at the user.
+      console.error('Failed to fetch git info:', caught);
       setBranches([]);
       setCurrentBranch('');
       setUserEmail('');
@@ -113,52 +92,26 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
     // Show loading toast
     const toastId = toast.loading('🔍 Analyzing commits...');
 
-    if (!accessToken) {
-      toast.error('Not authenticated', { id: toastId });
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch(`${BACKEND_URL}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const analysis = await api.post<AnalysisResponse>('/analyze', data);
+      setResults(analysis);
 
-      const result = await response.json();
+      toast.success(
+        `✅ Found ${analysis.summary.totalWorkItems} work items from ${analysis.summary.totalCommits} commits!`,
+        { id: toastId, duration: 4000 }
+      );
 
-      if (result.success) {
-        setResults(result.data);
-
-        // Success toast with details
-        toast.success(
-          `✅ Found ${result.data.summary.totalWorkItems} work items from ${result.data.summary.totalCommits} commits!`,
-          { id: toastId, duration: 4000 }
-        );
-
-        // Additional toast for created tasks
-        if (data.createTasks && result.data.summary.tasksCreated > 0) {
-          setTimeout(() => {
-            toast.success(
-              `🎉 Created ${result.data.summary.tasksCreated} tasks in ClickUp!`,
-              { duration: 4000 }
-            );
-          }, 500);
-        }
-      } else {
-        const errorMessage = result.error || 'Analysis failed';
-        setError(errorMessage);
-        toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+      if (data.createTasks && analysis.summary.tasksCreated > 0) {
+        setTimeout(() => {
+          toast.success(`🎉 Created ${analysis.summary.tasksCreated} tasks in ClickUp!`, {
+            duration: 4000,
+          });
+        }, 500);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      const message = messageFor(caught, 'Analysis failed');
+      setError(message);
+      toast.error(`❌ ${message}`, { id: toastId, duration: 5000 });
     } finally {
       setLoading(false);
     }

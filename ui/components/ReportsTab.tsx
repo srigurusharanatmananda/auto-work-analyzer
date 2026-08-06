@@ -2,14 +2,15 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { AnalysisResponse, DetectedWork } from '@/types';
+import { AnalysisResponse, DetectedWork, EnhancedWorkItem, GitInfo } from '@/types';
 import DirectoryBrowser from './DirectoryBrowser';
 import TaskPreviewModal, {
   repositoryFromProjectPath,
   workAnalysisWithEditedItems,
 } from './TaskPreviewModal';
-import { Button, Card, LoadingSpinner, EmptyState } from '@/lib/components/ui';
-import { useAuth } from '@/lib/context/AuthContext';
+import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
+import { api, messageFor } from '@/lib/api';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface ReportsTabProps {
   selectedProjectPath: string;
@@ -26,10 +27,7 @@ interface EditableWorkItem {
 }
 
 // Backend API URL (webhook server runs on port 3009)
-const BACKEND_URL = 'http://localhost:3009';
-
 export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath }: ReportsTabProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [summaryReport, setSummaryReport] = useState<string>('');
   const [detailedReport, setDetailedReport] = useState<string>('');
@@ -61,32 +59,15 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setLoadingGitInfo(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setBranches(result.data.branches || []);
-        setCurrentBranch(result.data.currentBranch || '');
-        setUserEmail(result.data.userEmail || '');
-      } else {
-        setBranches([]);
-        setCurrentBranch('');
-        setUserEmail('');
-      }
-    } catch (err) {
-      console.error('Failed to fetch git info:', err);
+      const info = await api.get<GitInfo>('/git-info', { query: { path } });
+      setBranches(info.branches ?? []);
+      setCurrentBranch(info.currentBranch ?? '');
+      setUserEmail(info.userEmail ?? '');
+    } catch (caught) {
+      // Expected whenever the directory is not a git repository.
+      console.error('Failed to fetch git info:', caught);
       setBranches([]);
       setCurrentBranch('');
       setUserEmail('');
@@ -107,11 +88,6 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
   const handleGenerateReport = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
 
     setLoading(true);
     setSummaryReport('');
@@ -140,23 +116,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const toastId = toast.loading('📊 Generating report...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setWorkAnalysis(result.data);
+      const analysis = await api.post<AnalysisResponse>('/analyze', data);
+      {
+        setWorkAnalysis(analysis);
 
         // Populate editable work items
-        const workItems: EditableWorkItem[] = result.data.workAnalysis.detectedWork.map((work: DetectedWork, index: number) => ({
+        const workItems: EditableWorkItem[] = analysis.workAnalysis.detectedWork.map((work: DetectedWork, index: number) => ({
           id: `work-${index}-${Date.now()}`,
           name: work.name,
           type: work.type,
@@ -172,11 +137,11 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         // Generate Detailed Report (with descriptions)
         const detailedLines = ['Sri Gurusharanatmanda EOD:'];
 
-        if (result.data.workAnalysis.detectedWork.length === 0) {
+        if (analysis.workAnalysis.detectedWork.length === 0) {
           summaryLines.push('- No work items detected for the selected period');
           detailedLines.push('- No work items detected for the selected period');
         } else {
-          result.data.workAnalysis.detectedWork.forEach((work: DetectedWork) => {
+          analysis.workAnalysis.detectedWork.forEach((work: DetectedWork) => {
             const emoji = work.type === 'feature' ? '✨' : work.type === 'bug-fix' ? '🐛' : '🔧';
 
             // Summary: just the main point
@@ -197,23 +162,22 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         setDetailedReport(detailedLines.join('\n'));
 
         toast.success(
-          `✅ Generated report with ${result.data.workAnalysis.detectedWork.length} work items!`,
+          `✅ Generated report with ${analysis.workAnalysis.detectedWork.length} work items!`,
           { id: toastId, duration: 3000 }
         );
 
         // Auto-save if enabled
-        if (autoSave && result.data.workAnalysis.detectedWork.length > 0) {
+        if (autoSave && analysis.workAnalysis.detectedWork.length > 0) {
           setTimeout(() => {
             handleSaveReport();
           }, 500);
         }
-      } else {
-        const errorMessage = result.error || 'Report generation failed';
-        toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Report generation failed')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setLoading(false);
     }
@@ -225,12 +189,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(currentReport);
-      toast.success(`📋 ${viewMode === 'summary' ? 'Summary' : 'Detailed'} report copied to clipboard!`, { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy report');
-    }
+    await copyToClipboard(currentReport, viewMode === 'summary' ? 'Summary' : 'Detailed report');
   };
 
   const handleBrowseClick = () => {
@@ -345,11 +304,6 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const item = editableWorkItems.find(i => i.id === id);
     if (!item) return;
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     // Mark as enhancing
     setEnhancingItems(prev => new Set([...prev, id]));
     const toastId = toast.loading('✨ Enhancing with AI...');
@@ -360,26 +314,14 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         w => w.name === item.name
       );
 
-      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItemName: item.name,
-          description: item.description,
-          commits: originalWork?.commits || [],
-          filesChanged: originalWork?.files || [],
-        }),
+      const enhanced = await api.post<EnhancedWorkItem>('/ai-enhance', {
+        workItemName: item.name,
+        description: item.description,
+        commits: originalWork?.commits || [],
+        filesChanged: originalWork?.files || [],
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        const enhanced = result.data;
-
+      {
         // Update the work item with enhanced data and open edit mode
         setEditableWorkItems(items => {
           const updatedItems = items.map(i =>
@@ -412,12 +354,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             toast.success(`⚠️ Detected priority: ${enhanced.priority}`, { duration: 4000 });
           }, 1000);
         }
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId, duration: 5000 });
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to enhance with AI')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setEnhancingItems(prev => {
         const newSet = new Set(prev);
@@ -476,11 +418,6 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     templateId: string,
     destinationId: string
   ) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setCreatingTasks(true);
     const toastId = toast.loading(`Creating ${editedWorkItems.length} tasks in ClickUp...`);
 
@@ -492,13 +429,8 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         editedWorkItems
       );
 
-      const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
+      const created = await api.post<{ tasksCreated: number }>(
+        '/create-tasks',
         // `templateId` MUST be here, not only on the preview request: this is the
         // legacy `workAnalysis` branch, and it is what renders the tasks that are
         // actually created. Omitting it would make the picker restyle the preview
@@ -510,29 +442,25 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         // is the branch that creates the tasks, so a destination chosen in the
         // modal but omitted here would retarget the preview and write to the old
         // list. Omitted when empty so the backend takes its own fallback.
-        body: JSON.stringify({
+        {
           workAnalysis: modifiedWorkAnalysis,
           projectPath: selectedProjectPath,
           repository: repositoryFromProjectPath(selectedProjectPath),
           templateId,
           ...(destinationId ? { destinationId } : {}),
-        }),
+        }
+      );
+
+      toast.success(`✅ Created ${created.tasksCreated} tasks in ClickUp!`, {
+        id: toastId,
+        duration: 4000,
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(
-          `✅ Created ${result.data.tasksCreated} tasks in ClickUp!`,
-          { id: toastId, duration: 4000 }
-        );
-        setShowTaskPreview(false);
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to create tasks'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+      setShowTaskPreview(false);
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to create tasks')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setCreatingTasks(false);
     }
@@ -544,58 +472,41 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setSavingReport(true);
     const toastId = toast.loading('💾 Saving report...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/save-report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+      const saved = await api.post<{ savedWorkItems: number }>('/save-report', {
+        projectPath: selectedProjectPath,
+        date: reportMetadata.date,
+        endDate: reportMetadata.endDate,
+        author: reportMetadata.author,
+        branch: reportMetadata.branch,
+        workItems: editableWorkItems.map(item => ({
+          name: item.name,
+          type: item.type,
+          description: item.description,
+          estimatedHours: 0,
+          complexity: 'medium',
+          filesCount: 0,
+          commitsCount: 0,
+        })),
+        summary: {
+          totalCommits: workAnalysis.summary.totalCommits,
+          summary: `Report for ${reportMetadata.date}`,
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          projectPath: selectedProjectPath,
-          date: reportMetadata.date,
-          endDate: reportMetadata.endDate,
-          author: reportMetadata.author,
-          branch: reportMetadata.branch,
-          workItems: editableWorkItems.map(item => ({
-            name: item.name,
-            type: item.type,
-            description: item.description,
-            estimatedHours: 0,
-            complexity: 'medium',
-            filesCount: 0,
-            commitsCount: 0,
-          })),
-          summary: {
-            totalCommits: workAnalysis.summary.totalCommits,
-            summary: `Report for ${reportMetadata.date}`,
-          },
-        }),
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        setReportSaved(true);
-        toast.success(
-          `✅ Report saved successfully! (${result.data.savedWorkItems} work items)`,
-          { id: toastId, duration: 3000 }
-        );
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to save report'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+      setReportSaved(true);
+      toast.success(`✅ Report saved successfully! (${saved.savedWorkItems} work items)`, {
+        id: toastId,
+        duration: 3000,
+      });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to save report')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setSavingReport(false);
     }

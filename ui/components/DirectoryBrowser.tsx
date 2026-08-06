@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import Button from '@/lib/components/ui/Button';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 interface Directory {
   name: string;
@@ -26,42 +24,20 @@ interface DirectoryBrowserProps {
 }
 
 export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowserProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BrowseData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDirectories = async (path?: string) => {
-    if (!accessToken) {
-      setError('Not authenticated');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const url = path
-        ? `${BACKEND_URL}/api/browse?path=${encodeURIComponent(path)}`
-        : `${BACKEND_URL}/api/browse`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error || 'Failed to browse directory');
-        toast.error(result.error || 'Failed to browse directory');
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to browse directory';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      setData(await api.get<BrowseData>('/browse', { query: { path } }));
+    } catch (caught) {
+      const message = messageFor(caught, 'Failed to browse directory');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -14,10 +14,13 @@ import type {
   Template,
 } from '@/types';
 
-const BACKEND_URL = 'http://localhost:3009';
+/** `GET /api/scanning/repos`. */
+interface RepoListing {
+  repos: ScannedRepo[];
+  skipped: SkippedDir[];
+}
 
 export default function ScanningSettingsPage() {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [settings, setSettings] = useState<ScanSettings | null>(null);
@@ -28,98 +31,71 @@ export default function ScanningSettingsPage() {
   const [summary, setSummary] = useState<ScanRunSummary | null>(null);
   const [newIdentity, setNewIdentity] = useState('');
 
-  const api = useCallback(
-    async (path: string, init: RequestInit = {}) => {
-      const res = await fetch(`${BACKEND_URL}${path}`, {
-        ...init,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-          ...(init.headers ?? {}),
-        },
-        credentials: 'include',
-      });
-      return { ok: res.ok, status: res.status, body: await res.json() };
-    },
-    [accessToken]
-  );
-
   const load = useCallback(async () => {
-    if (!accessToken) return;
     setLoading(true);
     try {
-      const [s, r, d, t, last] = await Promise.all([
-        api('/api/scanning/settings'),
-        api('/api/scanning/repos'),
-        api('/api/destinations'),
-        api('/api/templates'),
-        api('/api/scanning/last-run'),
-      ]);
-      setSettings(s.body.data ?? null);
-      setRepos(r.body.data?.repos ?? []);
-      setSkipped(r.body.data?.skipped ?? []);
-      setDestinations(d.body.data ?? []);
-      setTemplates(t.body.data ?? []);
+      const [loadedSettings, listing, loadedDestinations, loadedTemplates, lastRun] =
+        await Promise.all([
+          api.get<ScanSettings | null>('/scanning/settings'),
+          api.get<RepoListing | null>('/scanning/repos'),
+          api.get<Destination[]>('/destinations'),
+          api.get<Template[]>('/templates'),
+          api.get<{ summary?: ScanRunSummary } | null>('/scanning/last-run'),
+        ]);
+
+      setSettings(loadedSettings ?? null);
+      setRepos(listing?.repos ?? []);
+      setSkipped(listing?.skipped ?? []);
+      setDestinations(loadedDestinations ?? []);
+      setTemplates(loadedTemplates ?? []);
       // The persisted summary, so a SCHEDULED run's failures are visible without
       // re-running anything.
-      setSummary(last.body.data?.summary ?? null);
-    } catch {
-      toast.error('Could not load scan settings');
+      setSummary(lastRun?.summary ?? null);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not load scan settings'));
     } finally {
       setLoading(false);
     }
-  }, [accessToken, api]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const saveSettings = async (patch: Partial<ScanSettings>) => {
-    const { ok, body } = await api('/api/scanning/settings', {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    });
-    if (!ok) {
+    try {
+      setSettings(await api.put<ScanSettings>('/scanning/settings', patch));
+      toast.success('Saved');
+    } catch (caught) {
       // Render the server's reason. Swallowing it wastes the validation.
-      toast.error(body.error ?? 'Could not save');
-      return;
+      toast.error(messageFor(caught, 'Could not save'));
     }
-    setSettings(body.data);
-    toast.success('Saved');
   };
 
   const saveBinding = async (slug: string, patch: Partial<ScannedRepo>) => {
-    const { ok, body } = await api(`/api/scanning/repos/${slug}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    });
-    if (!ok) {
-      toast.error(body.error ?? 'Could not save');
-      return;
+    try {
+      await api.put(`/scanning/repos/${slug}`, patch);
+      setRepos((current) =>
+        current.map((repo) => (repo.slug === slug ? { ...repo, ...patch } : repo))
+      );
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not save'));
     }
-    setRepos((current) =>
-      current.map((repo) => (repo.slug === slug ? { ...repo, ...patch } : repo))
-    );
   };
 
   const run = async (dryRun: boolean) => {
     setRunning(true);
     try {
-      const { ok, body } = await api('/api/scanning/run', {
-        method: 'POST',
-        body: JSON.stringify({ dryRun }),
-      });
-      if (!ok) {
-        toast.error(body.error ?? 'Scan failed');
-        return;
-      }
-      setSummary(body.data);
+      const result = await api.post<ScanRunSummary>('/scanning/run', { dryRun });
+      setSummary(result);
       toast.success(
         dryRun
           ? 'Dry run complete — nothing was created'
-          : `Created ${body.data.totalTasksCreated} task(s)`
+          : `Created ${result.totalTasksCreated} task(s)`
       );
       await load();
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Scan failed'));
     } finally {
       setRunning(false);
     }
