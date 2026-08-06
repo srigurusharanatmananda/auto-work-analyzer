@@ -95,8 +95,8 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     });
   };
 
-  router.get("/", authenticate, anyRole, (req, res) => {
-    res.json({ success: true, data: store.list(userIdOf(req)) });
+  router.get("/", authenticate, anyRole, async (req, res) => {
+    res.json({ success: true, data: await store.list(userIdOf(req)) });
   });
 
   /**
@@ -120,13 +120,13 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     res.json({ success: true, data: WORK_ITEM_SCHEMA });
   });
 
-  router.post("/", authenticate, anyRole, (req, res) => {
+  router.post("/", authenticate, anyRole, async (req, res) => {
     const errors = validateBody(req.body);
     if (errors.length > 0) {
       res.status(400).json({ success: false, error: "Invalid template", details: errors });
       return;
     }
-    const created = store.create(userIdOf(req), {
+    const created = await store.create(userIdOf(req), {
       name: req.body.name,
       description: req.body.description,
       nameTemplate: req.body.nameTemplate,
@@ -136,14 +136,14 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     res.status(201).json({ success: true, data: created });
   });
 
-  router.put("/:id", authenticate, anyRole, (req, res) => {
+  router.put("/:id", authenticate, anyRole, async (req, res) => {
     const errors = validateBody(req.body);
     if (errors.length > 0) {
       res.status(400).json({ success: false, error: "Invalid template", details: errors });
       return;
     }
     try {
-      const updated = store.update(req.params.id!, userIdOf(req), {
+      const updated = await store.update(req.params.id!, userIdOf(req), {
         name: req.body.name,
         description: req.body.description,
         nameTemplate: req.body.nameTemplate,
@@ -156,9 +156,9 @@ export function createTemplatesRouter(store: TemplateStore): Router {
     }
   });
 
-  router.delete("/:id", authenticate, anyRole, (req, res) => {
+  router.delete("/:id", authenticate, anyRole, async (req, res) => {
     try {
-      store.remove(req.params.id!, userIdOf(req));
+      await store.remove(req.params.id!, userIdOf(req));
       res.json({ success: true });
     } catch (error) {
       handleStoreError(res, error, "Delete failed");

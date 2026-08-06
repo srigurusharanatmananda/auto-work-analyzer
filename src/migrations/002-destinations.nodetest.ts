@@ -17,13 +17,85 @@ import { existsSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { CredentialCipher, generateKeyBase64 } from "../destinations/CredentialCipher.js";
-import { DestinationStore } from "../destinations/DestinationStore.js";
 import { runMigrations } from "./runMigrations.js";
 import { migration002 } from "./002-destinations.js";
 
 let dir: string;
 let dbPath: string;
 let cipher: CredentialCipher;
+
+/**
+ * Reads the destinations the migration wrote, straight out of SQLite.
+ *
+ * This used to go through `DestinationStore`, which was the natural way to
+ * assert on the result while both lived on the same database. `DestinationStore`
+ * is on Postgres now and this migration is a SQLite-only legacy path — reading
+ * through it would either test nothing or fail for a reason unrelated to the
+ * migration. The columns are read directly instead, which is also a stricter
+ * check: it asserts what is on disk rather than what a mapper reports.
+ */
+interface MigratedRow {
+  id: string;
+  name: string;
+  api_key_encrypted: string;
+  team_id: string;
+  list_id: string;
+  default_assignee: string | null;
+  is_default: number;
+}
+
+function migratedDestinations(userId: string): MigratedRow[] {
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    return db
+      .prepare(
+        `SELECT id, name, api_key_encrypted, team_id, list_id, default_assignee, is_default
+           FROM clickup_destinations WHERE user_id = ? ORDER BY created_at ASC`
+      )
+      .all(userId) as MigratedRow[];
+  } finally {
+    db.close();
+  }
+}
+
+/** Inserts a destination the way a user who already had one would have. */
+function seedExistingDestination(userId: string, id: string, apiKey: string): void {
+  const db = new Database(dbPath);
+  try {
+    db.exec(DESTINATIONS_SCHEMA_FOR_TEST);
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO clickup_destinations
+         (id, user_id, name, api_key_encrypted, team_id, list_id, is_default, created_at, updated_at)
+       VALUES (?, ?, 'Already mine', ?, 't1', 'l1', 1, ?, ?)`
+    ).run(id, userId, cipher.encrypt(apiKey), now, now);
+  } finally {
+    db.close();
+  }
+}
+
+/** Mirrors the DDL the migration itself creates, for the pre-seeded case. */
+const DESTINATIONS_SCHEMA_FOR_TEST = `
+  CREATE TABLE IF NOT EXISTS clickup_destinations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    api_key_encrypted TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    team_name TEXT,
+    space_id TEXT,
+    space_name TEXT,
+    folder_id TEXT,
+    folder_name TEXT,
+    list_id TEXT NOT NULL,
+    list_name TEXT,
+    default_template_id TEXT,
+    default_assignee TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`;
 
 function seedUserSettings(apiKey: string | null, overrides: Record<string, unknown> = {}): void {
   const db = new Database(dbPath);
@@ -90,16 +162,14 @@ describe("002-destinations", () => {
     seedUserSettings("pk_legacy_key");
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    const destinations = store.list("user-1");
+    const destinations = migratedDestinations("user-1");
     assert.equal(destinations.length, 1);
     assert.equal(destinations[0]!.name, "Default (migrated)");
-    assert.equal(destinations[0]!.teamId, "team-9");
-    assert.equal(destinations[0]!.listId, "list-9");
-    assert.equal(destinations[0]!.isDefault, true);
-    assert.equal(destinations[0]!.defaultAssignee, "dev@example.com");
-    assert.equal(store.getApiKey(destinations[0]!.id, "user-1"), "pk_legacy_key");
-    store.close();
+    assert.equal(destinations[0]!.team_id, "team-9");
+    assert.equal(destinations[0]!.list_id, "list-9");
+    assert.equal(destinations[0]!.is_default, 1);
+    assert.equal(destinations[0]!.default_assignee, "dev@example.com");
+    assert.equal(cipher.decrypt(destinations[0]!.api_key_encrypted), "pk_legacy_key");
   });
 
   test("nulls out the plaintext key after migrating", () => {
@@ -112,18 +182,14 @@ describe("002-destinations", () => {
     seedUserSettings(null);
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    assert.equal(store.list("user-1").length, 0);
-    store.close();
+    assert.equal(migratedDestinations("user-1").length, 0);
   });
 
   test("skips a user whose team or list id is missing, and keeps their key", () => {
     seedUserSettings("pk_legacy_key", { clickup_list_id: null });
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    assert.equal(store.list("user-1").length, 0);
-    store.close();
+    assert.equal(migratedDestinations("user-1").length, 0);
     // The key is the only copy that exists — dropping it would be data loss.
     assert.equal(storedPlaintextKey(), "pk_legacy_key");
   });
@@ -133,9 +199,7 @@ describe("002-destinations", () => {
     runMigrations(dbPath, cipher);
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    assert.equal(store.list("user-1").length, 1);
-    store.close();
+    assert.equal(migratedDestinations("user-1").length, 1);
   });
 
   /**
@@ -152,34 +216,23 @@ describe("002-destinations", () => {
 
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    const destinations = store.list("user-1");
+    const destinations = migratedDestinations("user-1");
     assert.equal(destinations.length, 1);
-    assert.equal(store.getApiKey(destinations[0]!.id, "user-1"), "pk_legacy_key");
-    store.close();
+    assert.equal(cipher.decrypt(destinations[0]!.api_key_encrypted), "pk_legacy_key");
     assert.ok(appliedMigrationIds().includes("002-destinations"));
   });
 
   test("does not steal the default from a destination the user already had", () => {
     seedUserSettings("pk_legacy_key");
 
-    const store = new DestinationStore(dbPath, cipher);
-    const existing = store.create("user-1", {
-      name: "Already mine",
-      apiKey: "pk_existing",
-      teamId: "t1",
-      listId: "l1",
-    });
-    store.close();
+    seedExistingDestination("user-1", "existing-1", "pk_existing");
 
     runMigrations(dbPath, cipher);
 
-    const reopened = new DestinationStore(dbPath, cipher);
-    const all = reopened.list("user-1");
+    const all = migratedDestinations("user-1");
     assert.equal(all.length, 2);
-    assert.equal(all.filter((d) => d.isDefault).length, 1);
-    assert.equal(reopened.getDefault("user-1")!.id, existing.id);
-    reopened.close();
+    assert.equal(all.filter((d) => d.is_default === 1).length, 1);
+    assert.equal(all.find((d) => d.is_default === 1)!.id, "existing-1");
   });
 
   /**
@@ -228,11 +281,9 @@ describe("002-destinations", () => {
 
     runMigrations(dbPath, cipher);
 
-    const store = new DestinationStore(dbPath, cipher);
-    const first = store.list("user-1");
-    const second = store.list("user-2");
-    assert.equal(store.getApiKey(first[0]!.id, "user-1"), "pk_one");
-    assert.equal(store.getApiKey(second[0]!.id, "user-2"), "pk_two");
-    store.close();
+    const first = migratedDestinations("user-1");
+    const second = migratedDestinations("user-2");
+    assert.equal(cipher.decrypt(first[0]!.api_key_encrypted), "pk_one");
+    assert.equal(cipher.decrypt(second[0]!.api_key_encrypted), "pk_two");
   });
 });

@@ -129,7 +129,7 @@ export class DailyScanner {
           continue;
         }
 
-        const resolved = this.deps.resolver.resolve(
+        const resolved = await this.deps.resolver.resolve(
           userId,
           binding?.destinationId,
           binding?.templateId

@@ -19,6 +19,20 @@ export interface PostgresHandle {
   close(): Promise<void>;
 }
 
+export interface OpenOptions {
+  /**
+   * Resolve unqualified table names in this Postgres schema instead of
+   * `public`. Used by the test fixture to give each suite its own set of
+   * tables inside one database; unused in production.
+   */
+  searchPath?: string;
+  /**
+   * Cap the pool. The test fixture uses 1 so that a suite which leaks an open
+   * transaction deadlocks against itself immediately rather than intermittently.
+   */
+  max?: number;
+}
+
 /**
  * Opens a pooled connection.
  *
@@ -26,7 +40,7 @@ export interface PostgresHandle {
  *   because a connection to a silently-chosen fallback database is worse than
  *   no connection.
  */
-export function openPostgres(connectionString?: string): PostgresHandle {
+export function openPostgres(connectionString?: string, options: OpenOptions = {}): PostgresHandle {
   const url = connectionString ?? process.env.DATABASE_URL;
 
   if (!url) {
@@ -39,6 +53,12 @@ export function openPostgres(connectionString?: string): PostgresHandle {
   const sql = postgres(url, {
     // Surfaces a mis-typed url as an error rather than a hang on first query.
     connect_timeout: 10,
+    ...(options.max ? { max: options.max } : {}),
+    ...(options.searchPath
+      ? // Set per connection, so a pool member created later cannot quietly
+        // fall back to `public` and write the test's rows into the real tables.
+        { connection: { search_path: options.searchPath } }
+      : {}),
   });
 
   return {

@@ -1,7 +1,8 @@
-import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
 import { DEFAULT_TEMPLATE_OPTIONS, Template, TemplateOptions } from "../formatting/Template.js";
+import { getPool } from "../db/pool.js";
+import type { PostgresHandle } from "../db/client.js";
 
 export interface TemplateInput {
   name: string;
@@ -38,7 +39,7 @@ interface Row {
   name_template: string;
   description_template: string;
   options: string;
-  is_builtin: number;
+  is_builtin: boolean;
 }
 
 function toTemplate(row: Row): Template {
@@ -50,84 +51,74 @@ function toTemplate(row: Row): Template {
     nameTemplate: row.name_template,
     descriptionTemplate: row.description_template,
     options: { ...DEFAULT_TEMPLATE_OPTIONS, ...JSON.parse(row.options) },
-    isBuiltin: row.is_builtin === 1,
+    isBuiltin: row.is_builtin,
   };
 }
 
 /**
- * Persists user-editable task templates in SQLite, seeding the read-only
- * built-ins (from `builtinTemplates.ts`) on every open so a fresh database
- * always has a known-good starting point.
+ * Persists user-editable task templates.
+ *
+ * Two things changed with Postgres, both structural rather than cosmetic:
+ *
+ *  - The connection is injected. Under SQLite each store opened its own file
+ *    handle; here that would mean a pool of sockets per instance.
+ *  - The schema is no longer created by the constructor. It comes from the
+ *    migrations, so a store can no longer paper over a database that was never
+ *    migrated — which is the point: `CREATE TABLE IF NOT EXISTS` in a
+ *    constructor is exactly why adding a column used to be a silent no-op.
+ *
+ * Consequently seeding the built-ins is now an explicit `await seedBuiltins()`
+ * rather than something the constructor did invisibly. Callers that only read
+ * user templates do not need it; the server calls it once at startup.
  */
 export class TemplateStore {
-  private db: Database.Database;
+  private readonly pg: PostgresHandle;
 
-  constructor(dbPath: string) {
-    this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
-    this.initializeSchema();
-    this.seedBuiltins();
+  constructor(pg: PostgresHandle = getPool()) {
+    this.pg = pg;
   }
 
-  private initializeSchema(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS task_templates (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        name TEXT NOT NULL,
-        description TEXT,
-        name_template TEXT NOT NULL,
-        description_template TEXT NOT NULL,
-        options TEXT NOT NULL,
-        is_builtin INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_templates_user ON task_templates(user_id);
-    `);
+  private get sql() {
+    return this.pg.sql;
   }
 
-  private seedBuiltins(): void {
+  /**
+   * Upserts the read-only built-ins, so a fresh database has a known-good
+   * starting point and an edited `builtinTemplates.ts` takes effect on the next
+   * start. User-owned templates are untouched.
+   */
+  async seedBuiltins(): Promise<void> {
     const now = new Date().toISOString();
-    const insert = this.db.prepare(`
-      INSERT INTO task_templates
-        (id, user_id, name, description, name_template, description_template, options, is_builtin, created_at, updated_at)
-      VALUES (?, NULL, ?, ?, ?, ?, ?, 1, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        name = excluded.name,
-        description = excluded.description,
-        name_template = excluded.name_template,
-        description_template = excluded.description_template,
-        options = excluded.options,
-        updated_at = excluded.updated_at
-    `);
 
-    const seed = this.db.transaction(() => {
+    await this.sql.begin(async (tx) => {
       for (const template of BUILTIN_TEMPLATES) {
-        insert.run(
-          template.id,
-          template.name,
-          template.description ?? null,
-          template.nameTemplate,
-          template.descriptionTemplate,
-          JSON.stringify(template.options),
-          now,
-          now
-        );
+        await tx`
+          INSERT INTO task_templates
+            (id, user_id, name, description, name_template, description_template,
+             options, is_builtin, created_at, updated_at)
+          VALUES (
+            ${template.id}, NULL, ${template.name}, ${template.description ?? null},
+            ${template.nameTemplate}, ${template.descriptionTemplate},
+            ${JSON.stringify(template.options)}, true, ${now}, ${now}
+          )
+          ON CONFLICT (id) DO UPDATE SET
+            name = excluded.name,
+            description = excluded.description,
+            name_template = excluded.name_template,
+            description_template = excluded.description_template,
+            options = excluded.options,
+            updated_at = excluded.updated_at
+        `;
       }
     });
-
-    seed();
   }
 
-  list(userId: string): Template[] {
-    const rows = this.db
-      .prepare(
-        `SELECT * FROM task_templates
-         WHERE is_builtin = 1 OR user_id = ?
-         ORDER BY is_builtin DESC, name ASC`
-      )
-      .all(userId) as Row[];
+  async list(userId: string): Promise<Template[]> {
+    const rows = await this.sql<Row[]>`
+      SELECT * FROM task_templates
+       WHERE is_builtin = true OR user_id = ${userId}
+       ORDER BY is_builtin DESC, name ASC
+    `;
     return rows.map(toTemplate);
   }
 
@@ -146,10 +137,11 @@ export class TemplateStore {
    * Returns null rather than throwing for a template belonging to someone else,
    * which is indistinguishable from a genuine miss: no enumeration oracle.
    */
-  get(id: string, userId: string): Template | null {
-    const row = this.db
-      .prepare(`SELECT * FROM task_templates WHERE id = ? AND (is_builtin = 1 OR user_id = ?)`)
-      .get(id, userId) as Row | undefined;
+  async get(id: string, userId: string): Promise<Template | null> {
+    const [row] = await this.sql<Row[]>`
+      SELECT * FROM task_templates
+       WHERE id = ${id} AND (is_builtin = true OR user_id = ${userId})
+    `;
     return row ? toTemplate(row) : null;
   }
 
@@ -157,38 +149,31 @@ export class TemplateStore {
    * Unscoped read for this class's own post-write read-backs, where ownership
    * was already established by the calling method. Never exposed.
    */
-  private getUnscoped(id: string): Template | null {
-    const row = this.db.prepare(`SELECT * FROM task_templates WHERE id = ?`).get(id) as
-      | Row
-      | undefined;
+  private async getUnscoped(id: string): Promise<Template | null> {
+    const [row] = await this.sql<Row[]>`SELECT * FROM task_templates WHERE id = ${id}`;
     return row ? toTemplate(row) : null;
   }
 
-  create(userId: string, input: TemplateInput): Template {
+  async create(userId: string, input: TemplateInput): Promise<Template> {
     const id = randomUUID();
     const now = new Date().toISOString();
-    this.db
-      .prepare(
-        `INSERT INTO task_templates
-           (id, user_id, name, description, name_template, description_template, options, is_builtin, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
+
+    const [row] = await this.sql<Row[]>`
+      INSERT INTO task_templates
+        (id, user_id, name, description, name_template, description_template,
+         options, is_builtin, created_at, updated_at)
+      VALUES (
+        ${id}, ${userId}, ${input.name}, ${input.description ?? null},
+        ${input.nameTemplate}, ${input.descriptionTemplate},
+        ${JSON.stringify(input.options)}, false, ${now}, ${now}
       )
-      .run(
-        id,
-        userId,
-        input.name,
-        input.description ?? null,
-        input.nameTemplate,
-        input.descriptionTemplate,
-        JSON.stringify(input.options),
-        now,
-        now
-      );
-    return this.getUnscoped(id)!;
+      RETURNING *
+    `;
+    return toTemplate(row!);
   }
 
-  update(id: string, userId: string, input: Partial<TemplateInput>): Template {
-    const existing = this.getUnscoped(id);
+  async update(id: string, userId: string, input: Partial<TemplateInput>): Promise<Template> {
+    const existing = await this.getUnscoped(id);
     if (existing && existing.isBuiltin) {
       throw new TemplateStoreError(
         "Cannot modify a built-in template. Duplicate it first.",
@@ -207,38 +192,35 @@ export class TemplateStore {
       options: input.options ?? existing.options,
     };
 
-    this.db
-      .prepare(
-        `UPDATE task_templates
-           SET name = ?, description = ?, name_template = ?, description_template = ?, options = ?, updated_at = ?
-         WHERE id = ? AND user_id = ?`
-      )
-      .run(
-        merged.name,
-        merged.description,
-        merged.nameTemplate,
-        merged.descriptionTemplate,
-        JSON.stringify(merged.options),
-        new Date().toISOString(),
-        id,
-        userId
-      );
-
-    return this.getUnscoped(id)!;
+    const [row] = await this.sql<Row[]>`
+      UPDATE task_templates
+         SET name = ${merged.name},
+             description = ${merged.description},
+             name_template = ${merged.nameTemplate},
+             description_template = ${merged.descriptionTemplate},
+             options = ${JSON.stringify(merged.options)},
+             updated_at = ${new Date().toISOString()}
+       WHERE id = ${id} AND user_id = ${userId}
+      RETURNING *
+    `;
+    return toTemplate(row!);
   }
 
-  remove(id: string, userId: string): void {
-    const existing = this.getUnscoped(id);
+  async remove(id: string, userId: string): Promise<void> {
+    const existing = await this.getUnscoped(id);
     if (existing && existing.isBuiltin) {
       throw new TemplateStoreError("Cannot delete a built-in template", "builtin_immutable");
     }
     if (!existing || existing.userId !== userId) {
       throw new TemplateStoreError("Template not found", "not_found");
     }
-    this.db.prepare(`DELETE FROM task_templates WHERE id = ? AND user_id = ?`).run(id, userId);
+    await this.sql`DELETE FROM task_templates WHERE id = ${id} AND user_id = ${userId}`;
   }
 
-  close(): void {
-    this.db.close();
-  }
+  /**
+   * No-op: the pool is owned by `db/pool.ts` and shared, so a store closing it
+   * would disconnect the rest of the process. Kept so callers written against
+   * the SQLite version still compile.
+   */
+  close(): void {}
 }

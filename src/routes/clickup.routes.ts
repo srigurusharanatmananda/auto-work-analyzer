@@ -19,14 +19,14 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
   const router = Router();
   const userIdOf = (req: any): string => req.user!.userId;
 
-  const serviceFor = (req: any): ClickUpService => {
+  const serviceFor = async (req: any): Promise<ClickUpService> => {
     const { apiKey, destinationId, teamId } = req.body;
     if (destinationId) {
-      const destination = destinations.get(destinationId, userIdOf(req));
+      const destination = await destinations.get(destinationId, userIdOf(req));
       if (!destination) throw new Error("Destination not found");
       return new ClickUpService({
         teamId: teamId || destination.teamId,
-        apiKey: destinations.getApiKey(destinationId, userIdOf(req)),
+        apiKey: await destinations.getApiKey(destinationId, userIdOf(req)),
         projectName: destination.name,
       });
     }
@@ -43,7 +43,7 @@ export function createClickUpRouter(destinations: DestinationStore): Router {
     (fn: (service: ClickUpService, body: any) => Promise<unknown>) =>
     async (req: any, res: any) => {
       try {
-        res.json({ success: true, data: await fn(serviceFor(req), req.body) });
+        res.json({ success: true, data: await fn(await serviceFor(req), req.body) });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Request failed";
         const unauthorized = message.includes("401");

@@ -20,6 +20,7 @@ import express from "express";
 import { createDestinationsRouter } from "./destinations.routes.js";
 import { DestinationStore } from "../destinations/DestinationStore.js";
 import { TemplateStore } from "../services/TemplateStore.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { CredentialCipher, generateKeyBase64 } from "../destinations/CredentialCipher.js";
 import { createTestUser } from "../testing/authFixture.js";
 
@@ -32,6 +33,7 @@ const SECRET_KEY = "pk_secret_value_do_not_leak";
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
+let pg: TestDatabase;
 let destinations: DestinationStore;
 let templates: TemplateStore;
 let originalFetch: typeof globalThis.fetch;
@@ -79,10 +81,14 @@ function stubClickUp(): void {
   }) as unknown as typeof globalThis.fetch;
 }
 
-before(() => {
-  const dbPath = join(tmpDbDir, "test.db");
-  destinations = new DestinationStore(dbPath, new CredentialCipher(generateKeyBase64()));
-  templates = new TemplateStore(dbPath);
+before(async () => {
+  // The two stores are on Postgres; `createTestUser` below still writes to the
+  // SQLite auth database, which `authenticate` still reads. That split is the
+  // transitional state, not the destination.
+  pg = await createTestDatabase();
+  destinations = new DestinationStore(new CredentialCipher(generateKeyBase64()), pg);
+  templates = new TemplateStore(pg);
+  await templates.seedBuiltins();
 
   const app = express();
   app.use(express.json());
@@ -100,11 +106,12 @@ before(() => {
   stubClickUp();
 });
 
-after(() => {
+after(async () => {
   globalThis.fetch = originalFetch;
   server.close();
   destinations.close();
   templates.close();
+  await pg?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
 });
@@ -201,6 +208,6 @@ describe("POST /api/destinations/resolve-url", () => {
       url: "https://app.clickup.com/9012168250/v/l/6-901214252467-1",
       apiKey: SECRET_KEY,
     });
-    assert.deepEqual(destinations.list("user-1"), []);
+    assert.deepEqual(await destinations.list("user-1"), []);
   });
 });

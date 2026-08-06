@@ -54,10 +54,10 @@ export function createDestinationsRouter(
    * a template it will never use and no indication why, so it is refused here
    * instead. Returns true once it has answered.
    */
-  const rejectUnusableTemplate = (req: any, res: any): boolean => {
+  const rejectUnusableTemplate = async (req: any, res: any): Promise<boolean> => {
     const id = req.body?.defaultTemplateId;
     if (!id) return false;
-    if (templates.get(id, userIdOf(req))) return false;
+    if (await templates.get(id, userIdOf(req))) return false;
     res.status(400).json({
       success: false,
       error: `Unknown template: ${id}`,
@@ -72,11 +72,11 @@ export function createDestinationsRouter(
     });
   };
 
-  router.get("/", authenticate, anyRole, (req, res) => {
-    res.json({ success: true, data: destinations.list(userIdOf(req)) });
+  router.get("/", authenticate, anyRole, async (req, res) => {
+    res.json({ success: true, data: await destinations.list(userIdOf(req)) });
   });
 
-  router.post("/", authenticate, anyRole, (req, res) => {
+  router.post("/", authenticate, anyRole, async (req, res) => {
     const missing = REQUIRED_ON_CREATE.filter((key) => !req.body[key]);
     if (missing.length > 0) {
       res.status(400).json({
@@ -85,23 +85,23 @@ export function createDestinationsRouter(
       });
       return;
     }
-    if (rejectUnusableTemplate(req, res)) return;
+    if (await rejectUnusableTemplate(req, res)) return;
     try {
       res.status(201).json({
         success: true,
-        data: destinations.create(userIdOf(req), destinationInputFrom(req.body)),
+        data: await destinations.create(userIdOf(req), destinationInputFrom(req.body)),
       });
     } catch (error) {
       fail(res, error);
     }
   });
 
-  router.put("/:id", authenticate, anyRole, (req, res) => {
-    if (rejectUnusableTemplate(req, res)) return;
+  router.put("/:id", authenticate, anyRole, async (req, res) => {
+    if (await rejectUnusableTemplate(req, res)) return;
     try {
       res.json({
         success: true,
-        data: destinations.update(req.params.id!, userIdOf(req), destinationInputFrom(req.body)),
+        data: await destinations.update(req.params.id!, userIdOf(req), destinationInputFrom(req.body)),
       });
     } catch (error) {
       fail(res, error, 404);
@@ -145,18 +145,18 @@ export function createDestinationsRouter(
     }
   });
 
-  router.post("/:id/default", authenticate, anyRole, (req, res) => {
+  router.post("/:id/default", authenticate, anyRole, async (req, res) => {
     try {
-      destinations.setDefault(req.params.id!, userIdOf(req));
+      await destinations.setDefault(req.params.id!, userIdOf(req));
       res.json({ success: true });
     } catch (error) {
       fail(res, error, 404);
     }
   });
 
-  router.delete("/:id", authenticate, anyRole, (req, res) => {
+  router.delete("/:id", authenticate, anyRole, async (req, res) => {
     try {
-      destinations.remove(req.params.id!, userIdOf(req));
+      await destinations.remove(req.params.id!, userIdOf(req));
       res.json({ success: true });
     } catch (error) {
       fail(res, error, 404);
@@ -169,14 +169,14 @@ export function createDestinationsRouter(
   router.post("/:id/test", authenticate, anyRole, async (req, res) => {
     try {
       const userId = userIdOf(req);
-      const destination = destinations.get(req.params.id!, userId);
+      const destination = await destinations.get(req.params.id!, userId);
       if (!destination) {
         fail(res, new Error("Destination not found"), 404);
         return;
       }
       const service = new ClickUpService({
         teamId: destination.teamId,
-        apiKey: destinations.getApiKey(destination.id, userId),
+        apiKey: await destinations.getApiKey(destination.id, userId),
         projectName: destination.name,
       });
       const statuses = await service.getListStatuses(destination.listId);

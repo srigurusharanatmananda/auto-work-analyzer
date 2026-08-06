@@ -24,7 +24,6 @@ import { openPostgres, type PostgresHandle } from './client.js';
 import { migrateSqliteToPostgres, verifyParity } from './sqliteToPostgres.js';
 import { DatabaseService } from '../services/DatabaseService.js';
 import { AuthDatabaseService } from '../services/AuthDatabaseService.js';
-import { TemplateStore } from '../services/TemplateStore.js';
 
 /**
  * A database name of its own, dropped and recreated per run. Sharing a database
@@ -132,24 +131,51 @@ function seedSqlite(): void {
     db.close();
   }
 
-  const templates = new TemplateStore(sqlitePath);
+  // Written with raw SQL rather than through `TemplateStore`, which now runs on
+  // Postgres and can no longer produce a SQLite fixture. That is the right shape
+  // regardless: the source of this migration is a database written by the OLD
+  // code, so the fixture should be the old schema — including `is_builtin` as an
+  // INTEGER, which is precisely the conversion under test.
+  const templateDb = new Database(sqlitePath);
   try {
-    templates.create('user-alice', {
-      name: 'Mine',
-      description: 'a user template',
-      nameTemplate: '{{name}}',
-      descriptionTemplate: '{{description}}',
-      options: {
-        emitSubtasks: true,
-        applyPriority: true,
-        applyTimeEstimate: false,
-        dueDateSource: 'completedDate',
-        statusMode: 'fromWorkItem',
-        tagStrategy: { mode: 'fromWorkItem' },
-      },
+    templateDb.exec(`
+      CREATE TABLE IF NOT EXISTS task_templates (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        description TEXT,
+        name_template TEXT NOT NULL,
+        description_template TEXT NOT NULL,
+        options TEXT NOT NULL,
+        is_builtin INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    const now = new Date().toISOString();
+    const options = JSON.stringify({
+      emitSubtasks: true,
+      applyPriority: true,
+      applyTimeEstimate: false,
+      dueDateSource: 'completedDate',
+      statusMode: 'fromWorkItem',
+      tagStrategy: { mode: 'fromWorkItem' },
     });
+
+    const insert = templateDb.prepare(
+      `INSERT INTO task_templates
+         (id, user_id, name, description, name_template, description_template,
+          options, is_builtin, created_at, updated_at)
+       VALUES (?, ?, ?, ?, '{{name}}', '{{description}}', ?, ?, ?, ?)`
+    );
+
+    // One user template and one built-in, so the 0 -> false and 1 -> true legs
+    // of the boolean conversion are both exercised.
+    insert.run('tpl-mine', 'user-alice', 'Mine', 'a user template', options, 0, now, now);
+    insert.run('tpl-builtin', null, 'Standard', 'a built-in', options, 1, now, now);
   } finally {
-    templates.close();
+    templateDb.close();
   }
 
   process.chdir(originalCwd);

@@ -380,7 +380,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * to the user's default destination and then to the .env configuration, which
    * is what keeps every pre-destinations caller working untouched.
    */
-  const resolveFor = (req: any): ResolvedDestination =>
+  const resolveFor = (req: any): Promise<ResolvedDestination> =>
     deps.resolver.resolve(req.user!.userId, req.body.destinationId, req.body.templateId);
 
   /**
@@ -544,7 +544,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     try {
       const resolvedItems = await itemsFromBody(req, res);
       if (resolvedItems === null) return;
-      const resolved = resolveFor(req);
+      const resolved = await resolveFor(req);
       const preview = await withStatusMapping(
         buildPreview(resolvedItems.items, resolved.template),
         resolved
@@ -569,7 +569,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       const { title, period } = req.body;
       // Markdown export writes nothing to ClickUp, so it needs the resolved
       // template but never the list or the credentials.
-      const markdown = renderMarkdown(items, resolveFor(req).template, { title, period });
+      const markdown = renderMarkdown(items, (await resolveFor(req)).template, { title, period });
       res.json({ success: true, data: { markdown } });
     } catch (error) {
       handleError(res, error, "Failed to export markdown");
@@ -602,7 +602,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
       const notesText = req.file ? req.file.buffer.toString("utf-8") : req.body.notes;
       const items = await workItemsFromNotes(notesText);
-      const resolved = resolveFor(req);
+      const resolved = await resolveFor(req);
       const preview = await withStatusMapping(buildPreview(items, resolved.template), resolved);
 
       const createTasks = wantsCreation(req.body.createTasks);
@@ -680,7 +680,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       // the canonical path.
       if (rejectConflictingShapes(req, res)) return;
 
-      const resolved = resolveFor(req);
+      const resolved = await resolveFor(req);
 
       if (!workAnalysis && Array.isArray(workItems)) {
         const items = workItems as WorkItem[];

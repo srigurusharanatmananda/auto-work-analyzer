@@ -50,17 +50,21 @@ export class DestinationResolver {
    * Resolution order: explicit id → the user's default → the .env config.
    * The last step keeps callers that predate destinations working unchanged.
    */
-  resolve(userId: string, destinationId?: string, templateId?: string): ResolvedDestination {
+  async resolve(
+    userId: string,
+    destinationId?: string,
+    templateId?: string
+  ): Promise<ResolvedDestination> {
     let destination: Destination | null = null;
 
     if (destinationId) {
-      destination = this.deps.destinations.get(destinationId, userId);
+      destination = await this.deps.destinations.get(destinationId, userId);
       if (!destination) throw new UnknownDestinationError(destinationId);
     } else {
-      destination = this.deps.destinations.getDefault(userId);
+      destination = await this.deps.destinations.getDefault(userId);
     }
 
-    const template = this.resolveTemplate(templateId, destination, userId);
+    const template = await this.resolveTemplate(templateId, destination, userId);
 
     if (!destination) {
       return {
@@ -74,7 +78,7 @@ export class DestinationResolver {
 
     const config: ClickUpConfig = {
       teamId: destination.teamId,
-      apiKey: this.deps.destinations.getApiKey(destination.id, userId),
+      apiKey: await this.deps.destinations.getApiKey(destination.id, userId),
       defaultListId: destination.listId,
       defaultAssignee: destination.defaultAssignee,
       projectName: destination.name,
@@ -96,23 +100,23 @@ export class DestinationResolver {
    * treated more forgivingly: the template may have been deleted since, and
    * refusing would make the destination permanently unusable.
    */
-  private resolveTemplate(
+  private async resolveTemplate(
     templateId: string | undefined,
     destination: Destination | null,
     userId: string
-  ): Template {
+  ): Promise<Template> {
     if (templateId) {
-      const requested = this.deps.templates.get(templateId, userId);
+      const requested = await this.deps.templates.get(templateId, userId);
       if (!requested) throw new UnknownTemplateError(templateId);
       return requested;
     }
 
     const stored = destination?.defaultTemplateId
-      ? this.deps.templates.get(destination.defaultTemplateId, userId)
+      ? await this.deps.templates.get(destination.defaultTemplateId, userId)
       : null;
     if (stored) return stored;
 
-    const fallback = this.deps.templates.get(DEFAULT_TEMPLATE_ID, userId);
+    const fallback = await this.deps.templates.get(DEFAULT_TEMPLATE_ID, userId);
     if (!fallback) throw new Error("No template available — built-in templates are missing");
     return fallback;
   }

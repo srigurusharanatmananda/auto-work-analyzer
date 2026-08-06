@@ -29,6 +29,8 @@ import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
 import { runMigrations } from "./migrations/runMigrations.js";
 import { DestinationStore } from "./destinations/DestinationStore.js";
+import { getPool } from "./db/pool.js";
+import type { PostgresHandle } from "./db/client.js";
 import { createDestinationsRouter } from "./routes/destinations.routes.js";
 import { createClickUpRouter } from "./routes/clickup.routes.js";
 import { ScanRegistry } from "./scanning/ScanRegistry.js";
@@ -163,11 +165,34 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     }
     runMigrations(dbPath, cipher);
 
-    const templateStore = new TemplateStore(dbPath);
+    // Postgres. Opened here, once, and shared by every store that has been
+    // ported to it — currently templates and destinations; the rest still read
+    // the SQLite file above. Verifying the connection at startup rather than on
+    // the first request is deliberate: a server that accepts traffic and then
+    // fails every call with a connection error is harder to diagnose than one
+    // that refuses to start.
+    let pool: PostgresHandle;
+    try {
+      pool = getPool();
+      await pool.sql`SELECT 1`;
+    } catch (error) {
+      console.error(`\u274c Cannot reach Postgres: ${error instanceof Error ? error.message : error}`);
+      console.error(
+        "\n  Set DATABASE_URL in .env and apply the schema:\n" +
+          "    bun run db:migrate"
+      );
+      process.exit(1);
+    }
+
+    const templateStore = new TemplateStore(pool);
+    // Refreshes the read-only built-ins. Under SQLite the constructor did this
+    // invisibly on every open; it is explicit now because it is a write, and a
+    // write hidden in a constructor is how the schema drifted in the first place.
+    await templateStore.seedBuiltins();
     app.use("/api/templates", createTemplatesRouter(templateStore));
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
-    const destinationStore = new DestinationStore(dbPath, cipher);
+    const destinationStore = new DestinationStore(cipher, pool);
     app.use("/api/destinations", createDestinationsRouter(destinationStore, templateStore));
     app.use("/api/clickup", createClickUpRouter(destinationStore));
 

@@ -1,8 +1,38 @@
 import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
 import { CredentialCipher } from "../destinations/CredentialCipher.js";
-import { DESTINATIONS_SCHEMA } from "../destinations/DestinationStore.js";
 import { Migration } from "./runMigrations.js";
+
+/**
+ * The SQLite DDL this migration needs before it can write a destination.
+ *
+ * It used to be exported from `DestinationStore`, which created the table in
+ * its constructor. That store now runs on Postgres and its schema comes from
+ * `src/db/migrations`, so the SQLite form survives only here — in the one place
+ * that still reads a pre-Postgres database.
+ */
+const DESTINATIONS_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS clickup_destinations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    api_key_encrypted TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    team_name TEXT,
+    space_id TEXT,
+    space_name TEXT,
+    folder_id TEXT,
+    folder_name TEXT,
+    list_id TEXT NOT NULL,
+    list_name TEXT,
+    default_template_id TEXT,
+    default_assignee TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_destinations_user ON clickup_destinations(user_id);
+`;
 
 interface SettingsRow {
   user_id: string;
