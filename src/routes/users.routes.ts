@@ -58,10 +58,10 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
    * Runs `fn` against a fresh store and always closes it. Every handler needs
    * this and none of them should have to remember the finally block.
    */
-  const withDb = <T>(fn: (db: AuthDatabaseService) => T): T => {
+  const withDb = async <T>(fn: (db: AuthDatabaseService) => Promise<T>): Promise<T> => {
     const db = dbFactory();
     try {
-      return fn(db);
+      return await fn(db);
     } finally {
       db.close();
     }
@@ -72,25 +72,30 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
    * rather than special-casing "is this user an admin" catches the case that
    * matters: two admins where one is already deactivated.
    */
-  const isLastActiveAdmin = (db: AuthDatabaseService, userId: string): boolean => {
-    const admins = db
-      .getAllUsers(1000, 0)
-      .filter((u) => u.role === 'admin' && u.is_active);
+  const isLastActiveAdmin = async (
+    db: AuthDatabaseService,
+    userId: string
+  ): Promise<boolean> => {
+    const admins = (await db.getAllUsers(1000, 0)).filter(
+      (u) => u.role === 'admin' && u.is_active
+    );
     return admins.length <= 1 && admins.some((u) => u.id === userId);
   };
 
   /** GET /api/users — paginated list. */
-  router.get('/', (req: Request, res: Response) => {
+  router.get('/', async (req: Request, res: Response) => {
     const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '50'), 10) || 50, 1), 200);
     const offset = Math.max(parseInt(String(req.query.offset ?? '0'), 10) || 0, 0);
 
-    const users = withDb((db) => db.getAllUsers(limit, offset).map(publicView));
+    const users = await withDb(async (db) =>
+      (await db.getAllUsers(limit, offset)).map(publicView)
+    );
     res.json({ success: true, data: { users, limit, offset } });
   });
 
   /** GET /api/users/:id */
-  router.get('/:id', (req: Request, res: Response) => {
-    const user = withDb((db) => db.getUserById(req.params.id));
+  router.get('/:id', async (req: Request, res: Response) => {
+    const user = await withDb((db) => db.getUserById(req.params.id));
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
       return;
@@ -104,7 +109,7 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
    * One route rather than three, because the invariants are shared: every one of
    * these fields can lock the installation out if applied to the last admin.
    */
-  router.put('/:id', (req: Request, res: Response) => {
+  router.put('/:id', async (req: Request, res: Response) => {
     const targetId = req.params.id;
 
     const { role, isActive, fullName } = req.body as {
@@ -144,31 +149,31 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
       return;
     }
 
-    const outcome = withDb((db) => {
-      const user = db.getUserById(targetId);
+    const outcome = await withDb(async (db) => {
+      const user = await db.getUserById(targetId);
       if (!user) return { status: 404 as const, error: 'User not found' };
 
       const losesAdmin =
         (updates.role !== undefined && updates.role !== 'admin') || updates.is_active === false;
 
-      if (losesAdmin && isLastActiveAdmin(db, targetId)) {
+      if (losesAdmin && (await isLastActiveAdmin(db, targetId))) {
         return {
           status: 409 as const,
           error: 'This is the last active admin; promote another admin first',
         };
       }
 
-      db.updateUser(targetId, updates);
+      await db.updateUser(targetId, updates);
 
       // A deactivated or demoted user must not keep a 7-day refresh token.
       // `authenticate` and `refreshToken` both re-check the row, so this is
       // belt-and-braces rather than the only defence — but leaving live tokens
       // behind for an account you have just revoked is not a state to be in.
       if (updates.is_active === false || updates.role !== undefined) {
-        db.revokeAllUserTokens(targetId);
+        await db.revokeAllUserTokens(targetId);
       }
 
-      return { status: 200 as const, user: db.getUserById(targetId)! };
+      return { status: 200 as const, user: (await db.getUserById(targetId))! };
     });
 
     if (outcome.status !== 200) {
@@ -180,22 +185,22 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
   });
 
   /** DELETE /api/users/:id */
-  router.delete('/:id', (req: Request, res: Response) => {
+  router.delete('/:id', async (req: Request, res: Response) => {
     const targetId = req.params.id;
 
-    const outcome = withDb((db) => {
-      const user = db.getUserById(targetId);
+    const outcome = await withDb(async (db) => {
+      const user = await db.getUserById(targetId);
       if (!user) return { status: 404 as const, error: 'User not found' };
 
-      if (isLastActiveAdmin(db, targetId)) {
+      if (await isLastActiveAdmin(db, targetId)) {
         return {
           status: 409 as const,
           error: 'This is the last active admin; promote another admin first',
         };
       }
 
-      db.revokeAllUserTokens(targetId);
-      db.deleteUser(targetId);
+      await db.revokeAllUserTokens(targetId);
+      await db.deleteUser(targetId);
       return { status: 200 as const };
     });
 

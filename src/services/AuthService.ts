@@ -5,7 +5,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { AuthDatabaseService, UserRecord } from './AuthDatabaseService.js';
+import { AuthDatabaseService, UserRecord, UserSettingsRecord } from './AuthDatabaseService.js';
+import type { PostgresHandle } from '../db/client.js';
 import { PasswordService } from './PasswordService.js';
 import { JWTService, TokenPayload, TokenPair } from './JWTService.js';
 
@@ -51,8 +52,8 @@ export class AuthService {
   private static readonly RATE_LIMIT_WINDOW_MINUTES = 15;
   private static readonly MAX_ATTEMPTS_PER_IP = 10;
 
-  constructor() {
-    this.db = new AuthDatabaseService();
+  constructor(pg?: PostgresHandle) {
+    this.db = new AuthDatabaseService(pg);
   }
 
   /**
@@ -72,7 +73,7 @@ export class AuthService {
       }
 
       // Check if user already exists
-      const existingUser = this.db.getUserByEmail(input.email);
+      const existingUser = await this.db.getUserByEmail(input.email);
       if (existingUser) {
         return { success: false, error: 'Email already registered' };
       }
@@ -94,7 +95,7 @@ export class AuthService {
         locked_until: undefined,
       };
 
-      this.db.createUser(user);
+      await this.db.createUser(user);
 
       return { success: true, userId };
     } catch (error) {
@@ -109,13 +110,13 @@ export class AuthService {
   async login(input: LoginInput): Promise<LoginResult> {
     try {
       // Check rate limiting by IP
-      const recentIPAttempts = this.db.getRecentFailedAttemptsByIP(
+      const recentIPAttempts = await this.db.getRecentFailedAttemptsByIP(
         input.ipAddress,
         AuthService.RATE_LIMIT_WINDOW_MINUTES
       );
 
       if (recentIPAttempts >= AuthService.MAX_ATTEMPTS_PER_IP) {
-        this.db.logLoginAttempt({
+        await this.db.logLoginAttempt({
           email: input.email,
           ip_address: input.ipAddress,
           user_agent: input.userAgent,
@@ -130,10 +131,10 @@ export class AuthService {
       }
 
       // Get user
-      const user = this.db.getUserByEmail(input.email);
+      const user = await this.db.getUserByEmail(input.email);
       if (!user) {
         // Log failed attempt with generic message
-        this.db.logLoginAttempt({
+        await this.db.logLoginAttempt({
           email: input.email,
           ip_address: input.ipAddress,
           user_agent: input.userAgent,
@@ -159,7 +160,7 @@ export class AuthService {
 
       // Check if account is active
       if (!user.is_active) {
-        this.db.logLoginAttempt({
+        await this.db.logLoginAttempt({
           email: input.email,
           ip_address: input.ipAddress,
           user_agent: input.userAgent,
@@ -174,15 +175,15 @@ export class AuthService {
       const passwordValid = await PasswordService.verify(input.password, user.password_hash);
       if (!passwordValid) {
         // Update failed attempts
-        this.db.updateUserLogin(user.id, false);
+        await this.db.updateUserLogin(user.id, false);
 
         // Check if we need to lock account
-        const updatedUser = this.db.getUserById(user.id);
+        const updatedUser = await this.db.getUserById(user.id);
         if (updatedUser && updatedUser.failed_login_attempts >= AuthService.MAX_FAILED_ATTEMPTS) {
-          this.db.lockUserAccount(user.id, AuthService.ACCOUNT_LOCK_DURATION_MINUTES);
+          await this.db.lockUserAccount(user.id, AuthService.ACCOUNT_LOCK_DURATION_MINUTES);
         }
 
-        this.db.logLoginAttempt({
+        await this.db.logLoginAttempt({
           email: input.email,
           ip_address: input.ipAddress,
           user_agent: input.userAgent,
@@ -194,8 +195,8 @@ export class AuthService {
       }
 
       // Successful login
-      this.db.updateUserLogin(user.id, true);
-      this.db.logLoginAttempt({
+      await this.db.updateUserLogin(user.id, true);
+      await this.db.logLoginAttempt({
         email: input.email,
         ip_address: input.ipAddress,
         user_agent: input.userAgent,
@@ -213,7 +214,7 @@ export class AuthService {
       const tokens = JWTService.generateTokenPair(tokenPayload);
 
       // Store refresh token
-      this.db.storeRefreshToken({
+      await this.db.storeRefreshToken({
         id: tokens.refreshTokenId,
         user_id: user.id,
         token_hash: tokens.refreshTokenHash,
@@ -253,21 +254,21 @@ export class AuthService {
       const tokenHash = JWTService.hashToken(refreshToken);
 
       // Check if token exists and is not revoked
-      const storedToken = this.db.getRefreshToken(tokenHash);
+      const storedToken = await this.db.getRefreshToken(tokenHash);
       if (!storedToken || storedToken.revoked) {
         // Possible token reuse attack - revoke all tokens for this user
-        this.db.revokeAllUserTokens(decoded.userId);
+        await this.db.revokeAllUserTokens(decoded.userId);
         return { success: false, error: 'Token reuse detected. All sessions revoked for security.' };
       }
 
       // Get user
-      const user = this.db.getUserById(decoded.userId);
+      const user = await this.db.getUserById(decoded.userId);
       if (!user || !user.is_active) {
         return { success: false, error: 'User not found or inactive' };
       }
 
       // Revoke old refresh token (token rotation)
-      this.db.revokeRefreshToken(tokenHash);
+      await this.db.revokeRefreshToken(tokenHash);
 
       // Generate new token pair (maintain token family for rotation detection)
       const tokenPayload: TokenPayload = {
@@ -280,7 +281,7 @@ export class AuthService {
       const newTokens = JWTService.generateTokenPair(tokenPayload, decoded.tokenFamily);
 
       // Store new refresh token
-      this.db.storeRefreshToken({
+      await this.db.storeRefreshToken({
         id: newTokens.refreshTokenId,
         user_id: user.id,
         token_hash: newTokens.refreshTokenHash,
@@ -306,12 +307,12 @@ export class AuthService {
     try {
       // Revoke refresh token
       const refreshTokenHash = JWTService.hashToken(refreshToken);
-      this.db.revokeRefreshToken(refreshTokenHash);
+      await this.db.revokeRefreshToken(refreshTokenHash);
 
       // Add access token to blacklist
       const accessDecoded = JWTService.decodeToken(accessToken);
       if (accessDecoded && accessDecoded.jti && accessDecoded.exp) {
-        this.db.blacklistToken(
+        await this.db.blacklistToken(
           accessDecoded.jti,
           'access',
           new Date(accessDecoded.exp * 1000).toISOString(),
@@ -322,7 +323,7 @@ export class AuthService {
       // Add refresh token to blacklist
       const refreshDecoded = JWTService.decodeToken(refreshToken);
       if (refreshDecoded && refreshDecoded.jti && refreshDecoded.exp) {
-        this.db.blacklistToken(
+        await this.db.blacklistToken(
           refreshDecoded.jti,
           'refresh',
           new Date(refreshDecoded.exp * 1000).toISOString(),
@@ -340,19 +341,19 @@ export class AuthService {
   /**
    * Logout all sessions for a user
    */
-  logoutAll(userId: string): void {
-    this.db.revokeAllUserTokens(userId);
+  async logoutAll(userId: string): Promise<void> {
+    await this.db.revokeAllUserTokens(userId);
   }
 
   /**
    * Verify access token and check blacklist
    */
-  verifyAccessToken(token: string): TokenPayload | null {
+  async verifyAccessToken(token: string): Promise<TokenPayload | null> {
     try {
       const decoded = JWTService.verifyAccessToken(token);
 
       // Check if token is blacklisted
-      if (this.db.isTokenBlacklisted(decoded.jti)) {
+      if (await this.db.isTokenBlacklisted(decoded.jti)) {
         return null;
       }
 
@@ -365,8 +366,8 @@ export class AuthService {
   /**
    * Get user by ID
    */
-  getUserById(userId: string): Omit<UserRecord, 'password_hash'> | null {
-    const user = this.db.getUserById(userId);
+  async getUserById(userId: string): Promise<Omit<UserRecord, 'password_hash'> | null> {
+    const user = await this.db.getUserById(userId);
     if (!user) return null;
 
     const { password_hash, ...userWithoutPassword } = user;
@@ -378,7 +379,7 @@ export class AuthService {
    */
   async updatePassword(userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const user = this.db.getUserById(userId);
+      const user = await this.db.getUserById(userId);
       if (!user) {
         return { success: false, error: 'User not found' };
       }
@@ -399,10 +400,10 @@ export class AuthService {
       const newPasswordHash = await PasswordService.hash(newPassword);
 
       // Update password
-      this.db.updateUserPassword(userId, newPasswordHash);
+      await this.db.updateUserPassword(userId, newPasswordHash);
 
       // Revoke all refresh tokens for security
-      this.db.revokeAllUserTokens(userId);
+      await this.db.revokeAllUserTokens(userId);
 
       return { success: true };
     } catch (error) {
@@ -422,8 +423,27 @@ export class AuthService {
   /**
    * Cleanup expired tokens (should be run periodically)
    */
-  cleanupExpiredTokens(): void {
-    this.db.cleanupExpiredTokens();
+  async cleanupExpiredTokens(): Promise<void> {
+    await this.db.cleanupExpiredTokens();
+  }
+
+  /**
+   * Per-user preferences.
+   *
+   * These exist because the settings routes reached into `authService.db`
+   * directly, which is private — three of the repo's long-standing `tsc` errors
+   * were exactly that. Exposing the two operations the routes actually need is
+   * the smaller change and keeps the store encapsulated.
+   */
+  getUserSettings(userId: string): Promise<UserSettingsRecord | null> {
+    return this.db.getUserSettings(userId);
+  }
+
+  upsertUserSettings(
+    userId: string,
+    settings: Partial<Omit<UserSettingsRecord, 'user_id' | 'updated_at'>>
+  ): Promise<void> {
+    return this.db.upsertUserSettings(userId, settings);
   }
 
   /**

@@ -100,7 +100,7 @@ before(async () => {
   // A real user row, not just a signature: `authenticate` re-reads the user on
   // every request, so a token for an id that exists in no users table is
   // correctly rejected.
-  authHeader = createTestUser().authHeader;
+  authHeader = (await createTestUser()).authHeader;
 
   originalFetch = globalThis.fetch;
   stubClickUp();

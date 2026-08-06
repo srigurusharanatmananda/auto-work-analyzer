@@ -24,6 +24,7 @@ import express from "express";
 import { createTasksRouter } from "./tasks.routes.js";
 import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
 import { createTestUser } from "../testing/authFixture.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
 import { UnknownTemplateError } from "../formatting/Template.js";
 import {
@@ -104,6 +105,7 @@ const VALID_WORK_ITEM = {
 
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
+let pg: TestDatabase;
 let authHeader: string;
 
 /**
@@ -119,7 +121,8 @@ const originalCwd = process.cwd();
 const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-nodetest-"));
 process.chdir(tmpDbDir);
 
-before(() => {
+before(async () => {
+  pg = await createTestDatabase();
   const app = express();
   app.use(express.json());
   app.use(
@@ -141,10 +144,11 @@ before(() => {
   // A real user row, not just a signature: `authenticate` re-reads the user on
   // every request, so a token for an id that exists in no users table is
   // correctly rejected.
-  authHeader = createTestUser().authHeader;
+  authHeader = (await createTestUser()).authHeader;
 });
 
-after(() => {
+after(async () => {
+  await pg?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
   server.close();

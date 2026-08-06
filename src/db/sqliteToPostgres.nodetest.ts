@@ -15,14 +15,13 @@
  */
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { openPostgres, type PostgresHandle } from './client.js';
 import { migrateSqliteToPostgres, verifyParity } from './sqliteToPostgres.js';
-import { AuthDatabaseService } from '../services/AuthDatabaseService.js';
 
 /**
  * A database name of its own, dropped and recreated per run. Sharing a database
@@ -42,39 +41,78 @@ let pg: PostgresHandle;
 let available = false;
 let skipReason = '';
 
-/** Builds a source database through the real stores. */
+/**
+ * Builds the source database with raw SQLite.
+ *
+ * It used to go through the real stores, which kept the fixture from drifting
+ * out of sync with the schema the application creates. Every one of those
+ * stores is on Postgres now, so calling them here would write to the live
+ * database instead of the fixture — silently, because they fall back to the
+ * shared pool. The old SQLite shapes are spelled out instead, which is the
+ * right source of truth anyway: what this migration reads is a database written
+ * by the OLD code, including the INTEGER booleans that are the conversion under
+ * test.
+ */
 function seedSqlite(): void {
   process.chdir(tmpDir);
+  mkdirSync(dirname(sqlitePath), { recursive: true });
 
-  const auth = new AuthDatabaseService();
+  const auth = new Database(sqlitePath);
   try {
-    auth.createUser({
-      id: 'user-alice',
-      email: 'Alice@Example.com', // Mixed case on purpose: see the lower() index.
-      password_hash: '$argon2id$v=19$m=65536,t=3,p=4$notreal$notreal',
-      full_name: 'Alice',
-      role: 'admin',
-      is_active: true,
-      email_verified: true,
-    });
-    auth.createUser({
-      id: 'user-bob',
-      email: 'bob@example.com',
-      password_hash: '$argon2id$v=19$m=65536,t=3,p=4$notreal$notreal',
-      full_name: 'Bob',
-      role: 'user',
-      is_active: false, // A false boolean, so 0→false is actually exercised.
-      email_verified: false,
-    });
+    auth.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'user')),
+        is_active INTEGER NOT NULL DEFAULT 1,
+        email_verified INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_login_at TEXT,
+        failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+        locked_until TEXT
+      );
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT UNIQUE NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        revoked INTEGER NOT NULL DEFAULT 0,
+        revoked_at TEXT,
+        user_agent TEXT,
+        ip_address TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
 
-    auth.storeRefreshToken({
-      id: 'rt-1',
-      user_id: 'user-alice',
-      token_hash: 'hash-alice-1',
-      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
-      user_agent: 'test',
-      ip_address: '127.0.0.1',
-    });
+    const now = new Date().toISOString();
+    const insertUser = auth.prepare(
+      `INSERT INTO users
+         (id, email, password_hash, full_name, role, is_active, email_verified,
+          created_at, updated_at, failed_login_attempts)
+       VALUES (?, ?, '$argon2id$v=19$m=65536,t=3,p=4$notreal$notreal', ?, ?, ?, ?, ?, ?, 0)`
+    );
+    // Mixed case on purpose: see the lower() index on the Postgres side.
+    insertUser.run('user-alice', 'Alice@Example.com', 'Alice', 'admin', 1, 1, now, now);
+    // is_active 0, so the 0 -> false leg is actually exercised.
+    insertUser.run('user-bob', 'bob@example.com', 'Bob', 'user', 0, 0, now, now);
+
+    auth
+      .prepare(
+        `INSERT INTO refresh_tokens
+           (id, user_id, token_hash, expires_at, created_at, revoked, user_agent, ip_address)
+         VALUES (?, ?, ?, ?, ?, 0, 'test', '127.0.0.1')`
+      )
+      .run(
+        'rt-1',
+        'user-alice',
+        'hash-alice-1',
+        new Date(Date.now() + 86_400_000).toISOString(),
+        now
+      );
   } finally {
     auth.close();
   }

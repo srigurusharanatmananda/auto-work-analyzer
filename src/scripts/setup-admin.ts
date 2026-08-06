@@ -29,7 +29,7 @@ async function setupAdmin() {
     const authService = new AuthService();
     const { AuthDatabaseService } = await import('../services/AuthDatabaseService.js');
     const db = new AuthDatabaseService();
-    const existingUsers = db.getAllUsers(1, 0);
+    const existingUsers = await db.getAllUsers(1, 0);
 
     if (existingUsers.length > 0) {
       console.log('⚠️  Users already exist in the system.');

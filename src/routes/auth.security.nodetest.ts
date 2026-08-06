@@ -21,17 +21,22 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./auth.routes.js";
 import { AuthDatabaseService } from "../services/AuthDatabaseService.js";
 import { JWTService } from "../services/JWTService.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
+import { resetSharedAuthService } from "../services/AuthService.js";
 
 const originalCwd = process.cwd();
 const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-authsec-"));
 process.chdir(tmpDbDir);
 
+let pg: TestDatabase;
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 
 const PASSWORD = "CorrectHorse9!";
 
-before(() => {
+before(async () => {
+  pg = await createTestDatabase();
+
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
@@ -41,8 +46,12 @@ before(() => {
   baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/api/auth`;
 });
 
-after(() => {
+after(async () => {
   server.close();
+  // The shared AuthService caches a store bound to the pool this fixture is
+  // about to close; leaving it would hand the next suite a dead connection.
+  resetSharedAuthService();
+  await pg?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
 });
@@ -141,9 +150,9 @@ describe("a deactivated user's unexpired token", () => {
     // store, on its own connection, with the server still running.
     const db = new AuthDatabaseService();
     try {
-      const user = db.getUserByEmail("deactivate@example.com");
+      const user = await db.getUserByEmail("deactivate@example.com");
       assert.ok(user, "the registered user should exist");
-      db.updateUser(user.id, { is_active: false });
+      await db.updateUser(user.id, { is_active: false });
     } finally {
       db.close();
     }

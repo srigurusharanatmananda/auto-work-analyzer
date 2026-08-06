@@ -20,6 +20,7 @@ import express from "express";
 import { createUsersRouter } from "./users.routes.js";
 import { AuthDatabaseService } from "../services/AuthDatabaseService.js";
 import { createTestUser } from "../testing/authFixture.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { resetSharedAuthService } from "../services/AuthService.js";
 
 const originalCwd = process.cwd();
@@ -29,12 +30,14 @@ process.chdir(tmpDbDir);
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 
-let admin: ReturnType<typeof createTestUser>;
-let secondAdmin: ReturnType<typeof createTestUser>;
-let manager: ReturnType<typeof createTestUser>;
-let plainUser: ReturnType<typeof createTestUser>;
+let pg: TestDatabase;
+let admin: Awaited<ReturnType<typeof createTestUser>>;
+let secondAdmin: Awaited<ReturnType<typeof createTestUser>>;
+let manager: Awaited<ReturnType<typeof createTestUser>>;
+let plainUser: Awaited<ReturnType<typeof createTestUser>>;
 
-before(() => {
+before(async () => {
+  pg = await createTestDatabase();
   const app = express();
   app.use(express.json());
   app.use("/api/users", createUsersRouter());
@@ -43,7 +46,8 @@ before(() => {
   baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/api/users`;
 });
 
-after(() => {
+after(async () => {
+  await pg?.drop();
   server.close();
   resetSharedAuthService();
   process.chdir(originalCwd);
@@ -51,18 +55,18 @@ after(() => {
 });
 
 /** A clean users table before each test, so lockout counting is deterministic. */
-beforeEach(() => {
+beforeEach(async () => {
   const db = new AuthDatabaseService();
   try {
-    for (const user of db.getAllUsers(1000, 0)) db.deleteUser(user.id);
+    for (const user of await db.getAllUsers(1000, 0)) await db.deleteUser(user.id);
   } finally {
     db.close();
   }
 
-  admin = createTestUser({ userId: "admin-1", role: "admin" });
-  secondAdmin = createTestUser({ userId: "admin-2", role: "admin" });
-  manager = createTestUser({ userId: "manager-1", role: "manager" });
-  plainUser = createTestUser({ userId: "user-1", role: "user" });
+  admin = await createTestUser({ userId: "admin-1", role: "admin" });
+  secondAdmin = await createTestUser({ userId: "admin-2", role: "admin" });
+  manager = await createTestUser({ userId: "manager-1", role: "manager" });
+  plainUser = await createTestUser({ userId: "user-1", role: "user" });
 });
 
 async function call(
@@ -184,7 +188,7 @@ describe("role changes", () => {
       // presentation of the same token is a detectable reuse rather than an
       // unknown token.
       assert.equal(
-        after.getRefreshToken("hash-1")?.revoked,
+        (await after.getRefreshToken("hash-1"))?.revoked,
         true,
         "a role change must not leave a live refresh token behind"
       );

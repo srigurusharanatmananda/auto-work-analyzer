@@ -20,6 +20,7 @@ import express from "express";
 import { createTemplatesRouter } from "./templates.routes.js";
 import { TemplateStoreError, type TemplateInput, type TemplateStore } from "../services/TemplateStore.js";
 import { createTestUser } from "../testing/authFixture.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { DEFAULT_TEMPLATE_OPTIONS, type Template } from "../formatting/Template.js";
 
 const VALID_BODY = {
@@ -77,6 +78,7 @@ const stubStore = {
 
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
+let pg: TestDatabase;
 let authHeader: string;
 
 /**
@@ -92,7 +94,8 @@ const originalCwd = process.cwd();
 const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-nodetest-"));
 process.chdir(tmpDbDir);
 
-before(() => {
+before(async () => {
+  pg = await createTestDatabase();
   const app = express();
   app.use(express.json());
   app.use("/api/templates", createTemplatesRouter(stubStore));
@@ -104,10 +107,11 @@ before(() => {
   // A real user row, not just a signature: `authenticate` re-reads the user on
   // every request, so a token for an id that exists in no users table is
   // correctly rejected.
-  authHeader = createTestUser().authHeader;
+  authHeader = (await createTestUser()).authHeader;
 });
 
-after(() => {
+after(async () => {
+  await pg?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
   server.close();

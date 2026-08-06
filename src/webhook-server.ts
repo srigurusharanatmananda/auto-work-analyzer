@@ -27,7 +27,6 @@ import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
-import { runMigrations } from "./migrations/runMigrations.js";
 import { DestinationStore } from "./destinations/DestinationStore.js";
 import { getPool } from "./db/pool.js";
 import type { PostgresHandle } from "./db/client.js";
@@ -143,15 +142,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // scoped to the calling user; see the header of reports.routes.ts.
     app.use("/api", createReportsRouter());
 
-    // One database for everything (same .database/auto-work-analyzer.db as
-    // AuthDatabaseService), so a destination and the user it belongs to cannot
-    // end up in different files.
-    const databaseDir = path.join(process.cwd(), ".database");
-    if (!fs.existsSync(databaseDir)) {
-      fs.mkdirSync(databaseDir, { recursive: true });
-    }
-    const dbPath = path.join(databaseDir, "auto-work-analyzer.db");
-
     // Startup guard, deliberately before any store is opened: stored ClickUp
     // keys are encrypted, and there is no "store them in the clear" fallback.
     // An unconfigured install must fail here with instructions rather than
@@ -160,10 +150,16 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     try {
       cipher = loadCipherFromEnv();
     } catch (error) {
-      console.error(`❌ ${error instanceof Error ? error.message : error}`);
+      console.error(`\u274c ${error instanceof Error ? error.message : error}`);
       process.exit(1);
     }
-    runMigrations(dbPath, cipher);
+
+    // No SQLite here any more. `runMigrations` still exists and still runs — but
+    // it belongs to the *import*, not to startup: it operates on a pre-Postgres
+    // `.database/auto-work-analyzer.db` that no store reads. It is invoked by
+    // `bun run db:import` before the copy, which is the only moment it can
+    // still do anything. Leaving the call here would have been dead code
+    // wearing the costume of a live migration.
 
     // Postgres. Opened here, once, and shared by every store that has been
     // ported to it — currently templates and destinations; the rest still read
@@ -247,17 +243,13 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     const scanScheduler = new ScanScheduler({
       registry: scanRegistry,
-      userIds: () => {
-        // AuthDatabaseService directly rather than AuthService, whose `db` is
-        // private — reaching through it is what produces the three pre-existing
-        // TS2341 errors in auth.routes.ts, and this must not add a fourth.
-        //
+      userIds: async () => {
         // getAllUsers is paginated with a default limit of 50; pass an explicit
         // large limit so a growing user table does not silently stop being
         // scheduled past the first page.
-        const users = new AuthDatabaseService(dbPath);
+        const users = new AuthDatabaseService(pool);
         try {
-          return users.getAllUsers(10_000, 0).map((user) => user.id);
+          return (await users.getAllUsers(10_000, 0)).map((user) => user.id);
         } finally {
           users.close();
         }
@@ -267,7 +259,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // Persist the summary BEFORE marking the day complete: it is the only
         // record a scheduled run leaves, and it must survive even if the settings
         // write fails.
-        scanRegistry.saveRun(userId, summary);
+        await scanRegistry.saveRun(userId, summary);
         scanRegistry.saveSettings(userId, { lastCompletedDate: date });
         console.log(
           `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`

@@ -6,9 +6,12 @@
  * JWTService for an id that exists in no users table is correctly rejected with
  * 401. Route tests therefore need an actual row, not just a signature.
  *
- * The row is written through AuthDatabaseService, which resolves its file from
- * `process.cwd()` — so call this AFTER the suite has chdir'd into its temp
- * directory, or it will write into the real `.database/`.
+ * The row goes to whatever the shared pool points at, so call this AFTER
+ * `createTestDatabase()` — that is what redirects the pool to an isolated
+ * schema. Called before it, this writes into the developer's real database.
+ *
+ * Async now that the store is: the SQLite version could write the row inside a
+ * synchronous call, and every caller has to await instead.
  */
 import { AuthDatabaseService } from "../services/AuthDatabaseService.js";
 import { JWTService } from "../services/JWTService.js";
@@ -30,7 +33,7 @@ export interface TestUser {
 }
 
 /** Creates a user row in the cwd's auth database and returns a usable token. */
-export function createTestUser(options: TestUserOptions = {}): TestUser {
+export async function createTestUser(options: TestUserOptions = {}): Promise<TestUser> {
   const userId = options.userId ?? "user-1";
   const email = options.email ?? `${userId}@example.com`;
   const role = options.role ?? "user";
@@ -38,8 +41,8 @@ export function createTestUser(options: TestUserOptions = {}): TestUser {
 
   const db = new AuthDatabaseService();
   try {
-    if (!db.getUserById(userId)) {
-      db.createUser({
+    if (!(await db.getUserById(userId))) {
+      await db.createUser({
         id: userId,
         email,
         // Never used: these tokens are minted directly, never logged in with.

@@ -40,9 +40,9 @@ let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 
 let pg: TestDatabase;
-let alice: ReturnType<typeof createTestUser>;
-let bob: ReturnType<typeof createTestUser>;
-let admin: ReturnType<typeof createTestUser>;
+let alice: Awaited<ReturnType<typeof createTestUser>>;
+let bob: Awaited<ReturnType<typeof createTestUser>>;
+let admin: Awaited<ReturnType<typeof createTestUser>>;
 
 before(async () => {
   pg = await createTestDatabase();
@@ -55,9 +55,9 @@ before(async () => {
   server = app.listen(0);
   baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/api`;
 
-  alice = createTestUser({ userId: "alice", role: "user" });
-  bob = createTestUser({ userId: "bob", role: "user" });
-  admin = createTestUser({ userId: "root", role: "admin" });
+  alice = await createTestUser({ userId: "alice", role: "user" });
+  bob = await createTestUser({ userId: "bob", role: "user" });
+  admin = await createTestUser({ userId: "root", role: "admin" });
 });
 
 after(async () => {
@@ -83,7 +83,7 @@ async function call(method: string, path: string, token: string, body?: unknown)
 }
 
 /** Saves a one-item report as the given user and returns its analysis id. */
-async function saveReport(user: ReturnType<typeof createTestUser>, name: string) {
+async function saveReport(user: Awaited<ReturnType<typeof createTestUser>>, name: string) {
   const result = await call("POST", "/save-report", user.authHeader, {
     projectPath: `/repos/${user.userId}`,
     date: "2026-08-05",

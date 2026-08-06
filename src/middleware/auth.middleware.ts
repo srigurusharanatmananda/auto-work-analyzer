@@ -30,16 +30,16 @@ declare global {
  *  - the role is taken from the row, not the token, so demoting a user takes
  *    effect on their next request rather than at their next login.
  *
- * The cost is one indexed primary-key lookup on a local SQLite file, on a
- * connection that is already open.
+ * The cost is two indexed primary-key lookups (the blacklist check and the user
+ * row) on the shared connection pool.
  */
-function resolveIdentity(token: string): TokenPayload | null {
+async function resolveIdentity(token: string): Promise<TokenPayload | null> {
   const authService = getSharedAuthService();
 
-  const tokenPayload = authService.verifyAccessToken(token);
+  const tokenPayload = await authService.verifyAccessToken(token);
   if (!tokenPayload) return null;
 
-  const user = authService.getUserById(tokenPayload.userId);
+  const user = await authService.getUserById(tokenPayload.userId);
   if (!user || !user.is_active) return null;
 
   return { ...tokenPayload, role: user.role };
@@ -49,7 +49,11 @@ function resolveIdentity(token: string): TokenPayload | null {
  * Authentication middleware
  * Verifies JWT access token from Authorization header
  */
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
@@ -64,7 +68,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    const tokenPayload = resolveIdentity(token);
+    const tokenPayload = await resolveIdentity(token);
 
     if (!tokenPayload) {
       // One message for every failure mode. Distinguishing "expired" from
@@ -95,7 +99,11 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
  * Optional authentication middleware
  * Attaches user if token is valid, but doesn't fail if missing
  */
-export function authenticateOptional(req: Request, res: Response, next: NextFunction): void {
+export async function authenticateOptional(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -104,7 +112,7 @@ export function authenticateOptional(req: Request, res: Response, next: NextFunc
     }
 
     const token = authHeader.substring(7);
-    const tokenPayload = resolveIdentity(token);
+    const tokenPayload = await resolveIdentity(token);
 
     if (tokenPayload) {
       req.user = tokenPayload;

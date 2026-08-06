@@ -362,7 +362,7 @@ router.post('/setup', async (req: Request, res: Response) => {
     const db = new AuthDatabaseService();
 
     // Check if any user exists by trying to get all users with limit 1
-    const users = db.getAllUsers(1, 0);
+    const users = await db.getAllUsers(1, 0);
 
     if (users.length > 0) {
       db.close();
@@ -422,7 +422,7 @@ router.get('/settings', authenticate, anyRole, async (req: Request, res: Respons
     const userId = req.user!.userId;
 
     const authService = new AuthService();
-    const settings = authService.db.getUserSettings(userId);
+    const settings = await authService.getUserSettings(userId);
     authService.close();
 
     // Return default settings if none exist
@@ -476,14 +476,14 @@ router.put('/settings', authenticate, anyRole, async (req: Request, res: Respons
     }
 
     const authService = new AuthService();
-    authService.db.upsertUserSettings(userId, {
+    await authService.upsertUserSettings(userId, {
       default_assignee,
       backend_url,
       clickup_team_id,
       clickup_list_id,
     });
 
-    const updatedSettings = authService.db.getUserSettings(userId);
+    const updatedSettings = await authService.getUserSettings(userId);
     authService.close();
 
     const { clickup_api_key: _stripped, ...safeUpdated } = (updatedSettings ?? {}) as Record<string, unknown>;

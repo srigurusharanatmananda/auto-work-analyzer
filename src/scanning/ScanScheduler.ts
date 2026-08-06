@@ -17,7 +17,7 @@ export interface ScanSchedulerDeps {
   runScan: (userId: string, date: string) => Promise<void>;
   /** Injected so the date logic is testable without touching real time. */
   now?: () => Date;
-  userIds: () => string[];
+  userIds: () => string[] | Promise<string[]>;
 }
 
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
@@ -50,7 +50,7 @@ export class ScanScheduler {
   async tick(): Promise<void> {
     const now = (this.deps.now ?? (() => new Date()))();
 
-    for (const userId of this.deps.userIds()) {
+    for (const userId of await this.deps.userIds()) {
       const settings = await this.deps.registry.getSettings(userId);
       if (!settings.enabled) continue;
 
