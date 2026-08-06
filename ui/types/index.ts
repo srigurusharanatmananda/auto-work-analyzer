@@ -110,6 +110,45 @@ export interface PlaceholderSchema {
   sections: Record<string, PlaceholderSchema>;
 }
 
+/**
+ * Where a work item came from. Mirrors `src/domain/WorkItem.ts`.
+ *
+ * `quote` is only ever set on transcript-sourced items, and for those the
+ * backend guarantees it: `validateActionItems` rejects any extracted item whose
+ * quote is not present in the transcript it was extracted from. So a quote shown
+ * in the UI has already been checked against the source — the review screen is
+ * asking a human whether the request is worth filing, not whether it was real.
+ */
+export interface WorkItemProvenance {
+  source: 'git' | 'notes' | 'manual' | 'transcript';
+  commits: unknown[];
+  files: string[];
+  repository?: string;
+  quote?: string;
+  speaker?: string;
+}
+
+/**
+ * The canonical work item, as returned inside a preview entry.
+ *
+ * Round-tripped UNCHANGED to `POST /api/create-tasks` as `workItems`. That is
+ * the point of holding it: extraction from a transcript is a model call, so
+ * re-sending the transcript at create time would re-run it and create a
+ * different set of tasks from the ones the user just approved. Anything that
+ * edits these before sending them back breaks that guarantee.
+ */
+export interface PreviewWorkItem {
+  title: string;
+  description: string;
+  type: string;
+  priority: string;
+  status?: string;
+  estimateHours: number;
+  completedDate?: string;
+  tags: string[];
+  provenance: WorkItemProvenance;
+}
+
 /** One entry of `POST /api/preview-tasks` -> `data.items`. */
 export interface RenderedTaskPreview {
   task: {
@@ -121,6 +160,8 @@ export interface RenderedTaskPreview {
     dueDate?: string;
     timeEstimate?: number;
   };
+  /** The item the task was rendered from. Always sent by the backend. */
+  workItem: PreviewWorkItem;
 }
 
 /**

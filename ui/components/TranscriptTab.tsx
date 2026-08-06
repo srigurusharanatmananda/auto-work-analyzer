@@ -1,0 +1,527 @@
+'use client';
+
+/**
+ * Call transcript -> reviewed action items -> ClickUp tasks.
+ *
+ * Two decisions here differ deliberately from NotesTab, which is otherwise the
+ * closest precedent (paste text, get tasks):
+ *
+ * 1. **There is no "create automatically" option.** NotesTab has one, checked by
+ *    default, because a note is something the user wrote themselves — they have
+ *    already reviewed it by authoring it. A transcript is not: the items come
+ *    from a model reading someone else's speech. Every extracted item cites the
+ *    sentence it came from and the backend has already checked that the sentence
+ *    is really in the transcript, but "was said" is not "is worth filing" — an
+ *    accurately-quoted "we should probably look at that some day" passes
+ *    validation. The citation is only worth carrying if a human reads it, so
+ *    extraction and creation are always two steps.
+ *
+ * 2. **Creation posts back the previewed work items, never the transcript.**
+ *    Extraction is a model call and is not deterministic. Re-sending the
+ *    transcript to /api/create-tasks would re-extract and create a different set
+ *    of tasks from the one just approved, and nothing in the response would look
+ *    wrong. `PreviewWorkItem` values are therefore round-tripped untouched.
+ *    (Pinned server-side by "creating does not re-run extraction" in
+ *    tasks.routes.transcript.nodetest.ts.)
+ *
+ * Items arrive selected. The guard against invented tasks is the backend
+ * validator, which cannot be clicked past; this screen's job is to put the
+ * evidence in front of someone, and defaulting to nothing-selected mostly
+ * teaches people to hit "select all".
+ */
+
+import { useMemo, useState, ChangeEvent } from 'react';
+import toast from 'react-hot-toast';
+import { Card, Button } from '@/lib/components/ui';
+import { useAuth } from '@/lib/context/AuthContext';
+import { CreatedTask, PreviewWorkItem, RenderedTaskPreview } from '@/types';
+
+const BACKEND_URL = 'http://localhost:3009';
+
+interface PreviewState {
+  items: RenderedTaskPreview[];
+  warnings: string[];
+  destination: { id: string; name: string; listName?: string } | null;
+  template: { id: string; name: string };
+}
+
+const SAMPLE_TRANSCRIPT = `Priya: Before we wrap up — the CSV export is dropping the last row for anyone with more than a thousand records.
+Sam: I can take that. I'll have a fix out by Thursday.
+Priya: Thanks. Also, a few customers have asked for dark mode on the dashboard.
+Sam: Noted, but that's a bigger piece of work. Let's size it next sprint.
+Priya: Fine. We should probably rewrite the whole reporting module at some point.
+Sam: Maybe next quarter. Not committing to that today.`;
+
+export default function TranscriptTab() {
+  const { accessToken } = useAuth();
+
+  const [transcript, setTranscript] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [callTitle, setCallTitle] = useState('');
+  const [callDate, setCallDate] = useState('');
+
+  const [extracting, setExtracting] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  /** Index-keyed so unchecking an item cannot reorder or mutate the others. */
+  const [approved, setApproved] = useState<Set<number>>(new Set());
+  const [created, setCreated] = useState<CreatedTask[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const approvedItems = useMemo<PreviewWorkItem[]>(
+    () =>
+      preview
+        ? preview.items.filter((_, index) => approved.has(index)).map((entry) => entry.workItem)
+        : [],
+    [preview, approved]
+  );
+
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (loaded) => setTranscript((loaded.target?.result as string) ?? '');
+    reader.readAsText(file);
+    toast.success(`Loaded ${file.name}`, { duration: 2000 });
+  };
+
+  const reset = () => {
+    setPreview(null);
+    setApproved(new Set());
+    setCreated(null);
+    setError(null);
+  };
+
+  const handleExtract = async () => {
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+    if (!transcript.trim()) {
+      toast.error('Paste a transcript first');
+      return;
+    }
+
+    reset();
+    setExtracting(true);
+    const toastId = toast.loading('Reading the transcript…');
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/preview-tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          transcript,
+          ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
+          ...(callDate ? { callDate } : {}),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setError(result.error || 'Extraction failed');
+        toast.error(result.error || 'Extraction failed', { id: toastId, duration: 5000 });
+        return;
+      }
+
+      const items: RenderedTaskPreview[] = result.data.items ?? [];
+      setPreview({
+        items,
+        warnings: result.data.warnings ?? [],
+        destination: result.data.destination ?? null,
+        template: result.data.template,
+      });
+      setApproved(new Set(items.map((_, index) => index)));
+
+      toast.success(
+        items.length === 0
+          ? 'No action items found in this call'
+          : `Found ${items.length} action item${items.length === 1 ? '' : 's'} to review`,
+        { id: toastId, duration: 4000 }
+      );
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'An error occurred';
+      setError(message);
+      toast.error(message, { id: toastId, duration: 5000 });
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!accessToken || approvedItems.length === 0) return;
+
+    setCreating(true);
+    const toastId = toast.loading(`Creating ${approvedItems.length} task(s) in ClickUp…`);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        // The approved items, exactly as the preview returned them. See the
+        // header: sending `transcript` here would re-run extraction.
+        body: JSON.stringify({ workItems: approvedItems }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setError(result.error || 'Creation failed');
+        toast.error(result.error || 'Creation failed', { id: toastId, duration: 5000 });
+        return;
+      }
+
+      setCreated(result.data.tasks ?? []);
+      const failed = result.data.failedTasks?.length ?? 0;
+      toast.success(
+        `Created ${result.data.tasksCreated} task${result.data.tasksCreated === 1 ? '' : 's'}` +
+          (failed > 0 ? ` (${failed} failed)` : ''),
+        { id: toastId, duration: 5000 }
+      );
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'An error occurred';
+      setError(message);
+      toast.error(message, { id: toastId, duration: 5000 });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const toggle = (index: number) => {
+    setApproved((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const allSelected = preview !== null && approved.size === preview.items.length;
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-8">
+        <div className="space-y-6">
+          {/* Upload */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-semibold text-foreground">
+                Upload a transcript
+              </label>
+              {fileName && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFileName('');
+                    setTranscript('');
+                    const input = document.getElementById('transcriptFile') as HTMLInputElement;
+                    if (input) input.value = '';
+                    reset();
+                  }}
+                  className="rounded-md bg-error/10 px-3 py-1 text-sm text-error transition-colors hover:bg-error/20"
+                >
+                  ✕ Clear
+                </button>
+              )}
+            </div>
+            <input
+              type="file"
+              id="transcriptFile"
+              accept=".txt,.md"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <label
+              htmlFor="transcriptFile"
+              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-all duration-300 hover:border-primary hover:bg-background-tertiary"
+            >
+              <span className="mb-3 text-5xl">🎙️</span>
+              <span className="text-lg font-semibold text-primary">
+                {fileName || 'Click to upload a transcript'}
+              </span>
+              <span className="mt-2 text-sm text-foreground-tertiary">
+                Plain text or markdown (.txt, .md)
+              </span>
+            </label>
+          </div>
+
+          {/* Paste */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="transcriptText" className="block text-sm font-semibold text-foreground">
+                Or paste it here
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setTranscript(SAMPLE_TRANSCRIPT);
+                  reset();
+                }}
+                className="text-xs text-primary hover:underline"
+              >
+                Use a sample call
+              </button>
+            </div>
+            <textarea
+              id="transcriptText"
+              value={transcript}
+              onChange={(event) => setTranscript(event.target.value)}
+              placeholder={'Priya: Before we wrap up — the export is dropping the last row.\nSam: I can take that.'}
+              className="min-h-[220px] w-full resize-y rounded-lg border border-border bg-background-tertiary px-4 py-3 font-mono text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <p className="mt-2 text-xs text-foreground-tertiary">
+              Speaker labels help — items are attributed to whoever the transcript names.
+            </p>
+          </div>
+
+          {/* Context */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="callTitle" className="mb-2 block text-sm font-semibold text-foreground">
+                Call title <span className="font-normal text-foreground-tertiary">(optional)</span>
+              </label>
+              <input
+                id="callTitle"
+                type="text"
+                value={callTitle}
+                onChange={(event) => setCallTitle(event.target.value)}
+                placeholder="Weekly sync"
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="callDate" className="mb-2 block text-sm font-semibold text-foreground">
+                Call date <span className="font-normal text-foreground-tertiary">(optional)</span>
+              </label>
+              <input
+                id="callDate"
+                type="date"
+                value={callDate}
+                onChange={(event) => setCallDate(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-foreground-tertiary">
+            Both become tags on the created tasks, so you can find everything a call produced.
+          </p>
+
+          <Button
+            type="button"
+            onClick={handleExtract}
+            disabled={extracting || !transcript.trim()}
+            isLoading={extracting}
+            variant="primary"
+            className="w-full py-6 text-lg"
+          >
+            {!extracting && <span>Extract action items</span>}
+          </Button>
+
+          <p className="text-center text-xs text-foreground-tertiary">
+            Nothing is created yet — you review what was found first.
+          </p>
+        </div>
+
+        {error && (
+          <div className="mt-6 rounded-r-lg border-l-4 border-error bg-error/10 p-4">
+            <p className="font-medium text-error">{error}</p>
+          </div>
+        )}
+      </Card>
+
+      {/* Review */}
+      {preview && (
+        <Card className="p-8">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Review before creating</h2>
+              <p className="mt-1 text-sm text-foreground-secondary">
+                Each item quotes the sentence it came from. Uncheck anything that should not
+                become a task.
+              </p>
+            </div>
+            {preview.items.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setApproved(
+                    allSelected ? new Set() : new Set(preview.items.map((_, index) => index))
+                  )
+                }
+                className="text-sm text-primary hover:underline"
+              >
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
+          </div>
+
+          {/* Warnings. Prominent on purpose: "this call had no action items" and
+              "extraction broke" both render an empty list and mean opposite
+              things, and this is the only thing that tells them apart. */}
+          {preview.warnings.length > 0 && (
+            <div className="mb-6 rounded-r-lg border-l-4 border-warning bg-warning/10 p-4">
+              <h3 className="mb-2 text-sm font-semibold text-warning">Worth knowing</h3>
+              <ul className="list-inside list-disc space-y-1 text-sm text-foreground-secondary">
+                {preview.warnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {preview.items.length === 0 ? (
+            <div className="py-8 text-center">
+              <span className="text-4xl">🤷</span>
+              <p className="mt-3 font-medium text-foreground">No action items found</p>
+              <p className="mt-1 text-sm text-foreground-tertiary">
+                {preview.warnings.length > 0
+                  ? 'Something went wrong above — this may not mean the call was quiet.'
+                  : 'Nothing in this transcript read as a commitment to act.'}
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {preview.items.map((entry, index) => {
+                const item = entry.workItem;
+                const isApproved = approved.has(index);
+
+                return (
+                  <li
+                    key={index}
+                    className={
+                      'rounded-lg border p-5 transition-colors ' +
+                      (isApproved
+                        ? 'border-primary/50 bg-background-tertiary'
+                        : 'border-border bg-background-secondary opacity-60')
+                    }
+                  >
+                    <div className="flex items-start gap-4">
+                      <input
+                        type="checkbox"
+                        checked={isApproved}
+                        onChange={() => toggle(index)}
+                        aria-label={`Create task: ${entry.task.name}`}
+                        className="mt-1 h-5 w-5 accent-primary"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-foreground">{entry.task.name}</h3>
+
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          <span className="rounded bg-primary/20 px-2 py-0.5 text-primary">
+                            {item.type}
+                          </span>
+                          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+                            {item.priority} priority
+                          </span>
+                          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+                            ~{item.estimateHours}h
+                          </span>
+                          {item.status && (
+                            <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+                              {item.status}
+                            </span>
+                          )}
+                        </div>
+
+                        {item.description && (
+                          <p className="mt-3 text-sm text-foreground-secondary">
+                            {item.description}
+                          </p>
+                        )}
+
+                        {/* The evidence. Always visible, never behind a toggle —
+                            a citation nobody reads is decoration. */}
+                        {item.provenance.quote && (
+                          <blockquote className="mt-3 border-l-4 border-border-hover pl-4">
+                            <p className="text-sm italic text-foreground-secondary">
+                              “{item.provenance.quote}”
+                            </p>
+                            {item.provenance.speaker && (
+                              <footer className="mt-1 text-xs text-foreground-tertiary">
+                                — {item.provenance.speaker}
+                              </footer>
+                            )}
+                          </blockquote>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {preview.items.length > 0 && (
+            <div className="mt-6 border-t border-border pt-6">
+              <p className="mb-4 text-sm text-foreground-secondary">
+                Destination:{' '}
+                <span className="font-medium text-foreground">
+                  {preview.destination
+                    ? preview.destination.name +
+                      (preview.destination.listName ? ` → ${preview.destination.listName}` : '')
+                    : 'the list configured in .env'}
+                </span>
+                {' · Template: '}
+                <span className="font-medium text-foreground">{preview.template.name}</span>
+              </p>
+
+              <Button
+                type="button"
+                onClick={handleCreate}
+                disabled={creating || approved.size === 0 || created !== null}
+                isLoading={creating}
+                variant="primary"
+                className="w-full py-6 text-lg"
+              >
+                {!creating && (
+                  <span>
+                    {created !== null
+                      ? 'Tasks created'
+                      : approved.size === 0
+                        ? 'Nothing selected'
+                        : `Create ${approved.size} task${approved.size === 1 ? '' : 's'} in ClickUp`}
+                  </span>
+                )}
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Result */}
+      {created && created.length > 0 && (
+        <Card className="p-8">
+          <h2 className="mb-4 text-xl font-bold text-foreground">
+            Created {created.length} task{created.length === 1 ? '' : 's'}
+          </h2>
+          <ul className="space-y-2">
+            {created.map((task) => (
+              <li key={task.id} className="flex items-center justify-between gap-4">
+                <span className="min-w-0 truncate text-sm text-foreground">{task.name}</span>
+                <a
+                  href={task.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-sm text-primary hover:underline"
+                >
+                  Open in ClickUp ↗
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}

@@ -49,12 +49,23 @@ let baseUrl: string;
 let authHeader: string;
 /** Swapped per test so each can decide what the "model" returns. */
 let modelResponse: string;
+/**
+ * Every task the stubbed ClickUp was asked to create. Nothing leaves the
+ * process — this is how the round-trip test below observes what WOULD be
+ * created without creating it.
+ */
+let createdTasks: Array<{ name: string; description: string }>;
 
 function stubResolver(): DestinationResolver {
   return {
     resolve: async () => ({
       destination: null as null,
-      clickUp: {} as never,
+      clickUp: {
+        createTask: async (task: any) => {
+          createdTasks.push({ name: task.name, description: task.description });
+          return { id: "stub-id", name: task.name, url: "http://example.invalid/stub" };
+        },
+      } as never,
       listId: undefined as string | undefined,
       template: BUILTIN_TEMPLATES[0]!,
       config: { teamId: "t", apiKey: "k", projectName: "test" },
@@ -69,6 +80,7 @@ const stubAiClient = {
 } as unknown as AiClient;
 
 before(async () => {
+  createdTasks = [];
   pg = await createTestDatabase();
 
   const app = express();
@@ -168,6 +180,20 @@ describe("POST /api/preview-tasks with a transcript", () => {
     assert.equal(res.status, 401);
   });
 
+  test("carries the cited quote through to the client, where a reviewer can see it", async () => {
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM] });
+
+    const { body } = await preview({ transcript: TRANSCRIPT });
+    const [entry] = body.data.items;
+
+    // The UI shows this verbatim. If the preview ever stopped returning the
+    // source work item, the review screen would be asking someone to approve a
+    // task with no visible evidence behind it — which is the same as no review.
+    assert.equal(entry.workItem.provenance.source, "transcript");
+    assert.equal(entry.workItem.provenance.quote, QUOTE);
+    assert.equal(entry.workItem.provenance.speaker, "Sam");
+  });
+
   test("a router with no AI client explains itself rather than silently finding nothing", async () => {
     const app = express();
     app.use(express.json());
@@ -198,5 +224,113 @@ describe("POST /api/preview-tasks with a transcript", () => {
     } finally {
       local.close();
     }
+  });
+});
+
+/**
+ * The reviewed path: preview a transcript, then create from what the reviewer
+ * approved.
+ *
+ * These are the tests that make the review meaningful. The client sends back the
+ * work items the preview gave it — NOT the transcript again — and the last test
+ * here is the reason why: extraction is a model call, so re-sending the
+ * transcript at create time would re-run it and create a different set of tasks
+ * from the ones a human just read and agreed to. Nothing about the response
+ * would look wrong.
+ *
+ * No ClickUp call leaves the process: the resolver's `createTask` is a stub that
+ * records into `createdTasks`.
+ */
+describe("transcript → preview → create", () => {
+  const SECOND_QUOTE = "I'll have a fix out by Thursday";
+
+  const SECOND_ITEM = {
+    title: "Ship the CSV fix by Thursday",
+    description: "Sam committed to a fix landing Thursday.",
+    type: "chore",
+    priority: "normal",
+    estimateHours: 1,
+    quote: `Sam: I can take that. ${SECOND_QUOTE}`,
+    speaker: "Sam",
+  };
+
+  async function create(body: unknown) {
+    const res = await fetch(`${baseUrl}/create-tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: authHeader },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  test("the previewed work items are accepted verbatim by /create-tasks", async () => {
+    createdTasks = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM] });
+
+    const previewed = await preview({ transcript: TRANSCRIPT, callTitle: "Weekly sync" });
+    const workItems = previewed.body.data.items.map((entry: any) => entry.workItem);
+
+    const created = await create({ workItems });
+
+    // A 400 here would mean a transcript-derived work item does not satisfy the
+    // validator the canonical create path applies — i.e. the two halves of the
+    // feature disagree, which no preview-only test could catch.
+    assert.equal(created.status, 200, JSON.stringify(created.body));
+    assert.equal(created.body.data.tasksCreated, 1);
+    assert.equal(createdTasks.length, 1);
+  });
+
+  test("only the items the reviewer kept are created", async () => {
+    createdTasks = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] });
+
+    const previewed = await preview({ transcript: TRANSCRIPT });
+    assert.equal(previewed.body.data.items.length, 2, "both items should be previewed");
+
+    // The reviewer rejects the second one.
+    const kept = [previewed.body.data.items[0].workItem];
+    const created = await create({ workItems: kept });
+
+    assert.equal(created.body.data.tasksCreated, 1);
+    assert.equal(createdTasks.length, 1);
+    assert.match(createdTasks[0]!.name, /CSV/);
+  });
+
+  /**
+   * The whole reason the client re-sends work items instead of the transcript.
+   * The "model" returns something completely different by the time create runs;
+   * what gets created must still be what was reviewed.
+   */
+  test("creating does not re-run extraction", async () => {
+    createdTasks = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM] });
+
+    const previewed = await preview({ transcript: TRANSCRIPT });
+    const workItems = previewed.body.data.items.map((entry: any) => entry.workItem);
+
+    modelResponse = JSON.stringify({ items: [SECOND_ITEM] });
+    const created = await create({ workItems });
+
+    assert.equal(created.body.data.tasksCreated, 1);
+    assert.match(
+      createdTasks[0]!.name,
+      /CSV/,
+      "the created task must be the reviewed one, not a fresh extraction"
+    );
+  });
+
+  /**
+   * Approving nothing must create nothing, and must not fall through to another
+   * input shape. An empty `workItems` deliberately does NOT count as the chosen
+   * shape (see suppliedWorkItems), so this pins that a reviewer who unchecks
+   * every item gets zero tasks rather than a 400 or a surprise.
+   */
+  test("approving nothing creates nothing", async () => {
+    createdTasks = [];
+    const created = await create({ workItems: [] });
+
+    assert.equal(created.status, 200, JSON.stringify(created.body));
+    assert.equal(created.body.data.tasksCreated, 0);
+    assert.equal(createdTasks.length, 0);
   });
 });
