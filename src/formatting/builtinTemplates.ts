@@ -34,6 +34,8 @@ export const BUILTIN_TEMPLATES: Template[] = [
       ...DEFAULT_TEMPLATE_OPTIONS,
       applyTimeEstimate: false,
       dueDateSource: "none",
+      // No due date to anchor to, so there is nothing a start date could mean.
+      startDateSource: "none",
       tagStrategy: { mode: "none" },
     },
     isBuiltin: true,

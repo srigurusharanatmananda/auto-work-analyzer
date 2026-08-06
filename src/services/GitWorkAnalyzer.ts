@@ -611,6 +611,10 @@ export class GitWorkAnalyzer {
           const commitDate = work.commits.length > 0
             ? work.commits[work.commits.length - 1].date
             : workAnalysis.date;
+          // …and the earliest for the start, so the task spans the work on the
+          // Timeline instead of landing under "Unscheduled". Mirrors the
+          // template path's `startDateSource: "firstCommitDate"`.
+          const startDate = work.commits.length > 0 ? work.commits[0].date : commitDate;
 
           return clickUpService.createTask({
             name: `${
@@ -631,6 +635,7 @@ export class GitWorkAnalyzer {
             tags: [work.type, "git-analyzed", workAnalysis.date, ...work.tags],
             timeEstimate: work.estimatedHours * 60 * 60 * 1000, // Convert to milliseconds
             dueDate: commitDate, // Set due date to the commit date
+            startDate,
           }).catch((error): null => {
             console.error(`Failed to create task for ${work.name}:`, error);
             return null; // Return null for failed tasks

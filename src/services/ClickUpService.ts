@@ -11,6 +11,26 @@ import {
   ProjectTemplate,
 } from "../types/index.js";
 
+/**
+ * The date half of a create payload, shared by tasks and subtasks so the two
+ * cannot drift — they did once already, and a subtask with no start date is
+ * just as invisible to the Timeline as a task with none.
+ *
+ * `*_date_time: false` is what makes ClickUp treat these as calendar dates.
+ * Without it a "2026-07-10" (parsed as UTC midnight) renders as 9 July to
+ * anyone west of Greenwich — the off-by-one already visible on the tasks
+ * created before this existed.
+ */
+function dateFields(data: Pick<TaskData, "dueDate" | "startDate">): Record<string, unknown> {
+  const fields: Record<string, unknown> = {
+    due_date: data.dueDate ? new Date(data.dueDate).getTime() : null,
+    start_date: data.startDate ? new Date(data.startDate).getTime() : null,
+  };
+  if (data.dueDate) fields.due_date_time = false;
+  if (data.startDate) fields.start_date_time = false;
+  return fields;
+}
+
 export class ClickUpService {
   private config: ClickUpConfig;
   private baseUrl = "https://api.clickup.com/api/v2";
@@ -126,9 +146,7 @@ export class ClickUpService {
         priority: this.mapPriority(taskData.priority),
         assignees: assignees,
         tags: taskData.tags || [],
-        due_date: taskData.dueDate
-          ? new Date(taskData.dueDate).getTime()
-          : null,
+        ...dateFields(taskData),
         time_estimate: taskData.timeEstimate || null,
         custom_fields: taskData.customFields || ([] as any[]),
       };
@@ -198,9 +216,7 @@ export class ClickUpService {
       priority: this.mapPriority(subtaskData.priority),
       assignees: subtaskData.assignees || [],
       tags: subtaskData.tags || [],
-      due_date: subtaskData.dueDate
-        ? new Date(subtaskData.dueDate).getTime()
-        : null,
+      ...dateFields(subtaskData),
       time_estimate: subtaskData.timeEstimate || null,
       custom_fields: subtaskData.customFields || ([] as any[]),
     };

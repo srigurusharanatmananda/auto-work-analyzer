@@ -26,6 +26,29 @@ function resolveDueDate(item: WorkItem, template: Template): string | undefined 
   }
 }
 
+/**
+ * `dueDate` is passed in rather than re-derived so the two can never disagree:
+ * `matchDueDate` must mean *this* due date, and the `firstCommitDate` fallback
+ * has to land on it too.
+ */
+function resolveStartDate(
+  item: WorkItem,
+  template: Template,
+  dueDate: string | undefined
+): string | undefined {
+  switch (template.options.startDateSource) {
+    case "firstCommitDate": {
+      const dates = item.provenance.commits.map((c) => c.date).sort();
+      return dates[0] ?? dueDate;
+    }
+    case "matchDueDate":
+      return dueDate;
+    case "none":
+    default:
+      return undefined;
+  }
+}
+
 function resolveStatus(item: WorkItem, template: Template): string | undefined {
   switch (template.options.statusMode) {
     case "fromWorkItem":
@@ -74,6 +97,17 @@ function renderOne(item: WorkItem, template: Template, meta: RenderMeta): TaskDa
 
   const dueDate = resolveDueDate(item, template);
   if (dueDate) task.dueDate = dueDate;
+
+  // ClickUp rejects a start date after the due date, which is reachable
+  // honestly: `dueDateSource: "completedDate"` with a note whose recorded
+  // completion predates its own last commit. Dropping the start date loses the
+  // Timeline bar; moving the due date would silently contradict the source. So
+  // clamp the start to the due date — the task still schedules, on the one day
+  // both sources agree on.
+  const startDate = resolveStartDate(item, template, dueDate);
+  if (startDate) {
+    task.startDate = dueDate && startDate > dueDate ? dueDate : startDate;
+  }
 
   if (template.options.emitSubtasks && item.subitems && item.subitems.length > 0) {
     task.subtasks = item.subitems.map((sub) => {

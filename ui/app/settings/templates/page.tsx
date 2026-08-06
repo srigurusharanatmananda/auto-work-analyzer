@@ -380,6 +380,23 @@ export default function TemplatesSettingsPage() {
                     />
 
                     <SelectRow
+                      id="startDateSource"
+                      label="Start date source"
+                      hint="ClickUp only shows a task on the Timeline, Gantt and Workload views when it has a start date as well as a due date."
+                      value={draft.options.startDateSource}
+                      options={[
+                        ['firstCommitDate', 'First commit date (falls back to the due date)'],
+                        ['matchDueDate', 'Same as the due date (one-day bar)'],
+                        ['none', 'No start date — leaves the task unscheduled'],
+                      ]}
+                      onChange={(value) =>
+                        updateOptions({
+                          startDateSource: value as TemplateOptions['startDateSource'],
+                        })
+                      }
+                    />
+
+                    <SelectRow
                       id="statusMode"
                       label="Status"
                       value={draft.options.statusMode}
@@ -658,12 +675,15 @@ function CheckboxRow({
 function SelectRow({
   id,
   label,
+  hint,
   value,
   options,
   onChange,
 }: {
   id: string;
   label: string;
+  /** Optional one-liner for options whose consequence is not self-evident. */
+  hint?: string;
   value: string;
   options: Array<[string, string]>;
   onChange: (value: string) => void;
@@ -673,6 +693,7 @@ function SelectRow({
       <label htmlFor={id} className="block text-sm font-medium text-foreground mb-2">
         {label}
       </label>
+      {hint && <p className="text-xs text-foreground-muted mb-2 -mt-1">{hint}</p>}
       <select
         id={id}
         value={value}

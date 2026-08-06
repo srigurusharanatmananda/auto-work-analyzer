@@ -102,6 +102,13 @@ export interface TaskData {
   assignees?: string[];
   tags?: string[];
   dueDate?: string;
+  /**
+   * ClickUp's Timeline, Gantt and Workload views schedule a task only when it
+   * has BOTH a start and a due date; a due date alone leaves it under
+   * "Unscheduled". So this is not decoration — it is what makes a created task
+   * appear in a report at all.
+   */
+  startDate?: string;
   timeEstimate?: number;
   customFields?: Record<string, any>;
   subtasks?: Omit<TaskData, "subtasks">[];

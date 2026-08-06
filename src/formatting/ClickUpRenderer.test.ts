@@ -146,6 +146,86 @@ describe("renderTasks", () => {
     expect(rendered!.task.dueDate).toBeUndefined();
   });
 
+  /**
+   * A task with a due date but no start date is still "Unscheduled" in ClickUp,
+   * so these are the tests that decide whether created work shows up in a
+   * report at all.
+   */
+  describe("start dates", () => {
+    const commit = (date: string) => ({
+      hash: date, author: "d", date, message: "m", files: [], insertions: 0, deletions: 0,
+    });
+
+    test("firstCommitDate spans from the earliest commit to the due date", () => {
+      const [rendered] = renderTasks(
+        [
+          makeWorkItem({
+            completedDate: "2026-07-29",
+            provenance: {
+              source: "git",
+              files: [],
+              commits: [commit("2026-07-20"), commit("2026-07-12")],
+            },
+          }),
+        ],
+        template()
+      );
+      expect(rendered!.task.startDate).toBe("2026-07-12");
+      expect(rendered!.task.dueDate).toBe("2026-07-29");
+    });
+
+    /** Notes and transcripts have no commits; a one-day bar still reports. */
+    test("firstCommitDate falls back to the due date when there are no commits", () => {
+      const [rendered] = renderTasks([makeWorkItem({ completedDate: "2026-07-29" })], template());
+      expect(rendered!.task.startDate).toBe("2026-07-29");
+    });
+
+    test("matchDueDate ignores commits and produces a one-day bar", () => {
+      const [rendered] = renderTasks(
+        [
+          makeWorkItem({
+            completedDate: "2026-07-29",
+            provenance: { source: "git", files: [], commits: [commit("2026-07-12")] },
+          }),
+        ],
+        template({ options: { ...DEFAULT_TEMPLATE_OPTIONS, startDateSource: "matchDueDate" } })
+      );
+      expect(rendered!.task.startDate).toBe("2026-07-29");
+    });
+
+    test("none omits it", () => {
+      const [rendered] = renderTasks(
+        [makeWorkItem({ completedDate: "2026-07-29" })],
+        template({ options: { ...DEFAULT_TEMPLATE_OPTIONS, startDateSource: "none" } })
+      );
+      expect(rendered!.task.startDate).toBeUndefined();
+    });
+
+    /** ClickUp rejects start > due outright, losing the whole task. */
+    test("a commit later than the completion date is clamped to the due date", () => {
+      const [rendered] = renderTasks(
+        [
+          makeWorkItem({
+            completedDate: "2026-07-01",
+            provenance: { source: "git", files: [], commits: [commit("2026-07-29")] },
+          }),
+        ],
+        template()
+      );
+      expect(rendered!.task.startDate).toBe("2026-07-01");
+      expect(rendered!.task.dueDate).toBe("2026-07-01");
+    });
+
+    /** The fallback has nothing to fall back to, and must not invent one. */
+    test("no due date and no commits means no start date", () => {
+      const [rendered] = renderTasks(
+        [makeWorkItem({ completedDate: "2026-07-29" })],
+        template({ options: { ...DEFAULT_TEMPLATE_OPTIONS, dueDateSource: "none" } })
+      );
+      expect(rendered!.task.startDate).toBeUndefined();
+    });
+  });
+
   test("tagStrategy none drops tags, fixed replaces them, merge unions them", () => {
     const item = makeWorkItem({ tags: ["api"] });
 

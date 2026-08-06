@@ -71,6 +71,12 @@ export interface TemplateOptions {
   applyPriority: boolean;
   applyTimeEstimate: boolean;
   dueDateSource: 'completedDate' | 'lastCommitDate' | 'none';
+  /**
+   * ClickUp only schedules a task on the Timeline/Gantt/Workload views when it
+   * has a start date too, so 'none' means the created task stays under
+   * "Unscheduled" no matter how good its due date is.
+   */
+  startDateSource: 'firstCommitDate' | 'matchDueDate' | 'none';
   statusMode: 'fromWorkItem' | 'destinationDefault' | 'fixed';
   /** Required when statusMode === 'fixed'. */
   fixedStatus?: string;
@@ -96,6 +102,7 @@ export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   applyPriority: true,
   applyTimeEstimate: true,
   dueDateSource: 'completedDate',
+  startDateSource: 'firstCommitDate',
   statusMode: 'fromWorkItem',
   tagStrategy: { mode: 'fromWorkItem' },
 };
