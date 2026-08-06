@@ -45,13 +45,19 @@ except Exception as e:
 
 class TranscriptionRequest(BaseModel):
     audio_path: str
-    call_id: int
+    # str, not int. The reference system keyed calls by a Postgres `serial`, so an
+    # int was natural there; auto-work-analyzer uses uuid job ids, and an int
+    # would have meant inventing a second numeric identity purely to satisfy this
+    # field. It is only ever used for log correlation (see below), so the wider
+    # type costs nothing. An int client still works — Pydantic coerces to str.
+    call_id: str
     language: str | None = None
 
 
 class StreamingTranscriptionRequest(BaseModel):
     audio_path: str
-    call_id: int
+    # See TranscriptionRequest.call_id.
+    call_id: str
     language: str | None = None
     start_time_offset: float = 0.0
 

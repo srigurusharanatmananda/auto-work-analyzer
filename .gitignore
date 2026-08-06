@@ -12,6 +12,11 @@ ui/.next
 # tsc --noEmit incremental cache
 *.tsbuildinfo
 
+# Uploaded audio and its transcripts' source files. Recordings are large and
+# often confidential; nothing here belongs in git. The directory itself is
+# created on demand by the upload route.
+storage/
+
 # History data
 .history/
 
