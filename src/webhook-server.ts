@@ -211,6 +211,14 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // createAiClientFromEnv reads process.env eagerly, so constructing it before
     // dotenv has loaded would yield an empty provider chain and silently pin
     // every request to the heuristic path with no error to notice.
+    // Constructed before the tasks router, which takes the store so that
+    // /api/preview-tasks can resolve a `transcriptionJobId` into its transcript.
+    const transcriptionStorageRoot = path.resolve(
+      process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"
+    );
+    const transcriptionStore = new TranscriptionJobStore(pool);
+    const whisperClient = new WhisperClient({ storageRoot: transcriptionStorageRoot });
+
     const aiClient = createAiClientFromEnv();
     const useAiGrouping = aiClient.isConfigured && process.env.AI_GROUPING !== "false";
     const grouper = useAiGrouping
@@ -231,6 +239,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // The same provider chain the grouper uses, so a transcript posted to
         // /api/preview-tasks can be turned into action items.
         aiClient,
+        transcriptionJobs: transcriptionStore,
       })
     );
 
@@ -286,12 +295,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // docker-compose. Whisper opens the file itself rather than receiving bytes,
     // so a mismatch here means nothing can be transcribed — the upload route
     // checks it up front and 500s rather than queueing work that cannot run.
-    const transcriptionStorageRoot = path.resolve(
-      process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"
-    );
-    const transcriptionStore = new TranscriptionJobStore(pool);
-    const whisperClient = new WhisperClient({ storageRoot: transcriptionStorageRoot });
-
     app.use(
       "/api/transcription",
       createTranscriptionRouter({

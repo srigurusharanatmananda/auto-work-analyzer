@@ -1,8 +1,17 @@
-FROM --platform=linux/amd64 python:3.11-slim
+# No --platform pin, unlike the reference Dockerfile, which pinned
+# linux/amd64. On an Apple Silicon host that pin forces the whole container to
+# run under QEMU x86 emulation, and Whisper is pure compute — emulated it is
+# several times slower than native, which on a job already measured in minutes
+# is the single largest avoidable cost in the pipeline. ctranslate2 (what
+# faster-whisper runs on) ships arm64 wheels, so native works.
+#
+# Re-add a pin only if you need a reproducible x86 image for deployment, and
+# then build it on an x86 machine rather than emulating here.
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies (ffmpeg + dev headers required by PyAV)
+# ffmpeg does the decoding; the dev headers are what PyAV needs to build.
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libavformat-dev \

@@ -241,6 +241,165 @@ describe("POST /api/preview-tasks with a transcript", () => {
  * No ClickUp call leaves the process: the resolver's `createTask` is a stub that
  * records into `createdTasks`.
  */
+/**
+ * A finished transcription job, by id, instead of pasted text.
+ *
+ * This is the hop that makes uploading a recording useful: the same extraction
+ * and the same review, with the transcript fetched rather than copied. The
+ * lookup is satisfied with an object literal, which is the point of the router
+ * depending on an interface rather than the store class.
+ */
+describe("POST /api/preview-tasks with a transcriptionJobId", () => {
+  const finishedJob = {
+    status: "succeeded",
+    transcript: TRANSCRIPT,
+    callTitle: "Weekly sync",
+    callDate: "2026-08-06",
+    originalFilename: "standup.mp3",
+  };
+
+  function routerWith(job: unknown, options: { withLookup?: boolean } = {}) {
+    const { withLookup = true } = options;
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createTasksRouter({
+        resolver: stubResolver(),
+        defaultProjectPath: process.cwd(),
+        grouper: new HeuristicCommitGrouper(),
+        aiClient: stubAiClient,
+        ...(withLookup
+          ? { transcriptionJobs: { get: async () => job as any } }
+          : {}),
+      })
+    );
+    return app.listen(0);
+  }
+
+  async function previewJob(
+    server: ReturnType<express.Express["listen"]>,
+    body: unknown = { transcriptionJobId: "job-1" }
+  ) {
+    const res = await fetch(
+      `http://localhost:${(server.address() as AddressInfo).port}/api/preview-tasks`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify(body),
+      }
+    );
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  test("a finished job produces the same reviewable tasks as pasted text", async () => {
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM] });
+    const server = routerWith(finishedJob);
+
+    try {
+      const { status, body } = await previewJob(server);
+
+      assert.equal(status, 200, JSON.stringify(body));
+      assert.equal(body.data.items.length, 1);
+      assert.equal(body.data.items[0].workItem.provenance.quote, QUOTE);
+      // Tags come from the JOB, not the request, so they cannot drift from what
+      // was uploaded.
+      assert.ok(body.data.items[0].task.tags.includes("Weekly sync"));
+      assert.ok(body.data.items[0].task.tags.includes("2026-08-06"));
+    } finally {
+      server.close();
+    }
+  });
+
+  test("a job that is still running is a 409 that says so, not a 400", async () => {
+    const server = routerWith({ ...finishedJob, status: "running", transcript: null });
+
+    try {
+      const { status, body } = await previewJob(server);
+
+      // Nothing is malformed — the work just is not done yet.
+      assert.equal(status, 409);
+      assert.match(body.error, /still running/i);
+      assert.equal(body.data.status, "running");
+    } finally {
+      server.close();
+    }
+  });
+
+  test("a failed job says the transcription failed, not that there are no tasks", async () => {
+    const server = routerWith({ ...finishedJob, status: "failed", transcript: null });
+
+    try {
+      const { status, body } = await previewJob(server);
+      assert.equal(status, 409);
+      assert.match(body.error, /failed/i);
+    } finally {
+      server.close();
+    }
+  });
+
+  /** 404 not 403 — a job id must not be confirmable by a stranger. */
+  test("an unknown or unowned job is a 404", async () => {
+    const server = routerWith(null);
+
+    try {
+      const { status, body } = await previewJob(server);
+      assert.equal(status, 404);
+      assert.match(body.error, /No such transcription job/i);
+    } finally {
+      server.close();
+    }
+  });
+
+  /**
+   * A silent recording is a real, successful transcription. An unexplained empty
+   * list reads like a bug; this says which it is.
+   */
+  test("a job that transcribed to silence explains the empty result", async () => {
+    modelResponse = JSON.stringify({ items: [] });
+    const server = routerWith({ ...finishedJob, transcript: "   " });
+
+    try {
+      const { body } = await previewJob(server);
+
+      assert.equal(body.data.items.length, 0);
+      assert.match(body.data.warnings.join(" "), /no speech/i);
+    } finally {
+      server.close();
+    }
+  });
+
+  test("a router with no job lookup explains itself rather than 500ing", async () => {
+    const server = routerWith(finishedJob, { withLookup: false });
+
+    try {
+      const { status, body } = await previewJob(server);
+      assert.equal(status, 400);
+      assert.match(body.error, /not configured to read transcription jobs/i);
+    } finally {
+      server.close();
+    }
+  });
+
+  test("it still requires authentication", async () => {
+    const server = routerWith(finishedJob);
+
+    try {
+      const res = await fetch(
+        `http://localhost:${(server.address() as AddressInfo).port}/api/preview-tasks`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcriptionJobId: "job-1" }),
+        }
+      );
+      assert.equal(res.status, 401);
+    } finally {
+      server.close();
+    }
+  });
+});
+
 describe("transcript → preview → create", () => {
   const SECOND_QUOTE = "I'll have a fix out by Thursday";
 

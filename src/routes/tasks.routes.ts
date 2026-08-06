@@ -302,6 +302,32 @@ export interface TasksRouterDeps {
    * without a client gets an explanatory 400 rather than silently no tasks.
    */
   aiClient?: AiClient;
+  /**
+   * Resolves a `transcriptionJobId` body to its finished transcript.
+   *
+   * Optional for the same reason as `aiClient`: the git paths need nothing from
+   * it. Supplying it is what turns "upload a recording" into "review the tasks
+   * it produced" without the user copying text between two screens.
+   */
+  transcriptionJobs?: TranscriptionJobLookup;
+}
+
+/**
+ * The one thing this router needs of the transcription store, as an interface
+ * rather than the class: the router should not gain a database dependency to
+ * read one row, and a test can satisfy this with an object literal.
+ */
+export interface TranscriptionJobLookup {
+  get(
+    id: string,
+    userId: string
+  ): Promise<{
+    status: string;
+    transcript: string | null;
+    callTitle: string | null;
+    callDate: string | null;
+    originalFilename: string;
+  } | null>;
 }
 
 /** The one method the legacy /api/create-tasks branch calls. */
@@ -522,7 +548,7 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * to call-derived work with no second implementation to keep in step.
    */
   const itemsFromBody = async (req: any, res: any): Promise<ResolvedItems | null> => {
-    const { notes, transcript, workAnalysis, workItems, commits } = req.body;
+    const { notes, transcript, transcriptionJobId, workAnalysis, workItems, commits } = req.body;
     if (rejectConflictingShapes(req, res)) return null;
 
     const supplied = suppliedWorkItems(req.body);
@@ -547,6 +573,71 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       };
     }
     if (typeof notes === "string") return { items: await workItemsFromNotes(notes) };
+
+    // A finished transcription job, by id. Resolves to its transcript and then
+    // falls through the SAME extraction path as a pasted transcript — the point
+    // of doing it here rather than in a route of its own.
+    if (typeof transcriptionJobId === "string" && transcriptionJobId.length > 0) {
+      if (!deps.transcriptionJobs) {
+        res.status(400).json({
+          success: false,
+          error:
+            "This server is not configured to read transcription jobs. " +
+            "Paste the transcript directly instead.",
+        });
+        return null;
+      }
+      if (!deps.aiClient) {
+        res.status(400).json({
+          success: false,
+          error:
+            "Extracting tasks from a transcript needs an AI provider, and none is " +
+            "configured. Add a provider key to .env — see env.example.",
+        });
+        return null;
+      }
+
+      const job = await deps.transcriptionJobs.get(transcriptionJobId, req.user!.userId);
+      // 404 rather than 403, matching the transcription routes: a job id must not
+      // be confirmable by someone who does not own it.
+      if (!job) {
+        res.status(404).json({ success: false, error: "No such transcription job" });
+        return null;
+      }
+
+      if (job.status !== "succeeded") {
+        // 409, not 400: nothing about the request is malformed, the work simply
+        // is not done. The status is included because "wait" and "it failed"
+        // call for completely different reactions.
+        res.status(409).json({
+          success: false,
+          error:
+            job.status === "failed"
+              ? `Transcribing ${job.originalFilename} failed, so there is no transcript to read.`
+              : `${job.originalFilename} is still ${job.status}. Try again once it has finished.`,
+          data: { status: job.status },
+        });
+        return null;
+      }
+
+      const extracted = await workItemsFromTranscript(job.transcript ?? "", deps.aiClient, {
+        // Taken from the job, not the request, so the tags match what was
+        // uploaded and cannot drift between the two screens.
+        callDate: job.callDate ?? undefined,
+        callTitle: job.callTitle ?? job.originalFilename,
+      });
+
+      const warnings = extracted.reason ? [extracted.reason] : [];
+      // A silent recording transcribes to '' and legitimately yields nothing.
+      // Saying so beats an unexplained empty list, which reads like a bug.
+      if (!extracted.reason && (job.transcript ?? "").trim().length === 0) {
+        warnings.push(
+          `${job.originalFilename} transcribed to no speech, so there is nothing to extract.`
+        );
+      }
+
+      return { items: extracted.items, ...(warnings.length > 0 ? { warnings } : {}) };
+    }
 
     if (typeof transcript === "string") {
       if (!deps.aiClient) {
@@ -580,7 +671,8 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
     res.status(400).json({
       success: false,
-      error: "Provide one of: workItems, commits, notes, transcript, or workAnalysis",
+      error:
+        "Provide one of: workItems, commits, notes, transcript, transcriptionJobId, or workAnalysis",
     });
     return null;
   };
