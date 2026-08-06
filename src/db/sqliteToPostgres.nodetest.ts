@@ -22,6 +22,7 @@ import Database from 'better-sqlite3';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { openPostgres, type PostgresHandle } from './client.js';
 import { migrateSqliteToPostgres, verifyParity } from './sqliteToPostgres.js';
+import { createTestDatabase } from '../testing/postgresFixture.js';
 
 /**
  * A database name of its own, dropped and recreated per run. Sharing a database
@@ -371,6 +372,42 @@ describe('sqlite -> postgres', () => {
       `,
       /check constraint|violates/i
     );
+  });
+
+  /**
+   * The server seeds three built-in templates on every start, so a target whose
+   * server has ever run is not empty. If those counted as data, `db:import`
+   * would be impossible for anyone who started the server before reading the
+   * docs — which is most people.
+   */
+  test('the seeded built-in templates do not count as a populated target', async (t) => {
+    if (!available) return t.skip('no postgres');
+
+    const fresh = await createTestDatabase();
+    try {
+      const now = new Date().toISOString();
+      // Exactly what TemplateStore.seedBuiltins writes.
+      await fresh.sql`
+        INSERT INTO task_templates
+          (id, user_id, name, description, name_template, description_template,
+           options, is_builtin, created_at, updated_at)
+        VALUES ('tpl-builtin', NULL, 'Standard', 'a built-in', '{{name}}',
+                '{{description}}', '{}', true, ${now}, ${now})
+      `;
+
+      await migrateSqliteToPostgres({ sqlitePath, postgres: fresh });
+
+      // The source's own copy of that id won, rather than colliding.
+      const [row] = await fresh.sql`
+        SELECT COUNT(*)::int AS count FROM task_templates WHERE id = 'tpl-builtin'
+      `;
+      assert.equal(row!.count, 1, 'the seeded row must be replaced, not duplicated');
+
+      const parity = await verifyParity(sqlitePath, fresh);
+      assert.deepEqual(parity.filter((r) => !r.match), []);
+    } finally {
+      await fresh.drop();
+    }
   });
 
   test('refuses to copy into a database that already holds rows', async (t) => {

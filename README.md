@@ -62,6 +62,40 @@ npx auto-work-analyzer test
 npx auto-work-analyzer webhook
 ```
 
+## 🗄️ Database
+
+Postgres, required. Every store reads it and the server refuses to start if it
+cannot connect — better a clear failure at boot than a server that accepts
+traffic and errors on every request.
+
+```bash
+createdb auto_work_analyzer
+echo 'DATABASE_URL=postgres://localhost:5432/auto_work_analyzer' >> .env
+bun run db:migrate            # apply the schema
+```
+
+**Upgrading from the SQLite version?** Your data is in
+`.database/auto-work-analyzer.db` and is copied across in one step. The source
+is opened read-only, the copy runs in a single transaction, and it re-counts
+both databases afterwards rather than trusting its own bookkeeping:
+
+```bash
+bun run db:import             # add --sqlite <path> for a non-default location
+```
+
+It refuses to run into a database that already holds data, so it is safe to try.
+(The three built-in templates the server seeds on start do not count — otherwise
+starting the server once would lock you out of importing.)
+
+Schema changes go through Drizzle: edit `src/db/schema.ts`, then
+`bun run db:generate` to produce a migration in `src/db/migrations/`. Do not
+hand-edit a generated migration that has already been applied anywhere.
+
+`bun run test:db` needs a reachable Postgres — it creates a throwaway schema per
+test file and drops it afterwards. Set `TEST_DATABASE_URL` to keep it away from
+your development database. It fails rather than skips when Postgres is missing,
+because a database suite that passes without a database proves nothing.
+
 ## 📋 Configuration
 
 ### Environment Variables

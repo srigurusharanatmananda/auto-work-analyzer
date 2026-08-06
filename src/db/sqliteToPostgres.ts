@@ -185,9 +185,19 @@ export async function migrateSqliteToPostgres(
     await pg.sql.begin(async (tx) => {
       if (!options.allowNonEmptyTarget) {
         for (const table of TABLE_ORDER) {
-          const [{ count }] = await tx`
-            SELECT COUNT(*)::int AS count FROM ${tx(table)}
-          `;
+          // The built-in templates are the one exception, and it is not a
+          // loophole: the server seeds them from `builtinTemplates.ts` on every
+          // start, so any target whose server has ever run holds three rows
+          // that are code, not data. Without this, `db:import` becomes
+          // impossible the moment someone starts the server once — which is
+          // exactly what a first-time operator does before reading the docs.
+          // Only `is_builtin = false` rows count as data here, and the seeded
+          // ones are replaced below.
+          const [{ count }] =
+            table === 'task_templates'
+              ? await tx`SELECT COUNT(*)::int AS count FROM task_templates WHERE is_builtin = false`
+              : await tx`SELECT COUNT(*)::int AS count FROM ${tx(table)}`;
+
           if (count > 0) {
             throw new Error(
               `Target table "${table}" already holds ${count} row(s). Refusing to ` +
@@ -196,6 +206,11 @@ export async function migrateSqliteToPostgres(
             );
           }
         }
+
+        // Clear the seeded built-ins so the source's own copies insert without
+        // colliding on their fixed ids. They are re-seeded at the next start,
+        // so nothing is lost either way.
+        await tx`DELETE FROM task_templates WHERE is_builtin = true`;
       }
 
       for (const table of TABLE_ORDER) {
