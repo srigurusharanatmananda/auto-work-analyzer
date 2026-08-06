@@ -12,6 +12,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createScanningRouter } from "./scanning.routes.js";
 import { ScanRegistry } from "../scanning/ScanRegistry.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { createTestUser } from "../testing/authFixture.js";
 import type { DailyScanner, ScanRunSummary } from "../scanning/DailyScanner.js";
 
@@ -22,11 +23,13 @@ process.chdir(tmpDbDir);
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
+let db: TestDatabase;
 let registry: ScanRegistry;
 let runCalls: Array<{ userId: string; date: string; dryRun?: boolean }>;
 
-before(() => {
-  registry = new ScanRegistry(join(tmpDbDir, "registry.db"));
+before(async () => {
+  db = await createTestDatabase();
+  registry = new ScanRegistry(db);
   runCalls = [];
 
   const scanner = {
@@ -67,9 +70,10 @@ before(() => {
   authHeader = createTestUser().authHeader;
 });
 
-after(() => {
+after(async () => {
   server.close();
   registry.close();
+  await db?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
 });
@@ -148,7 +152,7 @@ describe("scanning routes", () => {
     });
     assert.equal(res.status, 200);
 
-    const stored = registry.getBinding("user-1", "kailasa-ngpt/alpha")!;
+    const stored = (await registry.getBinding("user-1", "kailasa-ngpt/alpha"))!;
     assert.equal(stored.destinationId, "dest-1");
     assert.equal(stored.enabled, false);
   });

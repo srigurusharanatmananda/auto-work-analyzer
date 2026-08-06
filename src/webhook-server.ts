@@ -233,7 +233,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
     // Org-wide daily scan. Shares the one database, so a repo binding and the
     // destination it names cannot land in different files.
-    const scanRegistry = new ScanRegistry(dbPath);
+    const scanRegistry = new ScanRegistry(pool);
     const dailyScanner = new DailyScanner({
       registry: scanRegistry,
       resolver,

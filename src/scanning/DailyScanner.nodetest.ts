@@ -5,7 +5,7 @@
  * collaborator is injected. Real git repositories are created in temp dirs so the
  * git plumbing is exercised for real rather than mocked.
  */
-import { afterEach, beforeEach, describe, test } from "node:test";
+import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { DailyScanner } from "./DailyScanner.js";
 import type { DailyScannerDeps } from "./DailyScanner.js";
 import { ScanRegistry } from "./ScanRegistry.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { GitWorkAnalyzer } from "../services/GitWorkAnalyzer.js";
 import { HeuristicCommitGrouper } from "../grouping/HeuristicCommitGrouper.js";
 import { BUILTIN_TEMPLATES } from "../formatting/builtinTemplates.js";
@@ -26,6 +27,7 @@ const DATE = "2026-08-04";
 let root: string;
 let dbDir: string;
 let originalCwd: string;
+let db: TestDatabase;
 let registry: ScanRegistry;
 let created: string[];
 let statuses: string[];
@@ -87,14 +89,25 @@ function scanner(overrides: Partial<DailyScannerDeps> = {}): DailyScanner {
   });
 }
 
-beforeEach(() => {
+before(async () => {
+  // The registry is on Postgres; GitWorkAnalyzer's HistoryService still writes
+  // SQLite under process.cwd()/.database, hence both a fixture and a temp dir.
+  db = await createTestDatabase();
+});
+
+after(async () => {
+  await db?.drop();
+});
+
+beforeEach(async () => {
   originalCwd = process.cwd();
   root = mkdtempSync(join(tmpdir(), "awa-scan-root-"));
   dbDir = mkdtempSync(join(tmpdir(), "awa-scan-db-"));
-  // GitWorkAnalyzer's HistoryService writes to process.cwd()/.database.
   process.chdir(dbDir);
-  registry = new ScanRegistry(join(dbDir, "registry.db"));
-  registry.saveSettings("user-1", { root, owner: "kailasa-ngpt", enabled: true });
+
+  await db.sql`TRUNCATE scan_settings, scanned_repos, scan_runs`;
+  registry = new ScanRegistry(db);
+  await registry.saveSettings("user-1", { root, owner: "kailasa-ngpt", enabled: true });
   created = [];
   statuses = ["to do", "complete"];
 });
@@ -189,7 +202,7 @@ describe("DailyScanner", () => {
     commitIn(path, "feat: from personal email", "personal@example.com");
     commitIn(path, "feat: from a colleague", "someone@else.com");
 
-    registry.saveSettings("user-1", {
+    await registry.saveSettings("user-1", {
       authorIdentities: ["work@example.com", "personal@example.com"],
     });
 
@@ -214,7 +227,7 @@ describe("DailyScanner", () => {
   test("a disabled repo binding is skipped", async () => {
     const path = makeRepo("alpha", "git@github.com:kailasa-ngpt/alpha.git");
     commitIn(path, "feat: add the alpha thing", "dev@example.com");
-    registry.saveBinding("user-1", "kailasa-ngpt/alpha", { enabled: false });
+    await registry.saveBinding("user-1", "kailasa-ngpt/alpha", { enabled: false });
 
     const summary = await scanner().run("user-1", { date: DATE });
 

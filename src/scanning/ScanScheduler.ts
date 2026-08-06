@@ -51,7 +51,7 @@ export class ScanScheduler {
     const now = (this.deps.now ?? (() => new Date()))();
 
     for (const userId of this.deps.userIds()) {
-      const settings = this.deps.registry.getSettings(userId);
+      const settings = await this.deps.registry.getSettings(userId);
       if (!settings.enabled) continue;
 
       for (const date of this.datesDue(settings.lastCompletedDate, now, settings.scanTime)) {

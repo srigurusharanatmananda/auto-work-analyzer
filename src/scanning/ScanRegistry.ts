@@ -4,15 +4,16 @@
  * Three tables, one class, because they are always read together and a repo
  * binding is meaningless without the settings that decide when scanning runs.
  *
- * Shaped after DestinationStore: schema created in the constructor, every method
- * scoped by userId, and `patch` semantics where `undefined` means "leave alone"
- * and `null` means "clear" — a distinction DestinationStore originally got wrong
- * and which silently kept a stale value.
+ * Shaped after DestinationStore: the connection is injected, the schema comes
+ * from the migrations, every method is scoped by userId, and `patch` semantics
+ * where `undefined` means "leave alone" and `null` means "clear" — a distinction
+ * DestinationStore originally got wrong and which silently kept a stale value.
  */
 
-import Database from "better-sqlite3";
 import { homedir } from "os";
 import { join } from "path";
+import { getPool } from "../db/pool.js";
+import type { PostgresHandle } from "../db/client.js";
 
 export interface ScanSettings {
   userId: string;
@@ -40,7 +41,7 @@ interface SettingsRow {
   owner: string;
   author_identities: string;
   scan_time: string;
-  enabled: number;
+  enabled: boolean;
   last_completed_date: string | null;
 }
 
@@ -49,35 +50,10 @@ interface BindingRow {
   slug: string;
   destination_id: string | null;
   template_id: string | null;
-  enabled: number;
+  enabled: boolean;
   last_scanned_date: string | null;
 }
 
-export const SCANNING_SCHEMA = `
-  CREATE TABLE IF NOT EXISTS scan_settings (
-    user_id TEXT PRIMARY KEY,
-    root TEXT NOT NULL,
-    owner TEXT NOT NULL,
-    author_identities TEXT NOT NULL,
-    scan_time TEXT NOT NULL,
-    enabled INTEGER NOT NULL DEFAULT 0,
-    last_completed_date TEXT
-  );
-  CREATE TABLE IF NOT EXISTS scan_runs (
-    user_id TEXT PRIMARY KEY,
-    ran_at TEXT NOT NULL,
-    summary TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS scanned_repos (
-    user_id TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    destination_id TEXT,
-    template_id TEXT,
-    enabled INTEGER NOT NULL DEFAULT 1,
-    last_scanned_date TEXT,
-    PRIMARY KEY (user_id, slug)
-  );
-`;
 
 /** Disabled, so nothing is created unattended before the user opts in. */
 function defaultSettings(userId: string): ScanSettings {
@@ -98,7 +74,7 @@ function toSettings(row: SettingsRow): ScanSettings {
     owner: row.owner,
     authorIdentities: JSON.parse(row.author_identities),
     scanTime: row.scan_time,
-    enabled: row.enabled === 1,
+    enabled: row.enabled,
     lastCompletedDate: row.last_completed_date ?? undefined,
   };
 }
@@ -108,7 +84,7 @@ function toBinding(row: BindingRow): RepoBinding {
     slug: row.slug,
     destinationId: row.destination_id ?? undefined,
     templateId: row.template_id ?? undefined,
-    enabled: row.enabled === 1,
+    enabled: row.enabled,
     lastScannedDate: row.last_scanned_date ?? undefined,
   };
 }
@@ -121,23 +97,28 @@ function patched<T>(incoming: T | null | undefined, stored: T | undefined): T | 
 }
 
 export class ScanRegistry {
-  private db: Database.Database;
+  private readonly pg: PostgresHandle;
 
-  constructor(dbPath: string) {
-    this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
-    this.db.exec(SCANNING_SCHEMA);
+  constructor(pg: PostgresHandle = getPool()) {
+    this.pg = pg;
   }
 
-  getSettings(userId: string): ScanSettings {
-    const row = this.db.prepare(`SELECT * FROM scan_settings WHERE user_id = ?`).get(userId) as
-      | SettingsRow
-      | undefined;
+  private get sql() {
+    return this.pg.sql;
+  }
+
+  async getSettings(userId: string): Promise<ScanSettings> {
+    const [row] = await this.sql<SettingsRow[]>`
+      SELECT * FROM scan_settings WHERE user_id = ${userId}
+    `;
     return row ? toSettings(row) : defaultSettings(userId);
   }
 
-  saveSettings(userId: string, patch: Partial<Omit<ScanSettings, "userId">>): ScanSettings {
-    const current = this.getSettings(userId);
+  async saveSettings(
+    userId: string,
+    patch: Partial<Omit<ScanSettings, "userId">>
+  ): Promise<ScanSettings> {
+    const current = await this.getSettings(userId);
     const merged: ScanSettings = {
       userId,
       root: patch.root ?? current.root,
@@ -148,52 +129,46 @@ export class ScanRegistry {
       lastCompletedDate: patched(patch.lastCompletedDate, current.lastCompletedDate),
     };
 
-    this.db
-      .prepare(
-        `INSERT INTO scan_settings
-           (user_id, root, owner, author_identities, scan_time, enabled, last_completed_date)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_id) DO UPDATE SET
-           root = excluded.root,
-           owner = excluded.owner,
-           author_identities = excluded.author_identities,
-           scan_time = excluded.scan_time,
-           enabled = excluded.enabled,
-           last_completed_date = excluded.last_completed_date`
+    await this.sql`
+      INSERT INTO scan_settings
+        (user_id, root, owner, author_identities, scan_time, enabled, last_completed_date)
+      VALUES (
+        ${userId}, ${merged.root}, ${merged.owner},
+        ${JSON.stringify(merged.authorIdentities)}, ${merged.scanTime},
+        ${merged.enabled}, ${merged.lastCompletedDate ?? null}
       )
-      .run(
-        userId,
-        merged.root,
-        merged.owner,
-        JSON.stringify(merged.authorIdentities),
-        merged.scanTime,
-        merged.enabled ? 1 : 0,
-        merged.lastCompletedDate ?? null
-      );
+      ON CONFLICT (user_id) DO UPDATE SET
+        root = excluded.root,
+        owner = excluded.owner,
+        author_identities = excluded.author_identities,
+        scan_time = excluded.scan_time,
+        enabled = excluded.enabled,
+        last_completed_date = excluded.last_completed_date
+    `;
 
     return merged;
   }
 
-  listBindings(userId: string): RepoBinding[] {
-    const rows = this.db
-      .prepare(`SELECT * FROM scanned_repos WHERE user_id = ? ORDER BY slug ASC`)
-      .all(userId) as BindingRow[];
+  async listBindings(userId: string): Promise<RepoBinding[]> {
+    const rows = await this.sql<BindingRow[]>`
+      SELECT * FROM scanned_repos WHERE user_id = ${userId} ORDER BY slug ASC
+    `;
     return rows.map(toBinding);
   }
 
-  getBinding(userId: string, slug: string): RepoBinding | null {
-    const row = this.db
-      .prepare(`SELECT * FROM scanned_repos WHERE user_id = ? AND slug = ?`)
-      .get(userId, slug) as BindingRow | undefined;
+  async getBinding(userId: string, slug: string): Promise<RepoBinding | null> {
+    const [row] = await this.sql<BindingRow[]>`
+      SELECT * FROM scanned_repos WHERE user_id = ${userId} AND slug = ${slug}
+    `;
     return row ? toBinding(row) : null;
   }
 
-  saveBinding(
+  async saveBinding(
     userId: string,
     slug: string,
     patch: Partial<Omit<RepoBinding, "slug">>
-  ): RepoBinding {
-    const current = this.getBinding(userId, slug);
+  ): Promise<RepoBinding> {
+    const current = await this.getBinding(userId, slug);
     const merged: RepoBinding = {
       slug,
       destinationId: patched(patch.destinationId, current?.destinationId),
@@ -202,31 +177,25 @@ export class ScanRegistry {
       lastScannedDate: patched(patch.lastScannedDate, current?.lastScannedDate),
     };
 
-    this.db
-      .prepare(
-        `INSERT INTO scanned_repos
-           (user_id, slug, destination_id, template_id, enabled, last_scanned_date)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_id, slug) DO UPDATE SET
-           destination_id = excluded.destination_id,
-           template_id = excluded.template_id,
-           enabled = excluded.enabled,
-           last_scanned_date = excluded.last_scanned_date`
+    await this.sql`
+      INSERT INTO scanned_repos
+        (user_id, slug, destination_id, template_id, enabled, last_scanned_date)
+      VALUES (
+        ${userId}, ${slug}, ${merged.destinationId ?? null}, ${merged.templateId ?? null},
+        ${merged.enabled}, ${merged.lastScannedDate ?? null}
       )
-      .run(
-        userId,
-        slug,
-        merged.destinationId ?? null,
-        merged.templateId ?? null,
-        merged.enabled ? 1 : 0,
-        merged.lastScannedDate ?? null
-      );
+      ON CONFLICT (user_id, slug) DO UPDATE SET
+        destination_id = excluded.destination_id,
+        template_id = excluded.template_id,
+        enabled = excluded.enabled,
+        last_scanned_date = excluded.last_scanned_date
+    `;
 
     return merged;
   }
 
-  markScanned(userId: string, slug: string, date: string): void {
-    this.saveBinding(userId, slug, { lastScannedDate: date });
+  async markScanned(userId: string, slug: string, date: string): Promise<void> {
+    await this.saveBinding(userId, slug, { lastScannedDate: date });
   }
 
   /**
@@ -235,23 +204,26 @@ export class ScanRegistry {
    * unattended job's errors invisible, which is worse than no job. Only the
    * latest is retained — this is a status panel, not an audit log.
    */
-  saveRun(userId: string, summary: unknown): void {
-    this.db
-      .prepare(
-        `INSERT INTO scan_runs (user_id, ran_at, summary) VALUES (?, ?, ?)
-         ON CONFLICT(user_id) DO UPDATE SET ran_at = excluded.ran_at, summary = excluded.summary`
-      )
-      .run(userId, new Date().toISOString(), JSON.stringify(summary));
+  async saveRun(userId: string, summary: unknown): Promise<void> {
+    await this.sql`
+      INSERT INTO scan_runs (user_id, ran_at, summary)
+      VALUES (${userId}, ${new Date().toISOString()}, ${JSON.stringify(summary)})
+      ON CONFLICT (user_id) DO UPDATE SET
+        ran_at = excluded.ran_at,
+        summary = excluded.summary
+    `;
   }
 
-  getLastRun(userId: string): { ranAt: string; summary: unknown } | null {
-    const row = this.db
-      .prepare(`SELECT ran_at, summary FROM scan_runs WHERE user_id = ?`)
-      .get(userId) as { ran_at: string; summary: string } | undefined;
+  async getLastRun(userId: string): Promise<{ ranAt: string; summary: unknown } | null> {
+    const [row] = await this.sql<Array<{ ran_at: string; summary: string }>>`
+      SELECT ran_at, summary FROM scan_runs WHERE user_id = ${userId}
+    `;
     return row ? { ranAt: row.ran_at, summary: JSON.parse(row.summary) } : null;
   }
 
-  close(): void {
-    this.db.close();
-  }
+  /**
+   * No-op: the pool is owned by `db/pool.ts` and shared, so a store closing it
+   * would disconnect the rest of the process.
+   */
+  close(): void {}
 }

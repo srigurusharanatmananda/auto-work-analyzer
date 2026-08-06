@@ -31,11 +31,11 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
     res.status(status).json({ success: false, error });
   };
 
-  router.get("/settings", authenticate, anyRole, (req, res) => {
-    res.json({ success: true, data: deps.registry.getSettings(userIdOf(req)) });
+  router.get("/settings", authenticate, anyRole, async (req, res) => {
+    res.json({ success: true, data: await deps.registry.getSettings(userIdOf(req)) });
   });
 
-  router.put("/settings", authenticate, anyRole, (req, res) => {
+  router.put("/settings", authenticate, anyRole, async (req, res) => {
     const { root, owner, authorIdentities, scanTime, enabled } = req.body ?? {};
 
     if (scanTime !== undefined && !TIME_PATTERN.test(String(scanTime))) {
@@ -47,7 +47,7 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
 
     res.json({
       success: true,
-      data: deps.registry.saveSettings(userIdOf(req), {
+      data: await deps.registry.saveSettings(userIdOf(req), {
         root,
         owner,
         authorIdentities,
@@ -60,14 +60,17 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
   router.get("/repos", authenticate, anyRole, async (req, res) => {
     try {
       const userId = userIdOf(req);
-      const settings = deps.registry.getSettings(userId);
+      const settings = await deps.registry.getSettings(userId);
       const { repos, skipped } = await discover(settings.root, settings.owner);
 
       res.json({
         success: true,
         data: {
-          repos: repos.map((repo) => {
-            const binding = deps.registry.getBinding(userId, repo.slug);
+          // Promise.all rather than a sequential loop: one round trip per
+          // repo, and a developer with 40 clones would otherwise wait for 40
+          // sequential queries to render one page.
+          repos: await Promise.all(repos.map(async (repo) => {
+            const binding = await deps.registry.getBinding(userId, repo.slug);
             return {
               slug: repo.slug,
               path: repo.path,
@@ -78,7 +81,7 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
               templateId: binding?.templateId ?? null,
               lastScannedDate: binding?.lastScannedDate ?? null,
             };
-          }),
+          })),
           skipped,
         },
       });
@@ -88,12 +91,12 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
   });
 
   // The slug contains a slash, which a single :param will not match.
-  router.put("/repos/:owner/:name", authenticate, anyRole, (req, res) => {
+  router.put("/repos/:owner/:name", authenticate, anyRole, async (req, res) => {
     const slug = `${req.params.owner}/${req.params.name}`;
     const { destinationId, templateId, enabled } = req.body ?? {};
     res.json({
       success: true,
-      data: deps.registry.saveBinding(userIdOf(req), slug, {
+      data: await deps.registry.saveBinding(userIdOf(req), slug, {
         destinationId,
         templateId,
         enabled,
@@ -106,8 +109,8 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
    * run's failures exist only in the server log, and an unattended job whose
    * errors are invisible is worse than no job.
    */
-  router.get("/last-run", authenticate, anyRole, (req, res) => {
-    res.json({ success: true, data: deps.registry.getLastRun(userIdOf(req)) });
+  router.get("/last-run", authenticate, anyRole, async (req, res) => {
+    res.json({ success: true, data: await deps.registry.getLastRun(userIdOf(req)) });
   });
 
   router.post("/run", authenticate, anyRole, async (req, res) => {
@@ -124,7 +127,7 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
       });
       // A dry run is not a run: persisting it would overwrite the last real
       // run's summary, hiding the failures the user actually needs to see.
-      if (!summary.dryRun) deps.registry.saveRun(userId, summary);
+      if (!summary.dryRun) await deps.registry.saveRun(userId, summary);
       res.json({ success: true, data: summary });
     } catch (error) {
       fail(res, error instanceof Error ? error.message : "Scan failed", 500);

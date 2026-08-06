@@ -76,7 +76,7 @@ export class DailyScanner {
 
   async run(userId: string, opts: { date: string; dryRun?: boolean }): Promise<ScanRunSummary> {
     const dryRun = opts.dryRun === true;
-    const settings = this.deps.registry.getSettings(userId);
+    const settings = await this.deps.registry.getSettings(userId);
     const discover = this.deps.discover ?? discoverRepos;
     const fetchRepo = this.deps.fetchRepo ?? gitFetch;
 
@@ -85,7 +85,7 @@ export class DailyScanner {
 
     // Sequential: ClickUp rate-limits, and it keeps the failure report readable.
     for (const repo of discovery.repos) {
-      const binding = this.deps.registry.getBinding(userId, repo.slug);
+      const binding = await this.deps.registry.getBinding(userId, repo.slug);
       if (binding && !binding.enabled) continue;
 
       const result: RepoScanResult = {
@@ -183,7 +183,7 @@ export class DailyScanner {
         // Only a real run records progress. A dry run that marked commits
         // processed would make the first real run create nothing.
         analyzer.markScanCommitsProcessed(analysis, repo.path);
-        this.deps.registry.markScanned(userId, repo.slug, opts.date);
+        await this.deps.registry.markScanned(userId, repo.slug, opts.date);
       } catch (error) {
         result.error = error instanceof Error ? error.message : String(error);
       }
