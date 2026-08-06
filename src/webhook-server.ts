@@ -36,6 +36,10 @@ import { ScanRegistry } from "./scanning/ScanRegistry.js";
 import { DailyScanner } from "./scanning/DailyScanner.js";
 import { ScanScheduler } from "./scanning/ScanScheduler.js";
 import { createScanningRouter } from "./routes/scanning.routes.js";
+import { createTranscriptionRouter } from "./routes/transcription.routes.js";
+import { TranscriptionJobStore } from "./transcription/TranscriptionJobStore.js";
+import { TranscriptionWorker } from "./transcription/TranscriptionWorker.js";
+import { WhisperClient } from "./transcription/WhisperClient.js";
 import { AuthDatabaseService } from "./services/AuthDatabaseService.js";
 import { DestinationResolver } from "./destinations/DestinationResolver.js";
 import { createAiClientFromEnv } from "./ai/AiClient.js";
@@ -270,6 +274,56 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       },
     });
     scanScheduler.start();
+
+    // ---- Transcription: audio -> transcript ----
+    //
+    // The worker runs in this process. On 8 GB only one transcription can run at
+    // a time regardless, so a separate process would add something to start
+    // without enabling concurrency we could afford.
+    //
+    // `TRANSCRIPTION_STORAGE_ROOT` must be the host directory bind-mounted into
+    // the Whisper container as /storage. Defaults to ./storage, matching
+    // docker-compose. Whisper opens the file itself rather than receiving bytes,
+    // so a mismatch here means nothing can be transcribed — the upload route
+    // checks it up front and 500s rather than queueing work that cannot run.
+    const transcriptionStorageRoot = path.resolve(
+      process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"
+    );
+    const transcriptionStore = new TranscriptionJobStore(pool);
+    const whisperClient = new WhisperClient({ storageRoot: transcriptionStorageRoot });
+
+    app.use(
+      "/api/transcription",
+      createTranscriptionRouter({
+        store: transcriptionStore,
+        storageRoot: transcriptionStorageRoot,
+        whisper: whisperClient,
+      })
+    );
+
+    const transcriptionWorker = new TranscriptionWorker({
+      store: transcriptionStore,
+      whisper: whisperClient,
+      pg: pool,
+      onSettled: (job, outcome) =>
+        console.log(`🎙️  Transcription ${outcome}: ${job.originalFilename} (${job.id})`),
+    });
+
+    // Failure to start is logged, not fatal: uploads still queue, and the work
+    // is picked up whenever a worker next runs. Refusing to boot the whole API
+    // because Whisper is down would take the git-analysis half offline too.
+    await transcriptionWorker.start().catch((error) => {
+      console.error("Transcription worker failed to start:", error);
+    });
+
+    // Finish the in-flight transcription rather than abandoning it — a killed job
+    // wastes the minutes already spent and leaves a claim to reclaim later.
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      process.once(signal, () => {
+        console.log(`\n${signal} received — finishing any in-flight transcription...`);
+        void transcriptionWorker.stop().finally(() => process.exit(0));
+      });
+    }
 
     // Browse directories endpoint
     app.get("/api/browse", authenticate, anyRole, (req, res) => {
