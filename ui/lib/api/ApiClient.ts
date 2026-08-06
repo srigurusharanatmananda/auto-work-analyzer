@@ -68,7 +68,14 @@ export interface ApiResponse<T> {
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  /** Serialized as JSON. Omit for GET/DELETE. */
+  /**
+   * Serialized as JSON, unless it is a `FormData` — that is passed through
+   * untouched and the `Content-Type` header is deliberately left off, because
+   * only the browser can generate the multipart boundary that goes with it.
+   * Setting it by hand produces a body the server cannot parse.
+   *
+   * Omit for GET/DELETE.
+   */
   body?: unknown;
   /** Appended as a query string; undefined and null values are dropped. */
   query?: Record<string, string | number | boolean | undefined | null>;
@@ -171,8 +178,9 @@ export class ApiClient {
     authenticated: boolean
   ): Promise<Response> {
     const headers: Record<string, string> = {};
+    const isMultipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
-    if (options.body !== undefined) {
+    if (options.body !== undefined && !isMultipart) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -191,7 +199,9 @@ export class ApiClient {
         // Carries the refresh-token cookie. Required on every call, not just
         // the auth ones, because the cookie is httpOnly and same-site.
         credentials: 'include',
-        ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+        ...(options.body !== undefined
+          ? { body: isMultipart ? (options.body as FormData) : JSON.stringify(options.body) }
+          : {}),
         ...(options.signal ? { signal: options.signal } : {}),
       });
     } catch (caught) {

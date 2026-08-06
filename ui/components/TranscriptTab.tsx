@@ -30,10 +30,18 @@
  * teaches people to hit "select all".
  */
 
-import { useMemo, useState, ChangeEvent } from 'react';
+import { useMemo, useRef, useState, ChangeEvent } from 'react';
 import toast from 'react-hot-toast';
 import { Card, Button } from '@/lib/components/ui';
 import { api, messageFor } from '@/lib/api';
+import {
+  AUDIO_EXTENSIONS,
+  TEXT_EXTENSIONS,
+  TranscriptionJob,
+  isAudioFile,
+  uploadAudio,
+  waitForTranscript,
+} from '@/lib/api/transcription';
 import { CreatedTask, PreviewWorkItem, RenderedTaskPreview } from '@/types';
 
 interface PreviewState {
@@ -70,6 +78,15 @@ export default function TranscriptTab() {
   const [callTitle, setCallTitle] = useState('');
   const [callDate, setCallDate] = useState('');
 
+  /**
+   * The in-flight transcription, or null. Held as the job itself rather than a
+   * boolean so the progress line can show which stage it is at and how many
+   * segments have come back — a 40-minute recording is several minutes of
+   * nothing otherwise, which reads as a hang.
+   */
+  const [transcribing, setTranscribing] = useState<TranscriptionJob | null>(null);
+  const transcribeAbort = useRef<AbortController | null>(null);
+
   const [extracting, setExtracting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [preview, setPreview] = useState<PreviewState | null>(null);
@@ -91,10 +108,70 @@ export default function TranscriptTab() {
     if (!file) return;
 
     setFileName(file.name);
+    if (isAudioFile(file)) {
+      void handleAudio(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (loaded) => setTranscript((loaded.target?.result as string) ?? '');
     reader.readAsText(file);
     toast.success(`Loaded ${file.name}`, { duration: 2000 });
+  };
+
+  /**
+   * Audio takes the long way round: upload, then poll a queued job.
+   *
+   * The transcript lands in the same textarea a pasted one would, rather than
+   * going straight to extraction. Whisper mishears names and numbers, and the
+   * quote guard can only check that a sentence appears in the transcript it was
+   * given — it cannot know the transcript itself is wrong. Putting the text in
+   * front of someone, editable, before any model reads it is the only place
+   * that error can still be caught.
+   */
+  const handleAudio = async (file: File) => {
+    reset();
+    setTranscript('');
+
+    const controller = new AbortController();
+    transcribeAbort.current = controller;
+    const toastId = toast.loading(`Uploading ${file.name}…`);
+
+    try {
+      const queued = await uploadAudio({
+        file,
+        ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
+        ...(callDate ? { callDate } : {}),
+      });
+      setTranscribing(queued);
+      toast.loading('Transcribing — this runs in the background', { id: toastId });
+
+      const done = await waitForTranscript(queued.id, {
+        onProgress: setTranscribing,
+        signal: controller.signal,
+      });
+
+      setTranscript(done.transcript ?? '');
+      if (done.callTitle && !callTitle.trim()) setCallTitle(done.callTitle);
+
+      toast.success(
+        done.transcript?.trim()
+          ? 'Transcribed — check it reads correctly, then extract'
+          : 'Transcribed, but no speech was found in the audio',
+        { id: toastId, duration: 5000 }
+      );
+    } catch (caught) {
+      if (caught instanceof Error && caught.name === 'AbortError') {
+        toast.dismiss(toastId);
+        return;
+      }
+      const message = messageFor(caught, 'Transcription failed');
+      setError(message);
+      toast.error(message, { id: toastId, duration: 6000 });
+    } finally {
+      setTranscribing(null);
+      transcribeAbort.current = null;
+    }
   };
 
   const reset = () => {
@@ -194,9 +271,9 @@ export default function TranscriptTab() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="block text-sm font-semibold text-foreground">
-                Upload a transcript
+                Upload audio or a transcript
               </label>
-              {fileName && (
+              {fileName && !transcribing && (
                 <button
                   type="button"
                   onClick={() => {
@@ -215,23 +292,65 @@ export default function TranscriptTab() {
             <input
               type="file"
               id="transcriptFile"
-              accept=".txt,.md"
+              accept={[...AUDIO_EXTENSIONS, ...TEXT_EXTENSIONS].join(',')}
               onChange={handleFileSelect}
+              disabled={transcribing !== null}
               className="hidden"
             />
             <label
               htmlFor="transcriptFile"
-              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-all duration-300 hover:border-primary hover:bg-background-tertiary"
+              className={
+                'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-all duration-300 ' +
+                (transcribing
+                  ? 'cursor-not-allowed border-border opacity-60'
+                  : 'cursor-pointer border-border hover:border-primary hover:bg-background-tertiary')
+              }
             >
               <span className="mb-3 text-5xl">🎙️</span>
               <span className="text-lg font-semibold text-primary">
-                {fileName || 'Click to upload a transcript'}
+                {fileName || 'Click to upload a recording or transcript'}
               </span>
               <span className="mt-2 text-sm text-foreground-tertiary">
-                Plain text or markdown (.txt, .md)
+                Audio (.m4a, .mp3, .wav, .aac, .ogg, .opus, .flac, .webm, .mp4) or text (.txt, .md)
+              </span>
+              <span className="mt-1 text-xs text-foreground-tertiary">
+                Audio is transcribed on this machine — nothing is sent to a transcription service.
               </span>
             </label>
           </div>
+
+          {/* Transcription progress. Whisper runs at roughly 6x realtime, so a
+              40-minute call is ~7 minutes of apparently nothing; the segment
+              count is the only evidence that it is alive. */}
+          {transcribing && (
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {transcribing.status === 'queued'
+                      ? 'Waiting for a transcription slot…'
+                      : 'Transcribing…'}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-foreground-tertiary">
+                    {transcribing.originalFilename}
+                    {typeof transcribing.segmentsSeen === 'number' && transcribing.segmentsSeen > 0
+                      ? ` · ${transcribing.segmentsSeen} segments so far`
+                      : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => transcribeAbort.current?.abort()}
+                  className="shrink-0 text-sm text-foreground-tertiary hover:text-error hover:underline"
+                >
+                  Stop watching
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-foreground-tertiary">
+                This runs in the background — the job keeps going even if you leave the page.
+              </p>
+            </div>
+          )}
 
           {/* Paste */}
           <div>
@@ -297,7 +416,7 @@ export default function TranscriptTab() {
           <Button
             type="button"
             onClick={handleExtract}
-            disabled={extracting || !transcript.trim()}
+            disabled={extracting || transcribing !== null || !transcript.trim()}
             isLoading={extracting}
             variant="primary"
             className="w-full py-6 text-lg"

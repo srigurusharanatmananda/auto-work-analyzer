@@ -10,7 +10,8 @@ export default function TranscriptsPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground">Call Transcripts</h1>
           <p className="mt-2 text-foreground-secondary">
-            Turn what was agreed on a call into ClickUp tasks — after you have checked it
+            Upload a recording or paste a transcript, and turn what was agreed into ClickUp tasks
+            — after you have checked it
           </p>
         </div>
 
@@ -30,10 +31,12 @@ export default function TranscriptsPage() {
             <div>
               <h3 className="mb-1 text-sm font-semibold text-primary">How it works</h3>
               <p className="text-xs text-foreground-secondary">
-                Every action item found must quote the sentence it came from, and an item whose
-                quote is not actually in the transcript is thrown away rather than filed. You
-                then see the quotes and choose what becomes a task — nothing reaches ClickUp
-                until you say so.
+                Audio is transcribed locally by Whisper — the recording never leaves this
+                machine — and the text lands in the box below for you to correct before any
+                model reads it. Every action item found must then quote the sentence it came
+                from, and an item whose quote is not actually in the transcript is thrown away
+                rather than filed. You see the quotes and choose what becomes a task — nothing
+                reaches ClickUp until you say so.
               </p>
             </div>
           </div>
