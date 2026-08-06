@@ -72,14 +72,22 @@ function toTemplate(row: Row): Template {
  * user templates do not need it; the server calls it once at startup.
  */
 export class TemplateStore {
-  private readonly pg: PostgresHandle;
+  private readonly injected?: PostgresHandle;
 
-  constructor(pg: PostgresHandle = getPool()) {
-    this.pg = pg;
+  constructor(pg?: PostgresHandle) {
+    this.injected = pg;
   }
 
+  /**
+   * Resolved on first query, not in the constructor.
+   *
+   * Two reasons, both load-bearing: constructing a store must not require a
+   * reachable database (several call sites build one and never query it), and
+   * a handle captured at construction would ignore a later `setPool` — which is
+   * how the tests point the shared pool at an isolated schema.
+   */
   private get sql() {
-    return this.pg.sql;
+    return (this.injected ?? getPool()).sql;
   }
 
   /**

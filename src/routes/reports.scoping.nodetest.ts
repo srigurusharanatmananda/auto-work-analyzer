@@ -10,9 +10,13 @@
  * "all reports" and "my reports" are the same set. Two users are the whole
  * point.
  *
- * Runs under `tsx --test` (Node), not `bun test`: better-sqlite3 cannot run
- * under Bun (oven-sh/bun#4290). Own temp cwd, because DatabaseService and
- * AuthDatabaseService both resolve their file from process.cwd().
+ * Runs under `tsx --test` (Node). The analyses are in a Postgres schema of this
+ * suite's own; the users are still in SQLite under a temp cwd, which is why
+ * both fixtures appear below.
+ *
+ * The router builds its own DatabaseService from the shared pool, so the pool
+ * is pointed at the fixture with `setPool` rather than threading a handle
+ * through `createReportsRouter` purely for the tests.
  */
 import { after, before, beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -25,6 +29,8 @@ import { createReportsRouter } from "./reports.routes.js";
 import { DatabaseService } from "../services/DatabaseService.js";
 import { createTestUser } from "../testing/authFixture.js";
 import { resetSharedAuthService } from "../services/AuthService.js";
+import { setPool } from "../db/pool.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 
 const originalCwd = process.cwd();
 const tmpDbDir = mkdtempSync(join(tmpdir(), "awa-reports-"));
@@ -33,11 +39,15 @@ process.chdir(tmpDbDir);
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 
+let pg: TestDatabase;
 let alice: ReturnType<typeof createTestUser>;
 let bob: ReturnType<typeof createTestUser>;
 let admin: ReturnType<typeof createTestUser>;
 
-before(() => {
+before(async () => {
+  pg = await createTestDatabase();
+  setPool(pg);
+
   const app = express();
   app.use(express.json());
   app.use("/api", createReportsRouter());
@@ -50,20 +60,17 @@ before(() => {
   admin = createTestUser({ userId: "root", role: "admin" });
 });
 
-after(() => {
+after(async () => {
   server.close();
   resetSharedAuthService();
+  setPool(null);
+  await pg?.drop();
   process.chdir(originalCwd);
   rmSync(tmpDbDir, { recursive: true, force: true });
 });
 
-beforeEach(() => {
-  const db = new DatabaseService();
-  try {
-    db.clearAllData();
-  } finally {
-    db.close();
-  }
+beforeEach(async () => {
+  await new DatabaseService().clearAllData();
 });
 
 async function call(method: string, path: string, token: string, body?: unknown) {
@@ -89,22 +96,17 @@ async function saveReport(user: ReturnType<typeof createTestUser>, name: string)
 }
 
 /** Writes a row with no owner, as the pre-column data and the webhook do. */
-function saveUnownedReport(id: string): void {
-  const db = new DatabaseService();
-  try {
-    db.saveAnalysis({
-      id,
-      timestamp: new Date().toISOString(),
-      projectPath: "/repos/legacy",
-      date: "2026-01-01",
-      totalCommits: 3,
-      totalWorkItems: 1,
-      tasksCreated: 0,
-      summary: "written before analysis_history had an owner",
-    });
-  } finally {
-    db.close();
-  }
+async function saveUnownedReport(id: string): Promise<void> {
+  await new DatabaseService().saveAnalysis({
+    id,
+    timestamp: new Date().toISOString(),
+    projectPath: "/repos/legacy",
+    date: "2026-01-01",
+    totalCommits: 3,
+    totalWorkItems: 1,
+    tasksCreated: 0,
+    summary: "written before analysis_history had an owner",
+  });
 }
 
 describe("one user's reports are not another's", () => {
@@ -180,7 +182,7 @@ describe("one user's reports are not another's", () => {
 
 describe("rows with no owner", () => {
   test("are invisible to an ordinary user", async () => {
-    saveUnownedReport("legacy-1");
+    await saveUnownedReport("legacy-1");
     await saveReport(alice, "alice's work");
 
     const seen = await call("GET", "/reports", alice.authHeader);
@@ -190,7 +192,7 @@ describe("rows with no owner", () => {
   });
 
   test("are visible to an admin, so nothing is orphaned", async () => {
-    saveUnownedReport("legacy-1");
+    await saveUnownedReport("legacy-1");
 
     const seen = await call("GET", "/reports", admin.authHeader);
 
@@ -199,7 +201,7 @@ describe("rows with no owner", () => {
   });
 
   test("an admin can open one by id; an ordinary user gets 404", async () => {
-    saveUnownedReport("legacy-1");
+    await saveUnownedReport("legacy-1");
 
     assert.equal((await call("GET", "/reports/legacy-1", admin.authHeader)).status, 200);
     assert.equal((await call("GET", "/reports/legacy-1", alice.authHeader)).status, 404);
@@ -210,13 +212,8 @@ describe("saving", () => {
   test("a saved report is stamped with the caller's id", async () => {
     const id = await saveReport(alice, "alice's work");
 
-    const db = new DatabaseService();
-    try {
-      const row = db.getAnalysisById(id, { userId: "alice" });
-      assert.equal(row?.userId, "alice");
-    } finally {
-      db.close();
-    }
+    const row = await new DatabaseService().getAnalysisById(id, { userId: "alice" });
+    assert.equal(row?.userId, "alice");
   });
 
   test("a missing required field is still a 400", async () => {

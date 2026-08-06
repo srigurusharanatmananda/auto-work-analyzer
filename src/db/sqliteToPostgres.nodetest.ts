@@ -22,7 +22,6 @@ import Database from 'better-sqlite3';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { openPostgres, type PostgresHandle } from './client.js';
 import { migrateSqliteToPostgres, verifyParity } from './sqliteToPostgres.js';
-import { DatabaseService } from '../services/DatabaseService.js';
 import { AuthDatabaseService } from '../services/AuthDatabaseService.js';
 
 /**
@@ -80,53 +79,95 @@ function seedSqlite(): void {
     auth.close();
   }
 
-  const db = new DatabaseService();
+  // Raw SQL, for the same reason as the templates below: `DatabaseService` is
+  // on Postgres now, so calling it here would write to the live database rather
+  // than build a SQLite fixture — silently, since the constructor falls back to
+  // the shared pool. The old column types are what this migration reads, so
+  // they are what the fixture must have.
+  const db = new Database(sqlitePath);
   try {
-    db.saveAnalysis({
-      id: 'analysis-owned',
-      userId: 'user-alice',
-      timestamp: new Date().toISOString(),
-      projectPath: '/repos/one',
-      date: '2026-08-05',
-      totalCommits: 7,
-      totalWorkItems: 2,
-      tasksCreated: 1,
-      summary: "alice's analysis",
-    });
-    db.saveAnalysis({
-      id: 'analysis-unowned',
-      timestamp: new Date().toISOString(),
-      projectPath: '/repos/legacy',
-      date: '2026-01-01',
-      totalCommits: 1,
-      totalWorkItems: 1,
-      tasksCreated: 0,
-      summary: 'no owner',
-    });
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS analysis_history (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        timestamp TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        date TEXT NOT NULL,
+        end_date TEXT,
+        author TEXT,
+        branch TEXT,
+        total_commits INTEGER NOT NULL,
+        total_work_items INTEGER NOT NULL,
+        tasks_created INTEGER NOT NULL,
+        summary TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS work_items (
+        id TEXT PRIMARY KEY,
+        analysis_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        description TEXT,
+        estimated_hours REAL NOT NULL DEFAULT 0,
+        complexity INTEGER NOT NULL DEFAULT 0,
+        files_count INTEGER NOT NULL DEFAULT 0,
+        commits_count INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (analysis_id) REFERENCES analysis_history(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS processed_commits (
+        hash TEXT PRIMARY KEY,
+        date TEXT NOT NULL,
+        author TEXT NOT NULL,
+        message TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        processed_at TEXT NOT NULL,
+        task_id TEXT,
+        task_name TEXT
+      );
+    `);
 
+    const now = new Date().toISOString();
+    const insertAnalysis = db.prepare(
+      `INSERT INTO analysis_history
+         (id, user_id, timestamp, project_path, date, total_commits,
+          total_work_items, tasks_created, summary, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    insertAnalysis.run(
+      'analysis-owned', 'user-alice', now, '/repos/one', '2026-08-05', 7, 2, 1,
+      "alice's analysis", now
+    );
+    // A null owner, so "null survives as null" is actually exercised.
+    insertAnalysis.run(
+      'analysis-unowned', null, now, '/repos/legacy', '2026-01-01', 1, 1, 0, 'no owner', now
+    );
+
+    const insertWorkItem = db.prepare(
+      `INSERT INTO work_items
+         (id, analysis_id, name, type, description, estimated_hours, complexity,
+          files_count, commits_count, created_at)
+       VALUES (?, ?, ?, ?, 'x', ?, ?, ?, ?, ?)`
+    );
     for (const [i, analysisId] of ['analysis-owned', 'analysis-owned', 'analysis-unowned'].entries()) {
-      db.saveWorkItem({
-        id: `work-${i}`,
+      insertWorkItem.run(
+        `work-${i}`,
         analysisId,
-        name: `item ${i}`,
-        type: 'feature',
-        description: 'x',
-        estimatedHours: 1.5, // A real, so REAL→real is exercised.
-        complexity: 1, // Genuinely 1, and must NOT become boolean true.
-        filesCount: 3,
-        commitsCount: 2,
-        createdAt: new Date().toISOString(),
-      });
+        `item ${i}`,
+        'feature',
+        1.5, // A real, so REAL -> real is exercised.
+        1,   // Genuinely 1, and must NOT become boolean true.
+        3,
+        2,
+        now
+      );
     }
 
-    db.markCommitAsProcessed({
-      hash: 'abc123',
-      date: '2026-08-05',
-      author: 'alice',
-      message: 'a commit',
-      projectPath: '/repos/one',
-      processedAt: new Date().toISOString(),
-    });
+    db.prepare(
+      `INSERT INTO processed_commits
+         (hash, date, author, message, project_path, processed_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run('abc123', '2026-08-05', 'alice', 'a commit', '/repos/one', now);
   } finally {
     db.close();
   }
@@ -319,10 +360,42 @@ describe('sqlite -> postgres', () => {
     const orphanDir = mkdtempSync(join(tmpdir(), 'awa-orphan-'));
     const orphanPath = join(orphanDir, 'orphan.db');
 
-    // Create the schema through the real code, then insert behind its back.
-    new DatabaseService(orphanPath).close();
-
+    // The schema used to be created by `new DatabaseService(orphanPath)`. That
+    // class is on Postgres now, so the SQLite shape is spelled out here — which
+    // is the honest thing anyway: the source of this migration is a database
+    // written by the OLD code, and this is what it looked like.
     const raw = new Database(orphanPath);
+    raw.exec(`
+      CREATE TABLE IF NOT EXISTS analysis_history (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        timestamp TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        date TEXT NOT NULL,
+        end_date TEXT,
+        author TEXT,
+        branch TEXT,
+        total_commits INTEGER NOT NULL,
+        total_work_items INTEGER NOT NULL,
+        tasks_created INTEGER NOT NULL,
+        summary TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS work_items (
+        id TEXT PRIMARY KEY,
+        analysis_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        description TEXT,
+        estimated_hours REAL NOT NULL DEFAULT 0,
+        complexity INTEGER NOT NULL DEFAULT 0,
+        files_count INTEGER NOT NULL DEFAULT 0,
+        commits_count INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (analysis_id) REFERENCES analysis_history(id) ON DELETE CASCADE
+      );
+    `);
+
     try {
       raw.pragma('foreign_keys = OFF');
       raw

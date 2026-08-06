@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { openPostgres, type PostgresHandle } from '../db/client.js';
+import { setPool } from '../db/pool.js';
 
 export interface TestDatabase extends PostgresHandle {
   /** The schema these tables live in. */
@@ -89,6 +90,14 @@ export function postgresUnavailableMessage(error: unknown): string {
 /**
  * Creates a fresh schema with the full current table set.
  *
+ * Also points the process-wide pool at it, and clears that on `drop()`. Code
+ * several frames down a call stack reaches for `getPool()` without any way to
+ * be handed a fixture — `GitWorkAnalyzer` builds a `HistoryService` builds a
+ * `DatabaseService`, for instance. Without this, such a suite would open a
+ * *second* pool that nothing ever closes, and node would sit with a live socket
+ * after the last test passed: the run hangs rather than fails, which is the
+ * worst way for this to go wrong.
+ *
  * Throws if Postgres is unreachable. Deliberately not a skip: a database suite
  * that passes without a database is indistinguishable from one that works.
  */
@@ -133,6 +142,8 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     throw error;
   }
 
+  setPool(handle);
+
   let dropped = false;
 
   return {
@@ -142,6 +153,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     async drop(): Promise<void> {
       if (dropped) return;
       dropped = true;
+      setPool(null);
       await handle.close();
 
       const cleanup = openPostgres(url, { max: 1 });

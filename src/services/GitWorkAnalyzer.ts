@@ -168,7 +168,7 @@ export class GitWorkAnalyzer {
       // Filter out already processed commits to prevent duplicates (only if includeProcessed is false)
       const commits = includeProcessed
         ? allCommits
-        : this.historyService.filterUnprocessedCommits(allCommits, this.projectPath);
+        : await this.historyService.filterUnprocessedCommits(allCommits, this.projectPath);
 
       console.log(
         `Found ${allCommits.length} total commits${
@@ -494,10 +494,13 @@ export class GitWorkAnalyzer {
    * performs is exactly what makes a second run of the same day a no-op. This
    * exposes only that half.
    */
-  markScanCommitsProcessed(analysis: WorkAnalysisResult, projectPath: string): void {
+  async markScanCommitsProcessed(
+    analysis: WorkAnalysisResult,
+    projectPath: string
+  ): Promise<void> {
     const commits = analysis.detectedWork.flatMap((work) => work.commits);
     if (commits.length === 0) return;
-    this.historyService.markCommitsAsProcessed(commits, projectPath);
+    await this.historyService.markCommitsAsProcessed(commits, projectPath);
   }
 
   async createTasksFromWork(
@@ -652,7 +655,7 @@ export class GitWorkAnalyzer {
       }
 
       // Save analysis to history first and get the analysis ID
-      const analysisId = this.historyService.addAnalysisHistory(opts?.userId, {
+      const analysisId = await this.historyService.addAnalysisHistory(opts?.userId, {
         projectPath: this.projectPath,
         date: workAnalysis.date,
         endDate: undefined,
@@ -667,10 +670,13 @@ export class GitWorkAnalyzer {
       const allCommits = workAnalysis.detectedWork.flatMap((work) => work.commits);
       const taskMapping = new Map<string, { id: string; name: string }>();
 
-      // Save each work item and map commits to their created tasks
-      workAnalysis.detectedWork.forEach((work, workIndex) => {
+      // Save each work item and map commits to their created tasks.
+      // Sequential rather than forEach: an async callback passed to forEach is
+      // never awaited, so the writes would race the markCommitsAsProcessed
+      // below and any failure would surface as an unhandled rejection.
+      for (const [workIndex, work] of workAnalysis.detectedWork.entries()) {
         // Save work item to database
-        this.historyService.saveWorkItem(
+        await this.historyService.saveWorkItem(
           analysisId,
           work.name,
           work.type,
@@ -688,10 +694,10 @@ export class GitWorkAnalyzer {
             taskMapping.set(commit.hash, { id: task.id, name: task.name });
           }
         });
-      });
+      }
 
       // Mark these commits as processed
-      this.historyService.markCommitsAsProcessed(
+      await this.historyService.markCommitsAsProcessed(
         allCommits,
         this.projectPath,
         taskMapping

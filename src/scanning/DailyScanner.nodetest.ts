@@ -105,7 +105,13 @@ beforeEach(async () => {
   dbDir = mkdtempSync(join(tmpdir(), "awa-scan-db-"));
   process.chdir(dbDir);
 
-  await db.sql`TRUNCATE scan_settings, scanned_repos, scan_runs`;
+  // processed_commits too: the scanner dedups on it, so a commit left behind by
+  // the previous test makes the next one find nothing to do and fail with a
+  // confusing "expected a create attempt".
+  await db.sql`
+    TRUNCATE scan_settings, scanned_repos, scan_runs,
+             processed_commits, work_items, analysis_history CASCADE
+  `;
   registry = new ScanRegistry(db);
   await registry.saveSettings("user-1", { root, owner: "kailasa-ngpt", enabled: true });
   created = [];

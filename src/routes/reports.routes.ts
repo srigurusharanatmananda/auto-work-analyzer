@@ -42,19 +42,21 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
   const newDatabase = deps.databaseFactory ?? (() => new DatabaseService());
   const newHistory = deps.historyFactory ?? (() => new HistoryService());
 
-  router.get('/history', authenticate, anyRole, (req: Request, res: Response) => {
+  router.get('/history', authenticate, anyRole, async (req: Request, res: Response) => {
     const historyService = newHistory();
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const scope = scopeFor(req);
 
-      res.json({
-        success: true,
-        data: {
-          history: historyService.getAnalysisHistory(scope, limit),
-          statistics: historyService.getStatistics(scope),
-        },
-      });
+      // Awaited into locals before the response is assembled. res.json takes
+      // `any`, so an un-awaited Promise here serialises as {} — a 200 with an
+      // empty body and nothing thrown.
+      const [history, statistics] = await Promise.all([
+        historyService.getAnalysisHistory(scope, limit),
+        historyService.getStatistics(scope),
+      ]);
+
+      res.json({ success: true, data: { history, statistics } });
     } catch (error) {
       console.error('Failed to get history:', error);
       res.status(500).json({
@@ -67,7 +69,7 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
     }
   });
 
-  router.post('/save-report', authenticate, anyRole, (req: Request, res: Response) => {
+  router.post('/save-report', authenticate, anyRole, async (req: Request, res: Response) => {
     const { projectPath, date, endDate, author, workItems, summary } = req.body;
 
     if (!projectPath || !date || !workItems || !Array.isArray(workItems)) {
@@ -81,7 +83,7 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
 
     const historyService = newHistory();
     try {
-      const analysisId = historyService.addAnalysisHistory(req.user!.userId, {
+      const analysisId = await historyService.addAnalysisHistory(req.user!.userId, {
         projectPath,
         date,
         endDate,
@@ -95,7 +97,7 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
       let savedCount = 0;
       for (const item of workItems) {
         if (item.name && item.type) {
-          historyService.saveWorkItem(
+          await historyService.saveWorkItem(
             analysisId,
             item.name,
             item.type,
@@ -126,15 +128,18 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
     }
   });
 
-  router.get('/reports', authenticate, anyRole, (req: Request, res: Response) => {
+  router.get('/reports', authenticate, anyRole, async (req: Request, res: Response) => {
     const db = newDatabase();
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = parseInt(req.query.offset as string) || 0;
       const scope = scopeFor(req);
 
-      const reports = db.getPaginatedReports(scope, limit, offset);
-      const stats = db.getStatistics(scope);
+      // Both reads are independent, so one round trip's latency instead of two.
+      const [reports, stats] = await Promise.all([
+        db.getPaginatedReports(scope, limit, offset),
+        db.getStatistics(scope),
+      ]);
 
       res.json({
         success: true,
@@ -157,12 +162,12 @@ export function createReportsRouter(deps: ReportsRouterDeps = {}): Router {
     }
   });
 
-  router.get('/reports/:id', authenticate, anyRole, (req: Request, res: Response) => {
+  router.get('/reports/:id', authenticate, anyRole, async (req: Request, res: Response) => {
     const db = newDatabase();
     try {
       // Scoped in the query, so another user's report is indistinguishable from
       // one that does not exist. A 403 would confirm the id is real.
-      const report = db.getCompleteReport(req.params.id, scopeFor(req));
+      const report = await db.getCompleteReport(req.params.id, scopeFor(req));
 
       if (!report) {
         res.status(404).json({ success: false, error: 'Report not found' });

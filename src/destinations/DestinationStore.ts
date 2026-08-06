@@ -95,17 +95,25 @@ function patched<T>(incoming: T | null | undefined, stored: T | null): T | null 
 }
 
 export class DestinationStore {
-  private readonly pg: PostgresHandle;
+  private readonly injected?: PostgresHandle;
 
   constructor(
     private cipher: CredentialCipher,
-    pg: PostgresHandle = getPool()
+    pg?: PostgresHandle
   ) {
-    this.pg = pg;
+    this.injected = pg;
   }
 
+  /**
+   * Resolved on first query, not in the constructor.
+   *
+   * Two reasons, both load-bearing: constructing a store must not require a
+   * reachable database (several call sites build one and never query it), and
+   * a handle captured at construction would ignore a later `setPool` — which is
+   * how the tests point the shared pool at an isolated schema.
+   */
   private get sql() {
-    return this.pg.sql;
+    return (this.injected ?? getPool()).sql;
   }
 
   private async rowOf(id: string, userId: string): Promise<Row | undefined> {

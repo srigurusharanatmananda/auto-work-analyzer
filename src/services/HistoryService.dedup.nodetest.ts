@@ -1,16 +1,13 @@
 /**
- * Runs under `tsx --test`, not `bun test`: HistoryService opens better-sqlite3,
- * which cannot run under Bun (oven-sh/bun#4290).
+ * Runs against a real Postgres schema of its own, under `tsx --test`.
  *
- * DatabaseService hardcodes `process.cwd()/.database`, so each test gets its own
- * temp cwd — the same isolation GitWorkAnalyzer.createTasks.nodetest.ts uses.
+ * DatabaseService no longer opens a file under `process.cwd()/.database`, so
+ * the temp-cwd dance this used for isolation is gone; the fixture provides it.
  */
-import { afterEach, beforeEach, describe, test } from "node:test";
+import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { HistoryService } from "./HistoryService.js";
+import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import type { GitCommit } from "../types/index.js";
 
 const commit = (hash: string): GitCommit => ({
@@ -23,20 +20,24 @@ const commit = (hash: string): GitCommit => ({
   deletions: 0,
 });
 
-let dir: string;
-let originalCwd: string;
+let db: TestDatabase;
 let history: HistoryService;
 
-beforeEach(() => {
-  originalCwd = process.cwd();
-  dir = mkdtempSync(join(tmpdir(), "awa-dedup-"));
-  process.chdir(dir);
-  history = new HistoryService();
+before(async () => {
+  db = await createTestDatabase();
+});
+
+after(async () => {
+  await db?.drop();
+});
+
+beforeEach(async () => {
+  await db.sql`TRUNCATE processed_commits`;
+  history = new HistoryService(db);
 });
 
 afterEach(() => {
-  process.chdir(originalCwd);
-  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+  history.close();
 });
 
 describe("commit dedup keys on the hash alone", () => {
@@ -46,40 +47,42 @@ describe("commit dedup keys on the hash alone", () => {
    * Two clones of one repo flip-flopped forever, each run re-creating the
    * other's commits, with nothing thrown and nothing logged.
    */
-  test("a commit recorded under one path is processed when queried under another", () => {
-    history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
+  test("a commit recorded under one path is processed when queried under another", async () => {
+    await history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
 
-    assert.equal(history.isCommitProcessed("abc1230000", "/clone/one"), true);
+    assert.equal(await history.isCommitProcessed("abc1230000", "/clone/one"), true);
     assert.equal(
-      history.isCommitProcessed("abc1230000", "/clone/two"),
+      await history.isCommitProcessed("abc1230000", "/clone/two"),
       true,
       "a second clone must not re-create tasks for a commit already processed"
     );
   });
 
-  test("filterUnprocessedCommits drops it regardless of the path passed", () => {
-    history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
+  test("filterUnprocessedCommits drops it regardless of the path passed", async () => {
+    await history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
 
-    assert.deepEqual(history.filterUnprocessedCommits([commit("abc1230000")], "/clone/two"), []);
-    assert.deepEqual(history.filterUnprocessedCommits([commit("abc1230000")]), []);
+    assert.deepEqual(await history.filterUnprocessedCommits([commit("abc1230000")], "/clone/two"), []);
+    assert.deepEqual(await history.filterUnprocessedCommits([commit("abc1230000")]), []);
   });
 
-  test("recording under a second path does not un-process the first", () => {
+  test("recording under a second path does not un-process the first", async () => {
     // INSERT OR REPLACE rewrites the single row; with the path out of the
     // predicate that no longer matters, which is the whole point.
-    history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
-    history.markCommitsAsProcessed([commit("abc1230000")], "/clone/two");
+    await history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
+    await history.markCommitsAsProcessed([commit("abc1230000")], "/clone/two");
 
-    assert.equal(history.isCommitProcessed("abc1230000", "/clone/one"), true);
-    assert.equal(history.isCommitProcessed("abc1230000", "/clone/two"), true);
+    assert.equal(await history.isCommitProcessed("abc1230000", "/clone/one"), true);
+    assert.equal(await history.isCommitProcessed("abc1230000", "/clone/two"), true);
   });
 
-  test("an unrecorded commit is still unprocessed", () => {
-    history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
+  test("an unrecorded commit is still unprocessed", async () => {
+    await history.markCommitsAsProcessed([commit("abc1230000")], "/clone/one");
 
-    assert.equal(history.isCommitProcessed("zzz9990000", "/clone/one"), false);
+    assert.equal(await history.isCommitProcessed("zzz9990000", "/clone/one"), false);
     assert.deepEqual(
-      history.filterUnprocessedCommits([commit("abc1230000"), commit("zzz9990000")]).map((c) => c.hash),
+      (await history.filterUnprocessedCommits([commit("abc1230000"), commit("zzz9990000")])).map(
+        (c) => c.hash
+      ),
       ["zzz9990000"]
     );
   });

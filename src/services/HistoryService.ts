@@ -5,6 +5,7 @@
 
 import { GitCommit } from '../types/index.js';
 import { DatabaseService, AnalysisRecord, AnalysisScope, ProcessedCommitRecord } from './DatabaseService.js';
+import type { PostgresHandle } from '../db/client.js';
 
 interface ProcessedCommit {
   hash: string;
@@ -35,21 +36,21 @@ interface AnalysisHistory {
 export class HistoryService {
   private db: DatabaseService;
 
-  constructor() {
-    this.db = new DatabaseService();
+  constructor(pg?: PostgresHandle) {
+    this.db = new DatabaseService(pg);
   }
 
   /**
    * Get all processed commits
    */
-  getProcessedCommits(): ProcessedCommit[] {
+  getProcessedCommits(): Promise<ProcessedCommit[]> {
     return this.db.getProcessedCommits();
   }
 
   /**
    * Check if a commit has already been processed
    */
-  isCommitProcessed(commitHash: string, projectPath?: string): boolean {
+  isCommitProcessed(commitHash: string, projectPath?: string): Promise<boolean> {
     return this.db.isCommitProcessed(commitHash, projectPath);
   }
 
@@ -59,19 +60,29 @@ export class HistoryService {
    * `projectPath` is accepted for call-site compatibility and ignored: dedup is
    * keyed on the commit hash alone. See DatabaseService.isCommitProcessed.
    */
-  filterUnprocessedCommits(commits: GitCommit[], projectPath?: string): GitCommit[] {
-    return commits.filter((commit) => !this.isCommitProcessed(commit.hash, projectPath));
+  async filterUnprocessedCommits(
+    commits: GitCommit[],
+    projectPath?: string
+  ): Promise<GitCommit[]> {
+    // One batched read rather than one query per commit: a day's work can be
+    // hundreds of commits, and `filter` cannot await anyway — an async
+    // predicate returns a Promise, which is always truthy, so a naive
+    // conversion here would silently keep every commit.
+    const processed = await Promise.all(
+      commits.map((commit) => this.isCommitProcessed(commit.hash, projectPath))
+    );
+    return commits.filter((_, index) => !processed[index]);
   }
 
   /**
    * Mark commits as processed
    */
-  markCommitsAsProcessed(
+  async markCommitsAsProcessed(
     commits: GitCommit[],
     projectPath: string,
     taskMapping?: Map<string, { id: string; name: string }>
-  ): void {
-    commits.forEach((commit) => {
+  ): Promise<void> {
+    for (const commit of commits) {
       const task = taskMapping?.get(commit.hash);
       const processedCommit: ProcessedCommitRecord = {
         hash: commit.hash,
@@ -83,14 +94,14 @@ export class HistoryService {
         taskId: task?.id,
         taskName: task?.name,
       };
-      this.db.markCommitAsProcessed(processedCommit);
-    });
+      await this.db.markCommitAsProcessed(processedCommit);
+    }
   }
 
   /**
    * Get analysis history
    */
-  getAnalysisHistory(scope: AnalysisScope, limit: number = 50): AnalysisHistory[] {
+  getAnalysisHistory(scope: AnalysisScope, limit: number = 50): Promise<AnalysisHistory[]> {
     return this.db.getAnalysisHistory(scope, limit);
   }
 
@@ -104,10 +115,10 @@ export class HistoryService {
    * optional field writes an unowned row with nothing to notice; a caller that
    * has to type `undefined` has decided.
    */
-  addAnalysisHistory(
+  async addAnalysisHistory(
     userId: string | undefined,
     analysis: Omit<AnalysisHistory, 'id' | 'timestamp' | 'userId'>
-  ): string {
+  ): Promise<string> {
     const newEntry: AnalysisRecord = {
       id: `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId,
@@ -115,14 +126,14 @@ export class HistoryService {
       ...analysis,
     };
 
-    this.db.saveAnalysis(newEntry);
+    await this.db.saveAnalysis(newEntry);
     return newEntry.id;
   }
 
   /**
    * Save work item to database
    */
-  saveWorkItem(
+  async saveWorkItem(
     analysisId: string,
     workItemName: string,
     workItemType: string,
@@ -131,13 +142,13 @@ export class HistoryService {
     complexity: string,
     filesCount: number,
     commitsCount: number
-  ): string {
+  ): Promise<string> {
     const workItemId = `work-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Map complexity string to number (1=low, 2=medium, 3=high)
     const complexityNumber = complexity === 'high' ? 3 : complexity === 'medium' ? 2 : 1;
 
-    this.db.saveWorkItem({
+    await this.db.saveWorkItem({
       id: workItemId,
       analysisId,
       name: workItemName,
@@ -167,9 +178,11 @@ export class HistoryService {
   /**
    * Get statistics
    */
-  getStatistics(scope: AnalysisScope) {
-    const dbStats = this.db.getStatistics(scope);
-    const processedCommits = this.db.getProcessedCommits(undefined, 10000);
+  async getStatistics(scope: AnalysisScope) {
+    const [dbStats, processedCommits] = await Promise.all([
+      this.db.getStatistics(scope),
+      this.db.getProcessedCommits(undefined, 10000),
+    ]);
 
     const projectStats = new Map<string, number>();
     processedCommits.forEach((commit) => {

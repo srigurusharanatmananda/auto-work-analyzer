@@ -580,7 +580,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
         // Save analysis to database
         const historyService = new HistoryService();
-        const analysisId = historyService.addAnalysisHistory(req.user!.userId, {
+        const analysisId = await historyService.addAnalysisHistory(req.user!.userId, {
           projectPath: targetProjectPath,
           date: workAnalysis.date,
           endDate: endDate || undefined,
@@ -593,7 +593,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
         // Save all work items to database
         for (const work of workAnalysis.detectedWork) {
-          historyService.saveWorkItem(
+          await historyService.saveWorkItem(
             analysisId,
             work.name,
             work.type,

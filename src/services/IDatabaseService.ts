@@ -83,58 +83,62 @@ export interface IDatabaseService {
   /**
    * Save analysis history
    */
-  saveAnalysis(analysis: AnalysisRecord): void;
+  saveAnalysis(analysis: AnalysisRecord): Promise<void>;
 
   /**
    * Get analysis history with pagination
    */
-  getAnalysisHistory(scope: AnalysisScope, limit?: number, offset?: number): AnalysisRecord[];
+  getAnalysisHistory(
+    scope: AnalysisScope,
+    limit?: number,
+    offset?: number
+  ): Promise<AnalysisRecord[]>;
 
   /**
    * Get analysis by ID
    */
-  getAnalysisById(id: string, scope: AnalysisScope): AnalysisRecord | undefined;
+  getAnalysisById(id: string, scope: AnalysisScope): Promise<AnalysisRecord | undefined>;
 
   /**
    * Get analysis statistics
    */
-  getStatistics(scope: AnalysisScope): DatabaseStatistics;
+  getStatistics(scope: AnalysisScope): Promise<DatabaseStatistics>;
 
   // ==================== Work Items Methods ====================
 
   /**
    * Save work item
    */
-  saveWorkItem(workItem: WorkItemRecord): void;
+  saveWorkItem(workItem: WorkItemRecord): Promise<void>;
 
   /**
    * Get work items for an analysis
    */
-  getWorkItemsByAnalysis(analysisId: string): WorkItemRecord[];
+  getWorkItemsByAnalysis(analysisId: string): Promise<WorkItemRecord[]>;
 
   // ==================== Processed Commits Methods ====================
 
   /**
    * Mark commit as processed
    */
-  markCommitAsProcessed(commit: ProcessedCommitRecord): void;
+  markCommitAsProcessed(commit: ProcessedCommitRecord): Promise<void>;
 
   /**
    * Check if commit is processed
    */
-  isCommitProcessed(hash: string, projectPath: string): boolean;
+  isCommitProcessed(hash: string, projectPath?: string): Promise<boolean>;
 
   /**
    * Get processed commits
    */
-  getProcessedCommits(projectPath?: string, limit?: number): ProcessedCommitRecord[];
+  getProcessedCommits(projectPath?: string, limit?: number): Promise<ProcessedCommitRecord[]>;
 
   // ==================== Utility Methods ====================
 
   /**
    * Clear all data (use with caution!)
    */
-  clearAllData(): void;
+  clearAllData(): Promise<void>;
 
   /**
    * Close database connection
@@ -142,15 +146,10 @@ export interface IDatabaseService {
   close(): void;
 
   /**
-   * Get database connection info (path, URL, etc.)
-   */
-  getDatabasePath(): string;
-
-  /**
    * Export data to JSON (for backup)
    */
-  exportToJSON(): {
+  exportToJSON(): Promise<{
     analyses: AnalysisRecord[];
     processedCommits: ProcessedCommitRecord[];
-  };
+  }>;
 }
