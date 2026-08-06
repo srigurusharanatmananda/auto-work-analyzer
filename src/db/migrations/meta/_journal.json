@@ -8,6 +8,13 @@
       "when": 1785975599403,
       "tag": "0000_strange_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786028577658,
+      "tag": "0001_breezy_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

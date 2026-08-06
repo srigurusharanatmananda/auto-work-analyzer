@@ -15,6 +15,30 @@
  * `timestamptz` and `jsonb` is a migration with a test, which is exactly what
  * it should be.
  *
+ * ## The trap in `text` timestamps
+ *
+ * Because timestamps are `text`, `WHERE ts < $cutoff` is a STRING comparison. It
+ * gives the right answer only while every writer uses the SAME format, and two
+ * are in play that do not sort together:
+ *
+ *   JS  `new Date().toISOString()`     -> "2026-08-06T14:45:00.000Z"
+ *   SQL `(now() at time zone 'utc')`   -> "2026-08-06 14:45:00.123456"
+ *
+ * `' '` (0x20) sorts before `'T'` (0x54), so a space-separated value compares as
+ * older than ANY T-separated one, whatever the real instants are. This already
+ * bit `transcription_jobs.claimed_at`: it made every running job look abandoned
+ * and eligible for re-claim, i.e. two workers on the same audio.
+ *
+ * The auth columns (`refresh_tokens.expires_at`, `login_attempts.attempted_at`,
+ * `token_blacklist.expires_at`) are correct today **only** because they are
+ * written from JS and compared against JS values. Do not give them a SQL default
+ * without also fixing their comparisons — token expiry and brute-force lockout
+ * both depend on them.
+ *
+ * When comparing, cast: `ts::timestamp < (now() at time zone 'utc') - interval`.
+ * Tightening these columns to `timestamptz` removes the hazard altogether and is
+ * the right next migration.
+ *
  * Two SQLite behaviours have no direct Postgres equivalent and are handled
  * explicitly:
  *
@@ -315,3 +339,74 @@ export const schemaMigrations = pgTable('schema_migrations', {
   id: text('id').primaryKey(),
   appliedAt: text('applied_at').notNull(),
 });
+
+/**
+ * Transcription jobs: audio in, transcript out, asynchronously.
+ *
+ * A queue in Postgres rather than Redis/BullMQ, which is what
+ * call-intelligence-system used. The reasoning is measured against what the work
+ * actually costs: Whisper takes minutes, so job pickup latency is under 0.2% of
+ * end-to-end time, and `LISTEN/NOTIFY` makes pickup ~1ms anyway — the same order
+ * as a Redis blocking pop. Redis would be a second datastore to run and another
+ * resident process competing for memory, which on an 8 GB machine costs more
+ * than the latency it saves.
+ *
+ * `SELECT ... FOR UPDATE SKIP LOCKED` is what makes this a real queue rather
+ * than a table two workers fight over.
+ */
+export const transcriptionJobs = pgTable(
+  'transcription_jobs',
+  {
+    id: text('id').primaryKey(),
+    /**
+     * Owner. Not null, unlike `analysis_history.user_id` — every job is created
+     * through an authenticated upload, so there is no unowned case to allow for,
+     * and a transcript is personal in a way an analysis record is not.
+     */
+    userId: text('user_id').notNull(),
+    /** Absolute path on the host. Must sit under the Whisper storage root. */
+    audioPath: text('audio_path').notNull(),
+    /** The name the user uploaded, for display. */
+    originalFilename: text('original_filename').notNull(),
+    /** queued | running | succeeded | failed | cancelled */
+    status: text('status').notNull().default('queued'),
+    /**
+     * Transcript text once finished. Null while running — distinguishable from
+     * `''`, which is a real result: a silent recording.
+     */
+    transcript: text('transcript'),
+    /** Segments with timings, as JSON. Kept for future speaker/seek features. */
+    segments: text('segments'),
+    language: text('language'),
+    /** Why it failed, shown to the user. Null unless status = 'failed'. */
+    error: text('error'),
+    /**
+     * Attempts so far. A job that has exhausted its retries is failed for good;
+     * without this a crash-looping job would be retried forever, which on a
+     * 30-minute task means the queue never drains.
+     */
+    attempts: integer('attempts').notNull().default(0),
+    /**
+     * Set when a worker claims the job, cleared when it finishes. A row that is
+     * `running` with a stale `claimedAt` was orphaned by a crashed worker and is
+     * reclaimable — the only way to recover work that a process death
+     * interrupted.
+     */
+    claimedAt: text('claimed_at'),
+    /** Progress, for the UI: how many segments have arrived so far. */
+    segmentsSeen: integer('segments_seen').notNull().default(0),
+    callTitle: text('call_title'),
+    callDate: text('call_date'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(now() at time zone 'utc')::text`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(now() at time zone 'utc')::text`),
+  },
+  (table) => [
+    index('idx_transcription_user').on(table.userId),
+    // The claim query's index: find the oldest queued row.
+    index('idx_transcription_status_created').on(table.status, table.createdAt),
+  ]
+);

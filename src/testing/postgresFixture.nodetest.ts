@@ -31,11 +31,14 @@ describe('postgres test fixture', () => {
 
     // The count is asserted so that a migration file silently failing to apply
     // shows up here rather than as a confusing "relation does not exist" in
-    // some unrelated suite.
-    assert.equal(tables.length, 14, `expected 14 tables, got: ${tables.join(', ')}`);
+    // some unrelated suite. Bump it deliberately when a migration adds a table —
+    // that is the guard working, not noise.
+    assert.equal(tables.length, 15, `expected 15 tables, got: ${tables.join(', ')}`);
     assert.ok(tables.includes('users'));
     assert.ok(tables.includes('task_templates'));
     assert.ok(tables.includes('analysis_history'));
+    // From migration 0001 — proves later migrations apply, not just the first.
+    assert.ok(tables.includes('transcription_jobs'));
   });
 
   test('unqualified writes land in the test schema, never in public', async () => {
