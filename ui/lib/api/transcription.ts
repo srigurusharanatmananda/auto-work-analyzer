@@ -228,6 +228,49 @@ export function requestAudioUrl(jobId: string): Promise<AudioPlaybackUrl> {
   return api.post<AudioPlaybackUrl>(`/transcription/jobs/${jobId}/audio-token`);
 }
 
+/** How action items from one call are shaped into tasks. */
+export type TranscriptGrouping = 'per-item' | 'single-task' | 'by-theme';
+
+export interface SweptJobResult {
+  jobId: string;
+  filename: string;
+  callTitle: string | null;
+  actionItems: number;
+  /** Skipped because an earlier run already filed them. */
+  alreadyFiled: number;
+  tasksCreated: number;
+  destination: string | null;
+  /** The extraction was reused, not re-run — so it costs no model spend. */
+  reusedExtraction: boolean;
+  error?: string;
+  /** Only on a dry run. */
+  wouldCreate?: Array<{ name: string; description: string }>;
+}
+
+export interface SweepSummary {
+  dryRun: boolean;
+  jobs: SweptJobResult[];
+  totalTasksCreated: number;
+}
+
+export interface SweepInput {
+  /**
+   * Required, with no default, on purpose.
+   *
+   * The server defaults it to `true` so a forgotten flag is the safe one. Here
+   * the opposite rule applies: a caller that omits it should not compile,
+   * because the two meanings are "show me" and "create real tasks in ClickUp"
+   * and there is no sensible guess between them.
+   */
+  dryRun: boolean;
+  grouping?: TranscriptGrouping;
+}
+
+/** Files action items from every finished recording not yet swept. */
+export function runTranscriptSweep(input: SweepInput): Promise<SweepSummary> {
+  return api.post<SweepSummary>('/transcription/sweep', input);
+}
+
 /** Still moving — worth polling for, and not yet safe to read a transcript from. */
 export function isJobActive(job: TranscriptionJob): boolean {
   return job.status === 'queued' || job.status === 'running';

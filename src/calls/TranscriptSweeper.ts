@@ -78,6 +78,19 @@ export interface SweepOptions {
    * files, which is not what "dry" means.
    */
   dryRun?: boolean;
+  /**
+   * Overrides the sweeper's configured shape for this run.
+   *
+   * Per-run rather than construction-only because the scheduled sweep and the
+   * button in the UI are the same code with different intent, and a user who
+   * picks "group by theme" in the preview must get that shape when they file —
+   * a preview of one shape approving the creation of another is the whole
+   * failure this flow exists to prevent.
+   *
+   * Note it only affects a job whose extraction is not already frozen. A job
+   * swept once keeps its stored items; see `itemsFor`.
+   */
+  grouping?: TranscriptGrouping;
 }
 
 export class TranscriptSweeper {
@@ -85,13 +98,14 @@ export class TranscriptSweeper {
 
   async run(userId: string, options: SweepOptions = {}): Promise<SweepSummary> {
     const dryRun = options.dryRun === true;
+    const grouping = options.grouping ?? this.deps.grouping ?? "per-item";
     const jobs = await this.deps.store.listSweepable(userId, this.deps.batchSize ?? 25);
     const results: SweptJobResult[] = [];
 
     // Sequential: ClickUp rate-limits, providers rate-limit harder, and it keeps
     // the failure report readable.
     for (const job of jobs) {
-      results.push(await this.sweepOne(userId, job, dryRun));
+      results.push(await this.sweepOne(userId, job, dryRun, grouping));
     }
 
     return {
@@ -104,7 +118,8 @@ export class TranscriptSweeper {
   private async sweepOne(
     userId: string,
     job: TranscriptionJob,
-    dryRun: boolean
+    dryRun: boolean,
+    grouping: TranscriptGrouping
   ): Promise<SweptJobResult> {
     const result: SweptJobResult = {
       jobId: job.id,
@@ -118,7 +133,7 @@ export class TranscriptSweeper {
     };
 
     try {
-      const items = await this.itemsFor(job, dryRun);
+      const items = await this.itemsFor(job, dryRun, grouping);
       result.actionItems = items.length;
 
       if (items.length === 0) {
@@ -194,7 +209,11 @@ export class TranscriptSweeper {
    * The job's frozen action items, extracting and freezing them if this is the
    * first time. A dry run extracts but does not freeze.
    */
-  private async itemsFor(job: TranscriptionJob, dryRun: boolean): Promise<WorkItem[]> {
+  private async itemsFor(
+    job: TranscriptionJob,
+    dryRun: boolean,
+    grouping: TranscriptGrouping
+  ): Promise<WorkItem[]> {
     if (job.actionItems !== null) return job.actionItems;
 
     if (!this.deps.aiClient) {
@@ -219,7 +238,7 @@ export class TranscriptSweeper {
 
     const grouped = await groupActionItems(
       extracted.items,
-      this.deps.grouping ?? "per-item",
+      grouping,
       context,
       this.deps.aiClient
     );

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import TranscriptTab from '@/components/TranscriptTab';
+import TranscriptSweep from '@/components/TranscriptSweep';
 
 export default function TranscriptsPage() {
   return (
@@ -53,6 +54,10 @@ export default function TranscriptsPage() {
         </div>
 
         <TranscriptTab />
+
+        <div className="mt-6">
+          <TranscriptSweep />
+        </div>
       </div>
     </ProtectedRoute>
   );

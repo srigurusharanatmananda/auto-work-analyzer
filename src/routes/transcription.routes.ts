@@ -30,6 +30,7 @@ import {
 } from '../calls/transcriptSearch.js';
 import { mintAudioToken, verifyAudioToken } from '../transcription/audioTokens.js';
 import { parseByteRange } from '../transcription/byteRange.js';
+import { isTranscriptGrouping } from '../calls/ActionItemGrouper.js';
 
 export interface TranscriptionRouterDeps {
   store: TranscriptionJobStore;
@@ -368,8 +369,20 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
     }
 
     const dryRun = req.body?.dryRun !== false;
+
+    // Rejected rather than silently defaulted. A typo'd grouping that quietly
+    // became "per-item" would file a different shape than the preview showed,
+    // which is exactly the mistake the preview exists to catch.
+    const requested = req.body?.grouping;
+    if (requested !== undefined && !isTranscriptGrouping(requested)) {
+      return fail(res, `Unknown grouping: ${String(requested)}`);
+    }
+
     try {
-      const summary = await deps.sweeper.run(userIdOf(req), { dryRun });
+      const summary = await deps.sweeper.run(userIdOf(req), {
+        dryRun,
+        ...(requested ? { grouping: requested } : {}),
+      });
       res.json({
         success: true,
         data: summary,

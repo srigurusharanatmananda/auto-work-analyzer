@@ -366,3 +366,71 @@ describe("batching", () => {
     assert.equal(summary.jobs.length, 2, "the third is left for the next run");
   });
 });
+
+describe("grouping is chosen per run", () => {
+  /**
+   * The preview and the real run are the same call with `dryRun` flipped, so a
+   * grouping fixed at construction would let you approve one shape and file
+   * another. That is the exact mistake the preview exists to prevent.
+   */
+  test("the run option overrides the sweeper's configured shape", async () => {
+    await succeededJob();
+    // Extraction, then the theme-grouping call the "by-theme" path makes.
+    modelResponses = [
+      bothItems(),
+      JSON.stringify({
+        groups: [{ title: "Follow-ups from the sync", itemIndexes: [0, 1] }],
+      }),
+    ];
+
+    const summary = await sweeper({ grouping: "per-item" }).run(USER, {
+      grouping: "by-theme",
+    });
+
+    // One parent task, not two separate items.
+    assert.equal(summary.totalTasksCreated, 1);
+    assert.deepEqual(created, ["Follow-ups from the sync"]);
+  });
+
+  test("falls back to the configured shape when the run says nothing", async () => {
+    await succeededJob();
+    modelResponses = [bothItems()];
+
+    const summary = await sweeper({ grouping: "single-task" }).run(USER, {});
+
+    assert.equal(summary.totalTasksCreated, 1);
+    assert.equal(created.length, 1);
+  });
+
+  test("defaults to per-item when neither says anything", async () => {
+    await succeededJob();
+    modelResponses = [bothItems()];
+
+    await sweeper().run(USER, {});
+
+    assert.deepEqual(created.sort(), ["Fix the CSV export", "Send the standard NDA"]);
+  });
+
+  /**
+   * A job swept before keeps the items frozen then — re-grouping it would
+   * renumber the indexes that record what has already been filed.
+   */
+  test("does not re-shape a job whose extraction is already frozen", async () => {
+    const jobId = await succeededJob();
+    modelResponses = [bothItems()];
+    await sweeper({ grouping: "per-item" }).run(USER, {});
+
+    created = [];
+    modelCalls = 0;
+    // Nothing outstanding, so nothing is created and no model call is made
+    // regardless of the grouping asked for.
+    const summary = await sweeper().run(USER, { grouping: "by-theme" });
+
+    assert.equal(summary.totalTasksCreated, 0);
+    assert.equal(modelCalls, 0, "a frozen extraction must not be re-run");
+    const [row] = await pg.sql<{ swept_at: string | null }[]>`
+      SELECT swept_at FROM transcription_jobs WHERE id = ${jobId}
+    `;
+    assert.ok(row!.swept_at, "the job stays swept");
+  });
+});
