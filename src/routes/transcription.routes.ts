@@ -63,6 +63,21 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
  * What the client sees. Excludes `audioPath` deliberately: it is a server
  * filesystem path, of no use to a browser and not worth disclosing.
  */
+/**
+ * How long the audio ran, from the last segment's end time.
+ *
+ * Derived rather than stored: Whisper reports it, but persisting it would mean
+ * a column and a migration for a number already implied by data the job
+ * carries. Null while a job is still producing segments — a partial duration
+ * would read as "this call was 12 seconds long".
+ */
+function durationOf(job: TranscriptionJob): number | null {
+  if (job.status !== 'succeeded') return null;
+  const segments = job.segments ?? [];
+  const last = segments[segments.length - 1];
+  return last ? Math.round(last.end) : null;
+}
+
 function toResponse(job: TranscriptionJob) {
   return {
     id: job.id,
@@ -71,6 +86,7 @@ function toResponse(job: TranscriptionJob) {
     transcript: job.transcript,
     segments: job.segments,
     language: job.language,
+    durationSeconds: durationOf(job),
     error: job.error,
     attempts: job.attempts,
     segmentsSeen: job.segmentsSeen,

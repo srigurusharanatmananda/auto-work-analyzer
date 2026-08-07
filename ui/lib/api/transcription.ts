@@ -77,6 +77,16 @@ export function getTranscriptionJob(jobId: string): Promise<TranscriptionJob> {
   return api.get<TranscriptionJob>(`/transcription/jobs/${jobId}`);
 }
 
+/** The caller's jobs, newest first. Scoped server-side; never anyone else's. */
+export function listTranscriptionJobs(): Promise<TranscriptionJob[]> {
+  return api.get<TranscriptionJob[]>('/transcription/jobs');
+}
+
+/** Still moving — worth polling for, and not yet safe to read a transcript from. */
+export function isJobActive(job: TranscriptionJob): boolean {
+  return job.status === 'queued' || job.status === 'running';
+}
+
 /** Raised when a job ends in any state other than `succeeded`. */
 export class TranscriptionFailedError extends Error {
   constructor(public readonly job: TranscriptionJob) {

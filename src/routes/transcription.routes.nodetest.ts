@@ -296,3 +296,69 @@ describe('POST /jobs/:id/cancel', () => {
     assert.equal(response.status, 404);
   });
 });
+
+/**
+ * Duration is computed from the segments rather than stored, so it is the one
+ * response field that can be wrong without the database being wrong.
+ */
+describe('durationSeconds', () => {
+  test('is the end of the last segment on a finished job', async () => {
+    const queued = await store.enqueue({
+      userId,
+      audioPath: join(audioDir(), 'a.mp3'),
+      originalFilename: 'a.mp3',
+    });
+    await store.claimNext();
+    await store.markSucceeded(queued.id, {
+      transcript: 'one two',
+      language: 'en',
+      segments: [
+        { text: 'one', start: 0, end: 3.36 },
+        { text: 'two', start: 3.36, end: 12.4 },
+      ],
+    });
+
+    const response = await fetch(`${baseUrl}/jobs/${queued.id}`, {
+      headers: { Authorization: authHeader },
+    });
+    const body = (await response.json()) as any;
+
+    assert.equal(body.data.durationSeconds, 12);
+  });
+
+  /** A partial duration would read as "this call was 4 seconds long". */
+  test('is null while the job is still running', async () => {
+    const queued = await store.enqueue({
+      userId,
+      audioPath: join(audioDir(), 'b.mp3'),
+      originalFilename: 'b.mp3',
+    });
+    await store.claimNext();
+    await store.recordProgress(queued.id, 2);
+
+    const response = await fetch(`${baseUrl}/jobs/${queued.id}`, {
+      headers: { Authorization: authHeader },
+    });
+    const body = (await response.json()) as any;
+
+    assert.equal(body.data.status, 'running');
+    assert.equal(body.data.durationSeconds, null);
+  });
+
+  test('is null when a succeeded job produced no segments at all', async () => {
+    const queued = await store.enqueue({
+      userId,
+      audioPath: join(audioDir(), 'c.mp3'),
+      originalFilename: 'c.mp3',
+    });
+    await store.claimNext();
+    await store.markSucceeded(queued.id, { transcript: '', language: 'en', segments: [] });
+
+    const response = await fetch(`${baseUrl}/jobs/${queued.id}`, {
+      headers: { Authorization: authHeader },
+    });
+    const body = (await response.json()) as any;
+
+    assert.equal(body.data.durationSeconds, null);
+  });
+});

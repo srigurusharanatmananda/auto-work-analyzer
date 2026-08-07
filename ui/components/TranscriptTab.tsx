@@ -42,6 +42,7 @@ import {
   uploadAudio,
   waitForTranscript,
 } from '@/lib/api/transcription';
+import RecentTranscriptions from './RecentTranscriptions';
 import { CreatedTask, PreviewWorkItem, RenderedTaskPreview } from '@/types';
 
 interface PreviewState {
@@ -191,6 +192,8 @@ export default function TranscriptTab() {
    */
   const [transcribing, setTranscribing] = useState<TranscriptionJob | null>(null);
   const transcribeAbort = useRef<AbortController | null>(null);
+  /** Bumped after an upload settles, so the recordings list picks it up at once. */
+  const [jobsToken, setJobsToken] = useState(0);
 
   const [extracting, setExtracting] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -249,6 +252,10 @@ export default function TranscriptTab() {
         ...(callDate ? { callDate } : {}),
       });
       setTranscribing(queued);
+      // Show it in the recordings list immediately: the job is real from this
+      // point on, and if the upload watcher is abandoned that list is the only
+      // way back to it.
+      setJobsToken((token) => token + 1);
       toast.loading('Transcribing — this runs in the background', { id: toastId });
 
       const done = await waitForTranscript(queued.id, {
@@ -276,7 +283,21 @@ export default function TranscriptTab() {
     } finally {
       setTranscribing(null);
       transcribeAbort.current = null;
+      setJobsToken((token) => token + 1);
     }
+  };
+
+  /** Load a finished recording's transcript into the editor. */
+  const handleUseJob = (job: TranscriptionJob) => {
+    reset();
+    setTranscript(job.transcript ?? '');
+    setFileName(job.originalFilename);
+    if (job.callTitle) setCallTitle(job.callTitle);
+    if (job.callDate) setCallDate(job.callDate);
+    toast.success(`Loaded the transcript from ${job.originalFilename}`, { duration: 3000 });
+    // The editor is at the top and the list is at the bottom; without this the
+    // click appears to do nothing.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const reset = () => {
@@ -749,6 +770,8 @@ export default function TranscriptTab() {
           </ul>
         </Card>
       )}
+
+      <RecentTranscriptions onUse={handleUseJob} refreshToken={jobsToken} />
     </div>
   );
 }
