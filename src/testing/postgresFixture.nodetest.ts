@@ -33,10 +33,12 @@ describe('postgres test fixture', () => {
     // shows up here rather than as a confusing "relation does not exist" in
     // some unrelated suite. Bump it deliberately when a migration adds a table —
     // that is the guard working, not noise.
-    assert.equal(tables.length, 15, `expected 15 tables, got: ${tables.join(', ')}`);
+    assert.equal(tables.length, 16, `expected 16 tables, got: ${tables.join(', ')}`);
     assert.ok(tables.includes('users'));
     assert.ok(tables.includes('task_templates'));
     assert.ok(tables.includes('analysis_history'));
+    // From migration 0004 — the scan lease, and proof the newest migration ran.
+    assert.ok(tables.includes('scan_leases'));
     // From migration 0001 — proves later migrations apply, not just the first.
     assert.ok(tables.includes('transcription_jobs'));
   });

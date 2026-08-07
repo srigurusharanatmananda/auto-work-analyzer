@@ -334,6 +334,54 @@ export const scanRuns = pgTable('scan_runs', {
   summary: text('summary').notNull(),
 });
 
+/**
+ * One row per (user, day) of scanning work, claimed before the scan starts.
+ *
+ * `ScanScheduler` is an in-process `setInterval`, and its only guard against
+ * running twice is `if (this.timer) return` — which is per process. Two server
+ * instances, or a restart that overlaps the old process, means two schedulers
+ * both deciding the same day is due. They then both call `DailyScanner.run`,
+ * and because dedup is a `SELECT 1 FROM processed_commits` followed by an
+ * `INSERT ... ON CONFLICT`, both read nothing, **both create the ClickUp
+ * tasks**, and only then does one of the writes lose. `ON CONFLICT` protects
+ * the row; it does not un-create a task in someone's real workspace.
+ *
+ * So the claim has to happen before the work, not after. This table is that
+ * claim, at the granularity the work actually has: a single day for a single
+ * user.
+ */
+export const scanLeases = pgTable(
+  'scan_leases',
+  {
+    userId: text('user_id').notNull(),
+    /** "YYYY-MM-DD" — the day being scanned, not when it was claimed. */
+    scanDate: text('scan_date').notNull(),
+    /** Which process holds it. Only the holder may finish or release it. */
+    owner: text('owner').notNull(),
+    /**
+     * When the claim goes stale.
+     *
+     * Refreshed while the scan runs, exactly as `TranscriptionJobStore` does
+     * with `claimed_at`. Without the refresh a scan slower than the timeout
+     * gets its lease stolen mid-flight, which recreates the duplicate this
+     * table exists to prevent — and does it only under load, which is the worst
+     * time to find out.
+     */
+    expiresAt: text('expires_at').notNull(),
+    /**
+     * Set when the day finished. A completed lease is never reclaimed.
+     *
+     * The row deliberately outlives the work. Deleting it on success would
+     * reopen a narrow race: a second scheduler that computed its due-dates
+     * before the first finished still has that date in hand, and would find
+     * nothing standing in its way. `lastCompletedDate` does not close this —
+     * the second process read it too early.
+     */
+    completedAt: text('completed_at'),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.scanDate] })]
+);
+
 export const scannedRepos = pgTable(
   'scanned_repos',
   {

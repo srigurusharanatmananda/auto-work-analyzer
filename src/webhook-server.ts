@@ -365,12 +365,19 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       console.error("Transcription worker failed to start:", error);
     });
 
-    // Finish the in-flight transcription rather than abandoning it — a killed job
-    // wastes the minutes already spent and leaves a claim to reclaim later.
+    // Finish in-flight work rather than abandoning it — a killed job wastes the
+    // minutes already spent and leaves a claim to reclaim later.
+    //
+    // The scan is stopped alongside the transcription for the same reason and
+    // one more: a scan killed partway has already created some of its ClickUp
+    // tasks, and its lease then sits held until the TTL lapses, blocking the
+    // retry that would finish the job.
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.once(signal, () => {
-        console.log(`\n${signal} received — finishing any in-flight transcription...`);
-        void transcriptionWorker.stop().finally(() => process.exit(0));
+        console.log(`\n${signal} received — finishing in-flight work...`);
+        void Promise.allSettled([transcriptionWorker.stop(), scanScheduler.stop()]).finally(() =>
+          process.exit(0)
+        );
       });
     }
 
