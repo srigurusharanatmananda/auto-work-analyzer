@@ -24,6 +24,11 @@ import { Template, UnknownTemplateError } from "../formatting/Template.js";
 import { TemplateError } from "../formatting/TemplateEngine.js";
 import { workItemsFromNotes } from "../sources/NotesWorkSource.js";
 import { workItemsFromTranscript } from "../sources/TranscriptWorkSource.js";
+import {
+  TranscriptGrouping,
+  groupActionItems,
+  isTranscriptGrouping,
+} from "../calls/ActionItemGrouper.js";
 import type { AiClient } from "../ai/AiClient.js";
 import { workItemsFromAnalysis, workItemsFromCommits } from "../sources/GitWorkSource.js";
 import type { CommitGrouper } from "../grouping/CommitGrouper.js";
@@ -60,18 +65,51 @@ export interface PreviewResponse {
    * report nothing rather than claiming a mode they did not exercise.
    */
   grouping?: { mode: "ai" | "heuristic"; fallbackReason?: string };
+  /**
+   * How a transcript's action items were shaped. Reported so the UI can say
+   * "grouped by theme" rather than leaving the reviewer to infer it from the
+   * nesting — and so a silent fall back to `per-item` is visible.
+   */
+  transcriptGrouping?: TranscriptGrouping;
+}
+
+/**
+ * Grouping puts the real work in `subitems`, and `emitSubtasks: false` would
+ * drop it — three parent tasks would be created with nothing inside them and
+ * every action item would be lost, with the preview showing exactly the same
+ * three parents either way.
+ *
+ * Nothing but the transcript grouper produces subitems, so the presence of one
+ * is itself the signal that the user asked for nesting. The template option is
+ * overridden rather than obeyed, and the override is reported.
+ */
+function withSubtasksIfNested(
+  items: WorkItem[],
+  template: Template
+): { template: Template; warning?: string } {
+  const nested = items.some((item) => (item.subitems?.length ?? 0) > 0);
+  if (!nested || template.options.emitSubtasks) return { template };
+
+  return {
+    template: { ...template, options: { ...template.options, emitSubtasks: true } },
+    warning:
+      `Template "${template.name}" has subtasks turned off, but these items are grouped — ` +
+      "subtasks were enabled for this run so the grouped items are not lost.",
+  };
 }
 
 /** Pure: renders items for preview. Performs no I/O. */
 export function buildPreview(items: WorkItem[], template: Template): PreviewResponse {
-  const rendered = renderTasks(items, template);
+  const { template: effective, warning } = withSubtasksIfNested(items, template);
+  const rendered = renderTasks(items, effective);
   const warnings: string[] = [];
   if (items.length === 0) {
     warnings.push("No work items were produced — nothing would be created.");
   }
+  if (warning) warnings.push(warning);
   return {
     items: rendered,
-    markdown: renderMarkdown(items, template),
+    markdown: renderMarkdown(items, effective),
     template: { id: template.id, name: template.name },
     statusMapping: [],
     warnings,
@@ -342,6 +380,13 @@ interface ResolvedItems {
   items: WorkItem[];
   grouping?: PreviewResponse["grouping"];
   /**
+   * Set when transcript items were collapsed into parents. The renderer only
+   * emits subtasks when the template says to, so the route has to override
+   * `emitSubtasks` — without this flag a grouped preview would show three
+   * parents and create three childless tasks, losing every action item.
+   */
+  transcriptGrouping?: TranscriptGrouping;
+  /**
    * Problems the source hit that did not stop it producing a list. Merged into
    * the preview's own warnings, because "extraction partly failed" and "this
    * call had no action items" produce an identical empty list and mean
@@ -547,6 +592,43 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
    * mapping, destination resolution, the preview/create parity — then applies
    * to call-derived work with no second implementation to keep in step.
    */
+  /**
+   * Extract, then group. Shared by the two transcript shapes — pasted text and
+   * a finished job — which differ only in where the text and the call context
+   * come from. They had drifted once already; a second copy of the grouping
+   * step would mean one of the two entry points silently ignoring the option.
+   */
+  const extractAndGroup = async (
+    transcript: string,
+    context: { callTitle?: string; callDate?: string },
+    grouping: TranscriptGrouping
+  ): Promise<ResolvedItems> => {
+    const extracted = await workItemsFromTranscript(transcript, deps.aiClient!, context);
+    const warnings = extracted.reason ? [extracted.reason] : [];
+
+    const grouped = await groupActionItems(
+      extracted.items,
+      grouping,
+      context,
+      deps.aiClient
+    );
+    // The reviewer asked for themes and got a flat list; saying nothing would
+    // look like the option did not work rather than like it was tried.
+    if (grouped.fallbackReason) {
+      warnings.push(`Could not group these items by theme (${grouped.fallbackReason}).`);
+    }
+
+    return {
+      items: grouped.items,
+      transcriptGrouping: grouped.mode,
+      ...(warnings.length > 0 ? { warnings } : {}),
+    };
+  };
+
+  /** Defaults to the unsurprising shape; an unrecognised value is not an error. */
+  const groupingFromBody = (body: any): TranscriptGrouping =>
+    isTranscriptGrouping(body?.grouping) ? body.grouping : "per-item";
+
   const itemsFromBody = async (req: any, res: any): Promise<ResolvedItems | null> => {
     const { notes, transcript, transcriptionJobId, workAnalysis, workItems, commits } = req.body;
     if (rejectConflictingShapes(req, res)) return null;
@@ -620,23 +702,27 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
         return null;
       }
 
-      const extracted = await workItemsFromTranscript(job.transcript ?? "", deps.aiClient, {
-        // Taken from the job, not the request, so the tags match what was
-        // uploaded and cannot drift between the two screens.
-        callDate: job.callDate ?? undefined,
-        callTitle: job.callTitle ?? job.originalFilename,
-      });
+      const resolved = await extractAndGroup(
+        job.transcript ?? "",
+        {
+          // Taken from the job, not the request, so the tags match what was
+          // uploaded and cannot drift between the two screens.
+          callDate: job.callDate ?? undefined,
+          callTitle: job.callTitle ?? job.originalFilename,
+        },
+        groupingFromBody(req.body)
+      );
 
-      const warnings = extracted.reason ? [extracted.reason] : [];
       // A silent recording transcribes to '' and legitimately yields nothing.
       // Saying so beats an unexplained empty list, which reads like a bug.
-      if (!extracted.reason && (job.transcript ?? "").trim().length === 0) {
+      const warnings = [...(resolved.warnings ?? [])];
+      if (warnings.length === 0 && (job.transcript ?? "").trim().length === 0) {
         warnings.push(
           `${job.originalFilename} transcribed to no speech, so there is nothing to extract.`
         );
       }
 
-      return { items: extracted.items, ...(warnings.length > 0 ? { warnings } : {}) };
+      return { ...resolved, ...(warnings.length > 0 ? { warnings } : {}) };
     }
 
     if (typeof transcript === "string") {
@@ -650,19 +736,15 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
         return null;
       }
 
-      const extracted = await workItemsFromTranscript(transcript, deps.aiClient, {
-        callDate: req.body.callDate,
-        callTitle: req.body.callTitle,
-      });
-
-      // Surfaced as a warning rather than swallowed: an empty list because
-      // extraction broke looks exactly like an empty list because the call had
-      // no action items, and the user needs to be able to tell them apart
-      // before concluding the call produced nothing.
-      return {
-        items: extracted.items,
-        ...(extracted.reason ? { warnings: [extracted.reason] } : {}),
-      };
+      // Extraction problems are surfaced as warnings rather than swallowed: an
+      // empty list because extraction broke looks exactly like an empty list
+      // because the call had no action items, and the user needs to tell them
+      // apart before concluding the call produced nothing.
+      return extractAndGroup(
+        transcript,
+        { callDate: req.body.callDate, callTitle: req.body.callTitle },
+        groupingFromBody(req.body)
+      );
     }
     if (workAnalysis) {
       return { items: workItemsFromAnalysis(workAnalysis, req.body.repository) };
@@ -700,7 +782,13 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
 
       res.json({
         success: true,
-        data: { ...withDestination(withSourceWarnings, resolved), grouping },
+        data: {
+          ...withDestination(withSourceWarnings, resolved),
+          grouping,
+          ...(resolvedItems.transcriptGrouping
+            ? { transcriptGrouping: resolvedItems.transcriptGrouping }
+            : {}),
+        },
       });
     } catch (error) {
       handleError(res, error, "Failed to build preview");

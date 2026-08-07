@@ -73,10 +73,21 @@ function stubResolver(): DestinationResolver {
   } as unknown as DestinationResolver;
 }
 
+/**
+ * Consumed in order when set, for the tests that make TWO model calls —
+ * extraction then grouping. Empty means "always answer `modelResponse`", which
+ * is what every single-call test wants.
+ */
+let modelResponses: string[] = [];
+
 const stubAiClient = {
   isConfigured: true,
   providerNames: ["stub"],
-  complete: async () => ({ text: modelResponse, provider: "stub", model: "stub" }),
+  complete: async () => ({
+    text: modelResponses.length > 0 ? modelResponses.shift()! : modelResponse,
+    provider: "stub",
+    model: "stub",
+  }),
 } as unknown as AiClient;
 
 before(async () => {
@@ -491,5 +502,120 @@ describe("transcript → preview → create", () => {
     assert.equal(created.status, 200, JSON.stringify(created.body));
     assert.equal(created.body.data.tasksCreated, 0);
     assert.equal(createdTasks.length, 0);
+  });
+});
+
+/**
+ * Grouping is applied server-side so the preview shows exactly what will be
+ * created. The invariant across all of these: whatever the shape, every action
+ * item that survived the quote validator must still reach ClickUp.
+ */
+describe("grouping a transcript's action items", () => {
+  const SECOND_QUOTE = "I think that one can be shared immediately after this meeting";
+  const LONGER_TRANSCRIPT = [TRANSCRIPT, `Priya: ${SECOND_QUOTE}.`].join("\n");
+  const SECOND_ITEM = {
+    title: "Send the standard NDA",
+    description: "Share the NDA so documents can start moving.",
+    type: "chore",
+    priority: "normal",
+    estimateHours: 1,
+    quote: SECOND_QUOTE,
+    speaker: "Priya",
+  };
+
+  /** Names of every leaf task, however deeply the preview nested them. */
+  function leafNames(items: any[]): string[] {
+    return items.flatMap((entry: any) =>
+      entry.task.subtasks && entry.task.subtasks.length > 0
+        ? entry.task.subtasks.map((sub: any) => sub.name)
+        : [entry.task.name]
+    );
+  }
+
+  test("per-item is the default, and leaves each item its own task", async () => {
+    modelResponses = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] });
+
+    const { body } = await preview({ transcript: LONGER_TRANSCRIPT });
+
+    assert.equal(body.data.items.length, 2);
+    assert.equal(body.data.transcriptGrouping, "per-item");
+  });
+
+  test("single-task nests every item under one parent", async () => {
+    modelResponses = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] });
+
+    const { body } = await preview({
+      transcript: LONGER_TRANSCRIPT,
+      grouping: "single-task",
+      callTitle: "Weekly sync",
+      callDate: "2026-08-07",
+    });
+
+    assert.equal(body.data.items.length, 1);
+    assert.equal(body.data.items[0].task.name, "Weekly sync — 2026-08-07");
+    assert.equal(body.data.transcriptGrouping, "single-task");
+    // The whole point: the built-in template has emitSubtasks off, so without
+    // the override this parent would be created empty.
+    assert.equal(body.data.items[0].task.subtasks.length, 2);
+  });
+
+  test("no action item is lost to grouping", async () => {
+    modelResponses = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] });
+
+    const { body } = await preview({ transcript: LONGER_TRANSCRIPT, grouping: "single-task" });
+
+    assert.deepEqual(leafNames(body.data.items).sort(), [ACTION_ITEM.title, SECOND_ITEM.title].sort());
+  });
+
+  test("by-theme uses the model's clusters", async () => {
+    modelResponses = [
+      JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] }),
+      JSON.stringify({
+        groups: [
+          { title: "Client paperwork", description: "", type: "chore", itemIndexes: [0, 1] },
+        ],
+      }),
+    ];
+
+    const { body } = await preview({ transcript: LONGER_TRANSCRIPT, grouping: "by-theme" });
+
+    assert.equal(body.data.transcriptGrouping, "by-theme");
+    assert.equal(body.data.items[0].task.name, "Client paperwork");
+    assert.deepEqual(leafNames(body.data.items).sort(), [ACTION_ITEM.title, SECOND_ITEM.title].sort());
+  });
+
+  /**
+   * A grouping failure must not cost the user their extraction. They get the
+   * flat list they would have got anyway, plus a warning saying why.
+   */
+  test("a grouping the model botches degrades to per-item and says so", async () => {
+    modelResponses = [
+      JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] }),
+      // Well-formed, and quietly omits item 1.
+      JSON.stringify({ groups: [{ title: "Partial", description: "", type: "chore", itemIndexes: [0] }] }),
+    ];
+
+    const { body } = await preview({ transcript: LONGER_TRANSCRIPT, grouping: "by-theme" });
+
+    assert.equal(body.data.transcriptGrouping, "per-item");
+    assert.equal(body.data.items.length, 2);
+    assert.ok(
+      body.data.warnings.some((w: string) => /could not group/i.test(w)),
+      `expected a grouping warning, got ${JSON.stringify(body.data.warnings)}`
+    );
+  });
+
+  /** An unrecognised value is not worth a 400; it means "the normal shape". */
+  test("an unknown grouping falls back to per-item rather than erroring", async () => {
+    modelResponses = [];
+    modelResponse = JSON.stringify({ items: [ACTION_ITEM, SECOND_ITEM] });
+
+    const { status, body } = await preview({ transcript: LONGER_TRANSCRIPT, grouping: "sideways" });
+
+    assert.equal(status, 200);
+    assert.equal(body.data.transcriptGrouping, "per-item");
   });
 });

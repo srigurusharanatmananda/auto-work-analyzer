@@ -38,6 +38,59 @@ describe("buildPreview", () => {
     const broken = { ...standard, nameTemplate: "{{nonexistent}}" };
     expect(() => buildPreview([makeWorkItem()], broken)).toThrow(/nonexistent/);
   });
+
+  /**
+   * The failure this guards against is silent and total: grouped items live in
+   * `subitems`, and a template with `emitSubtasks: false` renders the parents
+   * and drops every child. The preview looks identical either way, so nobody
+   * finds out until they open the empty parent in ClickUp.
+   */
+  describe("grouped items", () => {
+    const grouped = () =>
+      makeWorkItem({
+        title: "Client document pack",
+        subitems: [makeWorkItem({ title: "Send the NDA" }), makeWorkItem({ title: "Share policy" })],
+      });
+
+    test("emits subtasks even when the template turns them off", () => {
+      const noSubtasks = { ...standard, options: { ...standard.options, emitSubtasks: false } };
+
+      const preview = buildPreview([grouped()], noSubtasks);
+
+      expect(preview.items[0]!.task.subtasks).toHaveLength(2);
+      expect(preview.items[0]!.task.subtasks!.map((sub) => sub.name)).toEqual([
+        "Send the NDA",
+        "Share policy",
+      ]);
+    });
+
+    test("says that it overrode the template", () => {
+      const noSubtasks = { ...standard, options: { ...standard.options, emitSubtasks: false } };
+
+      const preview = buildPreview([grouped()], noSubtasks);
+
+      expect(preview.warnings.some((w) => w.includes("subtasks were enabled"))).toBe(true);
+    });
+
+    /** The override is for nesting only; a flat list must not silently change. */
+    test("leaves an ungrouped list alone", () => {
+      const noSubtasks = { ...standard, options: { ...standard.options, emitSubtasks: false } };
+
+      const preview = buildPreview([makeWorkItem({ title: "Standalone" })], noSubtasks);
+
+      expect(preview.items[0]!.task.subtasks).toBeUndefined();
+      expect(preview.warnings).toEqual([]);
+    });
+
+    test("does not warn when the template already emits subtasks", () => {
+      const withSubtasks = { ...standard, options: { ...standard.options, emitSubtasks: true } };
+
+      const preview = buildPreview([grouped()], withSubtasks);
+
+      expect(preview.items[0]!.task.subtasks).toHaveLength(2);
+      expect(preview.warnings).toEqual([]);
+    });
+  });
 });
 
 /** Minimal stand-in for ClickUpService — only `createTask` is ever called. */

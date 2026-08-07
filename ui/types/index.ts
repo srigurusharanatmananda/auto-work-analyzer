@@ -219,6 +219,12 @@ export interface PreviewWorkItem {
   completedDate?: string;
   tags: string[];
   provenance: WorkItemProvenance;
+  /**
+   * Present only when a transcript's action items were grouped. The leaves are
+   * the extracted items and the ones carrying the verified quotes; a parent is
+   * a synthesised container and has no quote of its own.
+   */
+  subitems?: PreviewWorkItem[];
 }
 
 /** One entry of `POST /api/preview-tasks` -> `data.items`. */

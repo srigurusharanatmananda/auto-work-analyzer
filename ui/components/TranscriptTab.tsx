@@ -49,7 +49,39 @@ interface PreviewState {
   warnings: string[];
   destination: { id: string; name: string; listName?: string } | null;
   template: { id: string; name: string };
+  /** What the server actually did, which is not always what was asked for. */
+  grouping?: TranscriptGrouping;
 }
+
+type TranscriptGrouping = 'per-item' | 'single-task' | 'by-theme';
+
+/**
+ * Eight tasks from one call is accurate and unusable. The choice is offered
+ * before extraction rather than after because grouping happens server-side, so
+ * the preview shows the real shape — regrouping afterwards would mean previewing
+ * one thing and creating another.
+ */
+const GROUPING_CHOICES: Array<{
+  value: TranscriptGrouping;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: 'per-item',
+    label: 'One task per item',
+    hint: 'Every action item is its own task. Most granular.',
+  },
+  {
+    value: 'single-task',
+    label: 'One task for the call',
+    hint: 'A single task named after the call, with each item as a subtask.',
+  },
+  {
+    value: 'by-theme',
+    label: 'Group related items',
+    hint: 'Clusters items that belong to the same piece of work. One extra model call.',
+  },
+];
 
 const SAMPLE_TRANSCRIPT = `Priya: Before we wrap up — the CSV export is dropping the last row for anyone with more than a thousand records.
 Sam: I can take that. I'll have a fix out by Thursday.
@@ -64,6 +96,7 @@ interface PreviewPayload {
   warnings?: string[];
   destination?: PreviewState['destination'];
   template: PreviewState['template'];
+  transcriptGrouping?: TranscriptGrouping;
 }
 
 interface CreatePayload {
@@ -72,11 +105,83 @@ interface CreatePayload {
   failedTasks?: unknown[];
 }
 
+/**
+ * One item's detail, used for both a top-level entry and a grouped subitem.
+ *
+ * Shared rather than duplicated because the quote block is the whole point of
+ * this screen: two copies is how a subitem quietly ends up rendered without its
+ * citation, which turns a reviewed list back into an unreviewed one.
+ */
+function ItemBody({
+  name,
+  item,
+  compact = false,
+}: {
+  name: string;
+  item: PreviewWorkItem;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      <h3 className={compact ? 'text-sm font-medium text-foreground' : 'font-semibold text-foreground'}>
+        {name}
+      </h3>
+
+      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+        <span className="rounded bg-primary/20 px-2 py-0.5 text-primary">{item.type}</span>
+        <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+          {item.priority} priority
+        </span>
+        <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+          ~{item.estimateHours}h
+        </span>
+        {item.status && (
+          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+            {item.status}
+          </span>
+        )}
+      </div>
+
+      {item.description && (
+        <p className="mt-3 text-sm text-foreground-secondary">{item.description}</p>
+      )}
+
+      {/* The evidence. Always visible, never behind a toggle — a citation
+          nobody reads is decoration. A grouped parent has none, because it is
+          a synthesis rather than something anybody said. */}
+      {item.provenance.quote && (
+        <blockquote className="mt-3 border-l-4 border-border-hover pl-4">
+          <p className="text-sm italic text-foreground-secondary">“{item.provenance.quote}”</p>
+          {item.provenance.speaker && (
+            <footer className="mt-1 text-xs text-foreground-tertiary">
+              — {item.provenance.speaker}
+            </footer>
+          )}
+        </blockquote>
+      )}
+    </>
+  );
+}
+
+/**
+ * Action items, not tasks. Once grouping is on the two diverge — three parents
+ * holding eight items — and "Found 3 action items" would understate what the
+ * model actually extracted.
+ */
+function countActionItems(items: PreviewWorkItem[]): number {
+  return items.reduce(
+    (total, item) =>
+      total + (item.subitems && item.subitems.length > 0 ? countActionItems(item.subitems) : 1),
+    0
+  );
+}
+
 export default function TranscriptTab() {
   const [transcript, setTranscript] = useState('');
   const [fileName, setFileName] = useState('');
   const [callTitle, setCallTitle] = useState('');
   const [callDate, setCallDate] = useState('');
+  const [grouping, setGrouping] = useState<TranscriptGrouping>('per-item');
 
   /**
    * The in-flight transcription, or null. Held as the job itself rather than a
@@ -194,6 +299,7 @@ export default function TranscriptTab() {
     try {
       const payload = await api.post<PreviewPayload>('/preview-tasks', {
         transcript,
+        grouping,
         ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
         ...(callDate ? { callDate } : {}),
       });
@@ -204,13 +310,18 @@ export default function TranscriptTab() {
         warnings: payload.warnings ?? [],
         destination: payload.destination ?? null,
         template: payload.template,
+        grouping: payload.transcriptGrouping,
       });
       setApproved(new Set(items.map((_, index) => index)));
 
+      const found = countActionItems(items.map((entry) => entry.workItem));
       toast.success(
-        items.length === 0
+        found === 0
           ? 'No action items found in this call'
-          : `Found ${items.length} action item${items.length === 1 ? '' : 's'} to review`,
+          : `Found ${found} action item${found === 1 ? '' : 's'}` +
+              (found === items.length
+                ? ' to review'
+                : ` in ${items.length} task${items.length === 1 ? '' : 's'} to review`),
         { id: toastId, duration: 4000 }
       );
     } catch (caught) {
@@ -262,6 +373,7 @@ export default function TranscriptTab() {
   };
 
   const allSelected = preview !== null && approved.size === preview.items.length;
+  const approvedActionItems = countActionItems(approvedItems);
 
   return (
     <div className="space-y-6">
@@ -413,6 +525,44 @@ export default function TranscriptTab() {
             Both become tags on the created tasks, so you can find everything a call produced.
           </p>
 
+          {/* How many tasks a call becomes. */}
+          <fieldset>
+            <legend className="mb-2 block text-sm font-semibold text-foreground">
+              How should the action items be filed?
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {GROUPING_CHOICES.map((choice) => {
+                const selected = grouping === choice.value;
+                return (
+                  <label
+                    key={choice.value}
+                    className={
+                      'cursor-pointer rounded-lg border p-3 transition-colors ' +
+                      (selected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-background-tertiary hover:border-border-hover')
+                    }
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="grouping"
+                        value={choice.value}
+                        checked={selected}
+                        onChange={() => setGrouping(choice.value)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span className="text-sm font-medium text-foreground">{choice.label}</span>
+                    </span>
+                    <span className="mt-1 block text-xs text-foreground-tertiary">
+                      {choice.hint}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+
           <Button
             type="button"
             onClick={handleExtract}
@@ -443,8 +593,10 @@ export default function TranscriptTab() {
             <div>
               <h2 className="text-xl font-bold text-foreground">Review before creating</h2>
               <p className="mt-1 text-sm text-foreground-secondary">
-                Each item quotes the sentence it came from. Uncheck anything that should not
-                become a task.
+                Each action item quotes the sentence it came from. Uncheck anything that should
+                not become a task.
+                {preview.grouping === 'single-task' && ' Items are nested under one task for the call.'}
+                {preview.grouping === 'by-theme' && ' Related items have been grouped together.'}
               </p>
             </div>
             {preview.items.length > 0 && (
@@ -511,44 +663,20 @@ export default function TranscriptTab() {
                         className="mt-1 h-5 w-5 accent-primary"
                       />
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground">{entry.task.name}</h3>
+                        <ItemBody name={entry.task.name} item={item} />
 
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                          <span className="rounded bg-primary/20 px-2 py-0.5 text-primary">
-                            {item.type}
-                          </span>
-                          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
-                            {item.priority} priority
-                          </span>
-                          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
-                            ~{item.estimateHours}h
-                          </span>
-                          {item.status && (
-                            <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
-                              {item.status}
-                            </span>
-                          )}
-                        </div>
-
-                        {item.description && (
-                          <p className="mt-3 text-sm text-foreground-secondary">
-                            {item.description}
-                          </p>
-                        )}
-
-                        {/* The evidence. Always visible, never behind a toggle —
-                            a citation nobody reads is decoration. */}
-                        {item.provenance.quote && (
-                          <blockquote className="mt-3 border-l-4 border-border-hover pl-4">
-                            <p className="text-sm italic text-foreground-secondary">
-                              “{item.provenance.quote}”
-                            </p>
-                            {item.provenance.speaker && (
-                              <footer className="mt-1 text-xs text-foreground-tertiary">
-                                — {item.provenance.speaker}
-                              </footer>
-                            )}
-                          </blockquote>
+                        {/* Grouped items. The parent is a container the model
+                            or the app wrote; these are the extracted items and
+                            the ones carrying the checked quotes, so they have to
+                            be visible or the review is reviewing nothing. */}
+                        {item.subitems && item.subitems.length > 0 && (
+                          <ul className="mt-4 space-y-3 border-l-2 border-border pl-4">
+                            {item.subitems.map((sub, subIndex) => (
+                              <li key={subIndex}>
+                                <ItemBody name={sub.title} item={sub} compact />
+                              </li>
+                            ))}
+                          </ul>
                         )}
                       </div>
                     </div>
@@ -586,7 +714,10 @@ export default function TranscriptTab() {
                       ? 'Tasks created'
                       : approved.size === 0
                         ? 'Nothing selected'
-                        : `Create ${approved.size} task${approved.size === 1 ? '' : 's'} in ClickUp`}
+                        : `Create ${approved.size} task${approved.size === 1 ? '' : 's'}` +
+                          (approvedActionItems > approved.size
+                            ? ` (${approvedActionItems} action items) in ClickUp`
+                            : ' in ClickUp')}
                   </span>
                 )}
               </Button>
