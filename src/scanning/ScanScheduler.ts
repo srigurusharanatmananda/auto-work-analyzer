@@ -86,12 +86,12 @@ export class ScanScheduler {
 
       for (const date of this.datesDue(settings.lastCompletedDate, now, settings.scanTime)) {
         try {
-          const ran = await this.leases.withLease(userId, date, this.owner, () =>
+          const outcome = await this.leases.withLease(userId, date, this.owner, () =>
             this.deps.runScan(userId, date)
           );
           // `lastCompletedDate` is recorded by runScan on success, deliberately
           // not here: marking it done regardless would skip a failed day forever.
-          if (!ran) {
+          if (!outcome.acquired) {
             // Another process has this day. Not a warning — this is the
             // mechanism working, and on a two-instance deployment it is the
             // majority outcome.

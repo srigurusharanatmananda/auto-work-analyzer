@@ -37,9 +37,38 @@ export const LEASE_TTL_MS = 5 * 60 * 1000;
 /** How often a holder refreshes while working. Comfortably inside the TTL. */
 export const HEARTBEAT_MS = 60 * 1000;
 
+/**
+ * Whether the work ran, and what it returned.
+ *
+ * Both members declare both fields, as `ActionItemOutcome` does and for the
+ * same reason: `strictNullChecks` is off repo-wide, which defeats narrowing a
+ * discriminated union by its flag.
+ */
+export type LeaseOutcome<T> =
+  | { acquired: true; result: T }
+  | { acquired: false; result?: undefined };
+
 /** UTC ISO, matching the text timestamps the rest of the schema stores. */
 function stamp(at: number): string {
   return new Date(at).toISOString();
+}
+
+export interface ClaimOptions {
+  /**
+   * Allow retaking a day that already finished. For a person who asked, never
+   * for the scheduler.
+   *
+   * The two callers want different things from the same table. The scheduler
+   * must never redo a completed day — that is the race the completed row
+   * exists to close. But a manual re-run is a deliberate act, usually right
+   * after fixing the settings that made the first run wrong, and a rule that
+   * blocked it forever would be answering a question nobody asked.
+   *
+   * What this does NOT permit, in either mode, is overriding a claim that is
+   * live. Concurrency is the thing that duplicates tasks, and no amount of
+   * "the user asked for it" makes two simultaneous scans of one day correct.
+   */
+  redoCompleted?: boolean;
 }
 
 export interface ScanLeaseStoreDeps {
@@ -73,19 +102,28 @@ export class ScanLeaseStore {
    * and when that test fails the statement returns no rows rather than
    * blocking. Returning false is the normal, expected outcome on the loser.
    */
-  async claim(userId: string, scanDate: string, owner: string): Promise<boolean> {
+  async claim(
+    userId: string,
+    scanDate: string,
+    owner: string,
+    options: ClaimOptions = {}
+  ): Promise<boolean> {
     const now = this.now();
     const expiresAt = stamp(now + this.ttlMs);
     const nowText = stamp(now);
+    const redo = options.redoCompleted === true;
 
     const rows = await this.sql<Array<{ owner: string }>>`
       INSERT INTO scan_leases (user_id, scan_date, owner, expires_at, completed_at)
       VALUES (${userId}, ${scanDate}, ${owner}, ${expiresAt}, NULL)
       ON CONFLICT (user_id, scan_date) DO UPDATE
          SET owner = EXCLUDED.owner,
-             expires_at = EXCLUDED.expires_at
-       WHERE scan_leases.completed_at IS NULL
-         AND scan_leases.expires_at < ${nowText}
+             expires_at = EXCLUDED.expires_at,
+             -- Back to in-progress. Only reachable via redoCompleted, since
+             -- otherwise a completed row fails the WHERE below.
+             completed_at = EXCLUDED.completed_at
+       WHERE (scan_leases.completed_at IS NULL AND scan_leases.expires_at < ${nowText})
+          OR (${redo} AND scan_leases.completed_at IS NOT NULL)
       RETURNING owner
     `;
 
@@ -152,13 +190,14 @@ export class ScanLeaseStore {
    *
    * Returns false when another process holds the day, which is not an error.
    */
-  async withLease(
+  async withLease<T>(
     userId: string,
     scanDate: string,
     owner: string,
-    work: () => Promise<void>
-  ): Promise<boolean> {
-    if (!(await this.claim(userId, scanDate, owner))) return false;
+    work: () => Promise<T>,
+    options: ClaimOptions = {}
+  ): Promise<LeaseOutcome<T>> {
+    if (!(await this.claim(userId, scanDate, owner, options))) return { acquired: false };
 
     const beat = setInterval(() => {
       void this.heartbeat(userId, scanDate, owner).catch((error) => {
@@ -171,15 +210,14 @@ export class ScanLeaseStore {
     beat.unref?.();
 
     try {
-      await work();
+      const result = await work();
       await this.complete(userId, scanDate, owner);
+      return { acquired: true, result };
     } catch (error) {
       await this.release(userId, scanDate, owner).catch((): void => {});
       throw error;
     } finally {
       clearInterval(beat);
     }
-
-    return true;
   }
 }

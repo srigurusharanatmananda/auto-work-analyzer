@@ -12,11 +12,25 @@ import { anyRole } from "../middleware/policy.js";
 import { ScanRegistry } from "../scanning/ScanRegistry.js";
 import { DailyScanner } from "../scanning/DailyScanner.js";
 import { discoverRepos } from "../scanning/RepoDiscovery.js";
+import { ScanLeaseStore } from "../scanning/ScanLeaseStore.js";
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 
 export interface ScanningRouterDeps {
   registry: ScanRegistry;
   scanner: DailyScanner;
   discover?: typeof discoverRepos;
+  /**
+   * The same lease the scheduler uses, and it must be the same table.
+   *
+   * A manual run that did not claim would be a second scan of a day the
+   * scheduler is already scanning, duplicating every task — the exact hole the
+   * lease closed between two schedulers, reopened between a scheduler and a
+   * person. Injected so tests can point it at their schema.
+   */
+  leases?: ScanLeaseStore;
+  /** This process's identity in the lease table. See `ScanScheduler`. */
+  owner?: string;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -26,6 +40,8 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
   const router = Router();
   const userIdOf = (req: any): string => req.user!.userId;
   const discover = deps.discover ?? discoverRepos;
+  const leases = deps.leases ?? new ScanLeaseStore();
+  const leaseOwner = deps.owner ?? `${hostname()}:manual:${randomUUID()}`;
 
   const fail = (res: any, error: string, status = 400): void => {
     res.status(status).json({ success: false, error });
@@ -121,10 +137,43 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
 
     try {
       const userId = userIdOf(req);
-      const summary = await deps.scanner.run(userId, {
-        date: date ?? new Date().toISOString().split("T")[0]!,
-        dryRun: dryRun === true ? true : undefined,
+      const scanDate = date ?? new Date().toISOString().split("T")[0]!;
+      const isDryRun = dryRun === true;
+
+      const runIt = () =>
+        deps.scanner.run(userId, { date: scanDate, ...(isDryRun ? { dryRun: true } : {}) });
+
+      // A dry run creates nothing, so it takes no lease. Leasing it would let a
+      // preview block the real scan behind it — and, worse, a dry run that
+      // "completed" the day would stop the scan that was about to do the work.
+      if (isDryRun) {
+        return res.json({ success: true, data: await runIt() });
+      }
+
+      // Everything else goes through the same lease the scheduler uses.
+      // Without this the manual button is a way to run a second scan of a day
+      // the scheduler is already scanning, which duplicates every task it
+      // creates — the lease closed that hole for two schedulers and would have
+      // left it wide open for one scheduler and one impatient person.
+      //
+      // `redoCompleted` because this is someone asking on purpose, usually
+      // straight after fixing the settings that made the first run wrong. What
+      // it still cannot do is override a scan that is currently running.
+      const outcome = await leases.withLease(userId, scanDate, leaseOwner, runIt, {
+        redoCompleted: true,
       });
+
+      if (!outcome.acquired) {
+        // 409, not 400: the request is fine, the timing is not, and retrying
+        // shortly is exactly the right response.
+        return fail(
+          res,
+          `A scan for ${scanDate} is already running. Wait for it to finish before starting another.`,
+          409
+        );
+      }
+
+      const summary = outcome.result;
       // A dry run is not a run: persisting it would overwrite the last real
       // run's summary, hiding the failures the user actually needs to see.
       if (!summary.dryRun) await deps.registry.saveRun(userId, summary);

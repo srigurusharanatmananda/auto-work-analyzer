@@ -11,6 +11,7 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import { createScanningRouter } from "./scanning.routes.js";
+import { ScanLeaseStore } from "../scanning/ScanLeaseStore.js";
 import { ScanRegistry } from "../scanning/ScanRegistry.js";
 import { createTestDatabase, type TestDatabase } from "../testing/postgresFixture.js";
 import { createTestUser } from "../testing/authFixture.js";
@@ -23,6 +24,8 @@ process.chdir(tmpDbDir);
 let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 let authHeader: string;
+/** The caller's id — the leases in these tests must be filed against them. */
+let userId: string;
 let db: TestDatabase;
 let registry: ScanRegistry;
 let runCalls: Array<{ userId: string; date: string; dryRun?: boolean }>;
@@ -53,6 +56,11 @@ before(async () => {
     createScanningRouter({
       registry,
       scanner,
+      // Pointed at the test schema, exactly as `registry` is. A router left to
+      // build its own store reaches for the global pool — a different database
+      // entirely, and the failure mode is a hang rather than an error.
+      leases: new ScanLeaseStore({ sql: db }),
+      owner: "test-request",
       discover: async () => ({
         repos: [
           { path: "/x/alpha", slug: "kailasa-ngpt/alpha", owner: "kailasa-ngpt", name: "alpha" },
@@ -67,7 +75,9 @@ before(async () => {
   // A real user row, not just a signature: `authenticate` re-reads the user on
   // every request, so a token for an id that exists in no users table is
   // correctly rejected.
-  authHeader = (await createTestUser()).authHeader;
+  const user = await createTestUser();
+  authHeader = user.authHeader;
+  userId = user.userId;
 });
 
 after(async () => {
@@ -204,5 +214,104 @@ describe("scanning routes", () => {
     });
     assert.equal(res.status, 400);
     assert.equal(runCalls.length, 0, "nothing may be scanned on a rejected date");
+  });
+});
+
+describe("POST /run — not while another scan holds the day", () => {
+  /**
+   * Dates that no other test in this file touches.
+   *
+   * Not fussiness: the first version of these used today's date, which an
+   * earlier test had already scanned and COMPLETED. The setup claim then
+   * silently returned false, nothing was held, and the assertion failed for a
+   * reason that had nothing to do with the code. Hence `hold()` asserting that
+   * the claim it just made actually took.
+   */
+  const HELD = "2026-08-11";
+  const FINISHED = "2026-08-12";
+  const PREVIEWED = "2026-08-13";
+  const CONTESTED = "2026-08-14";
+
+  /** Claims a day as if a scheduler in another process were scanning it. */
+  async function hold(scanDate: string, complete = false): Promise<ScanLeaseStore> {
+    const store = new ScanLeaseStore({ sql: db });
+    assert.equal(
+      await store.claim(userId, scanDate, "the-scheduler"),
+      true,
+      `setup failed: could not claim ${scanDate}`
+    );
+    if (complete) await store.complete(userId, scanDate, "the-scheduler");
+    return store;
+  }
+
+  const run = (body: unknown) =>
+    fetch(`${baseUrl}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: authHeader },
+      body: JSON.stringify(body),
+    });
+
+  /**
+   * The hole the scheduler's lease left open.
+   *
+   * Two schedulers can no longer scan one day twice — but one scheduler and one
+   * impatient person could, and the manual button is the easiest way to reach
+   * it. Both scans create every task, because dedup reads `processed_commits`
+   * before either has written.
+   */
+  test("refuses with 409 while the scheduler holds the day", async () => {
+    await hold(HELD);
+
+    const before = runCalls.length;
+    const response = await run({ date: HELD });
+
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error, /already running/);
+    assert.equal(runCalls.length, before, "the scan must not have run at all");
+  });
+
+  /**
+   * A deliberate re-run, usually straight after fixing the settings that made
+   * the first one wrong. The completed row must not block this forever.
+   */
+  test("allows re-running a day that already finished", async () => {
+    await hold(FINISHED, true);
+
+    const before = runCalls.length;
+    const response = await run({ date: FINISHED });
+
+    assert.equal(response.status, 200);
+    assert.equal(runCalls.length, before + 1);
+  });
+
+  /**
+   * A dry run creates nothing, so it takes no lease at all. Leasing it would
+   * let a preview block the real scan behind it — and a dry run that
+   * "completed" the day would stop the scan about to do the actual work.
+   */
+  test("a dry run is allowed even while the day is held, and claims nothing", async () => {
+    await hold(PREVIEWED);
+
+    const response = await run({ date: PREVIEWED, dryRun: true });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).data.dryRun, true);
+
+    // The scheduler still owns the day; the preview did not touch the claim.
+    const rows = await db.sql<Array<{ owner: string }>>`
+      SELECT owner FROM scan_leases WHERE user_id = ${userId} AND scan_date = ${PREVIEWED}
+    `;
+    assert.equal(rows[0]?.owner, "the-scheduler");
+  });
+
+  /** Two people hitting the button at once is the same race, from one process. */
+  test("two simultaneous manual runs scan the day once", async () => {
+    const before = runCalls.length;
+
+    const [a, b] = await Promise.all([run({ date: CONTESTED }), run({ date: CONTESTED })]);
+    const statuses = [a.status, b.status].sort();
+
+    assert.deepEqual(statuses, [200, 409]);
+    assert.equal(runCalls.length, before + 1);
   });
 });

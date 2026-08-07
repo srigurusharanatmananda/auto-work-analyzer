@@ -203,7 +203,7 @@ describe("ScanLeaseStore — withLease", () => {
       ran += 1;
     });
 
-    assert.equal(acted, true);
+    assert.equal(acted.acquired, true);
     assert.equal(ran, 1);
     // Done means done, whatever the clock says later.
     const muchLater = { now: clock.now + 30 * 24 * 60 * 60 * 1000 };
@@ -227,7 +227,7 @@ describe("ScanLeaseStore — withLease", () => {
     ]);
 
     assert.equal(ran, 1);
-    assert.equal([a, b].filter(Boolean).length, 1);
+    assert.equal([a, b].filter((outcome) => outcome.acquired).length, 1);
   });
 
   test("does not run the work at all when the day is taken", async () => {
@@ -239,7 +239,7 @@ describe("ScanLeaseStore — withLease", () => {
       ran = true;
     });
 
-    assert.equal(acted, false);
+    assert.equal(acted.acquired, false);
     assert.equal(ran, false);
   });
 
@@ -255,5 +255,62 @@ describe("ScanLeaseStore — withLease", () => {
     );
 
     assert.equal(await storeAt(clock).claim("u1", "2026-08-07", "beta"), true);
+  });
+});
+
+describe("ScanLeaseStore — redoCompleted", () => {
+  /**
+   * The manual re-run. Someone who has just fixed the settings that made this
+   * morning's scan wrong must be able to run it again; a completed row that
+   * blocked that forever would be answering a question nobody asked.
+   */
+  test("a completed day can be retaken deliberately", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    const alpha = storeAt(clock);
+    await alpha.claim("u1", "2026-08-07", "alpha");
+    await alpha.complete("u1", "2026-08-07", "alpha");
+
+    assert.equal(
+      await storeAt(clock).claim("u1", "2026-08-07", "person", { redoCompleted: true }),
+      true
+    );
+  });
+
+  /**
+   * The line that must not move. Concurrency is what duplicates tasks, and no
+   * amount of "the user asked for it" makes two simultaneous scans of one day
+   * correct — so a LIVE claim is off limits in both modes.
+   */
+  test("a live claim cannot be overridden, even deliberately", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    await storeAt(clock).claim("u1", "2026-08-07", "scheduler");
+
+    assert.equal(
+      await storeAt(clock).claim("u1", "2026-08-07", "person", { redoCompleted: true }),
+      false
+    );
+  });
+
+  test("retaking a completed day puts it back in progress", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    const alpha = storeAt(clock);
+    await alpha.claim("u1", "2026-08-07", "alpha");
+    await alpha.complete("u1", "2026-08-07", "alpha");
+    await storeAt(clock).claim("u1", "2026-08-07", "person", { redoCompleted: true });
+
+    // In progress means a third party is refused, not waved through.
+    assert.equal(await storeAt(clock).claim("u1", "2026-08-07", "other"), false);
+    // And the scheduler's ordinary claim still sees it as unfinished work.
+    const later = { now: clock.now + LEASE_TTL_MS + 1000 };
+    assert.equal(await storeAt(later).claim("u1", "2026-08-07", "other"), true);
+  });
+
+  test("the scheduler's ordinary claim still refuses a completed day", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    const alpha = storeAt(clock);
+    await alpha.claim("u1", "2026-08-07", "alpha");
+    await alpha.complete("u1", "2026-08-07", "alpha");
+
+    assert.equal(await storeAt(clock).claim("u1", "2026-08-07", "scheduler"), false);
   });
 });
