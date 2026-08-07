@@ -102,11 +102,128 @@ describe("validateActionItems — quote checking", () => {
     expect(outcome.reason).toMatch(/cites no quote/i);
   });
 
-  test("rejects two items citing the same sentence", () => {
-    const outcome = ok([VALID, { ...VALID, title: "Also fix the CSV export" }]);
+});
+
+/**
+ * One sentence can carry more than one commitment, and this used to lose them
+ * all.
+ *
+ * The old rule rejected the whole response whenever two items shared a quote,
+ * on the theory that a shared quote meant a mis-split. For "I'll fix the export
+ * and Priya will send the NDA" that is simply wrong — and rejecting the chunk
+ * discarded both real items plus everything else extracted alongside them,
+ * with no error the user ever saw. Observed live.
+ */
+describe("validateActionItems — one sentence, several commitments", () => {
+  /** Both commitments live in this one line, and both cite it correctly. */
+  const SHARED =
+    "Sam: I'll fix the export bug and Priya will send the NDA straight after this meeting.";
+  const TWO_JOBS = [TRANSCRIPT, SHARED].join("\n");
+  const QUOTE = "I'll fix the export bug and Priya will send the NDA straight after this meeting";
+
+  const item = (title: string, description: string) => ({
+    ...VALID,
+    title,
+    description,
+    quote: QUOTE,
+  });
+
+  test("keeps two distinct requests that cite the same sentence", () => {
+    const outcome = validateActionItems(
+      {
+        items: [
+          item("Fix the export bug", "Sam is fixing the export."),
+          item("Send the NDA", "Priya is sending the NDA after the meeting."),
+        ],
+      },
+      TWO_JOBS
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.items?.map((entry) => entry.title)).toEqual([
+      "Fix the export bug",
+      "Send the NDA",
+    ]);
+  });
+
+  /**
+   * The case the original rule was actually built for — but dropped rather
+   * than fatal, because losing the whole chunk to avoid one duplicate costs
+   * more than the duplicate does.
+   */
+  test("drops a word-for-word repeat instead of rejecting everything", () => {
+    const outcome = validateActionItems(
+      {
+        items: [
+          item("Fix the export bug", "Sam is fixing the export."),
+          item("Fix the export bug", "Sam is fixing the export."),
+          item("Send the NDA", "Priya is sending the NDA after the meeting."),
+        ],
+      },
+      TWO_JOBS
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.items?.map((entry) => entry.title)).toEqual([
+      "Fix the export bug",
+      "Send the NDA",
+    ]);
+  });
+
+  /** A silent drop is how a list quietly becomes incomplete. */
+  test("says so when it drops one", () => {
+    const outcome = validateActionItems(
+      {
+        items: [
+          item("Fix the export bug", "Sam is fixing the export."),
+          item("Fix the export bug", "Sam is fixing the export."),
+        ],
+      },
+      TWO_JOBS
+    );
+
+    expect(outcome.warnings).toHaveLength(1);
+    expect(outcome.warnings?.[0]).toMatch(/repeats an earlier item/i);
+  });
+
+  test("a duplicate differing only in case or spacing is still a duplicate", () => {
+    const outcome = validateActionItems(
+      {
+        items: [
+          item("Fix the export bug", "Sam is fixing the export."),
+          item("FIX  THE   EXPORT BUG", "Sam is  fixing the export."),
+        ],
+      },
+      TWO_JOBS
+    );
+
+    expect(outcome.items).toHaveLength(1);
+  });
+
+  /**
+   * Still fatal past the cap. A sentence yielding four separate requests is
+   * the mis-split the original rule existed for, and nothing in that response
+   * has been read carefully enough to file.
+   */
+  test("rejects the response when one sentence is shredded into too many items", () => {
+    const outcome = validateActionItems(
+      {
+        items: [
+          item("One", "a"),
+          item("Two", "b"),
+          item("Three", "c"),
+          item("Four", "d"),
+        ],
+      },
+      TWO_JOBS
+    );
 
     expect(outcome.ok).toBe(false);
-    expect(outcome.reason).toMatch(/filed twice/i);
+    expect(outcome.reason).toMatch(/mis-split/i);
+  });
+
+  test("a clean response carries no warnings", () => {
+    expect(ok([VALID]).warnings).toBeUndefined();
   });
 });
 

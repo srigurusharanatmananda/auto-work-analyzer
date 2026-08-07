@@ -18,7 +18,7 @@
  */
 
 import { AiClient } from "../ai/AiClient.js";
-import { validateActionItems } from "./actionItemSchema.js";
+import { actionItemIdentity, validateActionItems } from "./actionItemSchema.js";
 import type { ActionItem } from "./actionItemSchema.js";
 
 /**
@@ -36,8 +36,17 @@ export interface ExtractionResult {
    * Why extraction produced nothing, or produced less than it might have.
    * Absent on a clean run. Present with items when SOME chunks failed —
    * a partial result the caller must be able to notice.
+   *
+   * Load-bearing: callers treat this as "do not trust this as the complete
+   * list". Only set it for a genuine shortfall.
    */
   reason?: string;
+  /**
+   * Things worth saying that are NOT a shortfall — currently, duplicate items
+   * dropped by the validator. The list is complete; this explains why it is
+   * shorter than what the model returned.
+   */
+  notes?: string;
 }
 
 export class ActionItemExtractor {
@@ -64,6 +73,8 @@ export class ActionItemExtractor {
     const chunks = this.chunk(transcript);
     const items: ActionItem[] = [];
     const failures: string[] = [];
+    /** Non-fatal losses — items the validator dropped rather than filed. */
+    const dropped: string[] = [];
 
     console.log(`Extracting action items from ${transcript.length} characters in ${chunks.length} request(s)`);
 
@@ -79,6 +90,12 @@ export class ActionItemExtractor {
         const validation = validateActionItems(parsed, chunk);
         if (!validation.ok) throw new Error(validation.reason);
 
+        // A dropped duplicate is not a failure, but it IS a difference between
+        // what the model said and what was kept — and anything the caller
+        // cannot see, the caller cannot check.
+        for (const warning of validation.warnings ?? []) {
+          dropped.push(`chunk ${index + 1}/${chunks.length}: ${warning}`);
+        }
         items.push(...validation.items);
       } catch (error) {
         // Per-chunk isolation, unlike the grouper's all-or-nothing.
@@ -95,6 +112,13 @@ export class ActionItemExtractor {
       }
     }
 
+    // `reason` and `notes` are kept apart deliberately, and it is not a
+    // stylistic split. `reason` means THIS LIST MAY BE MISSING SOMETHING, and
+    // callers act on it — TranscriptSweeper refuses to freeze an extraction
+    // that carries one, because a partial list frozen onto a job becomes the
+    // permanent record of what a call agreed. A dropped duplicate is the
+    // opposite: the list is complete, it just has one fewer copy. Folding the
+    // two together would abort sweeps over a benign tidy-up.
     return {
       items: this.dedupe(items),
       chunks: chunks.length,
@@ -104,6 +128,9 @@ export class ActionItemExtractor {
               `${failures.length} of ${chunks.length} transcript chunk(s) could not be ` +
               `processed, so this list may be incomplete: ${failures.join("; ")}`,
           }
+        : {}),
+      ...(dropped.length > 0
+        ? { notes: `Repeated items were dropped rather than filed twice: ${dropped.join("; ")}` }
         : {}),
     };
   }
@@ -152,16 +179,23 @@ export class ActionItemExtractor {
   }
 
   /**
-   * Drops items whose quote another item already claimed.
+   * Drops items another item has already claimed, across chunks.
    *
-   * Within a chunk this cannot happen — the validator rejects it — but two
-   * chunks can both contain a sentence if the transcript repeats itself, and a
-   * speaker restating a request should not file it twice.
+   * Two chunks can contain the same sentence if the transcript repeats itself,
+   * and a speaker restating a request should not file it twice.
+   *
+   * Keyed on `actionItemIdentity` — the quote AND the request — not on the
+   * quote alone. Keying on the quote was a second copy of the bug the
+   * validator was just fixed for: a sentence carrying two commitments ("I'll
+   * fix the export and Priya will send the NDA") got past the validator
+   * correctly and then lost its second item here instead, which is why the
+   * fix had to be made in both places at once. Sharing one function is what
+   * stops them diverging again.
    */
   private dedupe(items: ActionItem[]): ActionItem[] {
     const seen = new Set<string>();
     return items.filter((item) => {
-      const key = item.quote.replace(/\s+/g, " ").trim().toLowerCase();
+      const key = actionItemIdentity(item);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

@@ -53,8 +53,47 @@ export interface ActionItemResponse {
  * union by its `ok` flag.
  */
 export type ActionItemOutcome =
-  | { ok: true; items: ActionItem[]; reason?: undefined }
-  | { ok: false; items?: undefined; reason: string };
+  | { ok: true; items: ActionItem[]; reason?: undefined; warnings?: string[] }
+  | { ok: false; items?: undefined; reason: string; warnings?: undefined };
+
+/**
+ * How many distinct requests one sentence may evidence.
+ *
+ * A sentence really can carry two or three commitments — "I'll fix the export
+ * and Priya will send the NDA" is one sentence and two people's work. Beyond
+ * that it is no longer a sentence being read carefully, it is a model
+ * shredding a passage, and the items are not worth filing.
+ */
+export const MAX_ITEMS_PER_QUOTE = 3;
+
+/**
+ * Identity of the *request*, as opposed to the evidence for it.
+ *
+ * Two items citing one sentence are only a duplicate if they ask for the same
+ * thing. This is what separates "one sentence, two commitments" from "the model
+ * emitted the same task twice".
+ */
+function requestIdentity(item: { title: string; description: string }): string {
+  return normalizeForQuoteMatch(`${item.title} ${item.description}`);
+}
+
+/**
+ * What makes two action items the same item.
+ *
+ * Exported because dedup happens in two places — here, within a chunk, and in
+ * `ActionItemExtractor` across chunks — and the two have to agree. They did
+ * not: the cross-chunk pass keyed on the quote ALONE, so it silently undid the
+ * distinction this module draws and dropped the second commitment out of a
+ * sentence carrying two. Fixing the validator alone would have left the bug
+ * intact one layer up. One function now, so they cannot drift apart again.
+ */
+export function actionItemIdentity(item: {
+  title: string;
+  description: string;
+  quote: string;
+}): string {
+  return `${normalizeForQuoteMatch(item.quote)} :: ${requestIdentity(item)}`;
+}
 
 /**
  * Short quotes are not evidence.
@@ -102,7 +141,9 @@ export function validateActionItems(raw: unknown, transcript: string): ActionIte
 
   const haystack = normalizeForQuoteMatch(transcript);
   const validated: ActionItem[] = [];
-  const seenQuotes = new Set<string>();
+  /** Normalized quote -> the distinct requests already credited to it. */
+  const quoteGroups = new Map<string, Set<string>>();
+  const warnings: string[] = [];
 
   for (const [index, entry] of items.entries()) {
     if (entry === null || typeof entry !== "object") {
@@ -157,19 +198,53 @@ export function validateActionItems(raw: unknown, transcript: string): ActionIte
       };
     }
 
-    // Two items citing the same sentence means one request was filed twice.
-    // Rejecting the whole response rather than silently dropping the duplicate:
-    // it is a sign the model mis-split a passage, and the other items in that
-    // response are not more trustworthy for it.
-    if (seenQuotes.has(normalizedQuote)) {
+    // Two items citing one sentence is NOT automatically a duplicate.
+    //
+    // This rule used to reject the whole response, on the theory that a shared
+    // quote meant the model had mis-split a passage. That is one cause; it is
+    // not the common one. "I'll fix the export bug and Priya will send the NDA
+    // after this" is a single sentence carrying two people's commitments, and
+    // both items correctly cite it. Rejecting the chunk lost BOTH of them, and
+    // every other item in that chunk with them, silently. Seen live.
+    //
+    // So the two cases are separated. Same sentence, same request is a
+    // duplicate. Same sentence, different requests is a sentence doing two
+    // jobs, which is ordinary speech.
+    const identity = requestIdentity(item as { title: string; description: string });
+    const sharing = quoteGroups.get(normalizedQuote) ?? new Set<string>();
+
+    if (sharing.has(identity)) {
+      // Dropped, not fatal — and reported, because a silent drop is how a
+      // list quietly becomes incomplete.
+      //
+      // Being lenient here is the right asymmetry, and it is the opposite of
+      // the one the quote check makes. An invented task is invisible and
+      // corrosive, so it is rejected outright. A duplicate is *visible* — you
+      // see two identical tasks and delete one — so the cheap failure is
+      // filing it, and the expensive failure is discarding the whole chunk to
+      // avoid it.
+      warnings.push(
+        `Item ${index} ("${item.title}") repeats an earlier item word for word; ` +
+          `it was dropped rather than filed twice`
+      );
+      continue;
+    }
+
+    if (sharing.size >= MAX_ITEMS_PER_QUOTE) {
+      // Still fatal. One sentence yielding four or more distinct requests is
+      // the mis-split the original rule was built for, and at that point
+      // nothing in the response has been read carefully enough to trust.
       return {
         ok: false,
         reason:
-          `Item ${index} ("${item.title}") cites the same sentence as an earlier ` +
-          `item — it would be filed twice`,
+          `More than ${MAX_ITEMS_PER_QUOTE} separate items cite the same sentence, ` +
+          `which means the passage was mis-split rather than read: ` +
+          `"${item.quote.slice(0, 80)}"`,
       };
     }
-    seenQuotes.add(normalizedQuote);
+
+    sharing.add(identity);
+    quoteGroups.set(normalizedQuote, sharing);
 
     if (item.speaker !== undefined && typeof item.speaker !== "string") {
       return { ok: false, reason: `Item ${index} has a non-string speaker` };
@@ -178,5 +253,9 @@ export function validateActionItems(raw: unknown, transcript: string): ActionIte
     validated.push(item as unknown as ActionItem);
   }
 
-  return { ok: true, items: validated };
+  return {
+    ok: true,
+    items: validated,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
 }

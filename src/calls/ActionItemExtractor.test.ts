@@ -250,3 +250,68 @@ describe("ActionItemExtractor — chunking", () => {
     expect(result.items).toHaveLength(1);
   });
 });
+
+/**
+ * A dropped duplicate is not a partial extraction, and the difference is
+ * load-bearing.
+ *
+ * `TranscriptSweeper` refuses to freeze an extraction carrying a `reason`,
+ * because a partial list frozen onto a job becomes the permanent record of
+ * what a call agreed. Reporting a benign tidy-up through the same field would
+ * abort sweeps over nothing.
+ */
+describe("trimmed is not the same as incomplete", () => {
+  test("a dropped duplicate goes in notes, never in reason", async () => {
+    const { client } = stubClient([
+      JSON.stringify({
+        items: [
+          item(SENTENCE_A, { title: "Fix the export", description: "same" }),
+          item(SENTENCE_A, { title: "Fix the export", description: "same" }),
+        ],
+      }),
+    ]);
+
+    const result = await new ActionItemExtractor(client).extract(TRANSCRIPT);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.reason).toBeUndefined();
+    expect(result.notes).toMatch(/dropped rather than filed twice/i);
+  });
+
+  test("a genuinely failed chunk still sets reason", async () => {
+    const { client } = stubClient(["not json at all"]);
+
+    const result = await new ActionItemExtractor(client).extract(TRANSCRIPT);
+
+    expect(result.reason).toMatch(/could not be processed/i);
+  });
+
+  test("a clean run sets neither", async () => {
+    const { client } = stubClient([JSON.stringify({ items: [item(SENTENCE_A)] })]);
+
+    const result = await new ActionItemExtractor(client).extract(TRANSCRIPT);
+
+    expect(result.reason).toBeUndefined();
+    expect(result.notes).toBeUndefined();
+  });
+
+  /** The regression the whole change exists to fix, end to end. */
+  test("two commitments in one sentence both survive extraction", async () => {
+    const { client } = stubClient([
+      JSON.stringify({
+        items: [
+          item(SENTENCE_A, { title: "Fix the export", description: "Sam is on it." }),
+          item(SENTENCE_A, { title: "Tell the customer", description: "Priya will write." }),
+        ],
+      }),
+    ]);
+
+    const result = await new ActionItemExtractor(client).extract(TRANSCRIPT);
+
+    expect(result.items.map((entry) => entry.title)).toEqual([
+      "Fix the export",
+      "Tell the customer",
+    ]);
+    expect(result.reason).toBeUndefined();
+  });
+});
