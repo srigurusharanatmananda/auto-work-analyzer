@@ -84,7 +84,12 @@ function ResultCard({ result }: { result: TranscriptSearchResult }) {
   return (
     <li className="rounded-lg border border-border bg-background-secondary p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h3 className="font-medium text-foreground">{title}</h3>
+        <Link
+          href={`/transcripts/${result.id}`}
+          className="font-medium text-foreground hover:text-primary hover:underline"
+        >
+          {title}
+        </Link>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-tertiary">
           <span>{recorded}</span>
@@ -121,16 +126,28 @@ function ResultCard({ result }: { result: TranscriptSearchResult }) {
 
             return (
               <li key={highlight.transcriptOffset} className="flex gap-3">
-                <span
-                  className="mt-0.5 shrink-0 font-mono text-xs text-foreground-tertiary"
-                  title={
-                    at
-                      ? 'Where this was said in the recording'
-                      : 'This transcript was edited, so it no longer lines up with the audio'
-                  }
-                >
-                  {at ?? '--:--'}
-                </span>
+                {/*
+                  A timestamp that cannot be reached is just a number. When we
+                  have one, it links into the player at that exact second; when
+                  the transcript no longer lines up with its audio there is
+                  nothing honest to link to, so it renders inert.
+                */}
+                {at ? (
+                  <Link
+                    href={`/transcripts/${result.id}?t=${Math.floor(highlight.startSeconds!)}`}
+                    className="mt-0.5 shrink-0 font-mono text-xs text-primary hover:underline"
+                    title="Play the recording from here"
+                  >
+                    {at}
+                  </Link>
+                ) : (
+                  <span
+                    className="mt-0.5 shrink-0 font-mono text-xs text-foreground-tertiary"
+                    title="This transcript was edited, so it no longer lines up with the audio"
+                  >
+                    --:--
+                  </span>
+                )}
                 <Excerpt highlight={highlight} />
               </li>
             );

@@ -367,6 +367,26 @@ export class TranscriptionJobStore {
     return row ? toJob(row) : null;
   }
 
+  /**
+   * One job, WITHOUT an owner check.
+   *
+   * Exactly one caller is allowed to use this: the audio streaming route, which
+   * has no session to scope by because a media request cannot carry an
+   * Authorization header. Authority there comes from a signed token bound to
+   * this job id, and ownership was checked when that token was minted.
+   *
+   * Named for what it does rather than overloading `get` with an optional
+   * userId, because an optional scope is one forgotten argument away from
+   * serving another user's transcript, and that call would look ordinary in
+   * review.
+   */
+  async getUnscoped(id: string): Promise<TranscriptionJob | null> {
+    const [row] = await this.sql<JobRow[]>`
+      SELECT * FROM transcription_jobs WHERE id = ${id}
+    `;
+    return row ? toJob(row) : null;
+  }
+
   async listForUser(userId: string, limit = 50): Promise<TranscriptionJob[]> {
     const rows = await this.sql<JobRow[]>`
       SELECT * FROM transcription_jobs

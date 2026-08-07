@@ -11,6 +11,7 @@
  */
 
 import { api } from './ApiClient';
+import { API_BASE_URL } from './config';
 
 /** The queue row, as the transcription routes serialise it. */
 export interface TranscriptionJob {
@@ -22,6 +23,8 @@ export interface TranscriptionJob {
   transcript?: string | null;
   language?: string | null;
   durationSeconds?: number | null;
+  /** Lines with timings — what makes the transcript seekable. */
+  segments?: TranscriptSegment[];
   /** Climbs while the worker streams; the only honest progress signal we get. */
   segmentsSeen?: number;
   attempts?: number;
@@ -187,6 +190,42 @@ export function formatTimestamp(seconds: number | null | undefined): string | nu
   const mmss = `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
 
   return hours > 0 ? `${hours}:${mmss}` : mmss;
+}
+
+/** One line of the transcript, with the moment it was spoken. */
+export interface TranscriptSegment {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface AudioPlaybackUrl {
+  /** Server-relative; `playbackSrc` turns it into something `<audio>` can load. */
+  url: string;
+  expiresAt: string;
+}
+
+/**
+ * The absolute URL for a media element.
+ *
+ * The server returns a path because it does not know its own public origin. A
+ * relative URL would work only while the UI and the API share one — which is
+ * true on this machine and false everywhere else, and it fails as a silent 404
+ * from Next rather than as anything that names the problem.
+ */
+export function playbackSrc(url: string): string {
+  return `${API_BASE_URL}${url}`;
+}
+
+/**
+ * Asks for a short-lived URL the `<audio>` element can fetch.
+ *
+ * A media element issues its own request and there is no way to attach an
+ * Authorization header to it, so authority has to be in the URL. POST because
+ * this mints a capability — see `src/transcription/audioTokens.ts`.
+ */
+export function requestAudioUrl(jobId: string): Promise<AudioPlaybackUrl> {
+  return api.post<AudioPlaybackUrl>(`/transcription/jobs/${jobId}/audio-token`);
 }
 
 /** Still moving — worth polling for, and not yet safe to read a transcript from. */

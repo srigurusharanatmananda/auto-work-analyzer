@@ -14,9 +14,10 @@
 
 import { Router } from 'express';
 import multer from 'multer';
-import { mkdir, unlink } from 'node:fs/promises';
+import { mkdir, stat, unlink } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
 import type { TranscriptionJobStore, TranscriptionJob } from '../transcription/TranscriptionJobStore.js';
@@ -27,6 +28,8 @@ import {
   countOccurrences,
   escapeLikePattern,
 } from '../calls/transcriptSearch.js';
+import { mintAudioToken, verifyAudioToken } from '../transcription/audioTokens.js';
+import { parseByteRange } from '../transcription/byteRange.js';
 
 export interface TranscriptionRouterDeps {
   store: TranscriptionJobStore;
@@ -68,6 +71,29 @@ const ALLOWED_EXTENSIONS = new Set([
   '.mpga',
   '.mpeg',
 ]);
+
+/**
+ * Extension -> what to tell the browser it is receiving.
+ *
+ * A wrong or absent `Content-Type` makes some browsers refuse to play a file
+ * they can decode perfectly well, so this is not cosmetic. Derived from the
+ * extension because that is the only thing that survived the upload — the
+ * original mimetype is not stored, and browsers report audio mimetypes
+ * inconsistently enough that it would not be worth trusting if it were.
+ */
+const AUDIO_MIME_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.mpga': 'audio/mpeg',
+  '.mpeg': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.mp4': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.flac': 'audio/flac',
+  '.webm': 'audio/webm',
+};
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -362,6 +388,135 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
     const job = await deps.store.get(req.params.id, userIdOf(req));
     if (!job) return fail(res, 'No such transcription job', 404);
     res.json({ success: true, data: toResponse(job) });
+  });
+
+  /**
+   * POST /api/transcription/jobs/:id/audio-token
+   *
+   * Mints a short-lived URL the `<audio>` element can actually fetch. This is
+   * the route that checks ownership; the streaming route below checks only the
+   * signature, because a media request carries no Authorization header.
+   *
+   * POST rather than GET because it creates a capability. A GET that mints
+   * credentials is the kind of thing a prefetcher or a link-preview crawler
+   * will happily trigger on the user's behalf.
+   */
+  router.post('/jobs/:id/audio-token', authenticate, anyRole, async (req: any, res) => {
+    const job = await deps.store.get(req.params.id, userIdOf(req));
+    if (!job) return fail(res, 'No such transcription job', 404);
+
+    const { token, expiresAt } = mintAudioToken(job.id);
+    res.json({
+      success: true,
+      data: {
+        url: `/api/transcription/jobs/${job.id}/audio?token=${encodeURIComponent(token)}`,
+        expiresAt: new Date(expiresAt).toISOString(),
+      },
+    });
+  });
+
+  /**
+   * GET /api/transcription/jobs/:id/audio?token=...
+   *
+   * Streams the recording, with range support so the player can seek.
+   *
+   * Authorised by the signed token only — see `audioTokens.ts` for why a bearer
+   * header is not an option here.
+   */
+  router.get('/jobs/:id/audio', async (req, res) => {
+    const verdict = verifyAudioToken(req.params.id, req.query.token as string | undefined);
+    if (verdict.valid === false) {
+      // 401 for an expired token so the client knows to re-mint and retry;
+      // 403 for a bad one, which no amount of retrying will fix.
+      const expired = verdict.reason === 'expired';
+      return fail(
+        res,
+        expired
+          ? 'This playback link has expired. Reload the page.'
+          : 'Not authorised to play this recording.',
+        expired ? 401 : 403
+      );
+    }
+
+    // Loaded WITHOUT a user scope, deliberately: the token is the authority
+    // here, and there is no session to scope by. The signature already binds
+    // the response to this exact job id.
+    const job = await deps.store.getUnscoped(req.params.id);
+    if (!job) return fail(res, 'No such transcription job', 404);
+
+    // Belt and braces. The path was validated on upload, but this route reads
+    // whatever the row says, and a row is a much longer-lived thing than a
+    // request — anything that ever writes a path into it must not become a way
+    // to read arbitrary files off this disk.
+    const path = resolve(job.audioPath);
+    if (!path.startsWith(audioDir + sep)) {
+      console.error(`Refusing to serve ${path}: outside ${audioDir}`);
+      return fail(res, 'Recording is not available', 404);
+    }
+
+    let size: number;
+    try {
+      size = (await stat(path)).size;
+    } catch {
+      // The row outlived the file — a cleaned-up disk, or a restore that missed
+      // the audio. A 404 says so; a 500 would blame the server for a broken
+      // link it can do nothing about.
+      return fail(res, 'The audio for this recording is no longer on disk', 404);
+    }
+
+    const range = parseByteRange(req.headers.range, size);
+    const type = AUDIO_MIME_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream';
+
+    // Advertised even on a full response: without it, browsers assume the
+    // resource is not seekable and disable the scrubber outright.
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', type);
+    // `private` keeps the body out of any shared cache, which is what matters:
+    // the URL is a capability, and a proxy holding the audio would outlive the
+    // token that authorised it.
+    //
+    // Deliberately NOT `no-store`. The browser's own cache is where Chrome's
+    // media stack buffers, and forbidding it makes scrubbing re-fetch the file
+    // repeatedly. There is nothing to gain — a recording in the private disk
+    // cache of the machine whose user just played it is not a disclosure.
+    res.setHeader('Cache-Control', 'private, max-age=0');
+    // helmet sets `Cross-Origin-Resource-Policy: same-origin` globally, which
+    // is right for every other route and fatal for this one: the UI is served
+    // from a different origin than the API, so the browser fetches the audio
+    // successfully (206, correct bytes) and then refuses to let the media
+    // element USE it. There is no error and no failed request — the player just
+    // sits at readyState 0 showing 0:00 forever.
+    //
+    // Relaxed here only, and safe to relax here, because the URL already
+    // carries its own short-lived capability token; CORP is not what is keeping
+    // this recording private.
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+    if (range.kind === 'unsatisfiable') {
+      res.setHeader('Content-Range', `bytes */${size}`);
+      return res.status(416).end();
+    }
+
+    const { start, end } =
+      range.kind === 'partial' ? range : { start: 0, end: Math.max(0, size - 1) };
+
+    if (range.kind === 'partial') {
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+    }
+    res.setHeader('Content-Length', String(size === 0 ? 0 : end - start + 1));
+
+    if (req.method === 'HEAD' || size === 0) return res.end();
+
+    const stream = createReadStream(path, { start, end });
+    // A client that seeks away mid-download aborts the response; without this
+    // the file handle stays open, and a few minutes of scrubbing exhausts them.
+    res.on('close', () => stream.destroy());
+    stream.on('error', (error) => {
+      console.error(`Streaming ${path} failed:`, error);
+      res.destroy();
+    });
+    stream.pipe(res);
   });
 
   /**

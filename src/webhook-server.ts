@@ -78,6 +78,18 @@ app.use(cors({
     }
   },
   credentials: true,
+  /**
+   * `Range` has to be an allowed REQUEST header or the preflight for a
+   * cross-origin `<audio crossorigin>` fails and playback never starts.
+   *
+   * The exposed RESPONSE headers matter for the same reason. CORS hides every
+   * response header except a small safelist, and `Content-Range` is not on it —
+   * so a media element loading from another origin cannot work out the length
+   * of the resource and leaves the player stuck with `readyState 0`, no
+   * duration and a dead scrubber. Nothing errors; it simply never loads.
+   */
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 app.use(express.json());
 app.use(cookieParser());

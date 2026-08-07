@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Card } from '@/lib/components/ui';
 import { messageFor } from '@/lib/api';
@@ -154,9 +155,19 @@ export default function RecentTranscriptions({ onUse, refreshToken }: RecentTran
                       ? ` · ${job.segmentsSeen} segments`
                       : ''}
                   </span>
-                  <span className="min-w-0 truncate font-medium text-foreground">
-                    {job.callTitle || job.originalFilename}
-                  </span>
+                  {/* Only a finished job has audio and a transcript to open. */}
+                  {job.status === 'succeeded' ? (
+                    <Link
+                      href={`/transcripts/${job.id}`}
+                      className="min-w-0 truncate font-medium text-foreground hover:text-primary hover:underline"
+                    >
+                      {job.callTitle || job.originalFilename}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 truncate font-medium text-foreground">
+                      {job.callTitle || job.originalFilename}
+                    </span>
+                  )}
                 </div>
 
                 <p className="mt-1 text-xs text-foreground-tertiary">
