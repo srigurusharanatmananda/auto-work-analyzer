@@ -76,6 +76,50 @@ export async function uploadAudio(input: UploadAudioInput): Promise<Transcriptio
   return api.post<TranscriptionJob>('/transcription/upload', form);
 }
 
+export interface IngestUrlInput {
+  url: string;
+  callTitle?: string;
+  callDate?: string;
+}
+
+/**
+ * Queues a recording the server will go and download itself.
+ *
+ * Same 202-then-poll shape as `uploadAudio`, and deliberately so: from the
+ * moment a job exists the two are indistinguishable, so everything downstream —
+ * the poller, the recordings list, the player — needs no idea which one made
+ * it.
+ *
+ * The wait before that 202 is longer than an upload's, because the server is
+ * doing the download rather than receiving one. A slow host, or a YouTube video
+ * yt-dlp has to negotiate for, can take a while with nothing to show for it.
+ */
+export function ingestFromUrl(input: IngestUrlInput): Promise<TranscriptionJob> {
+  return api.post<TranscriptionJob>('/transcription/from-url', {
+    url: input.url.trim(),
+    ...(input.callTitle ? { callTitle: input.callTitle } : {}),
+    ...(input.callDate ? { callDate: input.callDate } : {}),
+  });
+}
+
+/**
+ * A cheap client-side sniff for whether a link is worth submitting.
+ *
+ * Deliberately permissive, and deliberately NOT a copy of the server's
+ * `classifyMediaUrl`. Reproducing that here would mean two allowlists drifting
+ * apart, with the browser confidently refusing links the server would accept.
+ * The server is the authority; this only catches the typo that would otherwise
+ * cost a round trip.
+ */
+export function looksLikeUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value.trim());
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export function getTranscriptionJob(jobId: string): Promise<TranscriptionJob> {
   return api.get<TranscriptionJob>(`/transcription/jobs/${jobId}`);
 }

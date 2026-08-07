@@ -13,7 +13,9 @@ import {
   type TranscriptionJob,
   formatDuration,
   formatTimestamp,
+  ingestFromUrl,
   isAudioFile,
+  looksLikeUrl,
   searchTranscripts,
   waitForTranscript,
 } from './transcription';
@@ -262,5 +264,90 @@ describe('formatTimestamp', () => {
   test('distinguishes the start of the recording from no timestamp', () => {
     expect(formatTimestamp(0)).toBe('00:00');
     expect(formatTimestamp(null)).toBeNull();
+  });
+});
+
+describe('looksLikeUrl', () => {
+  test('accepts what could plausibly be fetched', () => {
+    for (const value of [
+      'https://www.youtube.com/watch?v=abc',
+      'http://cdn.example.com/a.mp3',
+      '  https://example.com/a.mp3  ',
+    ]) {
+      expect(looksLikeUrl(value)).toBe(true);
+    }
+  });
+
+  test('rejects what is obviously not a link', () => {
+    for (const value of ['', 'not a url', 'example.com/a.mp3', 'file:///etc/passwd']) {
+      expect(looksLikeUrl(value)).toBe(false);
+    }
+  });
+
+  /**
+   * Deliberately permissive. This is a typo catcher, not a second allowlist —
+   * the server refuses these, and duplicating its rules here would give two
+   * lists to keep in step with the browser holding the stale one.
+   */
+  test('leaves the real decision to the server', () => {
+    expect(looksLikeUrl('http://127.0.0.1/a.mp3')).toBe(true);
+    expect(looksLikeUrl('https://example.com/notes.pdf')).toBe(true);
+  });
+});
+
+describe('ingestFromUrl', () => {
+  /** Replaces the shared client's `post`, capturing what it was sent. */
+  function stubPost() {
+    const calls: Array<{ path: string; body: unknown }> = [];
+    const original = api.post;
+    (api as unknown as { post: (path: string, body?: unknown) => Promise<TranscriptionJob> }).post =
+      async (path, body) => {
+        calls.push({ path, body });
+        return job({ id: 'queued-1' });
+      };
+    return { calls, restore: () => ((api as unknown as { post: unknown }).post = original) };
+  }
+
+  test('posts the link and returns the queued job', async () => {
+    const { calls, restore } = stubPost();
+    try {
+      const queued = await ingestFromUrl({ url: 'https://cdn.example.com/a.mp3' });
+
+      expect(queued.id).toBe('queued-1');
+      expect(calls[0]!.path).toBe('/transcription/from-url');
+      expect(calls[0]!.body).toEqual({ url: 'https://cdn.example.com/a.mp3' });
+    } finally {
+      restore();
+    }
+  });
+
+  test('trims the link and omits the optional fields when they are empty', async () => {
+    const { calls, restore } = stubPost();
+    try {
+      await ingestFromUrl({ url: '  https://cdn.example.com/a.mp3  ', callTitle: '', callDate: '' });
+
+      expect(calls[0]!.body).toEqual({ url: 'https://cdn.example.com/a.mp3' });
+    } finally {
+      restore();
+    }
+  });
+
+  test('sends the title and date when there are any', async () => {
+    const { calls, restore } = stubPost();
+    try {
+      await ingestFromUrl({
+        url: 'https://cdn.example.com/a.mp3',
+        callTitle: 'Acme renewal',
+        callDate: '2026-08-01',
+      });
+
+      expect(calls[0]!.body).toEqual({
+        url: 'https://cdn.example.com/a.mp3',
+        callTitle: 'Acme renewal',
+        callDate: '2026-08-01',
+      });
+    } finally {
+      restore();
+    }
   });
 });

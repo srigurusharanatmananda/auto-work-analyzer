@@ -39,6 +39,8 @@ import {
   TEXT_EXTENSIONS,
   TranscriptionJob,
   isAudioFile,
+  ingestFromUrl,
+  looksLikeUrl,
   uploadAudio,
   waitForTranscript,
 } from '@/lib/api/transcription';
@@ -180,6 +182,7 @@ function countActionItems(items: PreviewWorkItem[]): number {
 export default function TranscriptTab() {
   const [transcript, setTranscript] = useState('');
   const [fileName, setFileName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [callTitle, setCallTitle] = useState('');
   const [callDate, setCallDate] = useState('');
   const [grouping, setGrouping] = useState<TranscriptGrouping>('per-item');
@@ -202,6 +205,16 @@ export default function TranscriptTab() {
   const [approved, setApproved] = useState<Set<number>>(new Set());
   const [created, setCreated] = useState<CreatedTask[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** A transcription is in flight, so starting another would discard it. */
+  const busy = transcribing !== null;
+
+  /**
+   * Only a shape check — the server decides. Mirroring its allowlist here would
+   * give two lists to keep in step, and the one in the browser would be the one
+   * that silently went stale.
+   */
+  const canFetchUrl = !busy && looksLikeUrl(sourceUrl);
 
   const approvedItems = useMemo<PreviewWorkItem[]>(
     () =>
@@ -237,20 +250,49 @@ export default function TranscriptTab() {
    * front of someone, editable, before any model reads it is the only place
    * that error can still be caught.
    */
-  const handleAudio = async (file: File) => {
+  const handleAudio = (file: File) =>
+    ingest({
+      startingMessage: `Uploading ${file.name}…`,
+      failureMessage: 'Transcription failed',
+      queue: (meta) => uploadAudio({ file, ...meta }),
+    });
+
+  /**
+   * Pull a recording the server will fetch for itself.
+   *
+   * Everything after the job exists is the same as an upload's, which is why
+   * both go through `ingest` — the difference between the two is one function
+   * call, and writing it as two flows would mean two places to keep the
+   * polling, the abort handling and the recordings-list refresh in step.
+   */
+  const handleUrl = (url: string) =>
+    ingest({
+      startingMessage: 'Fetching the recording — the server is downloading it…',
+      failureMessage: 'Could not fetch that recording',
+      queue: (meta) => ingestFromUrl({ url, ...meta }),
+      onQueued: () => setSourceUrl(''),
+    });
+
+  const ingest = async (options: {
+    startingMessage: string;
+    failureMessage: string;
+    queue: (meta: { callTitle?: string; callDate?: string }) => Promise<TranscriptionJob>;
+    onQueued?: () => void;
+  }) => {
     reset();
     setTranscript('');
 
     const controller = new AbortController();
     transcribeAbort.current = controller;
-    const toastId = toast.loading(`Uploading ${file.name}…`);
+    const toastId = toast.loading(options.startingMessage);
 
     try {
-      const queued = await uploadAudio({
-        file,
+      const queued = await options.queue({
         ...(callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
         ...(callDate ? { callDate } : {}),
       });
+      options.onQueued?.();
+      setFileName(queued.originalFilename);
       setTranscribing(queued);
       // Show it in the recordings list immediately: the job is real from this
       // point on, and if the upload watcher is abandoned that list is the only
@@ -277,7 +319,7 @@ export default function TranscriptTab() {
         toast.dismiss(toastId);
         return;
       }
-      const message = messageFor(caught, 'Transcription failed');
+      const message = messageFor(caught, options.failureMessage);
       setError(message);
       toast.error(message, { id: toastId, duration: 6000 });
     } finally {
@@ -484,6 +526,45 @@ export default function TranscriptTab() {
               </p>
             </div>
           )}
+
+          {/* Fetch from a link */}
+          <div>
+            <label htmlFor="sourceUrl" className="mb-2 block text-sm font-semibold text-foreground">
+              Or fetch it from a link
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                id="sourceUrl"
+                type="url"
+                inputMode="url"
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && canFetchUrl) {
+                    event.preventDefault();
+                    void handleUrl(sourceUrl.trim());
+                  }
+                }}
+                placeholder="https://youtube.com/watch?v=… or a link to an .mp3"
+                disabled={busy}
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!canFetchUrl}
+                onClick={() => void handleUrl(sourceUrl.trim())}
+                className="shrink-0"
+              >
+                Fetch
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-foreground-tertiary">
+              A YouTube video or a direct link to an audio file. The server downloads it, so it
+              has to be reachable publicly — a private address or a link behind a login will be
+              refused. Live playlists (.m3u8) are not supported.
+            </p>
+          </div>
 
           {/* Paste */}
           <div>

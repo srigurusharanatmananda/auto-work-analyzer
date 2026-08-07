@@ -12,7 +12,7 @@
  * and a memory spike on a machine with 8 GB.
  */
 
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { mkdir, stat, unlink } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { extname, join, resolve, sep } from 'node:path';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
+import { mediaFetchRateLimiter } from '../middleware/security.middleware.js';
 import type { TranscriptionJobStore, TranscriptionJob } from '../transcription/TranscriptionJobStore.js';
 import { WhisperClient } from '../transcription/WhisperClient.js';
 import type { TranscriptSweeper } from '../calls/TranscriptSweeper.js';
@@ -29,6 +30,14 @@ import {
   escapeLikePattern,
 } from '../calls/transcriptSearch.js';
 import { mintAudioToken, verifyAudioToken } from '../transcription/audioTokens.js';
+import {
+  ALLOWED_EXTENSIONS,
+  ALLOWED_EXTENSIONS_LIST,
+  AUDIO_MIME_TYPES,
+} from '../transcription/audioFormats.js';
+import { classifyMediaUrl, filenameForUrl } from '../transcription/mediaUrl.js';
+import { resolveFetchableUrl } from '../transcription/ssrfGuard.js';
+import { AudioFetcher, AudioFetchError } from '../transcription/AudioFetcher.js';
 import { parseByteRange } from '../transcription/byteRange.js';
 import { isTranscriptGrouping } from '../calls/ActionItemGrouper.js';
 
@@ -47,54 +56,31 @@ export interface TranscriptionRouterDeps {
    * so rather than 404ing on a feature that exists.
    */
   sweeper?: TranscriptSweeper;
+  /**
+   * Downloads a recording from a link. Constructed from `storageRoot` when
+   * absent; injected by tests so no request leaves the machine.
+   */
+  fetcher?: AudioFetcher;
+  /**
+   * Vets a link before it is fetched. Injected by tests for the same reason —
+   * the cases worth covering are hosts that resolve privately, which cannot be
+   * arranged against the real internet.
+   */
+  resolveUrl?: typeof resolveFetchableUrl;
+  /**
+   * Throttles `/from-url`. Defaults to the real limiter; overridden by tests,
+   * which would otherwise exhaust the budget partway through a suite and start
+   * reporting 429s as assertion failures.
+   *
+   * Injected rather than skipped-when-testing, so that the default is still
+   * exercised: `transcription.fromUrl.nodetest.ts` mounts a second router
+   * without this and confirms it does throttle.
+   */
+  rateLimiter?: RequestHandler;
 }
 
 /** Generous for a long recording; Whisper's own limits bite well before this. */
 const MAX_AUDIO_BYTES = 500 * 1024 * 1024;
-
-/**
- * Extensions ffmpeg (inside Whisper) reliably decodes.
- *
- * An allowlist rather than a blocklist, and checked on extension rather than
- * only mimetype because browsers report audio mimetypes inconsistently — Safari
- * sends `application/octet-stream` for perfectly good m4a.
- */
-const ALLOWED_EXTENSIONS = new Set([
-  '.mp3',
-  '.m4a',
-  '.wav',
-  '.aac',
-  '.ogg',
-  '.opus',
-  '.flac',
-  '.webm',
-  '.mp4',
-  '.mpga',
-  '.mpeg',
-]);
-
-/**
- * Extension -> what to tell the browser it is receiving.
- *
- * A wrong or absent `Content-Type` makes some browsers refuse to play a file
- * they can decode perfectly well, so this is not cosmetic. Derived from the
- * extension because that is the only thing that survived the upload — the
- * original mimetype is not stored, and browsers report audio mimetypes
- * inconsistently enough that it would not be worth trusting if it were.
- */
-const AUDIO_MIME_TYPES: Record<string, string> = {
-  '.mp3': 'audio/mpeg',
-  '.mpga': 'audio/mpeg',
-  '.mpeg': 'audio/mpeg',
-  '.m4a': 'audio/mp4',
-  '.mp4': 'audio/mp4',
-  '.aac': 'audio/aac',
-  '.wav': 'audio/wav',
-  '.ogg': 'audio/ogg',
-  '.opus': 'audio/ogg',
-  '.flac': 'audio/flac',
-  '.webm': 'audio/webm',
-};
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -176,7 +162,7 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
       }
       cb(
         new Error(
-          `That file type is not supported. Audio only: ${[...ALLOWED_EXTENSIONS].join(', ')}`
+          `That file type is not supported. Audio only: ${ALLOWED_EXTENSIONS_LIST}`
         )
       );
     },
@@ -227,6 +213,66 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
    * 500 MB at a time. `authenticate` only reads the Authorization header, so it
    * needs nothing from the body and can go first.
    */
+  /**
+   * Everything that happens once audio is on disk, whoever put it there.
+   *
+   * Shared by `/upload` and `/from-url`. The two differ only in how the bytes
+   * arrive; from this point on a recording pulled from a link and one pushed
+   * from a file picker are the same thing, and the moment that stopped being
+   * true in code would be the moment one of them quietly skipped the Whisper
+   * reachability check or leaked a file on a failed enqueue.
+   *
+   * Answers the request itself and returns nothing, so a caller cannot forget
+   * to — every path out of here either 202s or fails, and both clean up.
+   */
+  const queueRecording = async (
+    res: any,
+    details: {
+      userId: string;
+      path: string;
+      originalFilename: string;
+      callTitle?: string;
+      callDate?: string;
+    }
+  ): Promise<void> => {
+    // Proves Whisper will be able to read it BEFORE a job exists. Otherwise the
+    // failure surfaces minutes later as a job that dies on a misconfigured
+    // storage root, which reads like a transcription problem and is not.
+    const whisper = deps.whisper ?? new WhisperClient({ storageRoot: deps.storageRoot });
+    try {
+      whisper.containerPathFor(details.path);
+    } catch (error) {
+      await discard(details.path);
+      return fail(
+        res,
+        error instanceof Error ? error.message : 'That audio is not readable by Whisper',
+        500
+      );
+    }
+
+    let job;
+    try {
+      job = await deps.store.enqueue({
+        userId: details.userId,
+        audioPath: details.path,
+        originalFilename: details.originalFilename,
+        ...(details.callTitle ? { callTitle: details.callTitle } : {}),
+        ...(details.callDate ? { callDate: details.callDate } : {}),
+      });
+    } catch (error) {
+      // No row means nothing will ever transcribe or clean up this file.
+      await discard(details.path);
+      throw error;
+    }
+
+    // 202, not 200: the work is accepted, not done.
+    res.status(202).json({
+      success: true,
+      data: toResponse(job),
+      message: 'Queued for transcription.',
+    });
+  };
+
   router.post('/upload', authenticate, anyRole, acceptAudio, async (req: any, res) => {
     const file = req.file;
     if (!file) return fail(res, 'Attach an audio file as the "audio" field');
@@ -237,41 +283,78 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
       return fail(res, 'callDate must be YYYY-MM-DD');
     }
 
-    // Proves Whisper will be able to read it BEFORE a job exists. Otherwise the
-    // failure surfaces minutes later as a job that dies on a misconfigured
-    // storage root, which reads like a transcription problem and is not.
-    const whisper = deps.whisper ?? new WhisperClient({ storageRoot: deps.storageRoot });
-    try {
-      whisper.containerPathFor(file.path);
-    } catch (error) {
-      await discard(file.path);
-      return fail(
-        res,
-        error instanceof Error ? error.message : 'Uploaded audio is not readable by Whisper',
-        500
-      );
+    await queueRecording(res, {
+      userId: userIdOf(req),
+      path: file.path,
+      originalFilename: file.originalname,
+      ...(typeof callTitle === 'string' && callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
+      ...(callDate ? { callDate } : {}),
+    });
+  });
+
+  /**
+   * POST /api/transcription/from-url — ingest a recording from a link.
+   *
+   * The dangerous route in this file, and the danger is not the download: it is
+   * that an authenticated user gets to choose an address the *server* connects
+   * to, from inside whatever network the server sits in. That is SSRF, and on a
+   * cloud host the prize is `169.254.169.254`, which hands out credentials to
+   * anything that asks.
+   *
+   * So the link goes through three checks before a byte moves, each covering
+   * what the others cannot:
+   *
+   *  1. `classifyMediaUrl` — scheme, host, and shape. Rejects `file:`, private
+   *     literals in every encoding, reserved names, and hosts merely claiming
+   *     to be YouTube in a query string.
+   *  2. `resolveFetchableUrl` — what the name actually resolves to, and every
+   *     redirect hop, re-running check 1 at each one.
+   *  3. `AudioFetcher` — a hard size cap and timeout on the transfer itself.
+   *
+   * The residual risk, stated in `ssrfGuard.ts` rather than hidden: a DNS
+   * record that answers publicly here and privately to the fetch moments later.
+   * That needs an attacker-controlled nameserver and a race, and the real
+   * remedy is an egress firewall.
+   *
+   * Rate limiting is the other half, and it is a tighter limiter than the rest
+   * of the API gets: the caller supplies a string and the server supplies the
+   * bandwidth, so the usual "100 requests is not much" reasoning does not hold.
+   * The limiter runs after `authenticate` so it can key on the user.
+   */
+  const throttleFetch = deps.rateLimiter ?? mediaFetchRateLimiter;
+
+  router.post('/from-url', authenticate, anyRole, throttleFetch, async (req: any, res) => {
+    const { url, callTitle, callDate } = req.body ?? {};
+
+    if (callDate && !DATE_PATTERN.test(callDate)) {
+      return fail(res, 'callDate must be YYYY-MM-DD');
     }
 
-    let job;
+    const verdict = classifyMediaUrl(url);
+    if (!verdict.ok) return fail(res, verdict.reason);
+
+    const resolve_ = deps.resolveUrl ?? resolveFetchableUrl;
+    const reachable = await resolve_(verdict.url);
+    if (!reachable.ok) return fail(res, reachable.reason);
+
+    const fetcher = deps.fetcher ?? new AudioFetcher({ audioDir });
+    let fetched;
     try {
-      job = await deps.store.enqueue({
-        userId: userIdOf(req),
-        audioPath: file.path,
-        originalFilename: file.originalname,
-        callTitle: typeof callTitle === 'string' && callTitle.trim() ? callTitle.trim() : undefined,
-        callDate: callDate || undefined,
-      });
+      fetched = await fetcher.fetch(reachable.url, verdict.kind);
     } catch (error) {
-      // No row means nothing will ever transcribe or clean up this file.
-      await discard(file.path);
+      if (error instanceof AudioFetchError) return fail(res, error.message, 502);
       throw error;
     }
 
-    // 202, not 200: the work is accepted, not done.
-    res.status(202).json({
-      success: true,
-      data: toResponse(job),
-      message: 'Queued for transcription.',
+    await queueRecording(res, {
+      userId: userIdOf(req),
+      path: fetched.path,
+      // The name the user will see in their recordings list. Taken from the URL
+      // they pasted, not the one the redirects landed on — that is the one they
+      // will recognise.
+      originalFilename: filenameForUrl(verdict.url, verdict.kind),
+      ...(typeof callTitle === 'string' && callTitle.trim() ? { callTitle: callTitle.trim() } : {}),
+      ...(callDate ? { callDate } : {}),
     });
   });
 
