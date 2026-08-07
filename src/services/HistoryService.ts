@@ -40,36 +40,41 @@ export class HistoryService {
     this.db = new DatabaseService(pg);
   }
 
-  /**
-   * Get all processed commits
-   */
-  getProcessedCommits(): Promise<ProcessedCommit[]> {
-    return this.db.getProcessedCommits();
+  /** This user's processed commits, plus the pre-scoping legacy rows. */
+  getProcessedCommits(userId: string): Promise<ProcessedCommit[]> {
+    return this.db.getProcessedCommits(userId);
   }
 
   /**
-   * Check if a commit has already been processed
+   * Check if a commit has already been processed BY THIS USER.
+   *
+   * `userId` is required rather than optional on purpose. It used to be absent
+   * and dedup was global; an optional parameter would let a call site that was
+   * never updated keep the old shared behaviour, and the symptom of that — one
+   * user's scan silently skipping commits because a different user filed them —
+   * is invisible until someone notices missing tasks.
    */
-  isCommitProcessed(commitHash: string, projectPath?: string): Promise<boolean> {
-    return this.db.isCommitProcessed(commitHash, projectPath);
+  isCommitProcessed(commitHash: string, userId: string): Promise<boolean> {
+    return this.db.isCommitProcessed(commitHash, userId);
   }
 
   /**
-   * Filter out already processed commits
+   * Filter out commits this user has already filed.
    *
    * `projectPath` is accepted for call-site compatibility and ignored: dedup is
-   * keyed on the commit hash alone. See DatabaseService.isCommitProcessed.
+   * keyed on (user, hash). See DatabaseService.isCommitProcessed.
    */
   async filterUnprocessedCommits(
     commits: GitCommit[],
-    projectPath?: string
+    userId: string,
+    _projectPath?: string
   ): Promise<GitCommit[]> {
     // One batched read rather than one query per commit: a day's work can be
     // hundreds of commits, and `filter` cannot await anyway — an async
     // predicate returns a Promise, which is always truthy, so a naive
     // conversion here would silently keep every commit.
     const processed = await Promise.all(
-      commits.map((commit) => this.isCommitProcessed(commit.hash, projectPath))
+      commits.map((commit) => this.isCommitProcessed(commit.hash, userId))
     );
     return commits.filter((_, index) => !processed[index]);
   }
@@ -80,12 +85,14 @@ export class HistoryService {
   async markCommitsAsProcessed(
     commits: GitCommit[],
     projectPath: string,
+    userId: string,
     taskMapping?: Map<string, { id: string; name: string }>
   ): Promise<void> {
     for (const commit of commits) {
       const task = taskMapping?.get(commit.hash);
       const processedCommit: ProcessedCommitRecord = {
         hash: commit.hash,
+        userId,
         date: commit.date,
         author: commit.author,
         message: commit.message,
@@ -181,7 +188,7 @@ export class HistoryService {
   async getStatistics(scope: AnalysisScope) {
     const [dbStats, processedCommits] = await Promise.all([
       this.db.getStatistics(scope),
-      this.db.getProcessedCommits(undefined, 10000),
+      this.db.getProcessedCommits(scope.userId, undefined, 10000),
     ]);
 
     const projectStats = new Map<string, number>();

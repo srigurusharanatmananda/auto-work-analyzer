@@ -55,6 +55,13 @@ export interface WorkItemRecord {
 
 export interface ProcessedCommitRecord {
   hash: string;
+  /**
+   * Whose ledger this row belongs to, or `LEGACY_COMMIT_OWNER` for rows written
+   * before dedup was scoped. Required on writes: an omitted owner used to mean
+   * "everyone", and silently defaulting to that is how a missed call site keeps
+   * the old shared behaviour without anyone noticing.
+   */
+  userId: string;
   date: string;
   author: string;
   message: string;
@@ -126,12 +133,19 @@ export interface IDatabaseService {
   /**
    * Check if commit is processed
    */
-  isCommitProcessed(hash: string, projectPath?: string): Promise<boolean>;
+  isCommitProcessed(hash: string, userId: string): Promise<boolean>;
 
   /**
    * Get processed commits
    */
-  getProcessedCommits(projectPath?: string, limit?: number): Promise<ProcessedCommitRecord[]>;
+  getProcessedCommits(
+    userId: string,
+    projectPath?: string,
+    limit?: number
+  ): Promise<ProcessedCommitRecord[]>;
+
+  /** Every user's rows. Admin export only — see allAnalysesUnscoped. */
+  allProcessedCommitsUnscoped(limit?: number): Promise<ProcessedCommitRecord[]>;
 
   // ==================== Utility Methods ====================
 

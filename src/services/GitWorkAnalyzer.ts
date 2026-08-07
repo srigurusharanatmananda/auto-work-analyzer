@@ -16,6 +16,7 @@ import { renderTasks } from "../formatting/ClickUpRenderer.js";
 import type { RenderedTask } from "../formatting/ClickUpRenderer.js";
 import { mapStatus } from "../formatting/StatusMapper.js";
 import type { Template } from "../formatting/Template.js";
+import { LEGACY_COMMIT_OWNER } from "../db/schema.js";
 import {
   GitCommit,
   DetectedWork,
@@ -89,10 +90,22 @@ export class GitWorkAnalyzer {
    */
   private grouper?: CommitGrouper;
 
+  /**
+   * Whose "already filed" ledger this analyzer reads and writes.
+   *
+   * Dedup is per user: "already processed" is a claim about somebody's ClickUp
+   * list, and one person's list containing a task says nothing about another's.
+   * Defaults to LEGACY_COMMIT_OWNER — the shared ledger — which is right for the
+   * CLI and the exported one-shot helpers, where there is no session and never
+   * was. Every HTTP path passes a real user id.
+   */
+  private commitOwner: string;
+
   constructor(
     projectPath: string = process.cwd(),
     cacheTTL?: number,
-    grouper?: CommitGrouper
+    grouper?: CommitGrouper,
+    userId?: string
   ) {
     this.projectPath = projectPath;
     this.cache = new Map();
@@ -101,6 +114,7 @@ export class GitWorkAnalyzer {
       this.cacheTTL = cacheTTL;
     }
     this.grouper = grouper;
+    this.commitOwner = userId ?? LEGACY_COMMIT_OWNER;
   }
 
   /**
@@ -168,7 +182,11 @@ export class GitWorkAnalyzer {
       // Filter out already processed commits to prevent duplicates (only if includeProcessed is false)
       const commits = includeProcessed
         ? allCommits
-        : await this.historyService.filterUnprocessedCommits(allCommits, this.projectPath);
+        : await this.historyService.filterUnprocessedCommits(
+            allCommits,
+            this.commitOwner,
+            this.projectPath
+          );
 
       console.log(
         `Found ${allCommits.length} total commits${
@@ -500,7 +518,7 @@ export class GitWorkAnalyzer {
   ): Promise<void> {
     const commits = analysis.detectedWork.flatMap((work) => work.commits);
     if (commits.length === 0) return;
-    await this.historyService.markCommitsAsProcessed(commits, projectPath);
+    await this.historyService.markCommitsAsProcessed(commits, projectPath, this.commitOwner);
   }
 
   async createTasksFromWork(
@@ -705,6 +723,7 @@ export class GitWorkAnalyzer {
       await this.historyService.markCommitsAsProcessed(
         allCommits,
         this.projectPath,
+        this.commitOwner,
         taskMapping
       );
 

@@ -19,6 +19,7 @@
 import postgres from 'postgres';
 import { getPool } from '../db/pool.js';
 import type { PostgresHandle } from '../db/client.js';
+import { LEGACY_COMMIT_OWNER } from '../db/schema.js';
 import {
   IDatabaseService,
   AnalysisRecord,
@@ -252,13 +253,13 @@ export class DatabaseService implements IDatabaseService {
     // silently dropping any column the new row does not mention.
     await this.sql`
       INSERT INTO processed_commits (
-        hash, date, author, message, project_path, processed_at, task_id, task_name
+        hash, user_id, date, author, message, project_path, processed_at, task_id, task_name
       ) VALUES (
-        ${commit.hash}, ${commit.date}, ${commit.author}, ${commit.message},
+        ${commit.hash}, ${commit.userId}, ${commit.date}, ${commit.author}, ${commit.message},
         ${commit.projectPath}, ${commit.processedAt},
         ${commit.taskId || null}, ${commit.taskName || null}
       )
-      ON CONFLICT (hash) DO UPDATE SET
+      ON CONFLICT (user_id, hash) DO UPDATE SET
         date = excluded.date,
         author = excluded.author,
         message = excluded.message,
@@ -270,33 +271,57 @@ export class DatabaseService implements IDatabaseService {
   }
 
   /**
-   * Keyed on the hash alone, deliberately.
+   * Keyed on (user, hash) — never on the path.
    *
-   * `processed_commits.hash` is the PRIMARY KEY, so a hash can exist at most
-   * once — but this predicate also filtered on project_path while writes used
-   * INSERT OR REPLACE. Two clones of one repository therefore flip-flopped
-   * forever, each run re-creating the other's commits with nothing thrown.
+   * Two clones of one repository must still dedup against each other for the
+   * same user: this predicate once filtered on project_path while writes used
+   * INSERT OR REPLACE, so two clones flip-flopped forever, each run re-creating
+   * the other's commits. `project_path` stays on the row as provenance and is
+   * simply not part of the identity.
    *
-   * One commit becomes one task, whichever clone observed it. `project_path`
-   * stays on the row as provenance and is still recorded; it is simply not part
-   * of the identity. `projectPath` is accepted and ignored so existing callers
-   * are unchanged.
+   * The legacy owner matches everyone. Those rows record only that the commit
+   * was filed at all, before anyone tracked by whom; excluding them would make
+   * the first scan after this change re-file every commit in history.
    */
-  async isCommitProcessed(hash: string, _projectPath?: string): Promise<boolean> {
-    const rows = await this.sql`SELECT 1 FROM processed_commits WHERE hash = ${hash}`;
+  async isCommitProcessed(hash: string, userId: string): Promise<boolean> {
+    const rows = await this.sql`
+      SELECT 1 FROM processed_commits
+       WHERE hash = ${hash}
+         AND user_id IN (${userId}, ${LEGACY_COMMIT_OWNER})
+    `;
     return rows.length > 0;
   }
 
   async getProcessedCommits(
+    userId: string,
     projectPath?: string,
     limit: number = 100
   ): Promise<ProcessedCommitRecord[]> {
     return (await this.sql`
       SELECT
-        hash, date, author, message, project_path as "projectPath",
-        processed_at as "processedAt", task_id as "taskId", task_name as "taskName"
+        hash, user_id as "userId", date, author, message,
+        project_path as "projectPath", processed_at as "processedAt",
+        task_id as "taskId", task_name as "taskName"
       FROM processed_commits
-      ${projectPath ? this.sql`WHERE project_path = ${projectPath}` : this.sql``}
+      WHERE user_id IN (${userId}, ${LEGACY_COMMIT_OWNER})
+      ${projectPath ? this.sql`AND project_path = ${projectPath}` : this.sql``}
+      ORDER BY processed_at DESC
+      LIMIT ${limit}
+    `) as unknown as ProcessedCommitRecord[];
+  }
+
+  /**
+   * Every user's rows. For the admin JSON export only — the same exemption
+   * `allAnalysesUnscoped` carries, and named the same way so an unscoped read
+   * is never something you reach by accident.
+   */
+  async allProcessedCommitsUnscoped(limit: number = 10000): Promise<ProcessedCommitRecord[]> {
+    return (await this.sql`
+      SELECT
+        hash, user_id as "userId", date, author, message,
+        project_path as "projectPath", processed_at as "processedAt",
+        task_id as "taskId", task_name as "taskName"
+      FROM processed_commits
       ORDER BY processed_at DESC
       LIMIT ${limit}
     `) as unknown as ProcessedCommitRecord[];
@@ -325,7 +350,7 @@ export class DatabaseService implements IDatabaseService {
   }> {
     const [analyses, processedCommits] = await Promise.all([
       this.allAnalysesUnscoped(10000),
-      this.getProcessedCommits(undefined, 10000),
+      this.allProcessedCommitsUnscoped(10000),
     ]);
 
     return { analyses, processedCommits };

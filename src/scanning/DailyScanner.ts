@@ -58,7 +58,7 @@ export interface DailyScannerDeps {
   registry: ScanRegistry;
   resolver: DestinationResolver;
   grouper: CommitGrouper;
-  analyzerFactory?: (projectPath: string) => GitWorkAnalyzer;
+  analyzerFactory?: (projectPath: string, userId: string) => GitWorkAnalyzer;
   clickUpFactory?: (config: ClickUpConfig) => ClickUpService;
   discover?: typeof discoverRepos;
   fetchRepo?: (path: string) => Promise<void>;
@@ -106,8 +106,8 @@ export class DailyScanner {
         }
 
         const analyzer =
-          this.deps.analyzerFactory?.(repo.path) ??
-          new GitWorkAnalyzer(repo.path, undefined, this.deps.grouper);
+          this.deps.analyzerFactory?.(repo.path, userId) ??
+          new GitWorkAnalyzer(repo.path, undefined, this.deps.grouper, userId);
 
         // "--all" is load-bearing: git log with no revision argument walks HEAD
         // only, so work committed on a branch that is not checked out would be

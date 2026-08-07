@@ -96,6 +96,8 @@ interface HistoryRecorder {
   markCalls: {
     commits: GitCommit[];
     projectPath: string;
+    /** Whose dedup ledger the analyzer wrote to. */
+    userId: string;
     taskMapping: Map<string, { id: string; name: string }>;
   }[];
 }
@@ -130,12 +132,16 @@ beforeEach(() => {
     saveWorkItem: (...args: unknown[]) => {
       history.workItems.push(args);
     },
+    // Positional order matters: `userId` sits BEFORE `taskMapping`, and a stub
+    // left on the old signature silently records the Map as the user id and
+    // undefined as the mapping — which is how these four tests failed.
     markCommitsAsProcessed: (
       commits: GitCommit[],
       projectPath: string,
+      userId: string,
       taskMapping: Map<string, { id: string; name: string }>
     ) => {
-      history.markCalls.push({ commits, projectPath, taskMapping });
+      history.markCalls.push({ commits, projectPath, userId, taskMapping });
     },
   };
 

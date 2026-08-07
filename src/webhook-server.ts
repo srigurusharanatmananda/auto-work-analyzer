@@ -46,6 +46,7 @@ import { createAiClientFromEnv } from "./ai/AiClient.js";
 import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
 import { HeuristicCommitGrouper } from "./grouping/HeuristicCommitGrouper.js";
 import { TranscriptSweeper } from "./calls/TranscriptSweeper.js";
+import { LEGACY_COMMIT_OWNER } from "./db/schema.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -649,7 +650,14 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // `grouper` is what makes AI grouping reachable from the product: this
         // is the endpoint the UI's whole flow starts from, and before it was
         // passed here the injected grouper had no consumer any client could hit.
-        const analyzer = new GitWorkAnalyzer(targetProjectPath, undefined, grouper);
+        const analyzer = new GitWorkAnalyzer(
+          targetProjectPath,
+          undefined,
+          grouper,
+          // Dedup is per user: whether a commit is "already filed" is a claim
+          // about THIS caller's ClickUp list.
+          (req as any).user!.userId
+        );
         // Include processed commits for reports (createTasks = false)
         // Only filter processed commits when creating tasks to prevent duplicates
         const includeProcessed = !createTasks;
@@ -755,7 +763,16 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           commitHash,
         });
 
-        const analyzer = new GitWorkAnalyzer(config.project.path, undefined, grouper);
+        // LEGACY_COMMIT_OWNER, explicitly: this endpoint is authenticated by a
+        // shared secret and has no user session (see above), so there is no
+        // per-user ledger to use. Written out rather than left to the default so
+        // the choice is visible at the call site.
+        const analyzer = new GitWorkAnalyzer(
+          config.project.path,
+          undefined,
+          grouper,
+          LEGACY_COMMIT_OWNER
+        );
 
         // Determine date range based on webhook type
         let analysisDate = date;

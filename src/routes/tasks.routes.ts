@@ -342,7 +342,7 @@ export interface TasksRouterDeps {
    * history and marks commits processed. Production leaves this unset and gets
    * the real GitWorkAnalyzer.
    */
-  analyzerFactory?: (projectPath: string) => LegacyAnalyzer;
+  analyzerFactory?: (projectPath: string, userId: string) => LegacyAnalyzer;
   /**
    * Groups raw `commits` into work items. Required, not optional, so the
    * compiler finds every construction site rather than letting one silently
@@ -433,7 +433,9 @@ async function listStatusesOrNull(resolved: ResolvedDestination): Promise<string
 export function createTasksRouter(deps: TasksRouterDeps): Router {
   const router = Router();
   const makeAnalyzer =
-    deps.analyzerFactory ?? ((projectPath: string) => new GitWorkAnalyzer(projectPath));
+    deps.analyzerFactory ??
+    ((projectPath: string, userId: string) =>
+      new GitWorkAnalyzer(projectPath, undefined, undefined, userId));
 
   // Mirrors the limits the inline /api/notes handler enforced: 5MB, and text
   // files only. Dropping either would widen what an authenticated caller can
@@ -975,7 +977,9 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
       // ClickUpService from it, and its `defaultListId` is the destination's
       // list. It also renders internally, so the target list's statuses have to
       // be handed in rather than mapped out here.
-      const analyzer = makeAnalyzer(projectPath || deps.defaultProjectPath);
+      // The caller's own dedup ledger: "already filed" is a claim about their
+      // ClickUp list, not about the repository.
+      const analyzer = makeAnalyzer(projectPath || deps.defaultProjectPath, req.user!.userId);
       const createdTasks = await analyzer.createTasksFromWork(
         workAnalysis,
         resolved.config,

@@ -3,6 +3,7 @@
  */
 
 import fs from 'fs';
+import { LEGACY_COMMIT_OWNER } from './db/schema.js';
 import path from 'path';
 import { DatabaseService } from './services/DatabaseService.js';
 
@@ -91,6 +92,10 @@ async function migrateToDatabase() {
       for (const commit of commits) {
         await db.markCommitAsProcessed({
           hash: commit.hash,
+          // These predate any notion of a user, so they join the shared legacy
+          // ledger: counted as processed for everyone rather than re-filed by
+          // the first person to scan the repo.
+          userId: LEGACY_COMMIT_OWNER,
           date: commit.date,
           author: commit.author,
           message: commit.message,

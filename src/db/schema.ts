@@ -222,16 +222,36 @@ export const workItems = pgTable(
   (table) => [index('idx_work_items_analysis').on(table.analysisId)]
 );
 
+/**
+ * The owner of a `processed_commits` row that predates per-user scoping.
+ *
+ * Rows written before that change record only "somebody filed this commit", and
+ * there is no way to recover who. Treating them as unowned would make every
+ * user's next scan re-file the entire history — hundreds of duplicate ClickUp
+ * tasks — so they are owned by everybody instead: this sentinel counts as
+ * processed for whoever asks.
+ *
+ * A sentinel rather than NULL because it has to work in a composite primary
+ * key, and Postgres treats NULLs as distinct there, which would allow the same
+ * hash to be inserted as unowned any number of times.
+ */
+export const LEGACY_COMMIT_OWNER = '*';
+
 export const processedCommits = pgTable(
   'processed_commits',
   {
     /**
-     * The hash alone is the identity, deliberately and across all users and
-     * clones: one commit becomes one task, whichever clone observed it.
-     * `project_path` is provenance, not part of the key. Scoping this per user
-     * would change dedup semantics, so it stays global.
+     * Identity is (user_id, hash), NOT the hash alone.
+     *
+     * Two clones of one repository still dedup against each other for the same
+     * user — `project_path` is provenance, not part of the key. But two
+     * different people analysing the same repository each get their own ledger,
+     * because "already filed" is a statement about someone's ClickUp list, and
+     * one user's list having a task says nothing about another's.
      */
-    hash: text('hash').primaryKey(),
+    hash: text('hash').notNull(),
+    /** Owner, or `LEGACY_COMMIT_OWNER` for rows written before scoping. */
+    userId: text('user_id').notNull().default(LEGACY_COMMIT_OWNER),
     date: text('date').notNull(),
     author: text('author').notNull(),
     message: text('message').notNull(),
@@ -241,6 +261,7 @@ export const processedCommits = pgTable(
     taskName: text('task_name'),
   },
   (table) => [
+    primaryKey({ columns: [table.userId, table.hash] }),
     index('idx_processed_commits_project').on(table.projectPath),
     index('idx_processed_commits_date').on(table.date),
   ]

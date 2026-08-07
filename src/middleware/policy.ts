@@ -32,10 +32,12 @@
  * changing a role, deactivating or deleting an account. That is `adminOnly`,
  * and it is the whole of it today.
  *
- * Not solved here: `analysis_history`, `work_items` and `processed_commits` have
- * no `user_id` at all, so `GET /api/reports` and `/api/history` return every
- * user's rows to any authenticated caller. No role check can fix that — it needs
- * the column and a migration, and is tracked separately.
+ * Not solved by roles, and now solved elsewhere: `analysis_history`,
+ * `work_items` and `processed_commits` were unscoped, so every read returned
+ * every user's rows. They are now owner-scoped in SQL — see
+ * reports.scoping.nodetest.ts and HistoryService.dedup.nodetest.ts. No role
+ * check could have fixed that; ownership is the boundary, which is exactly why
+ * almost everything here is `anyRole`.
  */
 import { authorize } from './auth.middleware.js';
 
