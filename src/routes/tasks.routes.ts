@@ -165,8 +165,16 @@ export function annotateStatusMapping(
 }
 
 export interface CreateOutcome {
-  created: Array<{ id: string; name: string; url: string }>;
-  failed: Array<{ name: string; reason: string }>;
+  /**
+   * `index` is the position in the `rendered` array that was passed in.
+   *
+   * Carried because a caller that needs to know WHICH items succeeded cannot
+   * recover it from the name: two action items can render to the same task
+   * name, and matching by name would mark the wrong one filed. The transcript
+   * sweeper's dedup depends on getting this exactly right.
+   */
+  created: Array<{ id: string; name: string; url: string; index: number }>;
+  failed: Array<{ name: string; reason: string; index: number }>;
 }
 
 /**
@@ -185,23 +193,31 @@ export async function createRenderedTasks(
   for (let index = 0; index < rendered.length; index += BATCH_SIZE) {
     const batch = rendered.slice(index, index + BATCH_SIZE);
     const results = await Promise.all(
-      batch.map(async (entry) => {
+      batch.map(async (entry, offset) => {
+        // The position in `rendered`, not in this batch — the batch boundary is
+        // an implementation detail the caller never sees.
+        const position = index + offset;
         try {
           const task = await clickUp.createTask(entry.task, listId);
-          return { ok: true as const, task };
+          return { ok: true as const, task, position };
         } catch (error) {
           const reason = error instanceof Error ? error.message : "Unknown error";
           console.error(`Failed to create task: ${entry.task.name}`, reason);
-          return { ok: false as const, name: entry.task.name, reason };
+          return { ok: false as const, name: entry.task.name, reason, position };
         }
       })
     );
 
     for (const result of results) {
       if (result.ok) {
-        created.push({ id: result.task.id, name: result.task.name, url: result.task.url });
+        created.push({
+          id: result.task.id,
+          name: result.task.name,
+          url: result.task.url,
+          index: result.position,
+        });
       } else {
-        failed.push({ name: result.name, reason: result.reason });
+        failed.push({ name: result.name, reason: result.reason, index: result.position });
       }
     }
 

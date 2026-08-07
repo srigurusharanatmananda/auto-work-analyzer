@@ -21,6 +21,7 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
 import type { TranscriptionJobStore, TranscriptionJob } from '../transcription/TranscriptionJobStore.js';
 import { WhisperClient } from '../transcription/WhisperClient.js';
+import type { TranscriptSweeper } from '../calls/TranscriptSweeper.js';
 
 export interface TranscriptionRouterDeps {
   store: TranscriptionJobStore;
@@ -31,6 +32,12 @@ export interface TranscriptionRouterDeps {
   storageRoot: string;
   /** Only used to validate the path before enqueueing. */
   whisper?: WhisperClient;
+  /**
+   * Files action items from finished transcriptions. Absent when no AI provider
+   * or destination resolver is configured, in which case the sweep route says
+   * so rather than 404ing on a feature that exists.
+   */
+  sweeper?: TranscriptSweeper;
 }
 
 /** Generous for a long recording; Whisper's own limits bite well before this. */
@@ -232,6 +239,39 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
   router.get('/jobs', authenticate, anyRole, async (req, res) => {
     const jobs = await deps.store.listForUser(userIdOf(req));
     res.json({ success: true, data: jobs.map(toResponse) });
+  });
+
+  /**
+   * Files action items from every finished transcription not yet swept.
+   *
+   * `dryRun` defaults to TRUE. This route creates real ClickUp tasks with no
+   * per-item review, which is the opposite of every other path into ClickUp in
+   * this app — so the safe answer has to be the one you get by forgetting the
+   * flag, not the one you get by remembering it.
+   */
+  router.post('/sweep', authenticate, anyRole, async (req, res) => {
+    if (!deps.sweeper) {
+      return fail(
+        res,
+        'Sweeping is not configured on this server. It needs an AI provider and a ClickUp destination.',
+        400
+      );
+    }
+
+    const dryRun = req.body?.dryRun !== false;
+    try {
+      const summary = await deps.sweeper.run(userIdOf(req), { dryRun });
+      res.json({
+        success: true,
+        data: summary,
+        message: dryRun
+          ? `Dry run: ${summary.jobs.length} recording(s) would produce tasks. Nothing was created.`
+          : `Swept ${summary.jobs.length} recording(s), created ${summary.totalTasksCreated} task(s).`,
+      });
+    } catch (error) {
+      console.error('Transcript sweep failed:', error);
+      fail(res, error instanceof Error ? error.message : 'Sweep failed', 500);
+    }
   });
 
   /** 404 for someone else's job — the store scopes it, so ids stay unguessable. */

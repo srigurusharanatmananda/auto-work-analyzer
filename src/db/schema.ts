@@ -397,6 +397,26 @@ export const transcriptionJobs = pgTable(
     segmentsSeen: integer('segments_seen').notNull().default(0),
     callTitle: text('call_title'),
     callDate: text('call_date'),
+    /**
+     * The extracted action items, as JSON, cached the first time the sweep runs.
+     *
+     * Cached because extraction is a model call and is NOT deterministic: a
+     * re-run produces a different set of items, so "have I already filed this
+     * one?" would be unanswerable. Freezing the extraction is what makes
+     * `createdItemIndexes` mean anything — and it also means a retry after a
+     * partial failure costs nothing.
+     */
+    actionItems: text('action_items'),
+    /**
+     * Indexes into `actionItems` that reached ClickUp, as a JSON array.
+     *
+     * Per-item rather than a single "done" flag because a sweep can partially
+     * fail — three tasks created, two rejected by the list. Marking the whole
+     * job done would lose the two; marking nothing would duplicate the three.
+     */
+    createdItemIndexes: text('created_item_indexes'),
+    /** Set once every action item has been filed. The dedup guard for re-runs. */
+    sweptAt: text('swept_at'),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(now() at time zone 'utc')::text`),
@@ -408,5 +428,7 @@ export const transcriptionJobs = pgTable(
     index('idx_transcription_user').on(table.userId),
     // The claim query's index: find the oldest queued row.
     index('idx_transcription_status_created').on(table.status, table.createdAt),
+    // The sweep's query: this user's finished, not-yet-swept jobs.
+    index('idx_transcription_sweep').on(table.userId, table.status, table.sweptAt),
   ]
 );

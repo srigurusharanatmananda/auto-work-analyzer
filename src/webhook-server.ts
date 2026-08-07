@@ -45,6 +45,7 @@ import { DestinationResolver } from "./destinations/DestinationResolver.js";
 import { createAiClientFromEnv } from "./ai/AiClient.js";
 import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
 import { HeuristicCommitGrouper } from "./grouping/HeuristicCommitGrouper.js";
+import { TranscriptSweeper } from "./calls/TranscriptSweeper.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
 
@@ -257,6 +258,14 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       createScanningRouter({ registry: scanRegistry, scanner: dailyScanner })
     );
 
+    /**
+     * Assigned below, once the transcription store exists. Declared here so the
+     * scheduler's `runScan` can close over it: the daily tick is the natural
+     * place to file yesterday's calls, and giving transcripts a second timer
+     * would mean two unattended writers to ClickUp on different schedules.
+     */
+    let transcriptSweeper: TranscriptSweeper | undefined;
+
     const scanScheduler = new ScanScheduler({
       registry: scanRegistry,
       userIds: async () => {
@@ -280,6 +289,22 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         console.log(
           `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`
         );
+
+        // Calls that finished transcribing since the last tick. Deliberately
+        // after the git scan and inside the same try-free block the scheduler
+        // already wraps: a sweep that throws must not stop the day being
+        // recorded as scanned, or every subsequent tick would redo the scan.
+        if (!transcriptSweeper) return;
+        try {
+          const sweep = await transcriptSweeper.run(userId, { dryRun: false });
+          if (sweep.jobs.length > 0) {
+            console.log(
+              `🎙️  Transcript sweep: ${sweep.totalTasksCreated} task(s) from ${sweep.jobs.length} recording(s)`
+            );
+          }
+        } catch (error) {
+          console.error("Transcript sweep failed:", error);
+        }
       },
     });
     scanScheduler.start();
@@ -295,12 +320,20 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // docker-compose. Whisper opens the file itself rather than receiving bytes,
     // so a mismatch here means nothing can be transcribed — the upload route
     // checks it up front and 500s rather than queueing work that cannot run.
+    // Only when a provider exists: without one every sweep would fail at the
+    // first extraction, and an unattended job that can only fail is worse than
+    // an absent one. The route says so explicitly rather than 404ing.
+    transcriptSweeper = aiClient.isConfigured
+      ? new TranscriptSweeper({ store: transcriptionStore, resolver, aiClient })
+      : undefined;
+
     app.use(
       "/api/transcription",
       createTranscriptionRouter({
         store: transcriptionStore,
         storageRoot: transcriptionStorageRoot,
         whisper: whisperClient,
+        sweeper: transcriptSweeper,
       })
     );
 

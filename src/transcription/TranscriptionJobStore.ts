@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto';
 import { getPool } from '../db/pool.js';
 import type { PostgresHandle } from '../db/client.js';
 import type { TranscriptSegment } from './WhisperClient.js';
+import type { WorkItem } from '../domain/WorkItem.js';
 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
@@ -43,6 +44,17 @@ export interface TranscriptionJob {
   segmentsSeen: number;
   callTitle: string | null;
   callDate: string | null;
+  /**
+   * The extracted action items, frozen the first time the sweep saw this job.
+   * Null until then. See the schema note: extraction is not deterministic, so
+   * without freezing it `createdItemIndexes` would index a different list on
+   * every run.
+   */
+  actionItems: WorkItem[] | null;
+  /** Which of `actionItems` have reached ClickUp. */
+  createdItemIndexes: number[];
+  /** Set once every action item has been filed. */
+  sweptAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +81,9 @@ interface JobRow {
   segments_seen: number;
   call_title: string | null;
   call_date: string | null;
+  action_items: string | null;
+  created_item_indexes: string | null;
+  swept_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,6 +124,9 @@ function toJob(row: JobRow): TranscriptionJob {
     segmentsSeen: row.segments_seen,
     callTitle: row.call_title,
     callDate: row.call_date,
+    actionItems: parseJsonArray<WorkItem>(row.action_items),
+    createdItemIndexes: parseJsonArray<number>(row.created_item_indexes) ?? [],
+    sweptAt: row.swept_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -119,6 +137,25 @@ function toJob(row: JobRow): TranscriptionJob {
  * rather than throwing: the transcript itself is the load-bearing output, and
  * losing segment timings must not make a finished job unreadable.
  */
+/**
+ * A JSON array column, or null when absent or unreadable.
+ *
+ * Corrupt JSON degrades rather than throwing, for the same reason segments do:
+ * these are sweep bookkeeping, and losing them must not make a finished job
+ * unreadable. The cost of the degradation differs though — a lost
+ * `createdItemIndexes` means a re-sweep would duplicate tasks, which is why
+ * `sweptAt` is a separate scalar column and not part of this JSON.
+ */
+function parseJsonArray<T>(raw: string | null): T[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseSegments(raw: string | null): TranscriptSegment[] {
   if (!raw) return [];
   try {
@@ -322,6 +359,88 @@ export class TranscriptionJobStore {
       LIMIT ${limit}
     `;
     return rows.map(toJob);
+  }
+
+  /**
+   * Finished jobs this user has not fully filed yet, oldest first.
+   *
+   * Oldest first so a backlog is worked through in the order the calls
+   * happened, which is the order the resulting tasks read best in.
+   *
+   * A job with `''` for a transcript is excluded: a silent recording has
+   * nothing to extract, and including it would mean re-running a pointless
+   * model call on every sweep forever.
+   */
+  async listSweepable(userId: string, limit = 25): Promise<TranscriptionJob[]> {
+    const rows = await this.sql<JobRow[]>`
+      SELECT * FROM transcription_jobs
+       WHERE user_id = ${userId}
+         AND status = 'succeeded'
+         AND swept_at IS NULL
+         AND transcript IS NOT NULL
+         AND btrim(transcript) <> ''
+       ORDER BY created_at ASC
+       LIMIT ${limit}
+    `;
+    return rows.map(toJob);
+  }
+
+  /**
+   * Freezes the extraction. Written once and never overwritten — a second
+   * extraction would renumber the items that `createdItemIndexes` refers to,
+   * turning "items 0 and 2 are filed" into a statement about a different list.
+   */
+  async saveActionItems(id: string, items: WorkItem[]): Promise<void> {
+    await this.sql`
+      UPDATE transcription_jobs
+         SET action_items = ${JSON.stringify(items)},
+             updated_at = ${new Date().toISOString()}
+       WHERE id = ${id}
+         AND action_items IS NULL
+    `;
+  }
+
+  /**
+   * Records which items reached ClickUp, and marks the job swept once they all
+   * have.
+   *
+   * Unions with what is already there rather than replacing it, so a second
+   * partial run adds to the first instead of forgetting it. `sweptAt` is set in
+   * the same statement as the indexes: two statements would leave a window in
+   * which a crash loses the completion and the next sweep refiles everything.
+   */
+  async recordCreatedItems(id: string, indexes: number[], total: number): Promise<void> {
+    const [row] = await this.sql<{ created_item_indexes: string | null }[]>`
+      SELECT created_item_indexes FROM transcription_jobs WHERE id = ${id}
+    `;
+    const merged = Array.from(
+      new Set([...(parseJsonArray<number>(row?.created_item_indexes ?? null) ?? []), ...indexes])
+    ).sort((a, b) => a - b);
+
+    const complete = merged.length >= total;
+    await this.sql`
+      UPDATE transcription_jobs
+         SET created_item_indexes = ${JSON.stringify(merged)},
+             swept_at = ${complete ? new Date().toISOString() : null},
+             updated_at = ${new Date().toISOString()}
+       WHERE id = ${id}
+    `;
+  }
+
+  /**
+   * Marks a job swept without filing anything — for a call that produced no
+   * action items at all. Without this the sweep would re-extract it every run,
+   * paying for a model call to reach the same empty answer.
+   */
+  async markSweptEmpty(id: string): Promise<void> {
+    await this.sql`
+      UPDATE transcription_jobs
+         SET action_items = COALESCE(action_items, '[]'),
+             created_item_indexes = '[]',
+             swept_at = ${new Date().toISOString()},
+             updated_at = ${new Date().toISOString()}
+       WHERE id = ${id}
+    `;
   }
 
   /** Cancels a queued job. A running one is left alone — see the API route. */

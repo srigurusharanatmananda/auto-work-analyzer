@@ -118,8 +118,8 @@ describe("createRenderedTasks", () => {
 
     expect(outcome.failed).toEqual([]);
     expect(outcome.created).toEqual([
-      { id: "id-one", name: "one", url: "http://x/one" },
-      { id: "id-two", name: "two", url: "http://x/two" },
+      { id: "id-one", name: "one", url: "http://x/one", index: 0 },
+      { id: "id-two", name: "two", url: "http://x/two", index: 1 },
     ]);
   });
 
@@ -133,7 +133,7 @@ describe("createRenderedTasks", () => {
     );
 
     expect(outcome.created.map((c) => c.name)).toEqual(["ok-1", "ok-2"]);
-    expect(outcome.failed).toEqual([{ name: "explodes", reason: "ClickUp said no" }]);
+    expect(outcome.failed).toEqual([{ name: "explodes", reason: "ClickUp said no", index: 1 }]);
   });
 
   test("creates across more than one batch (BATCH_SIZE is 5)", async () => {
@@ -146,6 +146,46 @@ describe("createRenderedTasks", () => {
     expect(outcome.created.length).toBe(12);
     // Order must survive batching — callers report "created N tasks" against it.
     expect(outcome.created.map((c) => c.name)).toEqual(names);
+  });
+
+  /**
+   * The index is the position in the ARRAY PASSED IN, not in the batch it
+   * happened to land in. The transcript sweeper marks items filed by this
+   * number; a batch-relative one would mark items 0-4 filed over and over and
+   * refile everything past the first batch on the next run.
+   */
+  test("the index survives batch boundaries", async () => {
+    const names = Array.from({ length: 12 }, (_, i) => `task-${i}`);
+    const outcome = await createRenderedTasks(
+      renderedNamed(...names),
+      fakeClickUp((task) => ({ id: task.name, name: task.name, url: "http://x" }))
+    );
+
+    expect(outcome.created.map((c) => c.index)).toEqual([...Array(12).keys()]);
+  });
+
+  /**
+   * Two items rendering to the same name is why the index exists at all —
+   * matching by name could not tell the survivor from the casualty.
+   */
+  test("identically-named tasks are still told apart by index", async () => {
+    let calls = 0;
+    const outcome = await createRenderedTasks(
+      renderedNamed("same", "same", "same"),
+      fakeClickUp((task) => {
+        calls += 1;
+        if (calls === 2) throw new Error("rejected");
+        return { id: "x", name: task.name, url: "http://x" };
+      })
+    );
+
+    // Which one failed depends on scheduling, so assert the partition rather
+    // than specific positions: every input is accounted for exactly once.
+    expect(outcome.created).toHaveLength(2);
+    expect(outcome.failed).toHaveLength(1);
+    expect(
+      [...outcome.created.map((c) => c.index), ...outcome.failed.map((f) => f.index)].sort()
+    ).toEqual([0, 1, 2]);
   });
 
   test("an empty list makes no ClickUp calls", async () => {
