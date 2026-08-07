@@ -82,6 +82,113 @@ export function listTranscriptionJobs(): Promise<TranscriptionJob[]> {
   return api.get<TranscriptionJob[]>('/transcription/jobs');
 }
 
+/** One occurrence of the phrase, with context and a place in the recording. */
+export interface TranscriptHighlight {
+  text: string;
+  /** Where the phrase sits inside `text` — offsets, not a second search. */
+  matchStart: number;
+  matchEnd: number;
+  transcriptOffset: number;
+  /** Null when the transcript was edited and no longer lines up with its audio. */
+  startSeconds: number | null;
+  endSeconds: number | null;
+}
+
+export interface TranscriptSearchResult {
+  id: string;
+  originalFilename: string;
+  callTitle: string | null;
+  callDate: string | null;
+  language: string | null;
+  durationSeconds: number | null;
+  createdAt: string;
+  /** Set once every action item from this call has reached ClickUp. */
+  sweptAt: string | null;
+  transcriptLength: number;
+  /** Total occurrences, which can exceed `highlights.length`. */
+  matchCount: number;
+  highlights: TranscriptHighlight[];
+  /** The phrase is in the title or filename only — so there is no excerpt. */
+  titleOnlyMatch: boolean;
+}
+
+export interface TranscriptSearchResponse {
+  query: string;
+  results: TranscriptSearchResult[];
+  total: number;
+  limit: number;
+}
+
+export interface TranscriptSearchInput {
+  query?: string;
+  /** Inclusive `YYYY-MM-DD` bounds. */
+  from?: string;
+  to?: string;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+/**
+ * Searches the caller's finished transcripts.
+ *
+ * An empty query is a browse, not an error — the date filters alone answer
+ * "what did I record last week", and the server treats it the same way.
+ *
+ * Parameters go through `ApiClient`'s `query` option rather than being pasted
+ * into the path: it drops the empty ones and encodes the rest, which is what
+ * keeps a search for `R&D` or `C#` from being truncated at the ampersand.
+ */
+export function searchTranscripts(
+  input: TranscriptSearchInput = {}
+): Promise<TranscriptSearchResponse> {
+  return api.get<TranscriptSearchResponse>('/transcription/search', {
+    query: {
+      q: input.query?.trim() || undefined,
+      from: input.from || undefined,
+      to: input.to || undefined,
+      limit: input.limit,
+    },
+    ...(input.signal ? { signal: input.signal } : {}),
+  });
+}
+
+/**
+ * `1h 04m` / `4m 12s` / `9s`, dropping the leading units that are zero.
+ *
+ * Null when there is no duration to show — a job that has not finished, or a
+ * transcript that was pasted rather than recorded. The caller decides whether
+ * that renders as a dash or as nothing at all, because the recordings list
+ * omits the chip entirely while a table needs a placeholder to keep its
+ * columns aligned.
+ *
+ * Lives here rather than in a component because both surfaces show it, and the
+ * two copies had already started to differ.
+ */
+export function formatDuration(seconds: number | null | undefined): string | null {
+  if (!seconds || seconds <= 0) return null;
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = Math.round(seconds % 60);
+
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+  if (minutes > 0) return `${minutes}m ${String(rest).padStart(2, '0')}s`;
+  return `${rest}s`;
+}
+
+/** `12:34`, for pointing at a moment inside a recording. */
+export function formatTimestamp(seconds: number | null | undefined): string | null {
+  if (seconds === null || seconds === undefined) return null;
+
+  const total = Math.floor(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = total % 60;
+  const mmss = `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+
+  return hours > 0 ? `${hours}:${mmss}` : mmss;
+}
+
 /** Still moving — worth polling for, and not yet safe to read a transcript from. */
 export function isJobActive(job: TranscriptionJob): boolean {
   return job.status === 'queued' || job.status === 'running';

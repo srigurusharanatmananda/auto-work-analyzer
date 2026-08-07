@@ -59,6 +59,22 @@ export interface TranscriptionJob {
   updatedAt: string;
 }
 
+export interface TranscriptSearchFilters {
+  /**
+   * A LIKE pattern body, already escaped by `escapeLikePattern`. Undefined
+   * means "no phrase" — browse everything in the date window.
+   *
+   * Taking the escaped form rather than the raw query is deliberate: an
+   * unescaped `%` here is a silent wildcard, and a parameter that is dangerous
+   * to pass raw should not accept the raw thing.
+   */
+  pattern?: string;
+  /** Inclusive `YYYY-MM-DD` bounds on the call date. */
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface EnqueueInput {
   userId: string;
   audioPath: string;
@@ -357,6 +373,51 @@ export class TranscriptionJobStore {
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT ${limit}
+    `;
+    return rows.map(toJob);
+  }
+
+  /**
+   * Transcripts matching a phrase, newest first.
+   *
+   * Only `succeeded` jobs: a queued or failed one has no transcript to match,
+   * and returning it as a "result with no excerpt" is worse than omitting it.
+   *
+   * `ILIKE`, not `LIKE`. Postgres `LIKE` is case-sensitive, so the obvious
+   * version of this query misses "Contract" when you search "contract" — the
+   * reference implementation this is modelled on has exactly that bug, and it
+   * presents as search simply being bad rather than as anything broken.
+   *
+   * The pattern arrives pre-escaped (see `escapeLikePattern`), and the escape
+   * character is stated explicitly rather than left to the default so it cannot
+   * be undone by a `standard_conforming_strings` change.
+   *
+   * Note the doubled backslash: this is a JavaScript template literal, so
+   * `ESCAPE '\'` there reaches Postgres as `ESCAPE ''` — an empty escape
+   * character, which turns escaping off entirely and silently. Written that way
+   * first; the wildcard tests caught it.
+   *
+   * The title is searched alongside the body: "the Acme call" is a thing people
+   * remember when the words inside it are not.
+   */
+  async search(userId: string, filters: TranscriptSearchFilters): Promise<TranscriptionJob[]> {
+    const { pattern, from, to, limit = 50 } = filters;
+    const like = pattern === undefined ? null : `%${pattern}%`;
+
+    const rows = await this.sql<JobRow[]>`
+      SELECT * FROM transcription_jobs
+       WHERE user_id = ${userId}
+         AND status = 'succeeded'
+         AND (${like}::text IS NULL
+              OR transcript ILIKE ${like} ESCAPE '\\'
+              OR original_filename ILIKE ${like} ESCAPE '\\'
+              OR COALESCE(call_title, '') ILIKE ${like} ESCAPE '\\')
+         AND (${from ?? null}::text IS NULL
+              OR COALESCE(call_date, left(created_at, 10)) >= ${from ?? null})
+         AND (${to ?? null}::text IS NULL
+              OR COALESCE(call_date, left(created_at, 10)) <= ${to ?? null})
+       ORDER BY created_at DESC
+       LIMIT ${limit}
     `;
     return rows.map(toJob);
   }

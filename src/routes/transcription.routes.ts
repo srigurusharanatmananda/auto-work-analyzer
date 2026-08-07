@@ -22,6 +22,11 @@ import { anyRole } from '../middleware/policy.js';
 import type { TranscriptionJobStore, TranscriptionJob } from '../transcription/TranscriptionJobStore.js';
 import { WhisperClient } from '../transcription/WhisperClient.js';
 import type { TranscriptSweeper } from '../calls/TranscriptSweeper.js';
+import {
+  buildHighlights,
+  countOccurrences,
+  escapeLikePattern,
+} from '../calls/transcriptSearch.js';
 
 export interface TranscriptionRouterDeps {
   store: TranscriptionJobStore;
@@ -65,6 +70,13 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Search page size. Capped because each result carries excerpts, and an
+ * unbounded `limit` makes one request able to serialise an entire archive.
+ */
+const DEFAULT_SEARCH_LIMIT = 25;
+const MAX_SEARCH_LIMIT = 100;
 
 /**
  * What the client sees. Excludes `audioPath` deliberately: it is a server
@@ -239,6 +251,77 @@ export function createTranscriptionRouter(deps: TranscriptionRouterDeps): Router
   router.get('/jobs', authenticate, anyRole, async (req, res) => {
     const jobs = await deps.store.listForUser(userIdOf(req));
     res.json({ success: true, data: jobs.map(toResponse) });
+  });
+
+  /**
+   * GET /api/transcription/search?q=&from=&to=&limit=
+   *
+   * Registered before `/jobs/:id` only by convention — it is a sibling of
+   * `/jobs`, not a child, so there is no shadowing to worry about.
+   *
+   * An empty `q` is a browse, not an error: the date filters alone are a useful
+   * query ("what did I record last week"), and making the box mandatory would
+   * turn that into a search for the empty string.
+   */
+  router.get('/search', authenticate, anyRole, async (req: any, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const from = typeof req.query.from === 'string' ? req.query.from : '';
+    const to = typeof req.query.to === 'string' ? req.query.to : '';
+
+    for (const [name, value] of [
+      ['from', from],
+      ['to', to],
+    ] as const) {
+      if (value && !DATE_PATTERN.test(value)) return fail(res, `${name} must be YYYY-MM-DD`);
+    }
+    if (from && to && from > to) return fail(res, 'from must not be after to');
+
+    // Anything that is not a positive whole number falls back to the default
+    // rather than being clamped into range. Clamping `limit=-5` to 1 would
+    // answer a nonsense request with a single result, which reads as "you have
+    // one recording" — a wrong answer where a sane default is available.
+    const requested = Number(req.query.limit);
+    const limit =
+      Number.isInteger(requested) && requested > 0
+        ? Math.min(requested, MAX_SEARCH_LIMIT)
+        : DEFAULT_SEARCH_LIMIT;
+
+    const jobs = await deps.store.search(userIdOf(req), {
+      pattern: query ? escapeLikePattern(query) : undefined,
+      from: from || undefined,
+      to: to || undefined,
+      limit,
+    });
+
+    // Highlighting runs over the rows the query already narrowed to, so the
+    // cost is bounded by `limit` rather than by the size of the archive.
+    const results = jobs.map((job) => {
+      const transcript = job.transcript ?? '';
+      const highlights = query ? buildHighlights(transcript, job.segments, query) : [];
+
+      return {
+        id: job.id,
+        originalFilename: job.originalFilename,
+        callTitle: job.callTitle,
+        callDate: job.callDate,
+        language: job.language,
+        durationSeconds: durationOf(job),
+        createdAt: job.createdAt,
+        sweptAt: job.sweptAt,
+        /** Characters, so the UI can show how much text a hit sits in. */
+        transcriptLength: transcript.length,
+        matchCount: query ? countOccurrences(transcript, query) : 0,
+        highlights,
+        /**
+         * True when the phrase is only in the title or filename. Without this
+         * the row appears with no excerpt and looks like a highlighting
+         * failure rather than a title match.
+         */
+        titleOnlyMatch: Boolean(query) && highlights.length === 0,
+      };
+    });
+
+    res.json({ success: true, data: { query, results, total: results.length, limit } });
   });
 
   /**

@@ -22,6 +22,7 @@ import { useApiQuery } from '@/lib/api/useApiQuery';
 import {
   TranscriptionJob,
   cancelTranscription,
+  formatDuration,
   isJobActive,
 } from '@/lib/api/transcription';
 
@@ -43,13 +44,6 @@ const STATUS_LABELS: Record<TranscriptionJob['status'], string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
-
-function formatDuration(seconds: number | null | undefined): string | null {
-  if (!seconds || seconds <= 0) return null;
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds % 60);
-  return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`;
-}
 
 /** First line of the transcript, as a hint at what the call was about. */
 function preview(transcript: string | null | undefined): string | null {

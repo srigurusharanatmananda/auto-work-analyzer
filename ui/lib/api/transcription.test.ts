@@ -11,10 +11,13 @@ import {
   AUDIO_EXTENSIONS,
   TranscriptionFailedError,
   type TranscriptionJob,
+  formatDuration,
+  formatTimestamp,
   isAudioFile,
+  searchTranscripts,
   waitForTranscript,
 } from './transcription';
-import { api } from './ApiClient';
+import { api, type RequestOptions } from './ApiClient';
 
 const job = (overrides: Partial<TranscriptionJob> = {}): TranscriptionJob => ({
   id: 'job-1',
@@ -137,5 +140,127 @@ describe('waitForTranscript', () => {
     } finally {
       restore();
     }
+  });
+});
+
+/** Captures the path and options `api.get` was called with, typed. */
+type GetOptions = Omit<RequestOptions, 'method' | 'body'>;
+
+function stubGetCapturing(response: unknown) {
+  const calls: Array<{ path: string; options: GetOptions }> = [];
+  const original = api.get;
+
+  (api as unknown as { get: unknown }).get = mock(
+    async (path: string, options: GetOptions = {}) => {
+      calls.push({ path, options });
+      return response;
+    }
+  );
+
+  return {
+    calls,
+    restore: () => {
+      (api as unknown as { get: unknown }).get = original;
+    },
+  };
+}
+
+describe('searchTranscripts', () => {
+  const empty = { query: '', results: [], total: 0, limit: 25 };
+
+  test('sends the query, dates and limit as query parameters', async () => {
+    const { calls, restore } = stubGetCapturing(empty);
+
+    try {
+      await searchTranscripts({ query: '  contract  ', from: '2026-01-01', to: '2026-02-01', limit: 10 });
+    } finally {
+      restore();
+    }
+
+    expect(calls[0]!.path).toBe('/transcription/search');
+    expect(calls[0]!.options.query).toEqual({
+      q: 'contract',
+      from: '2026-01-01',
+      to: '2026-02-01',
+      limit: 10,
+    });
+  });
+
+  /**
+   * Not hand-built into the path: `ApiClient` drops the undefined entries and
+   * encodes the rest, so a search for `R&D` survives the trip.
+   */
+  test('omits empty filters rather than sending blanks', async () => {
+    const { calls, restore } = stubGetCapturing(empty);
+
+    try {
+      await searchTranscripts({ query: '   ' });
+    } finally {
+      restore();
+    }
+
+    expect(calls[0]!.options.query).toEqual({
+      q: undefined,
+      from: undefined,
+      to: undefined,
+      limit: undefined,
+    });
+  });
+
+  test('passes an abort signal through when one is given', async () => {
+    const { calls, restore } = stubGetCapturing(empty);
+    const controller = new AbortController();
+
+    try {
+      await searchTranscripts({ query: 'x', signal: controller.signal });
+    } finally {
+      restore();
+    }
+
+    expect(calls[0]!.options.signal).toBe(controller.signal);
+  });
+
+  test('sends no signal key at all when none is given', async () => {
+    const { calls, restore } = stubGetCapturing(empty);
+
+    try {
+      await searchTranscripts({ query: 'x' });
+    } finally {
+      restore();
+    }
+
+    expect('signal' in calls[0]!.options).toBe(false);
+  });
+});
+
+describe('formatDuration', () => {
+  test('drops the leading units that are zero', () => {
+    expect(formatDuration(9)).toBe('9s');
+    expect(formatDuration(252)).toBe('4m 12s');
+    expect(formatDuration(3852)).toBe('1h 04m');
+  });
+
+  /** Null, not "0s" — the caller decides whether that is a dash or nothing. */
+  test('is null when there is no duration to show', () => {
+    expect(formatDuration(null)).toBeNull();
+    expect(formatDuration(undefined)).toBeNull();
+    expect(formatDuration(0)).toBeNull();
+  });
+});
+
+describe('formatTimestamp', () => {
+  test('is mm:ss, and h:mm:ss past an hour', () => {
+    expect(formatTimestamp(0)).toBe('00:00');
+    expect(formatTimestamp(754)).toBe('12:34');
+    expect(formatTimestamp(3754)).toBe('1:02:34');
+  });
+
+  /**
+   * Zero is a real timestamp — the very start of the recording — so unlike a
+   * duration it must not be treated as absent.
+   */
+  test('distinguishes the start of the recording from no timestamp', () => {
+    expect(formatTimestamp(0)).toBe('00:00');
+    expect(formatTimestamp(null)).toBeNull();
   });
 });

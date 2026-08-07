@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import TranscriptTab from '@/components/TranscriptTab';
 
@@ -7,12 +8,21 @@ export default function TranscriptsPage() {
   return (
     <ProtectedRoute>
       <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Call Transcripts</h1>
-          <p className="mt-2 text-foreground-secondary">
-            Upload a recording or paste a transcript, and turn what was agreed into ClickUp tasks
-            — after you have checked it
-          </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Call Transcripts</h1>
+            <p className="mt-2 text-foreground-secondary">
+              Upload a recording or paste a transcript, and turn what was agreed into ClickUp
+              tasks — after you have checked it
+            </p>
+          </div>
+
+          <Link
+            href="/transcripts/search"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+          >
+            Search past calls
+          </Link>
         </div>
 
         <div className="mb-6 rounded-lg border border-primary bg-primary/10 p-4">
