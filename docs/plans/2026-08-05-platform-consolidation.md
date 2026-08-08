@@ -225,19 +225,25 @@ where registration grants admin is worse than no RBAC.
 > not. It was **rebuilt natively** on this stack over 2026-08-06/07 — see
 > `src/calls/`, `src/transcription/`, `services/whisper`.
 >
-> So item 13 is down to three things with no local equivalent: `bhashini.ts`
+> So item 13 is down to two things with no local equivalent: `bhashini.ts`
 > (a specific seq2seq translation endpoint `AiClient`'s chat interface cannot
-> serve — the plan called this correctly), `language.queue.ts`, and **contact
-> intelligence**. Item 14 — the 73 missing `.js` specifiers and the `@database`
-> alias — dies with the code it was for.
+> serve — the plan called this correctly) and `language.queue.ts`. Item 14 — the
+> 73 missing `.js` specifiers and the `@database` alias — dies with the code it
+> was for.
 >
-> **Correction, 2026-08-08:** an earlier version of this banner listed only the
-> first two, which silently wrote contact intelligence out of existence — it is
+> **Correction, 2026-08-08:** an earlier version of this banner listed those two
+> alone, which silently wrote **contact intelligence** out of existence — it is
 > half of what the source system is named for, and there is no contact code in
-> this repo at all. It is now tracked explicitly as Phase 8 in
-> [`../../STATUS.md`](../../STATUS.md), including the finding that the source's
-> contact feature is far thinner than its name suggests: no dedup, no merging,
-> no relationship graph, and no column linking a contact to a call.
+> this repo at all. It was surfaced as Phase 8 in
+> [`../../STATUS.md`](../../STATUS.md) and, **later the same day, dropped by
+> decision**: the port is not happening, and if contacts are ever wanted they get
+> built natively here. The reasoning is in that Phase 8 section — chiefly that
+> the source's contact feature is far thinner than its name suggests (no dedup,
+> no merging, no relationship graph, and no column linking a contact to a call),
+> so a port would be new work wearing the label of a port.
+>
+> Recorded this way on purpose: dropped *by decision* reads differently from
+> dropped *by omission*, and only one of them should be re-opened casually.
 >
 > The plan's warning that `gemini-1.5-flash` is a retired model id was right and
 > was fixed here independently in `09dbdae`.
