@@ -1,10 +1,11 @@
 # Learning module: teaching Sanskrit and Tamil to one absolute beginner
 
-**Status: spec, not yet planned into phases of work.** Supersedes the "Not
-planned here: the learning module" section of
-[`../plans/2026-08-05-platform-consolidation.md`](../plans/2026-08-05-platform-consolidation.md),
-which recorded this as blocked on a human decision. It is not blocked. This
-document says why.
+**Status: spec, not yet planned into phases of work.** This is phase 7 in
+[`../../STATUS.md`](../../STATUS.md). It supersedes the "Not planned here: the
+learning module" section of the original platform-consolidation plan, which
+recorded this as blocked on a human decision. It is not blocked, and this
+document says why. (That plan has since been retired — `git log
+--diff-filter=D -1 -p -- docs/plans/2026-08-05-platform-consolidation.md`.)
 
 ## Who this is for
 

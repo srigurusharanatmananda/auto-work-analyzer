@@ -70,8 +70,14 @@ pure `*.test.ts` files.
 
 ## Where the work stands
 
-This follows the phase plan the project was built against. Phases are numbered
-from that plan; the numbering is kept so older notes still line up.
+Phase numbers come from the original plan document. That document has been
+retired — most of it had become banners explaining what was no longer happening,
+which is the opposite of a plan. This file replaces it. The numbering is kept
+only so older commit messages and notes still line up; there is no phase 3 or 5
+to do.
+
+To read the retired plan and its reasoning:
+`git log --diff-filter=D -1 -p -- docs/plans/2026-08-05-platform-consolidation.md`
 
 ### Done
 
@@ -84,101 +90,41 @@ from that plan; the numbering is kept so older notes still line up.
 `POST /api/webhook` is intentionally unauthenticated — it is gated by a shared
 secret and refuses the request when that secret is unset. That is not a gap.
 
-### Not started
+### Still to do
 
-| Phase | What | Note |
+| Phase | What | State |
 |---|---|---|
-| **3 — Monorepo / Bun / BullMQ** | `packages/`+`apps/`+`modules/` layout, Redis-backed queue | **Largely obsolete — see below.** No `packages/`, no BullMQ, still `tsx` on Node ≥18 |
-| **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4 | `ui/package.json` confirms current versions. **This is the next real body of work.** |
-| **5 — Absorb the call module** | Move code in from `call-intelligence-system` | **Largely obsolete — see below** |
-| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** No longer blocked — see [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages are in scope |
-| **8 — Contact intelligence** | People extracted from transcripts | **DROPPED 2026-08-08, on the record.** Not a port, and nothing scheduled to replace it. See below — do not re-open it as "we forgot to do this" |
-| **— Analytics** | A reporting view over work items, scans and calls | **NOT STARTED, never planned.** Raised in conversation and never written down until now |
+| **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4 | **Next up.** See below |
+| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages in scope; no open questions |
+| **— Analytics** | A reporting view over work items, scans and calls | **Undecided.** Raised in conversation, never scoped. Nothing depends on it |
 
-### Phase 8 — contact intelligence: dropped, and why
+### Not doing
 
-> **Decision, 2026-08-08 — the port is dropped permanently, and nothing is
-> scheduled to replace it.** This is a decision, not an oversight. If contacts
-> are ever wanted, they get **built natively here**; the old implementation is
-> not coming across. Read the rest of this section before re-opening it.
+Each of these was a real plan item, and each was closed deliberately. They are
+listed so nobody re-opens one as "we forgot to do this" — the reasons are the
+point, not the verdicts.
 
-`call-intelligence-system` is named for two things. Only one of them was rebuilt
-here. **There is no contact functionality in this repo at all** — a
-case-insensitive search for "contact" across `src/` and `ui/` returns nothing.
+| Phase | Verdict | Why |
+|---|---|---|
+| **3 — Monorepo / Bun / BullMQ** | Abandoned | It existed to give incoming call-system code somewhere to land. Nothing is being moved in, so the restructure is now cosmetic. Its one *hazard* justification — `ScanScheduler` duplicating every ClickUp task across two processes — was closed by `ScanLeaseStore` instead. BullMQ would make Redis a required service for two low-volume job types Postgres already handles. Revisit only if a queue actually backs up, or you want more than one worker box |
+| **5 — Absorb the call module** | Superseded | Call intelligence was **rebuilt natively** rather than merged in, and that went better than the merge would have. All that ever remained were two pieces with no local equivalent: `bhashini.ts` (a seq2seq translation endpoint `AiClient`'s chat interface cannot serve) and `language.queue.ts` |
+| **8 — Contact intelligence** | Dropped 2026-08-08 | Not a port and not scheduled. See below |
 
-That started as an omission rather than a decision: it was raised in
-conversation, judged the weakest fit, and never written down — so a reader of
-this file would not have learned it ever existed. It is now decided, and the
-reasoning is recorded below so the decision can be re-examined on its merits
-rather than re-litigated from memory.
+**Contacts, in full, because this one is easy to get wrong.** The sister repo is
+named for two capabilities and only one was rebuilt here. What it actually has is
+a flat per-user address book, one LLM extraction prompt (whose 188 lines of tests
+cover JSON-parsing robustness, not extraction quality), and a `LIKE` search. What
+it does *not* have — verified, the greps are empty — is fuzzy matching, dedup,
+profile merging, a relationship graph, or **any column linking a contact to a
+call**; the source's own "contacts for this call" query returns a hardcoded empty
+array.
 
-**What the source system actually has** (verified 2026-08-08, and smaller than it
-sounds):
-
-- `packages/database/src/schema/contacts.ts` — a flat per-user record: name,
-  email, phone, company, job title, notes, `metadata` jsonb, `isVerified`.
-- LLM extraction from transcripts, implemented in `apps/api/src/lib/gemini.ts`
-  and called from `transcription.queue.ts`. Its 188-line test file covers
-  **robustness of parsing the model's JSON reply** — markdown fences, prose
-  wrappers, malformed output — not extraction quality.
-- tRPC CRUD plus `LIKE '%term%'` search over name, email and company.
-- Three UI pages: list, new, detail.
-
-**What it does NOT have**, despite being easy to assume: no fuzzy matching, no
-deduplication, no profile merging, no relationship graph. Those greps come back
-empty. And the `contacts` table has **no `callId` column** — the source's own
-code comments on this, and its "contacts for this call" query returns a hardcoded
-empty array. The link from a call to the people mentioned in it was never wired.
-
-**Why it was dropped:** porting this is not porting a contact graph. It is
-porting a flat address book, an LLM prompt, and a `LIKE` search — where the
-interesting parts, and the connection to calls, are the parts that do not exist.
-A port would mean re-keying `serial` user ids to uuid and *then* building the
-call link, the dedup and the merging from scratch anyway: new work wearing the
-label of a port, inheriting the old schema's constraints without inheriting
-anything that saves time.
-
-The precedent settles it. Call intelligence itself was **rebuilt natively here
-rather than merged in**, and that went better than the merge would have (it is
-why phases 3 and 5 are obsolete — see below). Contacts is the same shape, only
-more so.
-
-**If contacts are ever wanted**, build them here against this stack: uuid
-identity and per-user scoping from the start, a `callId` link the source never
-had, and the extraction validated the way `AiCommitGrouper` + `groupingSchema`
-already validate LLM output. The only genuinely reusable artefact from the
-source is the extraction prompt itself — copy that, not the code.
-
-Nothing in the plan depends on this, which is why dropping it costs nothing to
-reverse later.
-
-### Why phases 3 and 5 are obsolete
-
-The plan assumed call intelligence would arrive by *moving code in* from
-`call-intelligence-system`, and phase 3's monorepo restructure existed to give
-that code somewhere to land without losing its history.
-
-That is not what happened. The capability was **rebuilt natively** on this
-stack. So:
-
-- Phase 5 is down to the two pieces with no local equivalent: `bhashini.ts` (a
-  seq2seq translation endpoint `AiClient`'s chat interface cannot serve) and
-  `language.queue.ts`.
-- Phase 3's restructure is now purely cosmetic. Its one *hazard* justification —
-  `ScanScheduler` was an unlocked `setInterval` that would duplicate every
-  ClickUp task across two processes — was closed by `ScanLeaseStore` instead.
-  BullMQ would add Redis as a required service for two low-volume job types
-  that Postgres already handles correctly. Not worth it until something
-  concretely hurts: a queue backing up, or wanting more than one worker box.
-
-**Do not start phase 3 on the strength of the old plan document.** Read this
-section first.
-
-The plan itself is at
-[`docs/plans/2026-08-05-platform-consolidation.md`](docs/plans/2026-08-05-platform-consolidation.md),
-kept because its *reasoning* remains the best account of why things are as they
-are. Every phase in it now carries a status banner; trust the banners over the
-prose.
+So a port would mean re-keying `serial` ids to uuid and *then* building every
+interesting part from scratch: new work wearing the label of a port. If contacts
+are ever wanted, build them here — uuid identity and a `callId` link from the
+start, extraction validated the way `AiCommitGrouper` + `groupingSchema` already
+validate LLM output. Copy the prompt, not the code. Nothing depends on this, so
+the decision is cheap to reverse on evidence.
 
 ---
 
@@ -186,13 +132,11 @@ prose.
 
 **Phase 4: upgrade `ui/` to Next 16 + Tailwind 4.** Tailwind 3→4 changes the
 config format and risks a working app, so it ships alone with nothing else in
-flight.
+flight. `ui/package.json` confirms the current versions.
 
-Smaller deployment-readiness items, none blocking anything today:
-
-- Rate limiting is in-memory — resets on restart, and is per-process.
-- CORS is configured for a single localhost origin.
-- `.next/` build artifacts pollute repo-wide greps. Exclude them when searching.
+Smaller deployment-readiness items, none blocking anything today, are in
+**Known issues** below. One search annoyance worth knowing: `.next/` build
+artifacts pollute repo-wide greps — exclude them.
 
 ---
 
@@ -303,14 +247,9 @@ left alone — that is a human's decision, not a cleanup task.
 
 An agent should **not** decide these alone.
 
-1. **Analytics: is a reporting view wanted?** Listed in the not-started table
-   above. It was raised in conversation as an option and never scoped. Nothing
-   depends on it.
+1. **Analytics: is a reporting view wanted?** Raised in conversation as an option
+   and never scoped. Nothing depends on it.
 
-2. **Phase 7 has no open questions left.** Both languages are in scope (decided
-   2026-08-08), the TTS question is answered, and the Whisper probe has been run.
-   The one deferred question — whether a fine-tuned Sanskrit Whisper is worth it
-   for pronunciation feedback — does not matter until stage 4.
 2. **Test data cleanup.** Three test tasks exist in the live ClickUp workspace —
    `869ef37ez`, `869ef37f2` (both tagged `sweep check two`), and `869ef03tn`
    (`🧪 DELETE ME`, tagged `test-fixture`). Five test recordings sit in the dev
