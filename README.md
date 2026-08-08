@@ -2,6 +2,10 @@
 
 **Automatic work analysis and ClickUp task creation based on git commits**
 
+> **Picking this up mid-stream?** Start with **[STATUS.md](STATUS.md)** — what is
+> done, what is next, and the landmines. This README predates the Postgres move
+> and the call-transcript module.
+
 [![npm version](https://badge.fury.io/js/auto-work-analyzer.svg)](https://badge.fury.io/js/auto-work-analyzer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
