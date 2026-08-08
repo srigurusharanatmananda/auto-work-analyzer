@@ -91,7 +91,7 @@ secret and refuses the request when that secret is unset. That is not a gap.
 | **3 — Monorepo / Bun / BullMQ** | `packages/`+`apps/`+`modules/` layout, Redis-backed queue | **Largely obsolete — see below.** No `packages/`, no BullMQ, still `tsx` on Node ≥18 |
 | **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4 | `ui/package.json` confirms current versions. **This is the next real body of work.** |
 | **5 — Absorb the call module** | Move code in from `call-intelligence-system` | **Largely obsolete — see below** |
-| **7 — Learning module** | Sanskrit/Tamil teaching | **Blocked on a human decision, not on code** |
+| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** No longer blocked — see [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md) |
 
 ### Why phases 3 and 5 are obsolete
 
@@ -233,14 +233,11 @@ left alone — that is a human's decision, not a cleanup task.
 
 An agent should **not** decide these alone.
 
-1. **Sanskrit TTS.** Phase 7 needs a voice. Tamil TTS is well served (Google,
-   Azure). Sanskrit is scarce — realistic options are recorded audio from a
-   reciter, or a Hindi voice approximating Devanagari, which mispronounces Vedic
-   length and pitch. For chanting that is the entire point. This is a product
-   decision blocking the whole phase.
-   - Related and **unverified**: whether Whisper is accurate enough for Sanskrit
-     syllable length to support pronunciation feedback. Test with a throwaway
-     probe before planning around it.
+1. **Which language first — Sanskrit, Tamil, or both?** Tamil has better tooling
+   and immediate practical use; Sanskrit is the harder problem and presumably the
+   actual motivation. Both at once doubles the curriculum work for one learner.
+   This is the only open question left in phase 7 — the TTS question that used to
+   block it is answered in the spec, and the Whisper probe has been run.
 2. **Test data cleanup.** Three test tasks exist in the live ClickUp workspace —
    `869ef37ez`, `869ef37f2` (both tagged `sweep check two`), and `869ef03tn`
    (`🧪 DELETE ME`, tagged `test-fixture`). Five test recordings sit in the dev

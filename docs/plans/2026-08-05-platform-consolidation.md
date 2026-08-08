@@ -279,9 +279,22 @@ transcript as text:
 
 ### Phase 7 — Learning module
 
-> **⛔ BLOCKED on a human decision, not on code.** The Sanskrit TTS question at
-> the end of this document is unresolved and blocks the whole phase. An agent
-> should not decide it alone.
+> **🔄 UNBLOCKED as of 2026-08-08. Specced, not started.** See
+> [`../specs/2026-08-08-learning-module-design.md`](../specs/2026-08-08-learning-module-design.md).
+>
+> The Sanskrit TTS question at the end of this document is answered. Two
+> corrections to it: the "Hindi voice mispronounces Devanagari" problem is
+> **schwa deletion**, and it has a known fix (synthesise from Kannada
+> transliteration); and Sanskrit TTS is no longer scarce — AI4Bharat
+> Indic-Parler-TTS supports it officially, Apache-2.0, and covers Tamil too.
+>
+> A reciter is still needed for **Vedic pitch accent only** — nothing
+> synthesises *svaras*. That is one slice of stage four, not the whole phase.
+> The plan blocked everything on the hardest requirement of the last stage.
+>
+> The Whisper question the plan flagged as unverified **was tested**: at `base`
+> it never emits Devanagari at all, so pronunciation feedback is off the table
+> for now. Probe and full results in the spec.
 
 Needs its own spec; see below.
 
