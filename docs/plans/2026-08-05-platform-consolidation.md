@@ -225,11 +225,19 @@ where registration grants admin is worse than no RBAC.
 > not. It was **rebuilt natively** on this stack over 2026-08-06/07 — see
 > `src/calls/`, `src/transcription/`, `services/whisper`.
 >
-> So item 13 is down to the two pieces with no local equivalent: `bhashini.ts`
+> So item 13 is down to three things with no local equivalent: `bhashini.ts`
 > (a specific seq2seq translation endpoint `AiClient`'s chat interface cannot
-> serve — the plan called this correctly) and `language.queue.ts`. Item 14 —
-> the 73 missing `.js` specifiers and the `@database` alias — dies with the code
-> it was for.
+> serve — the plan called this correctly), `language.queue.ts`, and **contact
+> intelligence**. Item 14 — the 73 missing `.js` specifiers and the `@database`
+> alias — dies with the code it was for.
+>
+> **Correction, 2026-08-08:** an earlier version of this banner listed only the
+> first two, which silently wrote contact intelligence out of existence — it is
+> half of what the source system is named for, and there is no contact code in
+> this repo at all. It is now tracked explicitly as Phase 8 in
+> [`../../STATUS.md`](../../STATUS.md), including the finding that the source's
+> contact feature is far thinner than its name suggests: no dedup, no merging,
+> no relationship graph, and no column linking a contact to a call.
 >
 > The plan's warning that `gemini-1.5-flash` is a retired model id was right and
 > was fixed here independently in `09dbdae`.

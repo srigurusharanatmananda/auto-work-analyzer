@@ -140,9 +140,11 @@ experiment, gated on its own probe.**
 The Whisper service accepts `call_id` as a **string** on the request but its
 response model declares `callId: int`, so any non-numeric id fails with a
 Pydantic validation error surfaced as `Transcription failed:`. The app always
-passes numeric ids, so it does not bite in production. Worth fixing when that
-file is next touched — the request-side comment explicitly claims a wider type
-"costs nothing", and this is what it costs.
+passes numeric ids, so it does not bite in production.
+
+**Tracked in [`../../STATUS.md`](../../STATUS.md) under Known issues**, not only
+here — a defect recorded solely inside a dated design document is lost the moment
+that document ages out.
 
 ## Design
 

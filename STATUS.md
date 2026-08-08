@@ -91,7 +91,45 @@ secret and refuses the request when that secret is unset. That is not a gap.
 | **3 — Monorepo / Bun / BullMQ** | `packages/`+`apps/`+`modules/` layout, Redis-backed queue | **Largely obsolete — see below.** No `packages/`, no BullMQ, still `tsx` on Node ≥18 |
 | **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4 | `ui/package.json` confirms current versions. **This is the next real body of work.** |
 | **5 — Absorb the call module** | Move code in from `call-intelligence-system` | **Largely obsolete — see below** |
-| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** No longer blocked — see [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md) |
+| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** No longer blocked — see [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages are in scope |
+| **8 — Contact intelligence** | People extracted from transcripts | **NOT STARTED and NOT DECIDED.** See below — it is the one capability of the source system that has no counterpart here |
+| **— Analytics** | A reporting view over work items, scans and calls | **NOT STARTED, never planned.** Raised in conversation and never written down until now |
+
+### Phase 8 — contact intelligence, and why it needs a decision
+
+`call-intelligence-system` is named for two things. Only one of them was rebuilt
+here. **There is no contact functionality in this repo at all** — a
+case-insensitive search for "contact" across `src/` and `ui/` returns nothing.
+
+That happened by omission, not by decision. It was raised in conversation, judged
+the weakest fit, and never recorded — so a reader of this file would not learn it
+had ever existed. Hence this section.
+
+**What the source system actually has** (verified 2026-08-08, and smaller than it
+sounds):
+
+- `packages/database/src/schema/contacts.ts` — a flat per-user record: name,
+  email, phone, company, job title, notes, `metadata` jsonb, `isVerified`.
+- LLM extraction from transcripts, implemented in `apps/api/src/lib/gemini.ts`
+  and called from `transcription.queue.ts`. Its 188-line test file covers
+  **robustness of parsing the model's JSON reply** — markdown fences, prose
+  wrappers, malformed output — not extraction quality.
+- tRPC CRUD plus `LIKE '%term%'` search over name, email and company.
+- Three UI pages: list, new, detail.
+
+**What it does NOT have**, despite being easy to assume: no fuzzy matching, no
+deduplication, no profile merging, no relationship graph. Those greps come back
+empty. And the `contacts` table has **no `callId` column** — the source's own
+code comments on this, and its "contacts for this call" query returns a hardcoded
+empty array. The link from a call to the people mentioned in it was never wired.
+
+**Why that matters for the decision:** porting this is not porting a contact
+graph. It is porting a flat address book, an LLM prompt, and a `LIKE` search —
+where the interesting parts, and the connection to calls, are the parts that do
+not exist. Rebuilding it here would mostly be *new* work wearing the label of a
+port.
+
+Not decided either way. See **Open questions**.
 
 ### Why phases 3 and 5 are obsolete
 
@@ -136,6 +174,17 @@ Smaller deployment-readiness items, none blocking anything today:
 - `.next/` build artifacts pollute repo-wide greps. Exclude them when searching.
 
 ---
+
+## Known issues
+
+Small, real, and not urgent. Listed here because a defect recorded only inside a
+dated design document is lost the moment that document ages out.
+
+| Where | Issue | Impact |
+|---|---|---|
+| `services/whisper/main.py` | `TranscriptionRequest.call_id` is typed `str`, but `TranscriptionResponse.callId` is typed `int`. A non-numeric id therefore fails Pydantic validation and surfaces as `Transcription failed: 1 validation error`. | None in production — the app only ever passes numeric ids. It bites anything else calling the service, including probes and manual testing, and the error names validation rather than the id. Found 2026-08-08 while running the Sanskrit probe. Fix by widening `callId` to `str` on the response, matching the request-side comment that already claims the wider type "costs nothing". |
+| `src/middleware/security.middleware.ts` | Rate limiting is in-memory. | Resets on restart, and is per-process rather than per-installation. Only matters once this runs behind more than one instance. |
+| `src/webhook-server.ts` | CORS is configured for a single localhost origin. | Blocks any non-local deployment. |
 
 ## Landmines
 
@@ -233,7 +282,24 @@ left alone — that is a human's decision, not a cleanup task.
 
 An agent should **not** decide these alone.
 
-1. **Phase 7 has no open questions left.** Both languages are in scope (decided
+1. **Contact intelligence: port it, or drop it on the record?** Full detail in
+   Phase 8 above. The honest framing is that there is little to port — a flat
+   address book, one LLM prompt, and a `LIKE` search — and the capabilities worth
+   having (matching, dedup, merging, and any link between a call and the people
+   in it) were never built in the source either.
+
+   My recommendation, for what it is worth: **drop it explicitly, and revisit
+   only if a concrete need appears** — "I met someone on a call and want to find
+   them later". Building an address book nobody asked for, because a sister
+   project's name implied one, is how a codebase acquires a feature that is
+   maintained forever and used never. But this is a scope call, not mine, and
+   until it is answered this file will keep saying "not decided" rather than
+   quietly meaning "no".
+
+2. **Analytics: is a reporting view wanted?** Also listed above. It was raised in
+   conversation as an option and never scoped. Nothing depends on it.
+
+3. **Phase 7 has no open questions left.** Both languages are in scope (decided
    2026-08-08), the TTS question is answered, and the Whisper probe has been run.
    The one deferred question — whether a fine-tuned Sanskrit Whisper is worth it
    for pronunciation feedback — does not matter until stage 4.
