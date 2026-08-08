@@ -94,6 +94,23 @@ describe("parseClickUpUrl", () => {
     expect(parseClickUpUrl("https://app.clickup.com/not-numeric/v/li/123")).toBeNull();
   });
 
+  /**
+   * The host test was an unbounded suffix match with an `^app\.` escape hatch,
+   * so both of these parsed as genuine ClickUp URLs. Nothing network-facing
+   * follows the host, but a lookalike accepted as a real destination is a bad
+   * way to find out where your tasks went.
+   */
+  test("rejects lookalike hosts", () => {
+    expect(parseClickUpUrl("https://evilclickup.com/9012168250/v/li/901216016381")).toBeNull();
+    expect(parseClickUpUrl("https://app.attacker.test/9012168250/v/li/901216016381")).toBeNull();
+    expect(parseClickUpUrl("https://clickup.com.attacker.test/9012168250/t/86abc")).toBeNull();
+  });
+
+  test("accepts clickup.com and its subdomains", () => {
+    expect(parseClickUpUrl("https://clickup.com/9012168250/t/86abc")?.kind).toBe("task");
+    expect(parseClickUpUrl("https://app.clickup.com/9012168250/t/86abc")?.kind).toBe("task");
+  });
+
   test("tolerates surrounding whitespace, as a paste often carries", () => {
     expect(parseClickUpUrl("  https://app.clickup.com/9012168250/v/li/901216016381\n")!.listId).toBe(
       "901216016381"

@@ -149,6 +149,80 @@ describe("ScanRegistry bindings", () => {
   });
 });
 
+/**
+ * The lost update. Both writers here are real and routinely concurrent: the
+ * scheduler records progress while the user is on the settings page.
+ *
+ * Read-modify-write in TypeScript made each writer send a full row built from
+ * what it had read *before* the other's write existed, so whichever landed
+ * second reverted the other's field. The merge is now one statement, and a
+ * column not named by a patch is not written at all.
+ */
+describe("ScanRegistry concurrent writers", () => {
+  test("a progress write does not revert a settings change made beside it", async () => {
+    await registry.saveSettings("user-1", { enabled: true, scanTime: "18:00" });
+
+    // Both writers read the same starting state, then write.
+    await Promise.all([
+      registry.saveSettings("user-1", { lastCompletedDate: "2026-08-07" }),
+      registry.saveSettings("user-1", { enabled: false }),
+    ]);
+
+    const settings = await registry.getSettings("user-1");
+    assert.equal(settings.enabled, false, "the user's disable was reverted");
+    assert.equal(settings.lastCompletedDate, "2026-08-07", "the completion date was lost");
+    assert.equal(settings.scanTime, "18:00", "an untouched field changed");
+  });
+
+  test("a patch leaves fields it does not name alone", async () => {
+    await registry.saveSettings("user-1", {
+      root: "/srv/code",
+      owner: "acme",
+      scanTime: "09:30",
+      enabled: true,
+      authorIdentities: ["a@example.com"],
+    });
+
+    await registry.saveSettings("user-1", { scanTime: "21:00" });
+
+    const settings = await registry.getSettings("user-1");
+    assert.equal(settings.scanTime, "21:00");
+    assert.equal(settings.root, "/srv/code");
+    assert.equal(settings.owner, "acme");
+    assert.equal(settings.enabled, true);
+    assert.deepEqual(settings.authorIdentities, ["a@example.com"]);
+  });
+
+  /** Null still has to mean "clear this", which is why COALESCE is not enough. */
+  test("an explicit null clears the completion date", async () => {
+    await registry.saveSettings("user-1", { lastCompletedDate: "2026-08-07" });
+    await registry.saveSettings("user-1", { lastCompletedDate: null });
+
+    assert.equal((await registry.getSettings("user-1")).lastCompletedDate, undefined);
+  });
+
+  test("markScanned does not revert a binding edited beside it", async () => {
+    await registry.saveBinding("user-1", "acme/api", { destinationId: "dest-1", enabled: true });
+
+    await Promise.all([
+      registry.markScanned("user-1", "acme/api", "2026-08-07"),
+      registry.saveBinding("user-1", "acme/api", { enabled: false }),
+    ]);
+
+    const binding = await registry.getBinding("user-1", "acme/api");
+    assert.equal(binding?.enabled, false, "the user's disable was reverted");
+    assert.equal(binding?.lastScannedDate, "2026-08-07", "the scan date was lost");
+    assert.equal(binding?.destinationId, "dest-1", "an untouched field changed");
+  });
+
+  test("an explicit null unsets a binding's destination", async () => {
+    await registry.saveBinding("user-1", "acme/api", { destinationId: "dest-1" });
+    await registry.saveBinding("user-1", "acme/api", { destinationId: null });
+
+    assert.equal((await registry.getBinding("user-1", "acme/api"))?.destinationId, undefined);
+  });
+});
+
 describe("ScanRegistry run history", () => {
   test("no run recorded yet reports null", async () => {
     assert.equal(await registry.getLastRun("user-1"), null);

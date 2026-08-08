@@ -147,6 +147,28 @@ export class AuthDatabaseService {
     return rows.map(toUser);
   }
 
+  /**
+   * How many active admins exist, and whether this user is one of them.
+   *
+   * A query rather than a filter over `getAllUsers`, because the caller is
+   * deciding whether an action would lock everyone out of the installation.
+   * Counting a page answers a different question: past the page size an admin
+   * simply becomes invisible, and the guard fails OPEN — it would let you
+   * delete the last one.
+   */
+  async countActiveAdmins(userId: string): Promise<{ total: number; includesUser: boolean }> {
+    const [row] = await this.sql<Array<{ total: string; includes_user: boolean }>>`
+      SELECT COUNT(*)::text AS total,
+             COALESCE(BOOL_OR(id = ${userId}), false) AS includes_user
+        FROM users
+       WHERE role = 'admin' AND is_active = true
+    `;
+    return {
+      total: Number(row?.total ?? 0),
+      includesUser: row?.includes_user === true,
+    };
+  }
+
   async updateUserLogin(userId: string, success: boolean): Promise<void> {
     const now = new Date().toISOString();
 

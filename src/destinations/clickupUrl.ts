@@ -40,9 +40,12 @@ const NUMERIC = /^\d+$/;
 /**
  * Returns null when the URL is not a recognisable ClickUp app URL.
  *
- * Deliberately permissive about the host (self-hosted and regional hosts exist)
- * but strict about shape: a URL we cannot read must be rejected rather than
- * half-parsed into a plausible-looking wrong id.
+ * Strict about both the host and the shape: a URL we cannot read must be
+ * rejected rather than half-parsed into a plausible-looking wrong id.
+ *
+ * The host check used to be loose, on the theory that self-hosted and regional
+ * ClickUp hosts exist. They do not — ClickUp is SaaS on `clickup.com` — and the
+ * looseness cost more than it bought.
  */
 export function parseClickUpUrl(input: string): ParsedClickUpUrl | null {
   let url: URL;
@@ -52,7 +55,12 @@ export function parseClickUpUrl(input: string): ParsedClickUpUrl | null {
     return null;
   }
 
-  if (!/clickup\.com$/i.test(url.hostname) && !/^app\./i.test(url.hostname)) {
+  // Anchored on a label boundary. The previous test was an unbounded suffix
+  // match, so `evilclickup.com` passed — and its `^app\.` alternative accepted
+  // *any* host beginning `app.`, which is most of the web. Nothing
+  // network-facing follows the host, but a lookalike link silently accepted as
+  // a genuine destination is a bad way to learn where your tasks went.
+  if (!/(^|\.)clickup\.com$/i.test(url.hostname)) {
     return null;
   }
 

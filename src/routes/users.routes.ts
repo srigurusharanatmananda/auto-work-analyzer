@@ -71,15 +71,18 @@ export function createUsersRouter(dbFactory: () => AuthDatabaseService = () => n
    * Would this change leave the installation with no active admin? Counting
    * rather than special-casing "is this user an admin" catches the case that
    * matters: two admins where one is already deactivated.
+   *
+   * The count is a query, not a filter over the first page of `getAllUsers`.
+   * That version was bounded at 1000 users, and an admin past that offset was
+   * invisible to it — so the guard failed open on exactly the installations
+   * large enough for locking everyone out to be expensive.
    */
   const isLastActiveAdmin = async (
     db: AuthDatabaseService,
     userId: string
   ): Promise<boolean> => {
-    const admins = (await db.getAllUsers(1000, 0)).filter(
-      (u) => u.role === 'admin' && u.is_active
-    );
-    return admins.length <= 1 && admins.some((u) => u.id === userId);
+    const { total, includesUser } = await db.countActiveAdmins(userId);
+    return total <= 1 && includesUser;
   };
 
   /** GET /api/users — paginated list. */

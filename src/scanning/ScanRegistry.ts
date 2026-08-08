@@ -126,35 +126,52 @@ export class ScanRegistry {
     userId: string,
     patch: Partial<Omit<ScanSettings, "userId">>
   ): Promise<ScanSettings> {
-    const current = await this.getSettings(userId);
-    const merged: ScanSettings = {
-      userId,
-      root: patch.root ?? current.root,
-      owner: patch.owner ?? current.owner,
-      authorIdentities: patch.authorIdentities ?? current.authorIdentities,
-      scanTime: patch.scanTime ?? current.scanTime,
-      enabled: patch.enabled ?? current.enabled,
-      lastCompletedDate: patched(patch.lastCompletedDate, current.lastCompletedDate),
-    };
+    // Merged in SQL, not in TypeScript. The read-then-write version lost
+    // writes: the scheduler recording `lastCompletedDate` while a user was
+    // saving `enabled: false` meant whichever finished second overwrote the
+    // other's field with the value it had read before that write existed — a
+    // silently re-enabled scan, or a completion date that vanished so the day
+    // was scanned again.
+    //
+    // Each column keeps its stored value unless this patch names it. NULL means
+    // "not named", which is why `lastCompletedDate` cannot use COALESCE: null
+    // is a meaningful value there (it clears the date), so it needs a separate
+    // flag to tell "clear it" apart from "leave it".
+    const defaults = defaultSettings(userId);
+    const touchLastCompleted = patch.lastCompletedDate !== undefined;
+    const lastCompletedValue = patch.lastCompletedDate ?? null;
+    const identities = patch.authorIdentities
+      ? JSON.stringify(patch.authorIdentities)
+      : null;
 
-    await this.sql`
+    const [row] = await this.sql<SettingsRow[]>`
       INSERT INTO scan_settings
         (user_id, root, owner, author_identities, scan_time, enabled, last_completed_date)
       VALUES (
-        ${userId}, ${merged.root}, ${merged.owner},
-        ${JSON.stringify(merged.authorIdentities)}, ${merged.scanTime},
-        ${merged.enabled}, ${merged.lastCompletedDate ?? null}
+        ${userId},
+        ${patch.root ?? defaults.root},
+        ${patch.owner ?? defaults.owner},
+        ${identities ?? JSON.stringify(defaults.authorIdentities)},
+        ${patch.scanTime ?? defaults.scanTime},
+        ${patch.enabled ?? defaults.enabled},
+        ${lastCompletedValue}
       )
       ON CONFLICT (user_id) DO UPDATE SET
-        root = excluded.root,
-        owner = excluded.owner,
-        author_identities = excluded.author_identities,
-        scan_time = excluded.scan_time,
-        enabled = excluded.enabled,
-        last_completed_date = excluded.last_completed_date
+        root = COALESCE(${patch.root ?? null}::text, scan_settings.root),
+        owner = COALESCE(${patch.owner ?? null}::text, scan_settings.owner),
+        author_identities = COALESCE(${identities}::text, scan_settings.author_identities),
+        scan_time = COALESCE(${patch.scanTime ?? null}::text, scan_settings.scan_time),
+        enabled = COALESCE(${patch.enabled ?? null}::boolean, scan_settings.enabled),
+        last_completed_date = CASE
+          WHEN ${touchLastCompleted} THEN ${lastCompletedValue}::text
+          ELSE scan_settings.last_completed_date
+        END
+      RETURNING *
     `;
 
-    return merged;
+    // Returned from the row the database actually holds, so a concurrent write
+    // is reflected rather than papered over by what this caller assumed.
+    return row ? toSettings(row) : defaults;
   }
 
   async listBindings(userId: string): Promise<RepoBinding[]> {
@@ -176,30 +193,47 @@ export class ScanRegistry {
     slug: string,
     patch: Partial<Omit<RepoBinding, "slug">>
   ): Promise<RepoBinding> {
-    const current = await this.getBinding(userId, slug);
-    const merged: RepoBinding = {
-      slug,
-      destinationId: patched(patch.destinationId, current?.destinationId),
-      templateId: patched(patch.templateId, current?.templateId),
-      enabled: patch.enabled ?? current?.enabled ?? true,
-      lastScannedDate: patched(patch.lastScannedDate, current?.lastScannedDate),
+    // Same one-statement merge as `saveSettings`, and for the same reason:
+    // `markScanned` writes `lastScannedDate` from the scanner while a user may
+    // be changing this repo's destination from the settings page. Read-then-
+    // write meant one of those two silently lost.
+    //
+    // All three nullable fields need the CASE treatment rather than COALESCE,
+    // because null clears them — that is how a repo's destination is unset.
+    const touch = {
+      destination: patch.destinationId !== undefined,
+      template: patch.templateId !== undefined,
+      lastScanned: patch.lastScannedDate !== undefined,
     };
 
-    await this.sql`
+    const [row] = await this.sql<BindingRow[]>`
       INSERT INTO scanned_repos
         (user_id, slug, destination_id, template_id, enabled, last_scanned_date)
       VALUES (
-        ${userId}, ${slug}, ${merged.destinationId ?? null}, ${merged.templateId ?? null},
-        ${merged.enabled}, ${merged.lastScannedDate ?? null}
+        ${userId}, ${slug},
+        ${patch.destinationId ?? null},
+        ${patch.templateId ?? null},
+        ${patch.enabled ?? true},
+        ${patch.lastScannedDate ?? null}
       )
       ON CONFLICT (user_id, slug) DO UPDATE SET
-        destination_id = excluded.destination_id,
-        template_id = excluded.template_id,
-        enabled = excluded.enabled,
-        last_scanned_date = excluded.last_scanned_date
+        destination_id = CASE
+          WHEN ${touch.destination} THEN ${patch.destinationId ?? null}::text
+          ELSE scanned_repos.destination_id
+        END,
+        template_id = CASE
+          WHEN ${touch.template} THEN ${patch.templateId ?? null}::text
+          ELSE scanned_repos.template_id
+        END,
+        enabled = COALESCE(${patch.enabled ?? null}::boolean, scanned_repos.enabled),
+        last_scanned_date = CASE
+          WHEN ${touch.lastScanned} THEN ${patch.lastScannedDate ?? null}::text
+          ELSE scanned_repos.last_scanned_date
+        END
+      RETURNING *
     `;
 
-    return merged;
+    return row ? toBinding(row) : { slug, enabled: patch.enabled ?? true };
   }
 
   async markScanned(userId: string, slug: string, date: string): Promise<void> {
