@@ -115,6 +115,12 @@ stack. So:
 **Do not start phase 3 on the strength of the old plan document.** Read this
 section first.
 
+The plan itself is at
+[`docs/plans/2026-08-05-platform-consolidation.md`](docs/plans/2026-08-05-platform-consolidation.md),
+kept because its *reasoning* remains the best account of why things are as they
+are. Every phase in it now carries a status banner; trust the banners over the
+prose.
+
 ---
 
 ## Next
