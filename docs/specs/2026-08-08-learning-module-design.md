@@ -195,7 +195,9 @@ Reuse the existing Postgres and Drizzle setup. Two tables, both per-user even
 though there is one user, because every other table in this schema is and being
 the exception costs more than the column:
 
-- `learn_progress` — lesson id, first seen, last seen, times correct
+- `learn_progress` — language, lesson id, first seen, last seen, times correct.
+  The `language` column is not optional: both languages are in scope and their
+  progress must not mix (see *Decided: both languages* below).
 - `learn_audio` — cache metadata; the audio itself on disk under `storage/`
 
 ### Prosody
@@ -227,17 +229,77 @@ else about the voice should be adjustable — it is a teaching voice, not a toy.
   error is unrecoverable.
 - Curriculum: stage N+1 never introduces a grapheme stage N did not teach.
   Assertable over the whole graph, and the property that makes it a curriculum
-  rather than a list.
+  rather than a list. **Run it over both manifests** — it is a property of the
+  engine, so a test that only covers Sanskrit proves half of it.
+- Progress is scoped by language: advancing Sanskrit must not advance Tamil.
+  Cheap to assert, and the failure would otherwise show up as mysteriously
+  skipped lessons.
 - Audio cache: same text and prosody hits; changed prosody misses.
 - **No test may call a live TTS or AI provider**, per the standing rule. The
   speech client is stubbed; the real model is exercised by hand.
 - First ten synthesised words reviewed by a human ear before stage 2 is built.
 
+## Decided: both languages
+
+**Answered 2026-08-08 — both Sanskrit and Tamil.**
+
+That is affordable, but only if the second language costs *content* rather than
+*engineering*. Two consequences follow, and both are structural rather than
+cosmetic.
+
+### The curriculum is data, not code
+
+There must be exactly one curriculum engine, with each language supplying a
+manifest it reads. The moment a lesson's shape is expressed in TypeScript, the
+second language becomes a second implementation, and the doubling the earlier
+plan warned about arrives after all.
+
+```
+src/learn/
+  Curriculum.ts            engine — language-agnostic, reads a manifest
+  content/
+    sanskrit.ts            graphemes, words, sentences, and their order
+    tamil.ts               same shape, different data
+```
+
+The engine's contract is one function of the manifest and the learner's
+progress: *what is next*. Anything language-specific that cannot be expressed as
+manifest data is a signal the engine is wrong, not that the language needs an
+exception.
+
+`Transliterator` gains a second route: **Tamil → Kannada** alongside
+Devanagari → Kannada, because the Kannada-routing rationale is about the
+synthesiser's phonology, not about Sanskrit specifically. Tamil is directly
+supported by Indic-Parler-TTS, so the Tamil route may well be the identity
+function — but it should exist as a route from the start, so the seam is uniform
+and adding a third language later is a data change.
+
+### Do not interleave them within a session
+
+This is the part that matters more than the code. Two unfamiliar scripts
+presented in the same session, to a learner who knows neither, is a good way to
+build two half-memories that interfere. Devanagari and Tamil script share no
+letterforms, but they share the learner's one slot for "unfamiliar squiggle that
+makes a sound".
+
+So: **one language per session, chosen at the start, with progress tracked
+independently.** `learn_progress` is already keyed per lesson; it needs a
+`language` column and the "what is next" query needs to be scoped by it.
+
+This costs nothing to build now and is expensive to retrofit, because it changes
+the shape of the progress table and every query over it.
+
+### Sequencing
+
+Sanskrit first, and not because it matters more — because it is the harder case.
+It needs the Kannada transliteration route, it has the conjunct problem, and it
+has the unverified voice quality. If the engine is built against Sanskrit and
+Tamil is added second as pure data, the data-not-code claim above is *tested*
+rather than asserted. Building Tamil first would let a Tamil-shaped assumption
+harden into the engine unnoticed.
+
 ## Open, and genuinely for a human
 
-1. **Which language first, or both at once?** Tamil is a living language with
-   better tooling and immediate practical use; Sanskrit is the harder problem and
-   presumably the actual motivation. Doing both at once doubles the curriculum
-   work for one learner.
-2. **Whether a fine-tuned Sanskrit Whisper is worth the effort later**, purely
+1. **Whether a fine-tuned Sanskrit Whisper is worth the effort later**, purely
    for pronunciation feedback, given that even the published result is marginal.
+   Nothing depends on this until stage 4.

@@ -233,11 +233,10 @@ left alone — that is a human's decision, not a cleanup task.
 
 An agent should **not** decide these alone.
 
-1. **Which language first — Sanskrit, Tamil, or both?** Tamil has better tooling
-   and immediate practical use; Sanskrit is the harder problem and presumably the
-   actual motivation. Both at once doubles the curriculum work for one learner.
-   This is the only open question left in phase 7 — the TTS question that used to
-   block it is answered in the spec, and the Whisper probe has been run.
+1. **Phase 7 has no open questions left.** Both languages are in scope (decided
+   2026-08-08), the TTS question is answered, and the Whisper probe has been run.
+   The one deferred question — whether a fine-tuned Sanskrit Whisper is worth it
+   for pronunciation feedback — does not matter until stage 4.
 2. **Test data cleanup.** Three test tasks exist in the live ClickUp workspace —
    `869ef37ez`, `869ef37f2` (both tagged `sweep check two`), and `869ef03tn`
    (`🧪 DELETE ME`, tagged `test-fixture`). Five test recordings sit in the dev
