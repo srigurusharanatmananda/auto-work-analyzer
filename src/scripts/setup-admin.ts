@@ -122,4 +122,7 @@ async function setupAdmin() {
   }
 }
 
-setupAdmin();
+setupAdmin().catch((error: unknown) => {
+  console.error("Failed to set up the admin user:", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

@@ -182,7 +182,14 @@ export class DailyScanner {
 
         // Only a real run records progress. A dry run that marked commits
         // processed would make the first real run create nothing.
-        analyzer.markScanCommitsProcessed(analysis, repo.path);
+        // Awaited, and this one is load-bearing. The lease marks the day
+        // complete as soon as this returns; if the dedup rows are still being
+        // written, a SIGTERM in that window leaves a completed day with no
+        // record of what was processed — and the next run of that date creates
+        // every task a second time, which is the duplication the lease exists
+        // to prevent. Unawaited, a failure here also escaped the surrounding
+        // try instead of landing in `result.error`.
+        await analyzer.markScanCommitsProcessed(analysis, repo.path);
         await this.deps.registry.markScanned(userId, repo.slug, opts.date);
       } catch (error) {
         result.error = error instanceof Error ? error.message : String(error);

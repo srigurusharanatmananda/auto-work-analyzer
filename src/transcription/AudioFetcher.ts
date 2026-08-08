@@ -146,6 +146,17 @@ export class AudioFetcher {
     const sink = createWriteStream(path);
     const reader = response.body.getReader();
 
+    // A write stream with no 'error' listener throws uncaught, taking the
+    // server down. Attaching one only inside the backpressure wait covered the
+    // wrong window: a disk error (ENOSPC, EACCES, EIO) arrives when the disk
+    // says so, not when this loop happens to be waiting on 'drain'. So the
+    // listener lives as long as the stream does, and the loop reads what it
+    // captured. First error wins — later ones are consequences of it.
+    let sinkError: Error | undefined;
+    sink.on("error", (error: Error) => {
+      sinkError ??= error;
+    });
+
     try {
       for (;;) {
         const { done, value } = await reader.read();
@@ -162,16 +173,31 @@ export class AudioFetcher {
         }
 
         if (!sink.write(value)) {
-          await new Promise<void>((resolve, reject) => {
-            sink.once("drain", resolve);
-            sink.once("error", reject);
+          // Wakes on either event, and detaches both. The old version attached
+          // a `once("error")` per round that was never removed when 'drain'
+          // won, so a long download accumulated listeners until Node warned
+          // about a leak.
+          await new Promise<void>((resolve) => {
+            const wake = (): void => {
+              sink.off("drain", wake);
+              sink.off("error", wake);
+              resolve();
+            };
+            sink.once("drain", wake);
+            sink.once("error", wake);
           });
         }
+
+        if (sinkError) throw sinkError;
       }
 
       await new Promise<void>((resolve, reject) => {
         sink.end((error?: Error | null) => (error ? reject(error) : resolve()));
       });
+      // `end`'s callback does not report an error the stream emitted earlier,
+      // so a failed write would otherwise finish as a success with a truncated
+      // file — the worst outcome available here.
+      if (sinkError) throw sinkError;
     } catch (error) {
       // Closed and *awaited* before the file is removed. `createWriteStream`
       // opens lazily, so destroying it can still complete the open afterwards —

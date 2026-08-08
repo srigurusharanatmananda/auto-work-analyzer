@@ -66,7 +66,7 @@ describe("DestinationStore", () => {
   });
 
   test("the stored column is ciphertext, not the key", async () => {
-    const created = await await store.create("user-1", input());
+    const created = await store.create("user-1", input());
     // Read the raw column rather than adding a production accessor for it.
     const [row] = await db.sql<Array<{ api_key_encrypted: string }>>`
       SELECT api_key_encrypted FROM clickup_destinations WHERE id = ${created.id}

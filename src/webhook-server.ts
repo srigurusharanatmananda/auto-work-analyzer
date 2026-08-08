@@ -298,7 +298,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         // record a scheduled run leaves, and it must survive even if the settings
         // write fails.
         await scanRegistry.saveRun(userId, summary);
-        scanRegistry.saveSettings(userId, { lastCompletedDate: date });
+        await scanRegistry.saveSettings(userId, { lastCompletedDate: date });
         console.log(
           `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`
         );
@@ -945,4 +945,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 // Start the server if this file is run directly
 const config = getAppConfig();
 const port = config.webhook.port || 3000;
-startWebhookServer(port);
+// Caught rather than left floating: a startup failure — a refused database, a
+// missing secret — should say so and exit non-zero, not surface as an unhandled
+// rejection whose stack points at the runtime.
+startWebhookServer(port).catch((error: unknown) => {
+  console.error("Failed to start:", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

@@ -13,6 +13,7 @@ import { ScanRegistry } from "../scanning/ScanRegistry.js";
 import { DailyScanner } from "../scanning/DailyScanner.js";
 import { discoverRepos } from "../scanning/RepoDiscovery.js";
 import { ScanLeaseStore } from "../scanning/ScanLeaseStore.js";
+import { localDate } from "../scanning/scanDate.js";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 
@@ -137,7 +138,10 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
 
     try {
       const userId = userIdOf(req);
-      const scanDate = date ?? new Date().toISOString().split("T")[0]!;
+      // Local, matching the scheduler. `toISOString` gave a UTC date, which for
+      // several hours a day named a different day than the one the user was
+      // looking at — and than the one the lease was keyed on.
+      const scanDate = date ?? localDate(new Date());
       const isDryRun = dryRun === true;
 
       const runIt = () =>
@@ -159,8 +163,13 @@ export function createScanningRouter(deps: ScanningRouterDeps): Router {
       // `redoCompleted` because this is someone asking on purpose, usually
       // straight after fixing the settings that made the first run wrong. What
       // it still cannot do is override a scan that is currently running.
+      // `markComplete` only for a day that is over. Scanning today by hand
+      // covers the commits that exist right now; marking the day finished would
+      // block the evening's scheduled run — which never passes `redoCompleted` —
+      // and the rest of the day's work would silently never be filed.
       const outcome = await leases.withLease(userId, scanDate, leaseOwner, runIt, {
         redoCompleted: true,
+        markComplete: scanDate < localDate(new Date()),
       });
 
       if (!outcome.acquired) {

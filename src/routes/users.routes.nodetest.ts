@@ -168,7 +168,7 @@ describe("role changes", () => {
   test("changing a role revokes that user's refresh tokens", async () => {
     const db = new AuthDatabaseService();
     try {
-      db.storeRefreshToken({
+      await db.storeRefreshToken({
         id: "rt-1",
         user_id: plainUser.userId,
         token_hash: "hash-1",

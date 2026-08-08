@@ -91,6 +91,24 @@ describe("isBlockedAddress — IPv6", () => {
     expect(isBlockedAddress("::ffff:169.254.169.254")).toBe(true);
   });
 
+  /**
+   * The form the first version of this guard missed. `::a.b.c.d` has no ffff
+   * marker, so the IPv4-mapped test above does not see it — and a review found
+   * `::169.254.169.254` classified as a public address. Deprecated is not the
+   * same as unroutable; the resolver and the socket both still honour it.
+   */
+  test("blocks IPv4-compatible addresses, which carry no ffff marker", () => {
+    expect(isBlockedAddress("::169.254.169.254")).toBe(true);
+    expect(isBlockedAddress("::127.0.0.1")).toBe(true);
+    expect(isBlockedAddress("::10.0.0.1")).toBe(true);
+  });
+
+  /** `::` and `::1` are the unspecified/loopback case, not embedded v4. */
+  test("still blocks the bare unspecified and loopback addresses", () => {
+    expect(isBlockedAddress("::")).toBe(true);
+    expect(isBlockedAddress("::1")).toBe(true);
+  });
+
   test("blocks NAT64 and 6to4 wrappers around a private address", () => {
     expect(isBlockedAddress("64:ff9b::169.254.169.254")).toBe(true);
     expect(isBlockedAddress("2002:a00:1::1")).toBe(true); // 6to4 over 10.0.0.1

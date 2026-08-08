@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { ScanRegistry } from "./ScanRegistry.js";
 import { ScanLeaseStore } from "./ScanLeaseStore.js";
+import { localDate } from "./scanDate.js";
 
 export interface ScanSchedulerDeps {
   registry: ScanRegistry;
@@ -40,13 +41,6 @@ const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
 
 /** A machine idle for months must not wake up and scan a year of history. */
 const CATCH_UP_LIMIT_DAYS = 7;
-
-function localDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function minutesInto(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
@@ -160,6 +154,9 @@ export class ScanScheduler {
   private inFlight?: Promise<void>;
 
   private tickOnce(): Promise<void> {
+    // The promise IS the flag — its presence means a tick is running, and
+    // returning it lets the caller join rather than start a second one.
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (this.inFlight) return this.inFlight;
     this.inFlight = this.tick().finally(() => {
       this.inFlight = undefined;

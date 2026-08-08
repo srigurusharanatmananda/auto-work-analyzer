@@ -183,6 +183,9 @@ export class TranscriptionWorker {
    * each see a free slot and start a job, running two Whispers on 8 GB.
    */
   drainNow(): Promise<void> {
+    // The promise IS the flag — see the comment above. A concurrent wake-up
+    // joins the drain already in progress instead of starting a second.
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (this.draining) return this.draining;
 
     this.draining = this.drainOnce().finally(() => {

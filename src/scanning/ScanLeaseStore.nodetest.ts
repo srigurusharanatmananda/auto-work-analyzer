@@ -258,6 +258,55 @@ describe("ScanLeaseStore — withLease", () => {
   });
 });
 
+describe("ScanLeaseStore — markComplete", () => {
+  /**
+   * The regression this exists for. A manual run of a day still in progress
+   * used to mark that day complete, and because the scheduler never passes
+   * `redoCompleted`, its evening run was refused forever — so every commit
+   * made after the manual run was silently never filed.
+   */
+  test("a run that does not complete the day leaves it claimable", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+
+    const acted = await storeAt(clock).withLease(
+      "u1",
+      "2026-08-07",
+      "person",
+      async () => "scanned",
+      { markComplete: false }
+    );
+
+    assert.equal(acted.acquired, true);
+    // The scheduler's ordinary claim — no redoCompleted — must still win it.
+    assert.equal(await storeAt(clock).claim("u1", "2026-08-07", "scheduler"), true);
+  });
+
+  /** Not completing must not mean not excluding: the day is still held while it runs. */
+  test("the day is still held for the duration of the work", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    let sawDuring: boolean | undefined;
+
+    await storeAt(clock).withLease(
+      "u1",
+      "2026-08-07",
+      "person",
+      async () => {
+        sawDuring = await storeAt(clock).claim("u1", "2026-08-07", "scheduler");
+      },
+      { markComplete: false }
+    );
+
+    assert.equal(sawDuring, false);
+  });
+
+  test("the default is still to complete the day", async () => {
+    const clock = { now: Date.parse("2026-08-07T18:00:00Z") };
+    await storeAt(clock).withLease("u1", "2026-08-07", "alpha", async () => "done");
+
+    assert.equal(await storeAt(clock).claim("u1", "2026-08-07", "scheduler"), false);
+  });
+});
+
 describe("ScanLeaseStore — redoCompleted", () => {
   /**
    * The manual re-run. Someone who has just fixed the settings that made this

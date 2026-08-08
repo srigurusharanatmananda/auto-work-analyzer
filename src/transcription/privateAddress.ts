@@ -165,6 +165,18 @@ export function isBlockedAddress(address: string): boolean {
   if (groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) {
     return isBlockedAddress(embedded(groups[6]!, groups[7]!));
   }
+  // ::a.b.c.d — IPv4-compatible, the deprecated form, and the one this guard
+  // originally missed. It is NOT caught by the mapped test above, which
+  // requires the ffff marker in group 5, so `::169.254.169.254` sailed through
+  // as a public address. Deprecated does not mean unresolvable: the resolver
+  // and the socket both still honour it.
+  //
+  // The non-zero test keeps `::` and `::1` out — they are already handled by
+  // the unspecified/loopback case, and treating `::` as embedded 0.0.0.0 here
+  // would be a second answer to a question already answered.
+  if (groups.slice(0, 6).every((group) => group === 0) && (groups[6]! | groups[7]!) !== 0) {
+    return isBlockedAddress(embedded(groups[6]!, groups[7]!));
+  }
   // 64:ff9b::/96 — NAT64.
   if (g0 === 0x0064 && g1 === 0xff9b && groups.slice(2, 6).every((group) => group === 0)) {
     return isBlockedAddress(embedded(groups[6]!, groups[7]!));

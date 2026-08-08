@@ -71,6 +71,20 @@ export interface ClaimOptions {
   redoCompleted?: boolean;
 }
 
+export interface LeaseOptions extends ClaimOptions {
+  /**
+   * Whether finishing the work finishes the DAY. Defaults to true.
+   *
+   * These come apart for a scan of a day that is still in progress. A manual
+   * "Run now" at 10:00 covers the commits that exist at 10:00 — but a completed
+   * lease is permanent, and the scheduler never passes `redoCompleted`, so the
+   * evening's scheduled scan would be refused and the afternoon's commits would
+   * silently never be filed. Passing false here releases the claim instead, so
+   * the day stays open for whoever scans it next.
+   */
+  markComplete?: boolean;
+}
+
 export interface ScanLeaseStoreDeps {
   sql?: PostgresHandle;
   /** Injected so tests can drive expiry without waiting. */
@@ -195,7 +209,7 @@ export class ScanLeaseStore {
     scanDate: string,
     owner: string,
     work: () => Promise<T>,
-    options: ClaimOptions = {}
+    options: LeaseOptions = {}
   ): Promise<LeaseOutcome<T>> {
     if (!(await this.claim(userId, scanDate, owner, options))) return { acquired: false };
 
@@ -211,7 +225,11 @@ export class ScanLeaseStore {
 
     try {
       const result = await work();
-      await this.complete(userId, scanDate, owner);
+      if (options.markComplete === false) {
+        await this.release(userId, scanDate, owner);
+      } else {
+        await this.complete(userId, scanDate, owner);
+      }
       return { acquired: true, result };
     } catch (error) {
       await this.release(userId, scanDate, owner).catch((): void => {});

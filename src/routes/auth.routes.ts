@@ -245,7 +245,9 @@ router.post('/logout', authenticate, anyRole, async (req: Request, res: Response
 router.post('/logout-all', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
-    authService.logoutAll(req.user!.userId);
+    // Awaited: without it the revoke is still in flight when this responds
+    // "all sessions logged out", and a rejection lands outside the try.
+    await authService.logoutAll(req.user!.userId);
     authService.close();
 
     // Clear refresh token cookie
@@ -272,7 +274,7 @@ router.post('/logout-all', authenticate, anyRole, async (req: Request, res: Resp
 router.get('/me', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
-    const user = authService.getUserById(req.user!.userId);
+    const user = await authService.getUserById(req.user!.userId);
     authService.close();
 
     if (!user) {

@@ -195,6 +195,33 @@ describe("what already works — regression guards, not new requirements", () =>
     assert.equal(res.status, 401);
   });
 
+  /**
+   * The bug this catches shipped: `getUserById` became async in the Postgres
+   * move and this route kept calling it without `await`. A Promise is truthy,
+   * so the `!user` 404 never fired and the pending Promise serialised as `{}` —
+   * a 200 with an empty user object, to every caller, for every session.
+   *
+   * The test above passed the whole time. It only ever asserted the 401 path,
+   * which is the shape of test that reassures without covering anything: the
+   * failure mode was in the branch it never visited. So this one asserts the
+   * fields, not the status.
+   */
+  test("/me returns the authenticated user, not an empty object", async () => {
+    const session = await registerAndLogin("me-body@example.com");
+
+    const res = await fetch(`${baseUrl}/me`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    const body = (await res.json()) as any;
+
+    assert.equal(res.status, 200);
+    assert.equal(body.data.user.id, session.userId);
+    assert.equal(body.data.user.email, "me-body@example.com");
+    assert.equal(body.data.user.role, "user");
+    // The password hash must not ride along with it.
+    assert.equal(body.data.user.password_hash, undefined);
+  });
+
   test("POST /setup refuses once a user exists", async () => {
     await register("first@example.com");
     const result = await post("/setup", {
