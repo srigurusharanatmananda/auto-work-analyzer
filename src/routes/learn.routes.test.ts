@@ -326,8 +326,9 @@ describe('POST /learn/speak', () => {
     });
     const cachedBytes = Buffer.from('cached-audio-bytes');
     // Pre-seed the cache with exactly what the route will look up: text after
-    // transliteration (Kannada, for Sanskrit), the default voice, DEFAULT_PROSODY.
-    await audioCache.put('ನ', 'default', DEFAULT_PROSODY, cachedBytes);
+    // transliteration (identity, for both languages today), the default
+    // voice, DEFAULT_PROSODY.
+    await audioCache.put('न', 'default', DEFAULT_PROSODY, cachedBytes);
 
     const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
@@ -368,10 +369,11 @@ describe('POST /learn/speak', () => {
       expect(res.status).toBe(200);
       expect(bytes.equals(synthesized)).toBe(true);
       expect(speechClient.calls.length).toBe(1);
-      // The cache key is the POST-transliteration text, not the raw Devanagari.
-      expect(speechClient.calls[0]!.text).toBe('ನ');
+      // The cache key is the POST-transliteration text — identity, today, so
+      // this equals the raw Devanagari the request sent.
+      expect(speechClient.calls[0]!.text).toBe('न');
       expect(audioCache.putCalls).toBe(1);
-      expect(audioCache.store.get(JSON.stringify(['ನ', 'default', DEFAULT_PROSODY]))?.equals(synthesized)).toBe(true);
+      expect(audioCache.store.get(JSON.stringify(['न', 'default', DEFAULT_PROSODY]))?.equals(synthesized)).toBe(true);
     } finally {
       server.close();
     }
@@ -473,7 +475,7 @@ describe('POST /learn/speak', () => {
       // call that omitted a voice. `undefined` here is what lets each
       // backend's own default apply.
       expect(speechClient.calls[0]!.voice).toBeUndefined();
-      expect(audioCache.store.has(JSON.stringify(['ನ', 'default', DEFAULT_PROSODY]))).toBe(true);
+      expect(audioCache.store.has(JSON.stringify(['न', 'default', DEFAULT_PROSODY]))).toBe(true);
     } finally {
       server.close();
     }

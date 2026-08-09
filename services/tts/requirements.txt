@@ -1,0 +1,16 @@
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+# torch is installed separately, in the Dockerfile, from PyTorch's own
+# CPU-only index — see the Dockerfile comment for why. Listed here would
+# let a plain `pip install -r requirements.txt` pull the wrong wheel again.
+# Pinned exactly, not to a range: parler-tts==0.2.2 (the version this
+# specific pinned commit resolves to) requires transformers>=4.46.1,<=4.46.1
+# — an exact match, not a floor. Discovered by the build failing, not
+# guessed.
+transformers==4.46.1
+soundfile==0.12.1
+pydantic==2.5.3
+# No PyPI release exists — the model card's own install instructions point
+# here. Pinned to a commit, not a moving branch, so a build today and a
+# build in six months load the exact same code.
+git+https://github.com/huggingface/parler-tts.git@d108732cd57788ec86bc857d99a6cabd66663d68
