@@ -13,10 +13,11 @@
  * serving stale bytes recorded under the old wording. A key that ignored
  * prosody would make that change silently do nothing.
  *
- * Deliberately filesystem-only, no database. A separate `learn_audio` Postgres
- * table is planned for cache metadata bookkeeping across restarts, but that is
- * bookkeeping *about* the cache, not the cache itself — this module has no
- * reason to know Postgres exists, and stays usable (and testable) without it.
+ * Deliberately filesystem-only, no database. The separate `learn_audio_cache`
+ * Postgres table (src/db/schema.ts) is cache metadata bookkeeping across
+ * restarts, but that is bookkeeping *about* the cache, not the cache itself —
+ * this module has no reason to know Postgres exists, and stays usable (and
+ * testable) without it.
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';

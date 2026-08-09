@@ -13,8 +13,26 @@
  * `Progress.nodetest.ts`.
  */
 import postgres from 'postgres';
+import { createHash } from 'node:crypto';
 import { getPool } from '../db/pool.js';
 import type { PostgresHandle } from '../db/client.js';
+
+/**
+ * A collision-safe row id for (userId, language, lessonId).
+ *
+ * Not a plain `${userId}:${language}:${lessonId}` join: `AudioCache.keyFor`
+ * (same PR, same problem) hashes `JSON.stringify([...])` instead of joining
+ * with a separator precisely because none of the three fields is guaranteed
+ * not to contain that separator — `users.id` is a stable opaque string today
+ * but is documented (schema.ts) as due to be re-keyed from another system
+ * with an unspecified format. A colon join would let two different tuples
+ * collide on the same id string, and since `ON CONFLICT` below targets the
+ * three columns, not `id`, a collision surfaces as an unhandled primary-key
+ * violation rather than a correct upsert.
+ */
+function progressId(userId: string, language: string, lessonId: string): string {
+  return createHash('sha256').update(JSON.stringify([userId, language, lessonId])).digest('hex');
+}
 
 export class ProgressService {
   private readonly injected?: PostgresHandle;
@@ -63,7 +81,7 @@ export class ProgressService {
    */
   async recordSeen(userId: string, language: string, lessonId: string, correct: boolean): Promise<void> {
     const now = new Date().toISOString();
-    const id = `${userId}:${language}:${lessonId}`;
+    const id = progressId(userId, language, lessonId);
 
     await this.sql`
       INSERT INTO learn_progress (

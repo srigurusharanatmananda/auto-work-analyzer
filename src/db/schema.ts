@@ -517,12 +517,13 @@ export const transcriptionJobs = pgTable(
  * silently advance Tamil lessons of the same id, which is why the unique
  * index below includes it rather than keying on (userId, lessonId) alone.
  *
- * `id` is the composite key spelled out as a single text column —
- * `${userId}:${language}:${lessonId}` — rather than a generated uuid, so a
- * lookup by identity is a primary-key lookup and the same identity can never
- * accidentally round-trip through two different id strings. Never inspect
- * or parse it back apart; the three columns it is built from are on the row
- * already.
+ * `id` is a hash of (userId, language, lessonId) — see `Progress.ts`'s
+ * `progressId` — rather than a generated uuid, so a lookup by identity is a
+ * primary-key lookup with no extra round trip. A plain separator-joined
+ * string was considered and rejected: none of the three fields is guaranteed
+ * not to contain the separator, which is exactly the collision `AudioCache`
+ * hashes its key to avoid. Never try to reconstruct it; the three columns it
+ * is derived from are on the row already.
  */
 export const learnProgress = pgTable(
   'learn_progress',
