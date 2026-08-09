@@ -30,6 +30,17 @@ export interface SynthesisResult {
   contentType: string;
 }
 
+/**
+ * What `learn.routes.ts` actually depends on. `SpeechClient` below is one
+ * implementation; `GeminiSpeechClient.ts` is another, for the one language
+ * (Tamil, today) a real, already-configured provider can speak. An
+ * interface rather than the concrete class, so the route can be handed
+ * either one without either implementation knowing the other exists.
+ */
+export interface SpeechSynthesizer {
+  synthesize(options: SynthesizeOptions): Promise<SynthesisResult>;
+}
+
 export interface SpeechClientOptions {
   /** Defaults to TTS_API_URL, else http://localhost:8001 (Whisper owns 8000). */
   baseUrl?: string;

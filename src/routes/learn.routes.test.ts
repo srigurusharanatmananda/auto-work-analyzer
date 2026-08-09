@@ -277,6 +277,48 @@ describe('POST /learn/seen', () => {
 });
 
 describe('POST /learn/speak', () => {
+  test('picks the synthesizer by language, via speechClientFor', async () => {
+    const tamilClient = fakeSpeechClient(() => ({
+      audio: Buffer.from('tamil-audio'),
+      contentType: 'audio/wav',
+    }));
+    const sanskritClient = fakeSpeechClient(() => ({
+      audio: Buffer.from('sanskrit-audio'),
+      contentType: 'audio/wav',
+    }));
+    const speechClientFor = mock((language: string) =>
+      language === 'tamil' ? tamilClient : sanskritClient
+    );
+
+    const app = buildApp({
+      audioCache: fakeAudioCache(),
+      speechClientFor,
+      progressFactory: fakeProgress,
+    });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const tamilRes = await fetch(`${baseUrl}/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: 'tamil', text: 'ந' }),
+      });
+      expect(Buffer.from(await tamilRes.arrayBuffer()).toString()).toBe('tamil-audio');
+
+      const sanskritRes = await fetch(`${baseUrl}/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: 'sanskrit', text: 'न' }),
+      });
+      expect(Buffer.from(await sanskritRes.arrayBuffer()).toString()).toBe('sanskrit-audio');
+
+      expect(speechClientFor).toHaveBeenCalledWith('tamil');
+      expect(speechClientFor).toHaveBeenCalledWith('sanskrit');
+    } finally {
+      server.close();
+    }
+  });
+
   test('a cache hit returns the cached bytes and never calls speechClient', async () => {
     const audioCache = fakeAudioCache();
     const speechClient = fakeSpeechClient(() => {
@@ -287,7 +329,7 @@ describe('POST /learn/speak', () => {
     // transliteration (Kannada, for Sanskrit), the default voice, DEFAULT_PROSODY.
     await audioCache.put('ನ', 'default', DEFAULT_PROSODY, cachedBytes);
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
@@ -312,7 +354,7 @@ describe('POST /learn/speak', () => {
     const synthesized = Buffer.from('freshly-synthesized');
     const speechClient = fakeSpeechClient(() => ({ audio: synthesized, contentType: 'audio/wav' }));
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
@@ -341,7 +383,7 @@ describe('POST /learn/speak', () => {
       throw new SpeechUnavailableError('TTS service is not up yet');
     });
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
@@ -365,7 +407,7 @@ describe('POST /learn/speak', () => {
       throw new SynthesisFailedError('the model choked on this input');
     });
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
@@ -386,9 +428,10 @@ describe('POST /learn/speak', () => {
   test('empty text is 400', async () => {
     const app = buildApp({
       audioCache: fakeAudioCache(),
-      speechClient: fakeSpeechClient(() => {
-        throw new Error('should not be called');
-      }),
+      speechClientFor: () =>
+        fakeSpeechClient(() => {
+          throw new Error('should not be called');
+        }),
       progressFactory: fakeProgress,
     });
     const { server, baseUrl } = await listen(app);
@@ -410,7 +453,7 @@ describe('POST /learn/speak', () => {
     const synthesized = Buffer.from('audio-for-default-voice');
     const speechClient = fakeSpeechClient(() => ({ audio: synthesized, contentType: 'audio/wav' }));
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
@@ -443,7 +486,7 @@ describe('POST /learn/speak', () => {
     } as unknown as AudioCache;
     const speechClient = fakeSpeechClient(() => ({ audio, contentType: 'audio/wav' }));
 
-    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
 
     try {
