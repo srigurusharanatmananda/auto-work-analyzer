@@ -278,7 +278,7 @@ export default function TaskPreviewModal({
     templates.find((template) => template.id === templateId)?.name ?? templateId;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-background-secondary rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-border">
@@ -304,7 +304,7 @@ export default function TaskPreviewModal({
                 id="templateId"
                 value={templateId}
                 onChange={(e) => setTemplateId(e.target.value)}
-                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary"
               >
                 {templates.length === 0 && (
                   <option value={DEFAULT_TEMPLATE_ID}>Standard (default)</option>
@@ -328,7 +328,7 @@ export default function TaskPreviewModal({
                 id="destinationId"
                 value={destinationId}
                 onChange={(e) => setDestinationId(e.target.value)}
-                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary"
               >
                 <option value="">Server default (from configuration)</option>
                 {destinations.map((destination) => (
@@ -392,7 +392,7 @@ export default function TaskPreviewModal({
                   : '🔤 Commits grouped by keyword rules'}
               </p>
               {grouping.fallbackReason && (
-                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-warning">
+                <p className="mt-1 whitespace-pre-wrap wrap-break-word text-xs text-warning">
                   {/* Raw provider/validator text: rendered as escaped content, and
                       truncated because an all-providers-failed reason lists four. */}
                   AI grouping was unavailable, so keyword rules were used:{' '}
@@ -478,7 +478,7 @@ export default function TaskPreviewModal({
                     {rendered[index] ? (
                       <div className="border border-primary/40 rounded-lg bg-background-secondary p-3 space-y-2">
                         <div
-                          className="text-sm font-semibold text-foreground break-words"
+                          className="text-sm font-semibold text-foreground wrap-break-word"
                           data-testid={`rendered-name-${index}`}
                         >
                           {rendered[index].task.name}

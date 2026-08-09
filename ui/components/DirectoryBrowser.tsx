@@ -68,7 +68,7 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-background-secondary rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-border">
@@ -143,7 +143,7 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
                     <span className="text-2xl">{dir.isGitRepo ? '📦' : '📁'}</span>
                     <span className="flex-1 font-medium text-foreground">{dir.name}</span>
                     {dir.isGitRepo && (
-                      <span className="px-2 py-1 bg-success/10 text-success rounded text-xs font-semibold">
+                      <span className="px-2 py-1 bg-success/10 text-success rounded-sm text-xs font-semibold">
                         Git Repo
                       </span>
                     )}

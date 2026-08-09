@@ -145,7 +145,7 @@ export default function Sidebar() {
               </div>
               <div className="flex items-center gap-1">
                 <span className={cn(
-                  "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                  "inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium",
                   user.role === 'admin' ? 'bg-error/20 text-error' :
                   user.role === 'manager' ? 'bg-primary/20 text-primary' :
                   'bg-foreground/20 text-foreground'

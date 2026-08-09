@@ -85,19 +85,19 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-5 text-center bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20">
+          <Card className="p-5 text-center bg-linear-to-br from-primary/20 to-primary/5 border-primary/20">
             <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalCommits}</h3>
             <p className="text-foreground-secondary text-sm">Total Commits</p>
           </Card>
-          <Card className="p-5 text-center bg-gradient-to-br from-blue-500/20 to-blue-500/5 border-blue-500/20">
+          <Card className="p-5 text-center bg-linear-to-br from-blue-500/20 to-blue-500/5 border-blue-500/20">
             <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalWorkItems}</h3>
             <p className="text-foreground-secondary text-sm">Work Items</p>
           </Card>
-          <Card className="p-5 text-center bg-gradient-to-br from-success/20 to-success/5 border-success/20">
+          <Card className="p-5 text-center bg-linear-to-br from-success/20 to-success/5 border-success/20">
             <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.totalFilesChanged}</h3>
             <p className="text-foreground-secondary text-sm">Files Changed</p>
           </Card>
-          <Card className="p-5 text-center bg-gradient-to-br from-orange-500/20 to-orange-500/5 border-orange-500/20">
+          <Card className="p-5 text-center bg-linear-to-br from-orange-500/20 to-orange-500/5 border-orange-500/20">
             <h3 className="text-4xl font-bold mb-1 text-foreground">{summary.tasksCreated}</h3>
             <p className="text-foreground-secondary text-sm">Tasks Created</p>
           </Card>
@@ -141,11 +141,11 @@ export default function ResultsDisplay({ type, data }: ResultsDisplayProps) {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="p-6 text-center bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20">
+          <Card className="p-6 text-center bg-linear-to-br from-primary/20 to-primary/5 border-primary/20">
             <h3 className="text-5xl font-bold mb-2 text-foreground">{summary.tasksExtracted}</h3>
             <p className="text-foreground-secondary">Tasks Extracted</p>
           </Card>
-          <Card className="p-6 text-center bg-gradient-to-br from-success/20 to-success/5 border-success/20">
+          <Card className="p-6 text-center bg-linear-to-br from-success/20 to-success/5 border-success/20">
             <h3 className="text-5xl font-bold mb-2 text-foreground">{summary.tasksCreated}</h3>
             <p className="text-foreground-secondary">Tasks Created</p>
           </Card>

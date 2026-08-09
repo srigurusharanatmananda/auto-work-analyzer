@@ -534,7 +534,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               name="startDate"
               required
               defaultValue={today}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
 
@@ -546,7 +546,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               type="date"
               id="endDate"
               name="endDate"
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
         </div>
@@ -564,7 +564,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               onChange={(e) => setSelectedProjectPath(e.target.value)}
               placeholder="/path/to/your/project"
               required
-              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
+              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
             />
             <Button
               type="button"
@@ -588,7 +588,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             id="branch"
             name="branch"
             defaultValue={currentBranch}
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors"
             disabled={!selectedProjectPath || loadingGitInfo}
           >
             <option value="">All Branches</option>
@@ -614,7 +614,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             value={userEmail}
             onChange={(e) => setUserEmail(e.target.value)}
             placeholder="developer@example.com"
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
           />
           <p className="text-xs text-foreground-tertiary mt-1">
             💡 Leave empty to include commits from all authors
@@ -627,7 +627,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             id="autoSave"
             checked={autoSave}
             onChange={(e) => setAutoSave(e.target.checked)}
-            className="w-5 h-5 accent-primary rounded"
+            className="w-5 h-5 accent-primary rounded-sm"
           />
           <label htmlFor="autoSave" className="text-sm font-medium text-foreground cursor-pointer flex-1">
             💾 Auto-save report after generation
@@ -776,20 +776,20 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               type="checkbox"
                               checked={item.selected}
                               onChange={() => toggleWorkItemSelection(item.id)}
-                              className="w-5 h-5 accent-primary rounded mt-1 flex-shrink-0"
+                              className="w-5 h-5 accent-primary rounded-sm mt-1 shrink-0"
                             />
                             <div className="flex-1 space-y-2">
                               <input
                                 type="text"
                                 value={item.name}
                                 onChange={(e) => updateWorkItem(item.id, 'name', e.target.value)}
-                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg font-semibold focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                                 placeholder="Task name"
                               />
                               <select
                                 value={item.type}
                                 onChange={(e) => updateWorkItem(item.id, 'type', e.target.value)}
-                                className="px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
                               >
                                 <option value="feature">✨ Feature</option>
                                 <option value="bug-fix">🐛 Bug Fix</option>
@@ -798,12 +798,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               <textarea
                                 value={item.description}
                                 onChange={(e) => updateWorkItem(item.id, 'description', e.target.value)}
-                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                                 placeholder="Description (optional)"
                                 rows={2}
                               />
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
+                            <div className="flex gap-2 shrink-0">
                               <Button
                                 onClick={() => toggleEditMode(item.id)}
                                 variant="primary"
@@ -828,13 +828,13 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                             type="checkbox"
                             checked={item.selected}
                             onChange={() => toggleWorkItemSelection(item.id)}
-                            className="w-5 h-5 accent-primary rounded mt-1 flex-shrink-0"
+                            className="w-5 h-5 accent-primary rounded-sm mt-1 shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-foreground flex items-center gap-2">
                               <span>{emoji}</span>
                               <span>{item.name}</span>
-                              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-sm text-xs">
                                 {item.type}
                               </span>
                             </div>
@@ -842,7 +842,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               <p className="text-sm text-foreground-secondary mt-1">{item.description}</p>
                             )}
                           </div>
-                          <div className="flex gap-2 flex-shrink-0">
+                          <div className="flex gap-2 shrink-0">
                             <Button
                               onClick={() => handleEnhanceWithAI(item.id)}
                               disabled={enhancingItems.has(item.id)}

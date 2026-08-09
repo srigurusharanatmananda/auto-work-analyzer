@@ -81,7 +81,7 @@ export default function RegisterPage() {
               onChange={(e) => setFullName(e.target.value)}
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
               placeholder="John Doe"
             />
           </div>
@@ -97,7 +97,7 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
               placeholder="you@example.com"
             />
           </div>
@@ -114,7 +114,7 @@ export default function RegisterPage() {
               required
               disabled={isLoading}
               minLength={8}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
               placeholder="••••••••"
             />
             <p className="text-xs text-foreground-tertiary mt-1">
@@ -133,7 +133,7 @@ export default function RegisterPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors disabled:opacity-50"
               placeholder="••••••••"
             />
           </div>

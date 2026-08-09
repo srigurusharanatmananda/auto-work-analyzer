@@ -341,7 +341,7 @@ export default function NotesTab() {
               value={notesText}
               onChange={(e) => setNotesText(e.target.value)}
               placeholder="- Add authentication feature&#10;- Fix bug in payment flow&#10;- Improve dashboard performance&#10;TODO: Update documentation"
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors min-h-[160px] resize-y font-mono text-sm placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors min-h-[160px] resize-y font-mono text-sm placeholder:text-foreground-tertiary"
             />
           </div>
 
@@ -352,7 +352,7 @@ export default function NotesTab() {
               id="createTasksNotes"
               name="createTasksNotes"
               defaultChecked
-              className="w-5 h-5 text-primary rounded focus:ring-primary accent-primary"
+              className="w-5 h-5 text-primary rounded-sm focus:ring-primary accent-primary"
             />
             <label htmlFor="createTasksNotes" className="text-sm font-medium text-foreground">
               Automatically create tasks in ClickUp
