@@ -264,6 +264,44 @@ describe('session renewal', () => {
   });
 
   /**
+   * `rawRequest` exists so a binary-response call (e.g. audio) gets the same
+   * session renewal as every JSON call — the bug this guards against is a
+   * caller reimplementing its own fetch and silently losing the retry.
+   */
+  test('rawRequest also refreshes and retries once, and returns the raw Response unparsed', async () => {
+    let attempt = 0;
+    const responses = [
+      jsonResponse({ success: false, error: 'Token expired' }, 401),
+      new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
+    ];
+    const retrying = new ApiClient({
+      baseUrl: BASE,
+      fetchImpl: async () => {
+        const response = responses[Math.min(attempt, responses.length - 1)]!;
+        attempt += 1;
+        return response.clone();
+      },
+    });
+
+    let currentToken = 'expired';
+    retrying.setAuthBridge(
+      authBridge({
+        getAccessToken: () => currentToken,
+        refreshAccessToken: async () => {
+          currentToken = 'fresh';
+          return currentToken;
+        },
+      })
+    );
+
+    const response = await retrying.rawRequest('/learn/speak', { method: 'POST' });
+
+    expect(attempt).toBe(2);
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  /**
    * The token-family hazard. Refresh tokens rotate, so a second concurrent
    * refresh presents an already-consumed token and the backend revokes
    * everything. Users would see "signed out at random on page load".
