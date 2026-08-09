@@ -24,7 +24,7 @@ import express from 'express';
 import type { ProgressService } from '../learn/Progress.js';
 import type { AudioCache } from '../learn/AudioCache.js';
 import type { SpeechClient, SynthesisResult, SynthesizeOptions } from '../learn/SpeechClient.js';
-import { SpeechUnavailableError, SynthesisFailedError } from '../learn/SpeechClient.js';
+import { DEFAULT_PROSODY, SpeechUnavailableError, SynthesisFailedError } from '../learn/SpeechClient.js';
 import { sanskritManifest } from '../learn/content/sanskrit.js';
 
 const TEST_USER_ID = 'learn-test-user';
@@ -285,7 +285,7 @@ describe('POST /learn/speak', () => {
     const cachedBytes = Buffer.from('cached-audio-bytes');
     // Pre-seed the cache with exactly what the route will look up: text after
     // transliteration (Kannada, for Sanskrit), the default voice, DEFAULT_PROSODY.
-    await audioCache.put('ನ', 'default', 'slow, clear, measured, no background noise', cachedBytes);
+    await audioCache.put('ನ', 'default', DEFAULT_PROSODY, cachedBytes);
 
     const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
@@ -329,7 +329,7 @@ describe('POST /learn/speak', () => {
       // The cache key is the POST-transliteration text, not the raw Devanagari.
       expect(speechClient.calls[0]!.text).toBe('ನ');
       expect(audioCache.putCalls).toBe(1);
-      expect(audioCache.store.get(JSON.stringify(['ನ', 'default', 'slow, clear, measured, no background noise']))?.equals(synthesized)).toBe(true);
+      expect(audioCache.store.get(JSON.stringify(['ನ', 'default', DEFAULT_PROSODY]))?.equals(synthesized)).toBe(true);
     } finally {
       server.close();
     }
@@ -400,6 +400,64 @@ describe('POST /learn/speak', () => {
         body: JSON.stringify({ language: 'sanskrit', text: '   ' }),
       });
       expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('an empty-string voice falls back to the shared default, not a distinct cache entry', async () => {
+    const audioCache = fakeAudioCache();
+    const synthesized = Buffer.from('audio-for-default-voice');
+    const speechClient = fakeSpeechClient(() => ({ audio: synthesized, contentType: 'audio/wav' }));
+
+    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: 'sanskrit', text: 'न', voice: '' }),
+      });
+
+      expect(res.status).toBe(200);
+      // '' must resolve to the same voice an omitted `voice` would — not its
+      // own cache entry, which would silently split the cache in two for
+      // what a caller would expect to be the same request.
+      expect(speechClient.calls[0]!.voice).toBe('default');
+      expect(audioCache.store.has(JSON.stringify(['ನ', 'default', DEFAULT_PROSODY]))).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a cache-write failure after successful synthesis still serves the audio', async () => {
+    const audio = Buffer.from('synthesized-despite-cache-failure');
+    const audioCache: AudioCache = {
+      async get() {
+        return null;
+      },
+      async put() {
+        throw new Error('ENOSPC: no space left on device');
+      },
+    } as unknown as AudioCache;
+    const speechClient = fakeSpeechClient(() => ({ audio, contentType: 'audio/wav' }));
+
+    const app = buildApp({ audioCache, speechClient, progressFactory: fakeProgress });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: 'sanskrit', text: 'न' }),
+      });
+      const bytes = Buffer.from(await res.arrayBuffer());
+
+      // The whole point: a cache write failing must not throw away audio
+      // that was already successfully synthesized and is sitting in memory.
+      expect(res.status).toBe(200);
+      expect(bytes.equals(audio)).toBe(true);
     } finally {
       server.close();
     }

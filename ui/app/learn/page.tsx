@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAuth } from '@/lib/context/AuthContext';
-import { api, API_BASE_URL, messageFor } from '@/lib/api';
+import { api, messageFor } from '@/lib/api';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type { LearnLanguage, LearnProgress } from '@/types';
@@ -14,7 +13,6 @@ const LANGUAGE_LABEL: Record<LearnLanguage, string> = {
 };
 
 export default function LearnPage() {
-  const { accessToken } = useAuth();
   const [language, setLanguage] = useState<LearnLanguage>('sanskrit');
   const [progress, setProgress] = useState<LearnProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +24,10 @@ export default function LearnPage() {
 
     async function loadNext() {
       setLoading(true);
+      // Cleared up front, not just left stale on failure: without this, a
+      // failed fetch after switching languages would keep showing the
+      // PREVIOUS language's lesson under the newly-selected tab.
+      setProgress(null);
       try {
         const data = await api.get<LearnProgress>('/learn/next', { query: { language } });
         if (!ignore) setProgress(data);
@@ -66,14 +68,13 @@ export default function LearnPage() {
 
     setAudioLoading(true);
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/learn/speak`, {
+      // Not `api.post` — that unwraps the `{success, data}` JSON envelope,
+      // and this route returns raw audio bytes. `rawRequest` gets the same
+      // Authorization header and 401-refresh-and-retry as every other call
+      // without reimplementing either.
+      const response = await api.rawRequest('/learn/speak', {
         method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ language, text: progress.lesson.text }),
+        body: { language, text: progress.lesson.text },
       });
 
       if (!response.ok) {

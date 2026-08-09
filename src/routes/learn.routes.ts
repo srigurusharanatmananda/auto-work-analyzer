@@ -152,7 +152,23 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // Always run, for every language — the identity function for Tamil, so
     // this is a uniform step, not a per-language branch.
     const synthesisText = transliterateForSynthesis(text.trim(), manifest.language);
-    const resolvedVoice = voice ?? DEFAULT_VOICE;
+    // `voice ?? DEFAULT_VOICE` only substitutes on null/undefined, so a
+    // caller sending `voice: ''` would silently split the cache from every
+    // other request for the same text instead of falling back to the shared
+    // default. Trim, then treat blank the same as absent.
+    const trimmedVoice = typeof voice === 'string' ? voice.trim() : '';
+    const resolvedVoice = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
+
+    // A learner is waiting synchronously on this request, unlike a background
+    // transcription job — SpeechClient's own default health-check timeout
+    // (3 minutes, generous by design for a slow-loading model) would leave
+    // "Play audio" hung that long on every cache miss while no TTS server
+    // exists. Aborting sooner makes SpeechClient's own poll loop notice on
+    // its next iteration and throw SpeechUnavailableError, which the catch
+    // below already turns into a fast 503.
+    const SPEAK_TIMEOUT_MS = 15_000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 
     try {
       const cached = await audioCache.get(synthesisText, resolvedVoice, DEFAULT_PROSODY);
@@ -170,8 +186,19 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
         text: synthesisText,
         voice: resolvedVoice,
         prosody: DEFAULT_PROSODY,
+        signal: controller.signal,
       });
-      await audioCache.put(synthesisText, resolvedVoice, DEFAULT_PROSODY, result.audio);
+
+      try {
+        await audioCache.put(synthesisText, resolvedVoice, DEFAULT_PROSODY, result.audio);
+      } catch (cacheError) {
+        // The synthesis already succeeded and the caller is still waiting on
+        // audio it paid for — a cache write failing (disk full, EACCES) is a
+        // reason to skip the cache, not to throw away bytes already in hand
+        // and fail the whole request as if synthesis itself had failed.
+        console.error('Failed to write learn-audio cache entry (serving audio anyway):', cacheError);
+      }
+
       res.setHeader('Content-Type', result.contentType);
       res.send(result.audio);
     } catch (error) {
@@ -188,6 +215,8 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
         error: 'Failed to synthesize speech',
         details: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      clearTimeout(timer);
     }
   });
 

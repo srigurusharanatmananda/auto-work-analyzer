@@ -155,6 +155,22 @@ export class ApiClient {
    * than anything the client could reconstruct from the data.
    */
   async send<T>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+    const response = await this.executeWithRefresh(path, options);
+    return this.unwrap<T>(response);
+  }
+
+  /**
+   * The raw `Response`, after the same 401-refresh-and-retry every other
+   * method gets — for a caller that needs something `unwrap()` cannot give
+   * it, such as a binary body, which no JSON-envelope method can represent.
+   * Everything else should use `get`/`post`/etc.
+   */
+  async rawRequest(path: string, options: RequestOptions = {}): Promise<Response> {
+    return this.executeWithRefresh(path, options);
+  }
+
+  /** `execute()` plus the one-retry-after-refresh policy. Shared by `send` and `rawRequest`. */
+  private async executeWithRefresh(path: string, options: RequestOptions): Promise<Response> {
     const authenticated = options.authenticated ?? true;
 
     let response = await this.execute(path, options, authenticated);
@@ -168,7 +184,7 @@ export class ApiClient {
       response = await this.execute(path, options, authenticated);
     }
 
-    return this.unwrap<T>(response);
+    return response;
   }
 
   /** Builds and sends one attempt. No retry logic, no unwrapping. */
