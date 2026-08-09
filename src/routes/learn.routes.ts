@@ -2,9 +2,12 @@
  * HTTP surface for the Sanskrit/Tamil learning module.
  *
  * Every backend piece already exists — `Curriculum` (what's next),
- * `Progress` (what's been seen), `AudioCache` + `SpeechClient` (text to
- * speech, cached) and `Transliterator` (script the learner sees vs. script
- * the synthesiser is fed). This file only wires them behind three routes; see
+ * `Progress` (what's been seen), `AudioCache` (text to speech, cached),
+ * `Transliterator` (script the learner sees vs. script the synthesiser is
+ * fed), and now two speech backends: `SpeechClient` (the provisional
+ * Indic-Parler-TTS contract, no server yet) and `GeminiSpeechClient` (real,
+ * already-configured, Tamil-only per Gemini's supported languages). This
+ * file only wires them behind three routes; see
  * `docs/specs/2026-08-08-learning-module-design.md`.
  *
  * Follows `reports.routes.ts`'s shape: a `createLearnRouter(deps)` factory
@@ -18,16 +21,36 @@ import { sanskritManifest } from '../learn/content/sanskrit.js';
 import { tamilManifest } from '../learn/content/tamil.js';
 import { ProgressService } from '../learn/Progress.js';
 import { AudioCache } from '../learn/AudioCache.js';
-import { SpeechClient, DEFAULT_PROSODY, SpeechUnavailableError } from '../learn/SpeechClient.js';
-import { transliterateForSynthesis } from '../learn/Transliterator.js';
+import {
+  SpeechClient,
+  DEFAULT_PROSODY,
+  SpeechUnavailableError,
+  type SpeechSynthesizer,
+} from '../learn/SpeechClient.js';
+import { GeminiSpeechClient } from '../learn/GeminiSpeechClient.js';
+import { transliterateForSynthesis, type Language } from '../learn/Transliterator.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
+
+/**
+ * Which language gets which speech backend. Tamil has a real,
+ * already-configured provider (Gemini, verified to support Tamil — see
+ * GeminiSpeechClient.ts); Sanskrit does not, and stays on the provisional
+ * client until one exists. One instance per language, not per request —
+ * both clients are stateless enough to share.
+ */
+function defaultSpeechClientFor(): (language: Language) => SpeechSynthesizer {
+  const gemini = new GeminiSpeechClient();
+  const provisional = new SpeechClient();
+  return (language) => (language === 'tamil' ? gemini : provisional);
+}
 
 export interface LearnRouterDeps {
   /** Overridden in tests; each call gets a fresh connection, as before (mirrors ReportsRouterDeps.databaseFactory). */
   progressFactory?: () => ProgressService;
   audioCache?: AudioCache;
-  speechClient?: SpeechClient;
+  /** Picks the synthesizer for a language. See `defaultSpeechClientFor`. */
+  speechClientFor?: (language: Language) => SpeechSynthesizer;
 }
 
 /**
@@ -60,7 +83,7 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
   const router = Router();
   const newProgress = deps.progressFactory ?? (() => new ProgressService());
   const audioCache = deps.audioCache ?? new AudioCache();
-  const speechClient = deps.speechClient ?? new SpeechClient();
+  const speechClientFor = deps.speechClientFor ?? defaultSpeechClientFor();
 
   router.get('/next', authenticate, anyRole, async (req: Request, res: Response) => {
     const languageParam = req.query.language;
@@ -157,40 +180,53 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // other request for the same text instead of falling back to the shared
     // default. Trim, then treat blank the same as absent.
     const trimmedVoice = typeof voice === 'string' ? voice.trim() : '';
-    const resolvedVoice = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
+    // The CACHE key's notion of "no voice specified" — a stable label, not a
+    // real provider voice name. Kept separate from what's actually passed to
+    // synthesize() below: that must stay `undefined` when the caller didn't
+    // ask for one, so each backend's OWN default applies (GeminiSpeechClient
+    // defaults to a real Gemini voice, "Kore"; the provisional SpeechClient
+    // has its own). Passing the literal string 'default' straight through —
+    // the bug this comment replaces — sent 'default' to the live Gemini API
+    // as a voice name, which Gemini does not have, breaking every Tamil
+    // request that didn't name a voice explicitly.
+    const cacheVoiceKey = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
+    const requestedVoice = trimmedVoice !== '' ? trimmedVoice : undefined;
 
     // A learner is waiting synchronously on this request, unlike a background
     // transcription job — SpeechClient's own default health-check timeout
     // (3 minutes, generous by design for a slow-loading model) would leave
     // "Play audio" hung that long on every cache miss while no TTS server
-    // exists. Aborting sooner makes SpeechClient's own poll loop notice on
-    // its next iteration and throw SpeechUnavailableError, which the catch
-    // below already turns into a fast 503.
+    // exists for the provisional client. Aborting sooner makes its poll loop
+    // notice on the next iteration and throw SpeechUnavailableError, which
+    // the catch below already turns into a fast 503. For GeminiSpeechClient
+    // (Tamil) this is just a generous outer bound — a real API call should
+    // finish well inside it.
     const SPEAK_TIMEOUT_MS = 15_000;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 
     try {
-      const cached = await audioCache.get(synthesisText, resolvedVoice, DEFAULT_PROSODY);
+      const cached = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
       if (cached) {
         // AudioCache stores raw bytes only, with no content-type metadata, so
-        // this hardcodes the format Indic-Parler-TTS is expected to emit —
-        // the same format SpeechClient.ts itself defaults to when the TTS
-        // server's response omits a content-type header.
+        // this hardcodes the format — audio/wav is what both speech backends
+        // produce today: SpeechClient.ts defaults to it when the TTS
+        // server's response omits a content-type header, and
+        // GeminiSpeechClient wraps Gemini's raw PCM in a WAV header itself.
         res.setHeader('Content-Type', 'audio/wav');
         res.send(cached);
         return;
       }
 
-      const result = await speechClient.synthesize({
+      const result = await speechClientFor(manifest.language).synthesize({
         text: synthesisText,
-        voice: resolvedVoice,
+        voice: requestedVoice,
         prosody: DEFAULT_PROSODY,
         signal: controller.signal,
       });
 
       try {
-        await audioCache.put(synthesisText, resolvedVoice, DEFAULT_PROSODY, result.audio);
+        await audioCache.put(synthesisText, cacheVoiceKey, DEFAULT_PROSODY, result.audio);
       } catch (cacheError) {
         // The synthesis already succeeded and the caller is still waiting on
         // audio it paid for — a cache write failing (disk full, EACCES) is a

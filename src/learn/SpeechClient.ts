@@ -30,6 +30,17 @@ export interface SynthesisResult {
   contentType: string;
 }
 
+/**
+ * What `learn.routes.ts` actually depends on. `SpeechClient` below is one
+ * implementation; `GeminiSpeechClient.ts` is another, for the one language
+ * (Tamil, today) a real, already-configured provider can speak. An
+ * interface rather than the concrete class, so the route can be handed
+ * either one without either implementation knowing the other exists.
+ */
+export interface SpeechSynthesizer {
+  synthesize(options: SynthesizeOptions): Promise<SynthesisResult>;
+}
+
 export interface SpeechClientOptions {
   /** Defaults to TTS_API_URL, else http://localhost:8001 (Whisper owns 8000). */
   baseUrl?: string;
@@ -95,6 +106,40 @@ export class SynthesisFailedError extends Error {
   }
 }
 
+/**
+ * Runs `run` with a fresh `AbortSignal` that fires after `ms`, or as soon as
+ * the caller's own `signal` (if any) fires — whichever is first. Shared by
+ * `SpeechClient` and `GeminiSpeechClient`, which otherwise each hand-rolled
+ * the same setTimeout/listener/cleanup scaffolding.
+ */
+export async function withTimeout<T>(
+  ms: number,
+  signal: AbortSignal | undefined,
+  run: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  const onCallerAbort = () => controller.abort();
+  signal?.addEventListener('abort', onCallerAbort);
+
+  try {
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onCallerAbort);
+  }
+}
+
+/**
+ * True for the DOMException `fetch` rejects with when its own signal is
+ * aborted — as opposed to a network-level error (which carries a `.code`
+ * like ECONNRESET). Both classes treat a timeout/abort as "unavailable,
+ * try again", the same as a dropped connection, not as a hard failure.
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export class SpeechClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -151,13 +196,8 @@ export class SpeechClient {
     await this.waitUntilReady(signal);
 
     const timeoutMs = Number(process.env.TTS_TIMEOUT_MS) || DEFAULT_SYNTHESIZE_TIMEOUT_MS;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const onCallerAbort = () => controller.abort();
-    signal?.addEventListener('abort', onCallerAbort);
-
-    try {
-      const response = await this.post(text, voice, prosody, controller.signal);
+    return withTimeout(timeoutMs, signal, async (innerSignal) => {
+      const response = await this.post(text, voice, prosody, innerSignal);
 
       if (!response.ok) {
         throw new SynthesisFailedError(
@@ -168,10 +208,7 @@ export class SpeechClient {
       const contentType = response.headers.get('content-type') ?? 'audio/wav';
       const audio = Buffer.from(await response.arrayBuffer());
       return { audio, contentType };
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onCallerAbort);
-    }
+    });
   }
 
   private async post(
@@ -188,6 +225,12 @@ export class SpeechClient {
         signal,
       });
     } catch (error) {
+      // A caller-side timeout (learn.routes.ts's outer bound, or this
+      // client's own) — retryable, not a hard failure, so it gets the same
+      // treatment as a dropped connection below.
+      if (isAbortError(error)) {
+        throw new SpeechUnavailableError('Synthesis timed out.');
+      }
       const code = (error as NodeJS.ErrnoException)?.code;
       // Mirrors WhisperClient: a dropped connection here is almost always the
       // model container restarting, not a transient blip worth hiding.
