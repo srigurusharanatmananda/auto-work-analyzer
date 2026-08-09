@@ -417,12 +417,12 @@ interface ResolvedUrl {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-foreground">{destination.name}</span>
                         {destination.isDefault && (
-                          <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                          <span className="rounded-sm bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
                             Default
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 break-words text-xs text-foreground-secondary">
+                      <div className="mt-1 wrap-break-word text-xs text-foreground-secondary">
                         {pathOf(destination)}
                       </div>
                       {destination.defaultTemplateId && (
@@ -647,7 +647,7 @@ interface ResolvedUrl {
                           defaultTemplateId: e.target.value,
                         }))
                       }
-                      className="w-full rounded-lg border border-border bg-background-tertiary px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full rounded-lg border border-border bg-background-tertiary px-3 py-2 text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
                     >
                       <option value="">Use the standard template</option>
                       {templates.map((template) => (

@@ -154,7 +154,7 @@ export default function ScanningSettingsPage() {
                     type="time"
                     value={settings.scanTime}
                     onChange={(e) => setSettings({ ...settings, scanTime: e.target.value })}
-                    className="rounded-xl border border-border bg-background-tertiary px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-xl border border-border bg-background-tertiary px-4 py-3 text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
                   />
                 </div>
 

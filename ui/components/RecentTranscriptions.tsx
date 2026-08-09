@@ -148,7 +148,7 @@ export default function RecentTranscriptions({ onUse, refreshToken }: RecentTran
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[job.status]}`}
+                    className={`rounded-sm px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[job.status]}`}
                   >
                     {STATUS_LABELS[job.status]}
                     {job.status === 'running' && job.segmentsSeen

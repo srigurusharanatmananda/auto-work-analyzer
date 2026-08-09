@@ -68,7 +68,7 @@ function Excerpt({ highlight }: { highlight: TranscriptHighlight }) {
   return (
     <p className="text-sm leading-relaxed text-foreground-secondary">
       {text.slice(0, safeStart)}
-      <mark className="rounded bg-primary/25 px-0.5 font-medium text-foreground">
+      <mark className="rounded-sm bg-primary/25 px-0.5 font-medium text-foreground">
         {text.slice(safeStart, safeEnd)}
       </mark>
       {text.slice(safeEnd)}
@@ -96,13 +96,13 @@ function ResultCard({ result }: { result: TranscriptSearchResult }) {
           {duration && <span>· {duration}</span>}
           {result.language && <span>· {result.language}</span>}
           {result.matchCount > 0 && (
-            <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
+            <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
               {result.matchCount} {result.matchCount === 1 ? 'mention' : 'mentions'}
             </span>
           )}
           {result.sweptAt && (
             <span
-              className="rounded bg-success/15 px-1.5 py-0.5 font-medium text-success"
+              className="rounded-sm bg-success/15 px-1.5 py-0.5 font-medium text-success"
               title="Action items from this call have already been filed to ClickUp"
             >
               Filed
@@ -236,7 +236,7 @@ export default function TranscriptSearch() {
               value={filters.query}
               onChange={(event) => update({ query: event.target.value })}
               placeholder="A name, a phrase, anything you remember — “signed contract”, “Priya”"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-tertiary focus:border-primary focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-tertiary focus:border-primary focus:outline-hidden"
             />
             <p className="mt-1.5 text-xs text-foreground-tertiary">
               Matches anywhere in the text, including part of a word, and ignores case. Only
@@ -255,7 +255,7 @@ export default function TranscriptSearch() {
                 value={filters.from}
                 max={filters.to || undefined}
                 onChange={(event) => update({ from: event.target.value })}
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-hidden"
               />
             </div>
             <div>
@@ -268,7 +268,7 @@ export default function TranscriptSearch() {
                 value={filters.to}
                 min={filters.from || undefined}
                 onChange={(event) => update({ to: event.target.value })}
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-hidden"
               />
             </div>
 

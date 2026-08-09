@@ -318,7 +318,7 @@ export default function TemplatesSettingsPage() {
                         onChange={(e) => updateDraft({ nameTemplate: e.target.value })}
                         rows={2}
                         spellCheck={false}
-                        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl font-mono text-sm focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                         placeholder="{{typeEmoji}} {{title}}"
                       />
                     </div>
@@ -336,7 +336,7 @@ export default function TemplatesSettingsPage() {
                         onChange={(e) => updateDraft({ descriptionTemplate: e.target.value })}
                         rows={12}
                         spellCheck={false}
-                        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl font-mono text-sm focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                         placeholder="{{description}}"
                       />
                     </div>
@@ -476,7 +476,7 @@ export default function TemplatesSettingsPage() {
                         <div className="text-xs font-semibold text-foreground-secondary mb-1">
                           Task name
                         </div>
-                        <div className="px-3 py-2 rounded-lg border border-border bg-background-tertiary text-foreground font-medium break-words">
+                        <div className="px-3 py-2 rounded-lg border border-border bg-background-tertiary text-foreground font-medium wrap-break-word">
                           {preview.name}
                         </div>
                       </div>
@@ -609,7 +609,7 @@ function TemplateRow({
           </code>
         </div>
 
-        <div className="flex flex-col gap-2 flex-shrink-0">
+        <div className="flex flex-col gap-2 shrink-0">
           <Button variant="secondary" size="sm" onClick={onDuplicate} disabled={duplicating}>
             {duplicating ? 'Copying...' : 'Duplicate'}
           </Button>
@@ -663,7 +663,7 @@ function CheckboxRow({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-5 h-5 accent-primary rounded"
+        className="w-5 h-5 accent-primary rounded-sm"
       />
       <label htmlFor={id} className="text-sm font-medium text-foreground cursor-pointer">
         {label}
@@ -698,7 +698,7 @@ function SelectRow({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary"
       >
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
@@ -740,7 +740,7 @@ function PlaceholderReference({ schema }: { schema: PlaceholderSchema | null }) 
           {schema.scalars.map((scalar) => (
             <code
               key={scalar}
-              className="px-2 py-1 rounded bg-background-tertiary border border-border text-xs font-mono text-foreground"
+              className="px-2 py-1 rounded-sm bg-background-tertiary border border-border text-xs font-mono text-foreground"
             >
               {`{{${scalar}}}`}
             </code>
@@ -762,7 +762,7 @@ function PlaceholderReference({ schema }: { schema: PlaceholderSchema | null }) 
                 {schema.sections[section].scalars.map((scalar) => (
                   <code
                     key={scalar}
-                    className="px-2 py-0.5 rounded bg-background-tertiary border border-border text-xs font-mono text-foreground-secondary"
+                    className="px-2 py-0.5 rounded-sm bg-background-tertiary border border-border text-xs font-mono text-foreground-secondary"
                   >
                     {scalar === '.' ? '{{.}}' : `{{${scalar}}}`}
                   </code>

@@ -139,7 +139,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               name="startDate"
               required
               defaultValue={today}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
 
@@ -151,7 +151,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               type="date"
               id="endDate"
               name="endDate"
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
         </div>
@@ -168,7 +168,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
               value={selectedProjectPath}
               onChange={(e) => setSelectedProjectPath(e.target.value)}
               placeholder="/path/to/your/project (leave empty for current project)"
-              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
+              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
             />
             <Button
               type="button"
@@ -192,7 +192,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             id="branch"
             name="branch"
             defaultValue={currentBranch}
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors"
             disabled={!selectedProjectPath || loadingGitInfo}
           >
             <option value="">All Branches</option>
@@ -218,7 +218,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             value={userEmail}
             onChange={(e) => setUserEmail(e.target.value)}
             placeholder="developer@example.com"
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
           />
           <p className="text-xs text-foreground-tertiary mt-1">
             💡 Leave empty to analyze commits from all authors
@@ -231,7 +231,7 @@ export default function AnalyzeTab({ selectedProjectPath, setSelectedProjectPath
             id="createTasks"
             name="createTasks"
             defaultChecked
-            className="w-5 h-5 accent-primary rounded focus:ring-primary"
+            className="w-5 h-5 accent-primary rounded-sm focus:ring-primary"
           />
           <label htmlFor="createTasks" className="text-sm font-medium text-foreground">
             Automatically create tasks in ClickUp

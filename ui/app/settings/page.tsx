@@ -28,7 +28,6 @@ export default function SettingsPage() {
   // session exists.
   useEffect(() => {
     void loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSettings = async () => {
@@ -155,7 +154,7 @@ export default function SettingsPage() {
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                   placeholder="Enter assignee name (e.g., Sri Gurusharanatmananda)"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   This will be used as the default name for reports and EOD summaries
@@ -172,7 +171,7 @@ export default function SettingsPage() {
                   value={backendUrl}
                   onChange={(e) => setBackendUrl(e.target.value)}
                   placeholder="http://localhost:3009"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   The URL where the backend API server is running
@@ -213,7 +212,7 @@ export default function SettingsPage() {
                   value={clickupTeamId}
                   onChange={(e) => setClickupTeamId(e.target.value)}
                   placeholder="Enter your ClickUp team ID"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
               </div>
 
@@ -227,7 +226,7 @@ export default function SettingsPage() {
                   value={clickupListId}
                   onChange={(e) => setClickupListId(e.target.value)}
                   placeholder="Enter your ClickUp list ID"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   The default list where tasks will be created

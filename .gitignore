@@ -9,6 +9,12 @@ ui/node_modules
 dist
 ui/dist
 ui/.next
+# Generated, and not stably: Next 16 rewrites it to reference `.next/types`
+# after `next build` but `.next/dev/types` after `next dev`, so it flips on
+# every dev session and dirties the tree. Tracking it bought nothing — the
+# paths it points at live under the ignored `.next/`, so they do not exist in
+# a fresh clone either way, and `ui/tsconfig.json` already includes both.
+ui/next-env.d.ts
 # tsc --noEmit incremental cache
 *.tsbuildinfo
 

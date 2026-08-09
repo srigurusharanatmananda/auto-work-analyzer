@@ -131,15 +131,15 @@ function ItemBody({
       </h3>
 
       <div className="mt-2 flex flex-wrap gap-2 text-xs">
-        <span className="rounded bg-primary/20 px-2 py-0.5 text-primary">{item.type}</span>
-        <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+        <span className="rounded-sm bg-primary/20 px-2 py-0.5 text-primary">{item.type}</span>
+        <span className="rounded-sm bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
           {item.priority} priority
         </span>
-        <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+        <span className="rounded-sm bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
           ~{item.estimateHours}h
         </span>
         {item.status && (
-          <span className="rounded bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
+          <span className="rounded-sm bg-foreground/10 px-2 py-0.5 text-foreground-secondary">
             {item.status}
           </span>
         )}
@@ -547,7 +547,7 @@ export default function TranscriptTab() {
                 }}
                 placeholder="https://youtube.com/watch?v=… or a link to an .mp3"
                 disabled={busy}
-                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-50"
               />
               <Button
                 type="button"
@@ -588,7 +588,7 @@ export default function TranscriptTab() {
               value={transcript}
               onChange={(event) => setTranscript(event.target.value)}
               placeholder={'Priya: Before we wrap up — the export is dropping the last row.\nSam: I can take that.'}
-              className="min-h-[220px] w-full resize-y rounded-lg border border-border bg-background-tertiary px-4 py-3 font-mono text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="min-h-[220px] w-full resize-y rounded-lg border border-border bg-background-tertiary px-4 py-3 font-mono text-sm text-foreground transition-colors placeholder:text-foreground-tertiary focus:outline-hidden focus:ring-2 focus:ring-primary"
             />
             <p className="mt-2 text-xs text-foreground-tertiary">
               Speaker labels help — items are attributed to whoever the transcript names.
@@ -607,7 +607,7 @@ export default function TranscriptTab() {
                 value={callTitle}
                 onChange={(event) => setCallTitle(event.target.value)}
                 placeholder="Weekly sync"
-                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
@@ -619,7 +619,7 @@ export default function TranscriptTab() {
                 type="date"
                 value={callDate}
                 onChange={(event) => setCallDate(event.target.value)}
-                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-border bg-background-tertiary px-4 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>

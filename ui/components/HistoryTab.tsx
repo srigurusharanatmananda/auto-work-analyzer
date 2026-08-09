@@ -124,7 +124,7 @@ export default function HistoryTab() {
             id="filterProject"
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
-            className="w-full md:w-auto px-4 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+            className="w-full md:w-auto px-4 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors"
           >
             <option value="all">All Projects ({data.history.length})</option>
             {uniqueProjects.map((project) => {
