@@ -501,3 +501,69 @@ export const transcriptionJobs = pgTable(
     index('idx_transcription_sweep').on(table.userId, table.status, table.sweptAt),
   ]
 );
+
+// ==================== Learning module ====================
+// See docs/specs/2026-08-08-learning-module-design.md ("Storage").
+
+/**
+ * What has been seen, what is due — per user, per language.
+ *
+ * `language` is not optional and not a foreign key: this schema has no narrow
+ * union column type, so it is plain `text` by house style, holding
+ * `'sanskrit' | 'tamil'` (see `src/learn/Transliterator.ts`'s `Language`
+ * type) enforced by the application, not the database. It exists on this
+ * table specifically because the spec calls out that Sanskrit and Tamil
+ * progress must never mix — a learner working through Sanskrit must not
+ * silently advance Tamil lessons of the same id, which is why the unique
+ * index below includes it rather than keying on (userId, lessonId) alone.
+ *
+ * `id` is a hash of (userId, language, lessonId) — see `Progress.ts`'s
+ * `progressId` — rather than a generated uuid, so a lookup by identity is a
+ * primary-key lookup with no extra round trip. A plain separator-joined
+ * string was considered and rejected: none of the three fields is guaranteed
+ * not to contain the separator, which is exactly the collision `AudioCache`
+ * hashes its key to avoid. Never try to reconstruct it; the three columns it
+ * is derived from are on the row already.
+ */
+export const learnProgress = pgTable(
+  'learn_progress',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    /** 'sanskrit' | 'tamil'. See the column comment above for why this is text. */
+    language: text('language').notNull(),
+    lessonId: text('lesson_id').notNull(),
+    firstSeenAt: text('first_seen_at').notNull(),
+    lastSeenAt: text('last_seen_at').notNull(),
+    timesCorrect: integer('times_correct').notNull().default(0),
+  },
+  (table) => [
+    // One progress row per lesson, per learner, per language — this is what
+    // recordSeen's upsert conflicts on.
+    uniqueIndex('idx_learn_progress_identity').on(table.userId, table.language, table.lessonId),
+    // "What is due for this language" (Curriculum.nextLesson's seen-set) is
+    // the query shape this table exists to answer.
+    index('idx_learn_progress_user_language').on(table.userId, table.language),
+  ]
+);
+
+/**
+ * Cache bookkeeping for synthesised audio — NOT the audio itself, which lives
+ * on disk under `storage/` and is owned entirely by `src/learn/AudioCache.ts`.
+ * This table only records what exists, so the app can list or expire cache
+ * entries without touching the filesystem. Deliberately decoupled from
+ * `AudioCache.ts`: nothing here imports it and nothing there imports this.
+ *
+ * `id` is the cache key — the same one `AudioCache` derives from
+ * (text, voice, prosody) — kept minimal per the spec: enough to know what
+ * exists without duplicating audio bytes.
+ */
+export const learnAudioCache = pgTable('learn_audio_cache', {
+  id: text('id').primaryKey(),
+  text: text('text').notNull(),
+  voice: text('voice').notNull(),
+  prosody: text('prosody').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(now() at time zone 'utc')::text`),
+});
