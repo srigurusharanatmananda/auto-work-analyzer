@@ -1,6 +1,6 @@
 # Project status
 
-**Last verified: 2026-08-08.** Everything here was checked against the repo on
+**Last verified: 2026-08-09.** Everything here was checked against the repo on
 that date, not recalled.
 
 If you are picking this up cold, read this file first. There is no `CLAUDE.md`
@@ -40,7 +40,7 @@ src/
   services/      auth, git analysis, history
   sources/       where WorkItems come from
   transcription/ audio ingest, Whisper client, job queue, SSRF guard
-ui/              Next 15 + Tailwind 3 front-end
+ui/              Next 16 + Tailwind 4 front-end
 services/whisper Python faster-whisper container
 ```
 
@@ -58,6 +58,12 @@ npx tsc --noEmit          # clean
 npm run lint              # clean  (eslint src)
 bun test                  # 512 pass, 0 fail
 npm run test:db           # 445 pass, 0 fail  (needs Postgres up)
+
+cd ui
+npx tsc --noEmit          # clean
+npx next build            # clean
+bun test                  # 53 pass, 0 fail
+npm run lint              # 15 errors — pre-existing, see Known issues
 ```
 
 `npm test` runs lint → bun → db in that order.
@@ -65,6 +71,10 @@ npm run test:db           # 445 pass, 0 fail  (needs Postgres up)
 The db suite needs a live Postgres (`docker compose up -d`). The `*.nodetest.ts`
 split exists because those tests need a real database; `bun test` covers the
 pure `*.test.ts` files.
+
+**Nothing runs the `ui/` checks for you.** They are in no script and no CI job;
+the root `npm test` is `eslint src` and the server suites only. Run them by hand
+when you touch the front-end.
 
 ---
 
@@ -86,6 +96,7 @@ To read the retired plan and its reasoning:
 | **1 — Security & scoping** | RBAC actually applied; registration cannot set a role; deactivated users' tokens rejected; JWT config guard called at boot; admin user management; `analysis_history`, `work_items`, `processed_commits` scoped per user | every router has `authenticate` + a policy guard; `users.routes.ts` gates at router level |
 | **2 — Data platform** | Drizzle migrations replace `CREATE TABLE IF NOT EXISTS`; every store on Postgres | 5 migrations in `src/db/migrations`; `better-sqlite3` survives only in the one-way import path and its tests |
 | **6 — Transcripts → ClickUp** | Extraction with a verbatim-quote validator, review UI, real Whisper end to end, per-call filing destinations, unattended sweep, transcript search, playback aligned to transcript, URL ingestion behind an SSRF guard | `src/calls/`, `src/transcription/` |
+| **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4, `next lint` → flat-config `eslint` | `ui/package.json`; `ui/app/globals.css` now holds the theme as `@theme`, and `tailwind.config.ts` is gone |
 
 `POST /api/webhook` is intentionally unauthenticated — it is gated by a shared
 secret and refuses the request when that secret is unset. That is not a gap.
@@ -94,8 +105,7 @@ secret and refuses the request when that secret is unset. That is not a gap.
 
 | Phase | What | State |
 |---|---|---|
-| **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4 | **Next up.** See below |
-| **7 — Learning module** | Sanskrit/Tamil teaching | **Specced 2026-08-08, not started.** [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages in scope; no open questions |
+| **7 — Learning module** | Sanskrit/Tamil teaching | **Next up.** Specced 2026-08-08, not started. [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages in scope; no open questions |
 | **— Analytics** | A reporting view over work items, scans and calls | **Undecided.** Raised in conversation, never scoped. Nothing depends on it |
 
 ### Not doing
@@ -130,9 +140,17 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
-**Phase 4: upgrade `ui/` to Next 16 + Tailwind 4.** Tailwind 3→4 changes the
-config format and risks a working app, so it ships alone with nothing else in
-flight. `ui/package.json` confirms the current versions.
+**Phase 7: the learning module.** The spec is complete and has no open
+questions — build the `Transliterator` first, since it is the one place a silent
+error is unrecoverable, and Sanskrit before Tamil so the engine is tested
+against the harder case.
+
+Before that, one thing worth deciding: **the `ui/` upgrade has not been looked
+at by a human eye.** It was verified by diffing the class tokens used in source
+against the selectors in the compiled CSS — which is what caught the opaque
+modal backdrops — but "every utility emits the right rule" is not the same
+claim as "the pages look right". Layout and spacing regressions would survive
+that check. Worth a pass through the app before this branch is merged.
 
 Smaller deployment-readiness items, none blocking anything today, are in
 **Known issues** below. One search annoyance worth knowing: `.next/` build
@@ -150,6 +168,8 @@ dated design document is lost the moment that document ages out.
 | `services/whisper/main.py` | `TranscriptionRequest.call_id` is typed `str`, but `TranscriptionResponse.callId` is typed `int`. A non-numeric id therefore fails Pydantic validation and surfaces as `Transcription failed: 1 validation error`. | None in production — the app only ever passes numeric ids. It bites anything else calling the service, including probes and manual testing, and the error names validation rather than the id. Found 2026-08-08 while running the Sanskrit probe. Fix by widening `callId` to `str` on the response, matching the request-side comment that already claims the wider type "costs nothing". |
 | `src/middleware/security.middleware.ts` | Rate limiting is in-memory. | Resets on restart, and is per-process rather than per-installation. Only matters once this runs behind more than one instance. |
 | `src/webhook-server.ts` | CORS is configured for a single localhost origin. | Blocks any non-local deployment. |
+| `ui/` (10 components) | `npm run lint` reports 15 errors: 12 `react-hooks/set-state-in-effect`, 2 `react-hooks/immutability`, 1 `no-explicit-any`. | Pre-existing, and newly *visible* rather than newly broken — those two rules ship in `eslint-config-next@16`, and before it `next lint` was in no gate, so ui linting had never actually run. Left out of the Next 16 commit on purpose: re-ordering effects across 10 components deserves its own diff. Nothing is known to misbehave because of them. |
+| `ui/app/saved-reports/[id]/manager-summary/page.tsx`, `ui/app/settings/templates/page.tsx` | `bg-accent`, `bg-accent-hover` and `text-foreground-muted` emit no CSS. | Neither colour was ever defined — not in the v4 `@theme` and not in the v3 config before it, so these have never rendered and are not a Tailwind-4 regression. The elements are presumably drawn wrong today and always have been. Needs someone to say what they were meant to look like. |
 
 ## Landmines
 
@@ -165,12 +185,21 @@ This is not hypothetical: a code review launched with a bare PR number resolved
 in the wrong repository and reviewed an unrelated Flutter commit. **When
 invoking a tool that takes a target, spell out the absolute repo path.**
 
-### `main` is 64 commits behind the work
+### `main` is a long way behind the work
 
-All current work is on `feat/rbac-and-scoping`, open as
-[PR #1](https://github.com/srigurusharanatmananda/auto-work-analyzer/pull/1) —
-94 commits, 219 files. `origin/main` is an ancestor of local `main`, so history
-is clean, but **local `main` is 64 commits ahead of `origin/main` and unpushed.**
+Two branches deep, as of 2026-08-09:
+
+- `feat/rbac-and-scoping` — security, Postgres and the calls module. Open as
+  [PR #1](https://github.com/srigurusharanatmananda/auto-work-analyzer/pull/1),
+  104 commits over 224 files. Pushed.
+- `feat/next16-tailwind4` — branched off it, +3 commits, the Phase 4 upgrade.
+
+**Local `main`'s pointer is 64 commits behind `origin/main`'s tip of the work,
+but nothing is at risk of loss**: every one of those commits is an ancestor of
+the pushed `origin/feat/rbac-and-scoping`. Check it rather than trusting this
+line — `git merge-base --is-ancestor main origin/feat/rbac-and-scoping`. (An
+earlier version of this file called them "unpushed", which read as data-loss
+risk and was not one.)
 
 There are also two live worktrees whose branches predate all of this and will
 conflict with any restructuring:
@@ -255,7 +284,7 @@ An agent should **not** decide these alone.
    (`🧪 DELETE ME`, tagged `test-fixture`). Five test recordings sit in the dev
    database (`call-one.wav`, `call-two.wav`, two `horse.mp3`, and
    `youtube-jNQXAC9IVRw`).
-3. **Whether PR #1 should be split.** 94 commits in one diff is not reviewable
+3. **Whether PR #1 should be split.** 104 commits in one diff is not reviewable
    line-by-line. The natural seams are security (`8f6c3bd`…`7766fb3`), Postgres
    (`023b4eb`…`12feff3`), and calls (`8db30df` onward) — but that means three
    branches rebased off each other, which is real work for a repo with one
