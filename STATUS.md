@@ -185,21 +185,19 @@ This is not hypothetical: a code review launched with a bare PR number resolved
 in the wrong repository and reviewed an unrelated Flutter commit. **When
 invoking a tool that takes a target, spell out the absolute repo path.**
 
-### `main` is a long way behind the work
+### `main` has caught up — but check before trusting that
 
-Two branches deep, as of 2026-08-09:
+Resolved 2026-08-09. `feat/next16-tailwind4` merged into
+`feat/rbac-and-scoping` as PR #2, then that merged into `main` as PR #1 —
+112 commits, merge commit `3a3a742`. Both PRs are closed and `main` is now
+the tip of the work.
 
-- `feat/rbac-and-scoping` — security, Postgres and the calls module. Open as
-  [PR #1](https://github.com/srigurusharanatmananda/auto-work-analyzer/pull/1),
-  104 commits over 224 files. Pushed.
-- `feat/next16-tailwind4` — branched off it, +3 commits, the Phase 4 upgrade.
-
-**Local `main`'s pointer is 64 commits behind `origin/main`'s tip of the work,
-but nothing is at risk of loss**: every one of those commits is an ancestor of
-the pushed `origin/feat/rbac-and-scoping`. Check it rather than trusting this
-line — `git merge-base --is-ancestor main origin/feat/rbac-and-scoping`. (An
-earlier version of this file called them "unpushed", which read as data-loss
-risk and was not one.)
+Two things this history leaves behind. First, **a local `main` from before
+that day is 112 commits stale** and `git log` on it shows none of this;
+`git pull` before believing anything it says. Second, **nothing in CI ever
+checked those 112 commits** — `.github/workflows/` holds only
+`daily-report.yml`, a cron job. The suite was run by hand at the merge
+point and was green; that is the whole of the verification.
 
 There are also two live worktrees whose branches predate all of this and will
 conflict with any restructuring:
@@ -284,11 +282,15 @@ An agent should **not** decide these alone.
    (`🧪 DELETE ME`, tagged `test-fixture`). Five test recordings sit in the dev
    database (`call-one.wav`, `call-two.wav`, two `horse.mp3`, and
    `youtube-jNQXAC9IVRw`).
-3. **Whether PR #1 should be split.** 104 commits in one diff is not reviewable
-   line-by-line. The natural seams are security (`8f6c3bd`…`7766fb3`), Postgres
-   (`023b4eb`…`12feff3`), and calls (`8db30df` onward) — but that means three
-   branches rebased off each other, which is real work for a repo with one
-   reviewer.
+
+3. **Whether anything should gate `main`.** There is no CI beyond a cron job,
+   and PR #1 landed 112 commits with no automated check having run over any of
+   them. A workflow running the four commands in Health above would have caught
+   nothing this time, which is the argument for adding it while that is still
+   true.
+
+*(A fourth question — whether PR #1 should be split into security, Postgres and
+calls — is now moot. It was merged whole on 2026-08-09.)*
 
 ---
 
