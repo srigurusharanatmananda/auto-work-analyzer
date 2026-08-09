@@ -291,7 +291,7 @@ export default function ScanningSettingsPage() {
                     </thead>
                     <tbody>
                       {repos.map((repo) => (
-                        <tr key={repo.slug} className="border-t border-border">
+                        <tr key={repo.path} className="border-t border-border">
                           <td className="py-2 pr-4">
                             <input
                               type="checkbox"
@@ -392,7 +392,7 @@ export default function ScanningSettingsPage() {
                 <div className="space-y-3">
                   {(summary.repos ?? []).map((repo) => (
                     <div
-                      key={repo.slug}
+                      key={repo.path}
                       className="rounded-lg border border-border bg-background-tertiary p-3"
                     >
                       <div className="flex flex-wrap items-baseline justify-between gap-2">

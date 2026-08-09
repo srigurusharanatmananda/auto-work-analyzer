@@ -37,6 +37,14 @@ const FETCH_TIMEOUT_MS = 60_000;
 
 export interface RepoScanResult {
   slug: string;
+  /**
+   * The local clone this result came from. `slug` is derived from the git
+   * remote and is not unique — the same remote can be cloned twice under
+   * different directory names — so a UI listing these results needs `path`
+   * to tell two rows apart, the same reason `ScannedRepo` in RepoDiscovery.ts
+   * carries it.
+   */
+  path: string;
   commits: number;
   workItems: number;
   tasksCreated: number;
@@ -90,6 +98,7 @@ export class DailyScanner {
 
       const result: RepoScanResult = {
         slug: repo.slug,
+        path: repo.path,
         commits: 0,
         workItems: 0,
         tasksCreated: 0,
