@@ -70,7 +70,12 @@ class SegmentResponse(BaseModel):
 
 
 class TranscriptionResponse(BaseModel):
-    callId: int
+    # str, not int. See TranscriptionRequest.call_id — the app always passes a
+    # numeric id, but a non-numeric one (from a probe, or anything else calling
+    # this service) previously failed Pydantic validation here even though the
+    # request side already accepted it, surfacing as "Transcription failed:"
+    # with no hint that the response model, not the request, was the mismatch.
+    callId: str
     fullText: str
     segments: list[SegmentResponse]
     language: str | None = None
