@@ -1,9 +1,20 @@
+/** Mirrors `GitCommit` in src/types/index.ts — there is no shared package. */
+export interface GitCommit {
+  hash: string;
+  author: string;
+  date: string;
+  message: string;
+  files: string[];
+  insertions: number;
+  deletions: number;
+}
+
 export interface DetectedWork {
   type: 'feature' | 'bug-fix' | 'improvement' | 'refactor' | 'documentation' | 'test';
   name: string;
   description: string;
   files: string[];
-  commits?: any[];
+  commits?: GitCommit[];
   complexity: 'low' | 'medium' | 'high';
   estimatedHours: number;
   tags: string[];

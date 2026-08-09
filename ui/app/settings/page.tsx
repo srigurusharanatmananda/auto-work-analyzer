@@ -28,7 +28,6 @@ export default function SettingsPage() {
   // session exists.
   useEffect(() => {
     void loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSettings = async () => {
