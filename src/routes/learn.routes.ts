@@ -180,7 +180,17 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // other request for the same text instead of falling back to the shared
     // default. Trim, then treat blank the same as absent.
     const trimmedVoice = typeof voice === 'string' ? voice.trim() : '';
-    const resolvedVoice = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
+    // The CACHE key's notion of "no voice specified" — a stable label, not a
+    // real provider voice name. Kept separate from what's actually passed to
+    // synthesize() below: that must stay `undefined` when the caller didn't
+    // ask for one, so each backend's OWN default applies (GeminiSpeechClient
+    // defaults to a real Gemini voice, "Kore"; the provisional SpeechClient
+    // has its own). Passing the literal string 'default' straight through —
+    // the bug this comment replaces — sent 'default' to the live Gemini API
+    // as a voice name, which Gemini does not have, breaking every Tamil
+    // request that didn't name a voice explicitly.
+    const cacheVoiceKey = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
+    const requestedVoice = trimmedVoice !== '' ? trimmedVoice : undefined;
 
     // A learner is waiting synchronously on this request, unlike a background
     // transcription job — SpeechClient's own default health-check timeout
@@ -196,7 +206,7 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 
     try {
-      const cached = await audioCache.get(synthesisText, resolvedVoice, DEFAULT_PROSODY);
+      const cached = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
       if (cached) {
         // AudioCache stores raw bytes only, with no content-type metadata, so
         // this hardcodes the format — audio/wav is what both speech backends
@@ -210,13 +220,13 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
 
       const result = await speechClientFor(manifest.language).synthesize({
         text: synthesisText,
-        voice: resolvedVoice,
+        voice: requestedVoice,
         prosody: DEFAULT_PROSODY,
         signal: controller.signal,
       });
 
       try {
-        await audioCache.put(synthesisText, resolvedVoice, DEFAULT_PROSODY, result.audio);
+        await audioCache.put(synthesisText, cacheVoiceKey, DEFAULT_PROSODY, result.audio);
       } catch (cacheError) {
         // The synthesis already succeeded and the caller is still waiting on
         // audio it paid for — a cache write failing (disk full, EACCES) is a

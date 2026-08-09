@@ -464,10 +464,15 @@ describe('POST /learn/speak', () => {
       });
 
       expect(res.status).toBe(200);
-      // '' must resolve to the same voice an omitted `voice` would — not its
-      // own cache entry, which would silently split the cache in two for
-      // what a caller would expect to be the same request.
-      expect(speechClient.calls[0]!.voice).toBe('default');
+      // '' must resolve to the same CACHE entry an omitted `voice` would —
+      // not its own, which would silently split the cache in two for what a
+      // caller would expect to be the same request. It must NOT resolve to
+      // the literal string 'default' being sent to the synthesizer as a
+      // voice name — that string is a cache-key label, not a real voice a
+      // provider would recognise, and sending it broke every real Gemini
+      // call that omitted a voice. `undefined` here is what lets each
+      // backend's own default apply.
+      expect(speechClient.calls[0]!.voice).toBeUndefined();
       expect(audioCache.store.has(JSON.stringify(['ನ', 'default', DEFAULT_PROSODY]))).toBe(true);
     } finally {
       server.close();

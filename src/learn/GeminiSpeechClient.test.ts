@@ -141,4 +141,17 @@ describe('synthesize', () => {
 
     await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SpeechUnavailableError);
   });
+
+  test('a timeout/abort surfaces as service-unavailable, not a raw AbortError', async () => {
+    // What `withTimeout` (SpeechClient.ts) actually produces when its
+    // deadline fires: `fetch` rejects with a DOMException named AbortError,
+    // which carries no `.code` — the network-error branch above would miss
+    // it entirely without the dedicated isAbortError check.
+    const fetchImpl = (async () => {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }) as unknown as typeof fetch;
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl });
+
+    await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SpeechUnavailableError);
+  });
 });

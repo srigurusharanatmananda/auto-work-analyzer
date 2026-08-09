@@ -25,7 +25,7 @@
  * are technically audio" and "bytes a <audio> element will actually play."
  */
 
-import { SpeechUnavailableError, SynthesisFailedError } from './SpeechClient.js';
+import { SpeechUnavailableError, SynthesisFailedError, withTimeout, isAbortError } from './SpeechClient.js';
 import type { SpeechSynthesizer, SynthesizeOptions, SynthesisResult } from './SpeechClient.js';
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
@@ -101,12 +101,7 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
       );
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-    const onCallerAbort = () => controller.abort();
-    signal?.addEventListener('abort', onCallerAbort);
-
-    try {
+    return withTimeout(DEFAULT_TIMEOUT_MS, signal, async (innerSignal) => {
       // Prosody is a spoken-style instruction to the model, not a config
       // field on Gemini's side — folded into the input text itself, the
       // way Gemini's own docs show ("Say cheerfully: ..."). The "Say ...:"
@@ -131,9 +126,15 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
             response_format: { type: 'audio' },
             generation_config: { speech_config: [{ voice }] },
           }),
-          signal: controller.signal,
+          signal: innerSignal,
         });
       } catch (error) {
+        // A caller-side timeout (learn.routes.ts's outer bound, or this
+        // client's own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped
+        // connection below, not a hard failure.
+        if (isAbortError(error)) {
+          throw new SpeechUnavailableError('Synthesis timed out.');
+        }
         const code = (error as NodeJS.ErrnoException)?.code;
         if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
           throw new SpeechUnavailableError('Could not reach the Gemini API.');
@@ -172,9 +173,6 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
 
       const pcm = Buffer.from(base64Audio, 'base64');
       return { audio: pcmToWav(pcm), contentType: 'audio/wav' };
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onCallerAbort);
-    }
+    });
   }
 }

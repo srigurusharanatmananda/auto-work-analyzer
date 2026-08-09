@@ -96,6 +96,21 @@ describe('synthesize', () => {
     await expect(client.synthesize({ text: 'namaste' })).rejects.toThrow(SpeechUnavailableError);
   });
 
+  test('a timeout/abort after health passes surfaces as service-unavailable, not a raw AbortError', async () => {
+    // What withTimeout actually produces when its deadline fires — fetch
+    // rejects with a DOMException named AbortError, carrying no `.code`, so
+    // the network-error branch above would miss it without a dedicated check.
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/health')) return new Response('ok', { status: 200 });
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }) as unknown as typeof fetch;
+
+    const client = new SpeechClient({ baseUrl: 'http://tts.test', fetchImpl, sleep: async () => {} });
+
+    await expect(client.synthesize({ text: 'namaste' })).rejects.toThrow(SpeechUnavailableError);
+  });
+
   /** Fail fast: a bad request should not cost three minutes of health polling. */
   test('rejects empty text before waiting on health', async () => {
     const { client, requests } = clientFor(new Uint8Array(), { healthy: false });
