@@ -392,7 +392,7 @@ export default function ScanningSettingsPage() {
                 <div className="space-y-3">
                   {(summary.repos ?? []).map((repo) => (
                     <div
-                      key={repo.slug}
+                      key={repo.path}
                       className="rounded-lg border border-border bg-background-tertiary p-3"
                     >
                       <div className="flex flex-wrap items-baseline justify-between gap-2">

@@ -329,6 +329,8 @@ export interface SkippedDir {
 
 export interface RepoScanResult {
   slug: string;
+  /** The local clone this result came from — see the comment on the server-side type. */
+  path: string;
   commits: number;
   workItems: number;
   tasksCreated: number;
