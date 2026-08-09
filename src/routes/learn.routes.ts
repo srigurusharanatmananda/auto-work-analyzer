@@ -207,7 +207,13 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // MISS that slips through anyway, generous enough not to abort mid
     // -synthesis. For GeminiSpeechClient (Tamil), a real API call finishes
     // well inside it regardless.
-    const SPEAK_TIMEOUT_MS = 10 * 60 * 1000;
+    //
+    // Set strictly above SpeechClient's own DEFAULT_SYNTHESIZE_TIMEOUT_MS
+    // (10 min): that inner timeout is what should actually fire on a slow
+    // cache miss, since it raises the more specific SpeechUnavailableError.
+    // This outer one existing at all is a backstop against a future
+    // SpeechSynthesizer implementation that does not enforce its own bound.
+    const SPEAK_TIMEOUT_MS = 11 * 60 * 1000;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 

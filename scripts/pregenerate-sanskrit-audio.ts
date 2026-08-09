@@ -43,7 +43,12 @@ async function main() {
 
   let cached = 0;
   let generated = 0;
+  const failed: string[] = [];
 
+  // One lesson failing (a transient container restart, an OOM under load)
+  // should not cost every lesson after it in the manifest a cache entry —
+  // the whole point of running this ahead of time is that a single slow or
+  // flaky attempt is cheap to retry, unlike making a live learner wait for it.
   for (const lesson of sanskritManifest.lessons) {
     const synthesisText = transliterateForSynthesis(lesson.text, sanskritManifest.language);
     const existing = await audioCache.get(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY);
@@ -55,13 +60,25 @@ async function main() {
 
     console.log(`[synthesizing] ${lesson.id} (${lesson.text}) — this can take several minutes on CPU...`);
     const started = Date.now();
-    const result = await speechClient.synthesize({ text: synthesisText, prosody: DEFAULT_PROSODY });
-    await audioCache.put(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY, result.audio);
-    generated++;
-    console.log(`[done]      ${lesson.id} — ${Math.round((Date.now() - started) / 1000)}s`);
+    try {
+      const result = await speechClient.synthesize({ text: synthesisText, prosody: DEFAULT_PROSODY });
+      await audioCache.put(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY, result.audio);
+      generated++;
+      console.log(`[done]      ${lesson.id} — ${Math.round((Date.now() - started) / 1000)}s`);
+    } catch (error) {
+      failed.push(lesson.id);
+      console.error(`[failed]    ${lesson.id} — ${error instanceof Error ? error.message : error}`);
+    }
   }
 
-  console.log(`\nDone. ${cached} already cached, ${generated} newly generated, ${sanskritManifest.lessons.length} total.`);
+  console.log(
+    `\nDone. ${cached} already cached, ${generated} newly generated, ${failed.length} failed, ` +
+      `${sanskritManifest.lessons.length} total.`
+  );
+  if (failed.length > 0) {
+    console.log(`Failed lesson ids (re-run this script to retry just these, via the cache-hit skip above): ${failed.join(', ')}`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {

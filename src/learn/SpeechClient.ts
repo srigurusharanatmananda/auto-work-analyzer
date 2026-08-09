@@ -86,10 +86,14 @@ const HEALTH_POLL_MS = 5_000;
 
 /**
  * A single lesson line is short, but CPU inference for this model is not
- * instant. Generous by necessity, same as WhisperClient. Override with
- * TTS_TIMEOUT_MS.
+ * instant — measured against the real container (2026-08-10), even a single
+ * two-character word took several minutes. 60s (this constant's value before
+ * that measurement) silently aborted every real synthesis attempt: this is
+ * the inner timeout `withTimeout` below actually races against
+ * `learn.routes.ts`'s own outer AbortController, so raising that outer bound
+ * alone did nothing until this one moved too. Override with TTS_TIMEOUT_MS.
  */
-const DEFAULT_SYNTHESIZE_TIMEOUT_MS = 60 * 1000;
+const DEFAULT_SYNTHESIZE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export class SpeechUnavailableError extends Error {
   constructor(message: string) {

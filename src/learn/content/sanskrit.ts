@@ -2,12 +2,14 @@
  * A seed, not a curriculum: six consonants and the five real words they build.
  *
  * Kept deliberately small and deliberately verifiable rather than broad.
- * Every letter and word below was checked by running it through
- * `transliterateForSynthesis` (see `../Transliterator.ts`) and reading the
- * Kannada output before it went in this file — the design doc's own warning
- * ("a beginner cannot detect a bad teacher, which makes this the one quality
- * gate that has to be human") applies just as much to typing the Devanagari
- * itself as to the transliteration of it.
+ * Every letter and word below was checked by hand before it went in this
+ * file — the design doc's own warning ("a beginner cannot detect a bad
+ * teacher, which makes this the one quality gate that has to be human")
+ * applies just as much to typing the Devanagari itself as to what a
+ * synthesiser does with it. (Until 2026-08-10 this checked
+ * `transliterateForSynthesis`'s Kannada output instead: that route no longer
+ * exists for Sanskrit — see `../Transliterator.ts` — so there is nothing
+ * left to read but the Devanagari itself.)
  *
  * Every word uses only the inherent short-a vowel that a bare Devanagari
  * consonant already carries — no vowel signs, no conjuncts, no anusvara or
