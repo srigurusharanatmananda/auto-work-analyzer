@@ -347,3 +347,21 @@ export interface ScanRunSummary {
   skipped: SkippedDir[];
   totalTasksCreated: number;
 }
+
+export type LearnLanguage = 'sanskrit' | 'tamil';
+
+/** Mirrors the lesson shape in `src/routes/learn.routes.ts`. */
+export interface LearnLesson {
+  id: string;
+  stage: string;
+  text: string;
+  gloss: string;
+  composedOf: string[];
+}
+
+/** The `data` payload of `GET /learn/next` and `POST /learn/seen`. */
+export interface LearnProgress {
+  lesson: LearnLesson | null;
+  seenCount: number;
+  total: number;
+}

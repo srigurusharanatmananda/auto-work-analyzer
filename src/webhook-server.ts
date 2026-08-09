@@ -24,6 +24,7 @@ import { checkWebhookSecret } from "./middleware/webhookSecret.js";
 import { createUsersRouter } from "./routes/users.routes.js";
 import { createReportsRouter } from "./routes/reports.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
+import { createLearnRouter } from "./routes/learn.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
@@ -204,6 +205,11 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // write hidden in a constructor is how the schema drifted in the first place.
     await templateStore.seedBuiltins();
     app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Sanskrit/Tamil learning module: curriculum, progress and speech, over
+    // HTTP. Self-constructs its Postgres- and filesystem-backed dependencies
+    // the same way the routers above do — no shared store to pass in here.
+    app.use("/api/learn", createLearnRouter());
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(cipher, pool);
