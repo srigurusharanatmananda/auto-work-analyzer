@@ -291,7 +291,7 @@ export default function ScanningSettingsPage() {
                     </thead>
                     <tbody>
                       {repos.map((repo) => (
-                        <tr key={repo.slug} className="border-t border-border">
+                        <tr key={repo.path} className="border-t border-border">
                           <td className="py-2 pr-4">
                             <input
                               type="checkbox"

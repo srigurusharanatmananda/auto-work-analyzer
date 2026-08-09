@@ -693,7 +693,7 @@ function SelectRow({
       <label htmlFor={id} className="block text-sm font-medium text-foreground mb-2">
         {label}
       </label>
-      {hint && <p className="text-xs text-foreground-muted mb-2 -mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-foreground-tertiary mb-2 -mt-1">{hint}</p>}
       <select
         id={id}
         value={value}

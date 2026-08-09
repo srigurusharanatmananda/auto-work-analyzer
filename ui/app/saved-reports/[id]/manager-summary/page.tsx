@@ -97,7 +97,7 @@ export default function ReportManagerSummaryPage() {
               <button
                 onClick={generateManagerSummary}
                 disabled={isGeneratingManagerSummary}
-                className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-secondary text-white px-4 py-2 rounded-lg hover:bg-secondary-hover transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>🤖</span>
                 <span>{isGeneratingManagerSummary ? 'Generating...' : 'Generate Summary'}</span>
