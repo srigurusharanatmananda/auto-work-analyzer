@@ -4,7 +4,8 @@
  */
 
 import { GitCommit } from '../types/index.js';
-import { DatabaseService, AnalysisRecord, ProcessedCommitRecord } from './DatabaseService.js';
+import { DatabaseService, AnalysisRecord, AnalysisScope, ProcessedCommitRecord } from './DatabaseService.js';
+import type { PostgresHandle } from '../db/client.js';
 
 interface ProcessedCommit {
   hash: string;
@@ -19,6 +20,8 @@ interface ProcessedCommit {
 
 interface AnalysisHistory {
   id: string;
+  /** Undefined for legacy rows and machine-driven runs with no session. */
+  userId?: string;
   timestamp: string;
   projectPath: string;
   date: string;
@@ -33,43 +36,63 @@ interface AnalysisHistory {
 export class HistoryService {
   private db: DatabaseService;
 
-  constructor() {
-    this.db = new DatabaseService();
+  constructor(pg?: PostgresHandle) {
+    this.db = new DatabaseService(pg);
+  }
+
+  /** This user's processed commits, plus the pre-scoping legacy rows. */
+  getProcessedCommits(userId: string): Promise<ProcessedCommit[]> {
+    return this.db.getProcessedCommits(userId);
   }
 
   /**
-   * Get all processed commits
+   * Check if a commit has already been processed BY THIS USER.
+   *
+   * `userId` is required rather than optional on purpose. It used to be absent
+   * and dedup was global; an optional parameter would let a call site that was
+   * never updated keep the old shared behaviour, and the symptom of that — one
+   * user's scan silently skipping commits because a different user filed them —
+   * is invisible until someone notices missing tasks.
    */
-  getProcessedCommits(): ProcessedCommit[] {
-    return this.db.getProcessedCommits();
+  isCommitProcessed(commitHash: string, userId: string): Promise<boolean> {
+    return this.db.isCommitProcessed(commitHash, userId);
   }
 
   /**
-   * Check if a commit has already been processed
+   * Filter out commits this user has already filed.
+   *
+   * `projectPath` is accepted for call-site compatibility and ignored: dedup is
+   * keyed on (user, hash). See DatabaseService.isCommitProcessed.
    */
-  isCommitProcessed(commitHash: string, projectPath: string): boolean {
-    return this.db.isCommitProcessed(commitHash, projectPath);
-  }
-
-  /**
-   * Filter out already processed commits
-   */
-  filterUnprocessedCommits(commits: GitCommit[], projectPath: string): GitCommit[] {
-    return commits.filter((commit) => !this.isCommitProcessed(commit.hash, projectPath));
+  async filterUnprocessedCommits(
+    commits: GitCommit[],
+    userId: string,
+    _projectPath?: string
+  ): Promise<GitCommit[]> {
+    // One batched read rather than one query per commit: a day's work can be
+    // hundreds of commits, and `filter` cannot await anyway — an async
+    // predicate returns a Promise, which is always truthy, so a naive
+    // conversion here would silently keep every commit.
+    const processed = await Promise.all(
+      commits.map((commit) => this.isCommitProcessed(commit.hash, userId))
+    );
+    return commits.filter((_, index) => !processed[index]);
   }
 
   /**
    * Mark commits as processed
    */
-  markCommitsAsProcessed(
+  async markCommitsAsProcessed(
     commits: GitCommit[],
     projectPath: string,
+    userId: string,
     taskMapping?: Map<string, { id: string; name: string }>
-  ): void {
-    commits.forEach((commit) => {
+  ): Promise<void> {
+    for (const commit of commits) {
       const task = taskMapping?.get(commit.hash);
       const processedCommit: ProcessedCommitRecord = {
         hash: commit.hash,
+        userId,
         date: commit.date,
         author: commit.author,
         message: commit.message,
@@ -78,35 +101,46 @@ export class HistoryService {
         taskId: task?.id,
         taskName: task?.name,
       };
-      this.db.markCommitAsProcessed(processedCommit);
-    });
+      await this.db.markCommitAsProcessed(processedCommit);
+    }
   }
 
   /**
    * Get analysis history
    */
-  getAnalysisHistory(limit: number = 50): AnalysisHistory[] {
-    return this.db.getAnalysisHistory(limit);
+  getAnalysisHistory(scope: AnalysisScope, limit: number = 50): Promise<AnalysisHistory[]> {
+    return this.db.getAnalysisHistory(scope, limit);
   }
 
   /**
    * Add analysis to history
    */
-  addAnalysisHistory(analysis: Omit<AnalysisHistory, 'id' | 'timestamp'>): string {
+  /**
+   * `userId` is a required first parameter rather than a field on the object,
+   * and undefined has to be written out. Ownership is the thing that keeps one
+   * user's reports out of another's hands, and a caller that forgets an
+   * optional field writes an unowned row with nothing to notice; a caller that
+   * has to type `undefined` has decided.
+   */
+  async addAnalysisHistory(
+    userId: string | undefined,
+    analysis: Omit<AnalysisHistory, 'id' | 'timestamp' | 'userId'>
+  ): Promise<string> {
     const newEntry: AnalysisRecord = {
       id: `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
       timestamp: new Date().toISOString(),
       ...analysis,
     };
 
-    this.db.saveAnalysis(newEntry);
+    await this.db.saveAnalysis(newEntry);
     return newEntry.id;
   }
 
   /**
    * Save work item to database
    */
-  saveWorkItem(
+  async saveWorkItem(
     analysisId: string,
     workItemName: string,
     workItemType: string,
@@ -115,13 +149,13 @@ export class HistoryService {
     complexity: string,
     filesCount: number,
     commitsCount: number
-  ): string {
+  ): Promise<string> {
     const workItemId = `work-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Map complexity string to number (1=low, 2=medium, 3=high)
     const complexityNumber = complexity === 'high' ? 3 : complexity === 'medium' ? 2 : 1;
 
-    this.db.saveWorkItem({
+    await this.db.saveWorkItem({
       id: workItemId,
       analysisId,
       name: workItemName,
@@ -151,9 +185,11 @@ export class HistoryService {
   /**
    * Get statistics
    */
-  getStatistics() {
-    const dbStats = this.db.getStatistics();
-    const processedCommits = this.db.getProcessedCommits(undefined, 10000);
+  async getStatistics(scope: AnalysisScope) {
+    const [dbStats, processedCommits] = await Promise.all([
+      this.db.getStatistics(scope),
+      this.db.getProcessedCommits(scope.userId, undefined, 10000),
+    ]);
 
     const projectStats = new Map<string, number>();
     processedCommits.forEach((commit) => {

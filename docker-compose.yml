@@ -1,0 +1,63 @@
+# Whisper only.
+#
+# Postgres is deliberately NOT here: DATABASE_URL points at a local server
+# (postgres://localhost:5432/auto_work_analyzer), and adding a second Postgres in
+# a container would give two databases one connection string could reach —
+# whichever won, half the migrations would appear to have vanished.
+#
+# The API and UI are not here either. They run under tsx/next with hot reload,
+# which is worth more day to day than containerising them.
+
+services:
+  whisper:
+    build:
+      context: ./services/whisper
+    image: awa-whisper:local
+    container_name: awa-whisper
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      # base is the accuracy/speed compromise that fits 8 GB. On an M3 it
+      # measured ~6x realtime, so a 1-hour recording takes about 10 minutes.
+      # `small` is noticeably better on accented speech and roughly 3x slower.
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      # cpu, not because a GPU is unavailable but because Docker Desktop on macOS
+      # cannot pass the Apple GPU through at all. Running faster-whisper natively
+      # on the host is the way to use Metal — see docs/TRANSCRIPTION.md.
+      - DEVICE=${WHISPER_DEVICE:-cpu}
+      - COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE:-int8}
+    volumes:
+      # Whisper OPENS the audio file rather than receiving bytes over HTTP, so
+      # this mount is what makes transcription possible at all. The left side
+      # must equal TRANSCRIPTION_STORAGE_ROOT, and the right side must be
+      # /storage — `WhisperClient.containerPathFor` rewrites host paths to that
+      # prefix and refuses anything outside it.
+      - ./storage:/storage
+      # Downloaded model weights, so a restart does not re-fetch them.
+      - whisper_models:/app/models
+    healthcheck:
+      # Loading the model takes ~25s on an M3, hence the start_period: without it
+      # the container is reported unhealthy before it has had a chance to boot.
+      test:
+        [
+          'CMD',
+          'python3',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          # Whisper is what the OOM killer reaches for first on this machine, and
+          # an unbounded container competing with Postgres and the dev servers is
+          # how the whole desktop stalls. A hard ceiling turns "the Mac froze"
+          # into "one job failed and was retried", which the queue handles.
+          memory: 3g
+
+volumes:
+  whisper_models:

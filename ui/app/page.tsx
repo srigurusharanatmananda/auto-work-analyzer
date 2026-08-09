@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, Button } from '@/lib/components/ui';
+import { Card } from '@/lib/components/ui';
 import { cn } from '@/lib/utils';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useApiQuery } from '@/lib/api/useApiQuery';
+import type { HistoryData } from '@/types';
 
 interface StatCardProps {
   title: string;
@@ -40,35 +40,17 @@ function StatCard({ title, value, icon, trend, trendUp }: StatCardProps) {
 }
 
 export default function Dashboard() {
-  const { accessToken } = useAuth();
-  const [stats, setStats] = useState({
-    totalAnalyses: 0,
-    totalWorkItems: 0,
-    totalTasks: 0,
-  });
+  // A failure here leaves the tiles at zero rather than blocking the page: the
+  // dashboard is mostly navigation, and the counts are the least of it.
+  const { data } = useApiQuery<HistoryData>('/history', { query: { limit: 1 } });
 
-  useEffect(() => {
-    if (!accessToken) return;
-
-    // Fetch stats from API
-    fetch('http://localhost:3009/api/history?limit=1', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      credentials: 'include',
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.statistics) {
-          setStats({
-            totalAnalyses: data.data.statistics.totalAnalyses || 0,
-            totalWorkItems: data.data.statistics.totalWorkItems || 0,
-            totalTasks: data.data.statistics.totalTasks || 0,
-          });
-        }
-      })
-      .catch(err => console.error('Failed to fetch stats:', err));
-  }, [accessToken]);
+  const stats = {
+    totalAnalyses: data?.statistics.totalAnalyses ?? 0,
+    totalWorkItems: data?.statistics.totalWorkItems ?? 0,
+    // Was `statistics.totalTasks`, which the backend has never sent — the tile
+    // read 0 no matter how many tasks existed. Typing the response caught it.
+    totalTasks: data?.statistics.totalTasksCreated ?? 0,
+  };
 
   const quickActions = [
     {
@@ -113,7 +95,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="mt-2 text-foreground-secondary">
-            Welcome back! Here's an overview of your work analysis.
+            Welcome back! Here&apos;s an overview of your work analysis.
           </p>
         </div>
 

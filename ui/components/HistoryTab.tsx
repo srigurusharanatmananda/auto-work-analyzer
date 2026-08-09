@@ -1,91 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
 import { Card, Button, LoadingSpinner, EmptyState } from '@/lib/components/ui';
-import { useAuth } from '@/lib/context/AuthContext';
-
-interface AnalysisHistory {
-  id: string;
-  timestamp: string;
-  projectPath: string;
-  date: string;
-  endDate?: string;
-  author?: string;
-  totalCommits: number;
-  totalWorkItems: number;
-  tasksCreated: number;
-  summary: string;
-}
-
-interface ProjectStats {
-  path: string;
-  commitsProcessed: number;
-}
-
-interface Statistics {
-  totalAnalyses: number;
-  totalCommitsProcessed: number;
-  totalTasksCreated: number;
-  totalWorkItems: number;
-  projectStats: ProjectStats[];
-  oldestEntry?: string;
-  newestEntry?: string;
-}
-
-interface HistoryData {
-  history: AnalysisHistory[];
-  statistics: Statistics;
-}
-
-const BACKEND_URL = 'http://localhost:3009';
+import { useApiQuery } from '@/lib/api/useApiQuery';
+import type { HistoryData } from '@/types';
 
 export default function HistoryTab() {
-  const { accessToken } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<HistoryData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data,
+    error,
+    isLoading: loading,
+    reload: fetchHistory,
+  } = useApiQuery<HistoryData>('/history', { errorMessage: 'Failed to load history' });
+
   const [filterProject, setFilterProject] = useState<string>('all');
-
-  const fetchHistory = async () => {
-    if (!accessToken) {
-      setError('Not authenticated');
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/history`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error || 'Failed to load history');
-        toast.error(result.error || 'Failed to load history');
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to load history';
-      setError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (accessToken) {
-      fetchHistory();
-    }
-  }, [accessToken]);
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -196,7 +124,7 @@ export default function HistoryTab() {
             id="filterProject"
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
-            className="w-full md:w-auto px-4 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+            className="w-full md:w-auto px-4 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors"
           >
             <option value="all">All Projects ({data.history.length})</option>
             {uniqueProjects.map((project) => {

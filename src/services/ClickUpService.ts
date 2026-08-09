@@ -11,6 +11,26 @@ import {
   ProjectTemplate,
 } from "../types/index.js";
 
+/**
+ * The date half of a create payload, shared by tasks and subtasks so the two
+ * cannot drift — they did once already, and a subtask with no start date is
+ * just as invisible to the Timeline as a task with none.
+ *
+ * `*_date_time: false` is what makes ClickUp treat these as calendar dates.
+ * Without it a "2026-07-10" (parsed as UTC midnight) renders as 9 July to
+ * anyone west of Greenwich — the off-by-one already visible on the tasks
+ * created before this existed.
+ */
+function dateFields(data: Pick<TaskData, "dueDate" | "startDate">): Record<string, unknown> {
+  const fields: Record<string, unknown> = {
+    due_date: data.dueDate ? new Date(data.dueDate).getTime() : null,
+    start_date: data.startDate ? new Date(data.startDate).getTime() : null,
+  };
+  if (data.dueDate) fields.due_date_time = false;
+  if (data.startDate) fields.start_date_time = false;
+  return fields;
+}
+
 export class ClickUpService {
   private config: ClickUpConfig;
   private baseUrl = "https://api.clickup.com/api/v2";
@@ -119,20 +139,22 @@ export class ClickUpService {
         assignees = await this.getDefaultAssigneeId();
       }
 
-      const payload = {
+      const payload: Record<string, any> = {
         name: taskData.name.trim(),
         description: taskData.description || "",
         markdown_description: taskData.description || "", // ClickUp supports markdown formatting
         priority: this.mapPriority(taskData.priority),
-        status: taskData.status || "setup", // Default to "setup" status for new lists
         assignees: assignees,
         tags: taskData.tags || [],
-        due_date: taskData.dueDate
-          ? new Date(taskData.dueDate).getTime()
-          : null,
+        ...dateFields(taskData),
         time_estimate: taskData.timeEstimate || null,
         custom_fields: taskData.customFields || ([] as any[]),
       };
+
+      // Only include status if explicitly provided — ClickUp will use the list's default otherwise
+      if (taskData.status) {
+        payload.status = taskData.status;
+      }
 
       const response = await fetch(
         `${this.baseUrl}/list/${targetListId}/task`,
@@ -187,20 +209,22 @@ export class ClickUpService {
       throw new Error("No list ID provided and no default list configured");
     }
 
-    const payload = {
+    const payload: Record<string, any> = {
       name: subtaskData.name,
       description: subtaskData.description || "",
       markdown_description: subtaskData.description || "", // ClickUp supports markdown formatting
       priority: this.mapPriority(subtaskData.priority),
-      status: subtaskData.status || "setup", // Default to "setup" status for new lists
       assignees: subtaskData.assignees || [],
       tags: subtaskData.tags || [],
-      due_date: subtaskData.dueDate
-        ? new Date(subtaskData.dueDate).getTime()
-        : null,
+      ...dateFields(subtaskData),
       time_estimate: subtaskData.timeEstimate || null,
       custom_fields: subtaskData.customFields || ([] as any[]),
     };
+
+    // Only include status if explicitly provided — ClickUp will use the list's default otherwise
+    if (subtaskData.status) {
+      payload.status = subtaskData.status;
+    }
 
     const response = await fetch(
       `${this.baseUrl}/list/${targetListId}/task`,
@@ -388,6 +412,161 @@ export class ClickUpService {
 
     const result = await response.json();
     return result.lists || [];
+  }
+
+  /**
+   * Every workspace this API key can see.
+   *
+   * Unlike `getTeamInfo`, this needs no configured `teamId` — it is what the
+   * destination picker calls first, when the user has pasted a key and nothing
+   * else is known yet.
+   */
+  async getTeams(): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/team`, "teams");
+    return (result as any[]).map((team) => ({ id: team.id, name: team.name }));
+  }
+
+  /**
+   * Folders within a space.
+   */
+  async getFolders(spaceId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/space/${spaceId}/folder`, "folders");
+    return (result as any[]).map((folder) => ({ id: folder.id, name: folder.name }));
+  }
+
+  /**
+   * Lists inside a folder.
+   */
+  async getListsInFolder(folderId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/folder/${folderId}/list`, "lists");
+    return (result as any[]).map((list) => ({ id: list.id, name: list.name }));
+  }
+
+  /**
+   * Lists that sit directly under a space with no folder. ClickUp allows these
+   * and a folder-only picker would hide them.
+   */
+  async getFolderlessLists(spaceId: string): Promise<Array<{ id: string; name: string }>> {
+    const result = await this.getJson(`/space/${spaceId}/list`, "lists");
+    return (result as any[]).map((list) => ({ id: list.id, name: list.name }));
+  }
+
+  /**
+   * The status names configured on a list, in board order.
+   *
+   * This is what makes the status mapping possible: statuses are per-list in
+   * ClickUp, so the only way to know whether "complete" exists is to ask.
+   */
+  async getListStatuses(listId: string): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/list/${listId}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch list: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const list = await response.json();
+    const statuses = (list.statuses || []) as Array<{ status: string; orderindex?: number }>;
+    return statuses
+      .slice()
+      .sort((a, b) => (a.orderindex ?? 0) - (b.orderindex ?? 0))
+      .map((entry) => entry.status);
+  }
+
+  /**
+   * A list's own details: its name, and the space and folder it sits under.
+   *
+   * This is what lets a pasted URL fill in a whole destination. A list URL names
+   * only the list, but a destination wants the space and folder too — and
+   * `GET /list/{id}` already returns both, so there is no need to walk the
+   * hierarchy downwards guessing.
+   */
+  async getListDetails(listId: string): Promise<{
+    id: string;
+    name: string;
+    spaceId?: string;
+    spaceName?: string;
+    folderId?: string;
+    folderName?: string;
+    statuses: string[];
+  }> {
+    const list = (await this.getSingle(`/list/${listId}`)) as any;
+    // ClickUp reports a synthetic "hidden" folder for folderless lists; treating
+    // that as a real folder would store a folder id the picker cannot show.
+    const folder = list.folder && list.folder.hidden !== true ? list.folder : undefined;
+    return {
+      id: list.id,
+      name: list.name,
+      spaceId: list.space?.id,
+      spaceName: list.space?.name,
+      folderId: folder?.id,
+      folderName: folder?.name,
+      statuses: ((list.statuses || []) as Array<{ status: string }>).map((s) => s.status),
+    };
+  }
+
+  /**
+   * A view's parent. Needed because a ClickUp list-view URL carries a view id of
+   * the form `{type}-{parentId}-{n}`, and only type 6 means list — slicing the
+   * middle segment out of the URL would silently produce a wrong id for any other
+   * view type. Asking is authoritative.
+   */
+  async getViewParent(viewId: string): Promise<{ id: string; type: number }> {
+    const result = (await this.getSingle(`/view/${viewId}`)) as any;
+    const parent = result.view?.parent;
+    if (!parent?.id) {
+      throw new Error("That view has no parent list — pick a list view, or paste a list URL.");
+    }
+    return { id: String(parent.id), type: Number(parent.type) };
+  }
+
+  /** GET helper for single-object endpoints. */
+  private async getSingle(path: string): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `ClickUp GET ${path} failed: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    return response.json();
+  }
+
+  /** Shared GET helper for collection endpoints. */
+  private async getJson(path: string, collectionKey: string): Promise<unknown[]> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: this.config.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch ${collectionKey}: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    return result[collectionKey] || [];
   }
 
   /**

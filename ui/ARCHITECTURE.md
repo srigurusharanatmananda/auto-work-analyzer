@@ -318,14 +318,50 @@ npm start
 npm run lint
 ```
 
+## Talking to the API
+
+**Everything goes through `lib/api`. Components do not call `fetch`.**
+
+```ts
+import { api, ApiError, messageFor } from '@/lib/api';
+
+const preview = await api.post<PreviewPayload>('/preview-tasks', { transcript });
+```
+
+`ApiClient` owns the base URL, the `Authorization` header, `credentials`, and
+unwrapping the `{ success, data, error }` envelope — so `api.get<T>()` resolves
+to the payload and throws `ApiError` otherwise. Paths are written without the
+`/api` prefix; the client adds it.
+
+Three behaviours are worth knowing because no call site has to implement them:
+
+- **Expired sessions recover.** A 401 refreshes the access token and retries the
+  request once. Concurrent 401s share a single refresh — the backend rotates
+  refresh tokens and treats reuse as theft, so a second parallel refresh would
+  revoke the whole token family and log the user out.
+- **A dead backend says so**, rather than surfacing `TypeError: Failed to fetch`.
+- **Validation `details` survive** on `ApiError.details`, so a form can name the
+  field the server rejected.
+
+For a resource loaded on mount, use `useApiQuery` (`lib/api/useApiQuery`) instead
+of hand-rolling data/loading/error state. Mutations stay explicit `api.post(...)`
+calls in their handlers.
+
+Readiness is `ProtectedRoute`'s job, not each component's: it does not render
+children until a session exists, so components must not re-check for a token
+before fetching.
+
 ## Environment Variables
 
-Create a `.env.local` file:
+All optional — see `.env.example`. Copy it to `.env.local` to change anything.
 
 ```bash
+# Origin only: no /api suffix, no trailing slash. Defaults to localhost:3009.
 NEXT_PUBLIC_API_URL=http://localhost:3009
-NEXT_PUBLIC_APP_NAME="Auto Work Analyzer"
 ```
+
+`NEXT_PUBLIC_*` values are inlined at **build** time, so changing this requires a
+rebuild — a built image cannot be re-pointed via its environment.
 
 ## Browser Support
 

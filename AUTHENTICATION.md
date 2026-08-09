@@ -70,6 +70,32 @@ This system implements **enterprise-grade authentication and authorization** fol
 - Create and edit own reports
 - No admin functions
 
+### How the roles are actually enforced
+
+Roles are checked by `authorize()` (`src/middleware/auth.middleware.ts`), applied
+to every route through the three bands in `src/middleware/policy.ts`.
+
+Almost every route is open to all three roles, and that is the design rather than
+a gap: every resource the app stores — destinations, templates, scan settings —
+is already per-user, filtered on `user_id` in the SQL itself. A role says what
+kind of thing you may do; it cannot say whose copy of it you get. Ownership is
+the boundary there, and a role band on top of it would break the product for
+non-admins without adding protection.
+
+What is genuinely admin-only is acting on other people: `/api/users` (list, role
+change, deactivate, delete). Two rules apply there:
+
+- **At least one active admin must always remain.** Demoting, deactivating or
+  deleting the last one returns `409`.
+- **The role comes from the database row, not the token.** A demotion or
+  deactivation takes effect on the user's very next request, not at their next
+  login, and their refresh tokens are revoked at the same time.
+
+Still outstanding: `analysis_history`, `work_items` and `processed_commits` have
+no `user_id`, so `GET /api/reports` and `GET /api/history` return every user's
+rows to any authenticated caller. That needs a column and a migration; no role
+check can substitute for it.
+
 ## Setup Instructions
 
 ### 1. Initial Setup
@@ -136,10 +162,15 @@ Content-Type: application/json
 {
   "email": "user@example.com",
   "password": "SecurePassword123!",
-  "fullName": "John Doe",
-  "role": "user" // optional, defaults to "user"
+  "fullName": "John Doe"
 }
 ```
+
+Registration does **not** accept a role. It is a public, unauthenticated
+endpoint, so honouring a caller-supplied role would let anyone who can reach the
+port make themselves an admin. Every registration produces a `user`; a `role`
+field in the body is ignored. Roles are assigned afterwards by an admin via
+`PUT /api/users/:id`, or by the one-time `POST /api/auth/setup` bootstrap.
 
 #### Login
 ```http

@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-const BACKEND_URL = 'http://localhost:3009';
 const PAGE_SIZE = 10;
 
 interface WorkItem {
@@ -40,103 +39,92 @@ interface SavedReport {
   workItems: WorkItem[];
 }
 
+/** One page of `GET /api/reports`. */
+interface ReportPage {
+  reports: SavedReport[];
+  hasMore: boolean;
+  total: number;
+}
+
 export default function SavedReportsTab() {
   const router = useRouter();
-  const { accessToken } = useAuth();
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
-  const reportsLengthRef = useRef(0);
 
-  // Keep ref in sync with reports length
-  useEffect(() => {
-    reportsLengthRef.current = reports.length;
-  }, [reports.length]);
+  /**
+   * How many rows are already shown, readable without re-creating the loader.
+   *
+   * The next page starts where the list ends, so paging off `reports.length`
+   * directly would make `loadReports` change on every load and re-run the
+   * observer effect with it.
+   */
+  const loadedCount = useRef(0);
 
-  // Load initial reports
-  useEffect(() => {
-    if (accessToken) {
-      loadReports(0, true);
+  const loadReports = useCallback(async (offset: number, reset = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const page = await api.get<ReportPage>('/reports', {
+        query: { limit: PAGE_SIZE, offset },
+      });
+
+      setReports((previous) => {
+        const next = reset
+          ? page.reports
+          : // The observer can fire twice for one intersection, so a page can
+            // arrive that overlaps what is already shown.
+            [
+              ...previous,
+              ...page.reports.filter(
+                (report) =>
+                  !previous.some((existing) => existing.analysis.id === report.analysis.id)
+              ),
+            ];
+        loadedCount.current = next.length;
+        return next;
+      });
+      setHasMore(page.hasMore);
+    } catch (caught) {
+      // Stop the infinite scroll from retrying into a wall.
+      setHasMore(false);
+      const message = messageFor(caught, 'Failed to load reports');
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-  }, [accessToken]);
+  }, []);
 
-  // Infinite scroll observer
+  // Load the first page on mount. No token check: `ProtectedRoute` does not
+  // render this component until a session exists, so it is the one place that
+  // decides readiness.
   useEffect(() => {
+    void loadReports(0, true);
+  }, [loadReports]);
+
+  // Infinite scroll.
+  useEffect(() => {
+    // Captured now: by the time the cleanup runs, `loaderRef.current` may
+    // already point somewhere else (or nowhere), so unobserving it would leave
+    // the original node observed.
+    const sentinel = loaderRef.current;
+    if (!sentinel) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          loadMore();
+        if (entries[0]?.isIntersecting && hasMore && !loading) {
+          void loadReports(loadedCount.current);
         }
       },
       { threshold: 0.5 }
     );
 
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current);
-    }
-
-    return () => {
-      if (loaderRef.current) {
-        observer.unobserve(loaderRef.current);
-      }
-    };
-  }, [hasMore, loading]);
-
-  const loadReports = async (newOffset: number, reset: boolean = false) => {
-    if (!accessToken) {
-      setError('Not authenticated');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/reports?limit=${PAGE_SIZE}&offset=${newOffset}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setReports(prev => {
-          if (reset) {
-            return result.data.reports;
-          }
-          // Deduplicate reports by ID
-          const existingIds = new Set(prev.map(r => r.analysis.id));
-          const newReports = result.data.reports.filter((r: SavedReport) => !existingIds.has(r.analysis.id));
-          return [...prev, ...newReports];
-        });
-        setHasMore(result.data.hasMore);
-        setTotal(result.data.total);
-        setOffset(newOffset);
-      } else {
-        setHasMore(false);
-        setError(result.error || 'Failed to load reports');
-        toast.error(`Failed to load reports: ${result.error}`);
-      }
-    } catch (err) {
-      // On connection error, stop trying to load more and show error
-      setHasMore(false);
-      const errorMsg = err instanceof Error ? err.message : 'Failed to connect to backend server';
-      setError(errorMsg);
-      toast.error('Failed to load reports - backend server may not be running');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    const newOffset = reportsLengthRef.current;
-    loadReports(newOffset);
-  };
+    observer.observe(sentinel);
+    return () => observer.unobserve(sentinel);
+  }, [hasMore, loading, loadReports]);
 
   const viewReport = (reportId: string) => {
     router.push(`/saved-reports/${reportId}`);

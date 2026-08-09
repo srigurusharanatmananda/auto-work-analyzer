@@ -7,38 +7,48 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import multer from "multer";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 import { GitWorkAnalyzer } from "./services/GitWorkAnalyzer.js";
-import { NotesProcessor } from "./services/NotesProcessor.js";
 import { HistoryService } from "./services/HistoryService.js";
 import { AIDescriptionService } from "./services/AIDescriptionService.js";
 import { getAppConfig, validateConfig } from "./config/index.js";
 import { WebhookPayload } from "./types/index.js";
-import { ClickUpService } from "./services/ClickUpService.js";
 import authRoutes from "./routes/auth.routes.js";
+import { JWTService } from "./services/JWTService.js";
+import { anyRole } from "./middleware/policy.js";
+import { checkWebhookSecret } from "./middleware/webhookSecret.js";
+import { createUsersRouter } from "./routes/users.routes.js";
+import { createReportsRouter } from "./routes/reports.routes.js";
+import { createTemplatesRouter } from "./routes/templates.routes.js";
+import { createTasksRouter } from "./routes/tasks.routes.js";
+import { TemplateStore } from "./services/TemplateStore.js";
+import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
+import { DestinationStore } from "./destinations/DestinationStore.js";
+import { getPool } from "./db/pool.js";
+import type { PostgresHandle } from "./db/client.js";
+import { createDestinationsRouter } from "./routes/destinations.routes.js";
+import { createClickUpRouter } from "./routes/clickup.routes.js";
+import { ScanRegistry } from "./scanning/ScanRegistry.js";
+import { DailyScanner } from "./scanning/DailyScanner.js";
+import { ScanScheduler } from "./scanning/ScanScheduler.js";
+import { createScanningRouter } from "./routes/scanning.routes.js";
+import { createTranscriptionRouter } from "./routes/transcription.routes.js";
+import { TranscriptionJobStore } from "./transcription/TranscriptionJobStore.js";
+import { TranscriptionWorker } from "./transcription/TranscriptionWorker.js";
+import { WhisperClient } from "./transcription/WhisperClient.js";
+import { AuthDatabaseService } from "./services/AuthDatabaseService.js";
+import { DestinationResolver } from "./destinations/DestinationResolver.js";
+import { createAiClientFromEnv } from "./ai/AiClient.js";
+import { AiCommitGrouper } from "./grouping/AiCommitGrouper.js";
+import { HeuristicCommitGrouper } from "./grouping/HeuristicCommitGrouper.js";
+import { TranscriptSweeper } from "./calls/TranscriptSweeper.js";
+import { LEGACY_COMMIT_OWNER } from "./db/schema.js";
 import { authenticate, authenticateOptional } from "./middleware/auth.middleware.js";
 import { apiRateLimiter, securityHeaders } from "./middleware/security.middleware.js";
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept text files only
-    if (file.mimetype === 'text/plain' || file.originalname.endsWith('.txt') || file.originalname.endsWith('.md')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only text files (.txt, .md) are allowed'));
-    }
-  },
-});
 
 const app = express();
 
@@ -68,6 +78,18 @@ app.use(cors({
     }
   },
   credentials: true,
+  /**
+   * `Range` has to be an allowed REQUEST header or the preflight for a
+   * cross-origin `<audio crossorigin>` fails and playback never starts.
+   *
+   * The exposed RESPONSE headers matter for the same reason. CORS hides every
+   * response header except a small safelist, and `Content-Range` is not on it —
+   * so a media element loading from another origin cannot work out the length
+   * of the resource and leaves the player stuck with `readyState 0`, no
+   * duration and a dead scrubber. Nothing errors; it simply never loads.
+   */
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -100,6 +122,23 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       process.exit(1);
     }
 
+    // Second startup guard, and it must come before any route that issues or
+    // accepts a token. JWTService falls back to hard-coded 'change-this-…'
+    // secrets, so without this the server boots and happily signs tokens that
+    // anyone who has read the source can forge. Refusing to start is the only
+    // safe behaviour: a running server with a known secret is worse than none.
+    const jwtConfig = JWTService.validateConfig();
+    if (!jwtConfig.isValid) {
+      console.error("❌ JWT configuration invalid:");
+      jwtConfig.errors.forEach((error) => console.error(`  - ${error}`));
+      console.error(
+        "\n  Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET in .env to two different\n" +
+          "  random strings of at least 32 characters, e.g.\n" +
+          "    openssl rand -base64 48"
+      );
+      process.exit(1);
+    }
+
     // Health check endpoint (public)
     app.get("/api/health", (req, res) => {
       res.json({
@@ -112,8 +151,238 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // Authentication routes (public)
     app.use("/api/auth", authRoutes);
 
+    // Admin user management. The only genuinely admin-only surface in the API:
+    // every other resource is per-user and bounded by ownership.
+    app.use("/api/users", createUsersRouter());
+
+    // Saved analyses. Extracted from inline handlers here so they could be
+    // tested at all — this module self-starts a server on import. Every read is
+    // scoped to the calling user; see the header of reports.routes.ts.
+    app.use("/api", createReportsRouter());
+
+    // Startup guard, deliberately before any store is opened: stored ClickUp
+    // keys are encrypted, and there is no "store them in the clear" fallback.
+    // An unconfigured install must fail here with instructions rather than
+    // discover the problem at the first write.
+    let cipher: CredentialCipher;
+    try {
+      cipher = loadCipherFromEnv();
+    } catch (error) {
+      console.error(`\u274c ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
+
+    // No SQLite here any more. `runMigrations` still exists and still runs — but
+    // it belongs to the *import*, not to startup: it operates on a pre-Postgres
+    // `.database/auto-work-analyzer.db` that no store reads. It is invoked by
+    // `bun run db:import` before the copy, which is the only moment it can
+    // still do anything. Leaving the call here would have been dead code
+    // wearing the costume of a live migration.
+
+    // Postgres. Opened here, once, and shared by every store that has been
+    // ported to it — currently templates and destinations; the rest still read
+    // the SQLite file above. Verifying the connection at startup rather than on
+    // the first request is deliberate: a server that accepts traffic and then
+    // fails every call with a connection error is harder to diagnose than one
+    // that refuses to start.
+    let pool: PostgresHandle;
+    try {
+      pool = getPool();
+      await pool.sql`SELECT 1`;
+    } catch (error) {
+      console.error(`\u274c Cannot reach Postgres: ${error instanceof Error ? error.message : error}`);
+      console.error(
+        "\n  Set DATABASE_URL in .env and apply the schema:\n" +
+          "    bun run db:migrate"
+      );
+      process.exit(1);
+    }
+
+    const templateStore = new TemplateStore(pool);
+    // Refreshes the read-only built-ins. Under SQLite the constructor did this
+    // invisibly on every open; it is explicit now because it is a write, and a
+    // write hidden in a constructor is how the schema drifted in the first place.
+    await templateStore.seedBuiltins();
+    app.use("/api/templates", createTemplatesRouter(templateStore));
+
+    // Named ClickUp destinations, and the hierarchy browsing the picker needs.
+    const destinationStore = new DestinationStore(cipher, pool);
+    app.use("/api/destinations", createDestinationsRouter(destinationStore, templateStore));
+    app.use("/api/clickup", createClickUpRouter(destinationStore));
+
+    // Every path that creates a ClickUp task. Mounted at "/api" so the legacy
+    // paths "/api/notes" and "/api/create-tasks" are preserved exactly; the
+    // router owns their formatting now instead of each handler doing its own.
+    // `envConfig` is the last fallback in the resolution chain, so a request
+    // that names no destination still creates tasks exactly where it used to.
+    const resolver = new DestinationResolver({
+      destinations: destinationStore,
+      templates: templateStore,
+      envConfig: config.clickup,
+    });
+
+    // Built here, inside startup, rather than at module scope:
+    // createAiClientFromEnv reads process.env eagerly, so constructing it before
+    // dotenv has loaded would yield an empty provider chain and silently pin
+    // every request to the heuristic path with no error to notice.
+    // Constructed before the tasks router, which takes the store so that
+    // /api/preview-tasks can resolve a `transcriptionJobId` into its transcript.
+    const transcriptionStorageRoot = path.resolve(
+      process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"
+    );
+    const transcriptionStore = new TranscriptionJobStore(pool);
+    const whisperClient = new WhisperClient({ storageRoot: transcriptionStorageRoot });
+
+    const aiClient = createAiClientFromEnv();
+    const useAiGrouping = aiClient.isConfigured && process.env.AI_GROUPING !== "false";
+    const grouper = useAiGrouping
+      ? new AiCommitGrouper(aiClient)
+      : new HeuristicCommitGrouper();
+    console.log(
+      `📦 Commit grouping: ${
+        useAiGrouping ? `AI (${aiClient.providerNames.join(", ")})` : "heuristic"
+      }`
+    );
+
+    app.use(
+      "/api",
+      createTasksRouter({
+        resolver,
+        defaultProjectPath: config.project.path,
+        grouper,
+        // The same provider chain the grouper uses, so a transcript posted to
+        // /api/preview-tasks can be turned into action items.
+        aiClient,
+        transcriptionJobs: transcriptionStore,
+      })
+    );
+
+    // Org-wide daily scan. Shares the one database, so a repo binding and the
+    // destination it names cannot land in different files.
+    const scanRegistry = new ScanRegistry(pool);
+    const dailyScanner = new DailyScanner({
+      registry: scanRegistry,
+      resolver,
+      grouper,
+    });
+
+    app.use(
+      "/api/scanning",
+      createScanningRouter({ registry: scanRegistry, scanner: dailyScanner })
+    );
+
+    /**
+     * Assigned below, once the transcription store exists. Declared here so the
+     * scheduler's `runScan` can close over it: the daily tick is the natural
+     * place to file yesterday's calls, and giving transcripts a second timer
+     * would mean two unattended writers to ClickUp on different schedules.
+     */
+    let transcriptSweeper: TranscriptSweeper | undefined;
+
+    const scanScheduler = new ScanScheduler({
+      registry: scanRegistry,
+      userIds: async () => {
+        // getAllUsers is paginated with a default limit of 50; pass an explicit
+        // large limit so a growing user table does not silently stop being
+        // scheduled past the first page.
+        const users = new AuthDatabaseService(pool);
+        try {
+          return (await users.getAllUsers(10_000, 0)).map((user) => user.id);
+        } finally {
+          users.close();
+        }
+      },
+      runScan: async (userId, date) => {
+        const summary = await dailyScanner.run(userId, { date });
+        // Persist the summary BEFORE marking the day complete: it is the only
+        // record a scheduled run leaves, and it must survive even if the settings
+        // write fails.
+        await scanRegistry.saveRun(userId, summary);
+        await scanRegistry.saveSettings(userId, { lastCompletedDate: date });
+        console.log(
+          `📅 Daily scan ${date}: ${summary.totalTasksCreated} task(s) across ${summary.repos.length} repo(s)`
+        );
+
+        // Calls that finished transcribing since the last tick. Deliberately
+        // after the git scan and inside the same try-free block the scheduler
+        // already wraps: a sweep that throws must not stop the day being
+        // recorded as scanned, or every subsequent tick would redo the scan.
+        if (!transcriptSweeper) return;
+        try {
+          const sweep = await transcriptSweeper.run(userId, { dryRun: false });
+          if (sweep.jobs.length > 0) {
+            console.log(
+              `🎙️  Transcript sweep: ${sweep.totalTasksCreated} task(s) from ${sweep.jobs.length} recording(s)`
+            );
+          }
+        } catch (error) {
+          console.error("Transcript sweep failed:", error);
+        }
+      },
+    });
+    scanScheduler.start();
+
+    // ---- Transcription: audio -> transcript ----
+    //
+    // The worker runs in this process. On 8 GB only one transcription can run at
+    // a time regardless, so a separate process would add something to start
+    // without enabling concurrency we could afford.
+    //
+    // `TRANSCRIPTION_STORAGE_ROOT` must be the host directory bind-mounted into
+    // the Whisper container as /storage. Defaults to ./storage, matching
+    // docker-compose. Whisper opens the file itself rather than receiving bytes,
+    // so a mismatch here means nothing can be transcribed — the upload route
+    // checks it up front and 500s rather than queueing work that cannot run.
+    // Only when a provider exists: without one every sweep would fail at the
+    // first extraction, and an unattended job that can only fail is worse than
+    // an absent one. The route says so explicitly rather than 404ing.
+    transcriptSweeper = aiClient.isConfigured
+      ? new TranscriptSweeper({ store: transcriptionStore, resolver, aiClient })
+      : undefined;
+
+    app.use(
+      "/api/transcription",
+      createTranscriptionRouter({
+        store: transcriptionStore,
+        storageRoot: transcriptionStorageRoot,
+        whisper: whisperClient,
+        sweeper: transcriptSweeper,
+      })
+    );
+
+    const transcriptionWorker = new TranscriptionWorker({
+      store: transcriptionStore,
+      whisper: whisperClient,
+      pg: pool,
+      onSettled: (job, outcome) =>
+        console.log(`🎙️  Transcription ${outcome}: ${job.originalFilename} (${job.id})`),
+    });
+
+    // Failure to start is logged, not fatal: uploads still queue, and the work
+    // is picked up whenever a worker next runs. Refusing to boot the whole API
+    // because Whisper is down would take the git-analysis half offline too.
+    await transcriptionWorker.start().catch((error) => {
+      console.error("Transcription worker failed to start:", error);
+    });
+
+    // Finish in-flight work rather than abandoning it — a killed job wastes the
+    // minutes already spent and leaves a claim to reclaim later.
+    //
+    // The scan is stopped alongside the transcription for the same reason and
+    // one more: a scan killed partway has already created some of its ClickUp
+    // tasks, and its lease then sits held until the TTL lapses, blocking the
+    // retry that would finish the job.
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      process.once(signal, () => {
+        console.log(`\n${signal} received — finishing in-flight work...`);
+        void Promise.allSettled([transcriptionWorker.stop(), scanScheduler.stop()]).finally(() =>
+          process.exit(0)
+        );
+      });
+    }
+
     // Browse directories endpoint
-    app.get("/api/browse", authenticate, (req, res) => {
+    app.get("/api/browse", authenticate, anyRole, (req, res) => {
       try {
         const requestedPath = (req.query.path as string) || os.homedir();
 
@@ -174,34 +443,8 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
-    // History endpoint
-    app.get("/api/history", authenticate, (req, res) => {
-      try {
-        const historyService = new HistoryService();
-        const limit = parseInt(req.query.limit as string) || 50;
-
-        const history = historyService.getAnalysisHistory(limit);
-        const stats = historyService.getStatistics();
-
-        res.json({
-          success: true,
-          data: {
-            history,
-            statistics: stats,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to get history:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve history",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
     // AI Enhancement endpoint - enhance work item description with Claude
-    app.post("/api/ai-enhance", authenticate, async (req, res) => {
+    app.post("/api/ai-enhance", authenticate, anyRole, async (req, res) => {
       try {
         const { workItemName, description, commits, filesChanged } = req.body;
 
@@ -257,7 +500,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Generate manager-friendly summary from work items
-    app.post("/api/manager-summary", authenticate, async (req, res) => {
+    app.post("/api/manager-summary", authenticate, anyRole, async (req, res) => {
       try {
         const { workItems, reportDate } = req.body;
 
@@ -309,7 +552,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Git info endpoint - fetch branches and user info
-    app.get("/api/git-info", authenticate, (req, res) => {
+    app.get("/api/git-info", authenticate, anyRole, (req, res) => {
       try {
         const projectPath = (req.query.path as string) || process.cwd();
 
@@ -416,14 +659,24 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     });
 
     // Analyze work endpoint (protected - requires authentication)
-    app.post("/api/analyze", authenticate, async (req, res) => {
+    app.post("/api/analyze", authenticate, anyRole, async (req, res) => {
       try {
         const { date, endDate, author, branch, createTasks = false, projectPath } = req.body;
 
         // Use provided project path or default from config
         const targetProjectPath = projectPath || config.project.path;
 
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
+        // `grouper` is what makes AI grouping reachable from the product: this
+        // is the endpoint the UI's whole flow starts from, and before it was
+        // passed here the injected grouper had no consumer any client could hit.
+        const analyzer = new GitWorkAnalyzer(
+          targetProjectPath,
+          undefined,
+          grouper,
+          // Dedup is per user: whether a commit is "already filed" is a claim
+          // about THIS caller's ClickUp list.
+          (req as any).user!.userId
+        );
         // Include processed commits for reports (createTasks = false)
         // Only filter processed commits when creating tasks to prevent duplicates
         const includeProcessed = !createTasks;
@@ -439,7 +692,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
         // Save analysis to database
         const historyService = new HistoryService();
-        const analysisId = historyService.addAnalysisHistory({
+        const analysisId = await historyService.addAnalysisHistory(req.user!.userId, {
           projectPath: targetProjectPath,
           date: workAnalysis.date,
           endDate: endDate || undefined,
@@ -452,7 +705,7 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 
         // Save all work items to database
         for (const work of workAnalysis.detectedWork) {
-          historyService.saveWorkItem(
+          await historyService.saveWorkItem(
             analysisId,
             work.name,
             work.type,
@@ -491,265 +744,6 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
       }
     });
 
-    // Save report endpoint
-    app.post("/api/save-report", authenticate, async (req, res) => {
-      try {
-        const { projectPath, date, endDate, author, branch, workItems, summary } = req.body;
-
-        if (!projectPath || !date || !workItems || !Array.isArray(workItems)) {
-          res.status(400).json({
-            success: false,
-            error: "Missing required fields: projectPath, date, and workItems array are required",
-          });
-          return;
-        }
-
-        const historyService = new HistoryService();
-
-        // Save analysis to database
-        const analysisId = historyService.addAnalysisHistory({
-          projectPath,
-          date,
-          endDate,
-          author,
-          totalCommits: summary?.totalCommits || 0,
-          totalWorkItems: workItems.length,
-          tasksCreated: 0, // Reports don't create tasks
-          summary: summary?.summary || `Report generated for ${date}`,
-        });
-
-        // Save all work items
-        let savedCount = 0;
-        for (const item of workItems) {
-          if (item.name && item.type) {
-            historyService.saveWorkItem(
-              analysisId,
-              item.name,
-              item.type,
-              item.description || '',
-              item.estimatedHours || 0,
-              item.complexity || 'medium',
-              item.filesCount || 0,
-              item.commitsCount || 0
-            );
-            savedCount++;
-          }
-        }
-
-        historyService.close();
-
-        res.json({
-          success: true,
-          data: {
-            analysisId,
-            savedWorkItems: savedCount,
-          },
-          message: `Report saved successfully with ${savedCount} work items`,
-        });
-      } catch (error) {
-        console.error("Failed to save report:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to save report",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Get saved reports endpoint
-    app.get("/api/reports", authenticate, async (req, res) => {
-      try {
-        const limit = parseInt(req.query.limit as string) || 10;
-        const offset = parseInt(req.query.offset as string) || 0;
-
-        const { DatabaseService } = await import('./services/DatabaseService.js');
-        const db = new DatabaseService();
-
-        const reports = db.getPaginatedReports(limit, offset);
-        const stats = db.getStatistics();
-
-        db.close();
-
-        res.json({
-          success: true,
-          data: {
-            reports,
-            hasMore: reports.length === limit, // If we got a full page, there might be more
-            total: stats.totalAnalyses,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to get reports:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve reports",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Get single report by ID
-    app.get("/api/reports/:id", authenticate, async (req, res) => {
-      try {
-        const { id } = req.params;
-
-        const { DatabaseService } = await import('./services/DatabaseService.js');
-        const db = new DatabaseService();
-
-        const report = db.getCompleteReport(id);
-        db.close();
-
-        if (!report) {
-          res.status(404).json({
-            success: false,
-            error: "Report not found",
-          });
-          return;
-        }
-
-        res.json({
-          success: true,
-          data: report,
-        });
-      } catch (error) {
-        console.error("Failed to get report:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to retrieve report",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Notes upload endpoint
-    app.post("/api/notes", upload.single("notes"), authenticate, async (req, res) => {
-      try {
-        let notesText = '';
-
-        // Get notes from file upload or request body
-        if (req.file) {
-          notesText = req.file.buffer.toString('utf-8');
-        } else if (req.body.notes) {
-          notesText = req.body.notes;
-        } else {
-          res.status(400).json({
-            success: false,
-            error: "No notes provided. Send 'notes' in body or upload a text file.",
-          });
-          return;
-        }
-
-        const { createTasks = false } = req.body;
-
-        // Process the notes
-        const notesProcessor = new NotesProcessor();
-        const processedNotes = await notesProcessor.processNotes(notesText);
-
-        let createdTasks = [];
-
-        // Create tasks if requested
-        if (createTasks && processedNotes.tasks.length > 0) {
-          const clickUpService = new ClickUpService(config.clickup);
-
-          for (const task of processedNotes.tasks) {
-            try {
-              // Use priority if available (from structured notes), otherwise map from complexity
-              const priority = (task as any).priority ||
-                (task.complexity === "high" ? "high" :
-                 task.complexity === "medium" ? "normal" : "low");
-
-              const createdTask = await clickUpService.createTask({
-                name: task.name,
-                description: task.description,
-                priority: priority,
-                tags: task.tags,
-                timeEstimate: task.estimatedHours ? task.estimatedHours * 60 * 60 * 1000 : undefined, // Convert to milliseconds
-              });
-
-              createdTasks.push(createdTask);
-            } catch (error) {
-              console.error(`Failed to create task: ${task.name}`, error);
-            }
-          }
-        }
-
-        res.json({
-          success: true,
-          data: {
-            processedNotes: {
-              totalTasks: processedNotes.tasks.length,
-              tasks: processedNotes.tasks.map(task => ({
-                name: task.name,
-                type: task.type,
-                complexity: task.complexity,
-                estimatedHours: task.estimatedHours,
-                tags: task.tags,
-              })),
-            },
-            createdTasks: createdTasks.map(task => ({
-              id: task.id,
-              name: task.name,
-              url: task.url,
-            })),
-            summary: {
-              tasksExtracted: processedNotes.tasks.length,
-              tasksCreated: createdTasks.length,
-            },
-          },
-          message: `Processed ${processedNotes.tasks.length} tasks from notes${
-            createTasks ? `, created ${createdTasks.length} ClickUp tasks` : ""
-          }`,
-        });
-      } catch (error) {
-        console.error("Notes processing failed:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to process notes",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
-    // Create tasks endpoint
-    app.post("/api/create-tasks", authenticate, async (req, res) => {
-      try {
-        const { workAnalysis, projectPath } = req.body;
-
-        if (!workAnalysis) {
-          res.status(400).json({
-            success: false,
-            error: "workAnalysis is required",
-          });
-          return;
-        }
-
-        const targetProjectPath = projectPath || config.project.path;
-        const analyzer = new GitWorkAnalyzer(targetProjectPath);
-
-        // Create tasks from the work analysis
-        const createdTasks = await analyzer.createTasksFromWork(
-          workAnalysis,
-          config.clickup
-        );
-
-        res.json({
-          success: true,
-          data: {
-            tasksCreated: createdTasks.filter((t) => t !== null).length,
-            tasks: createdTasks.filter((t) => t !== null),
-          },
-          message: `Created ${createdTasks.filter((t) => t !== null).length} tasks in ClickUp`,
-        });
-      } catch (error) {
-        console.error("Failed to create tasks:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to create tasks",
-          details: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    });
-
     // Webhook endpoint
     app.post("/api/webhook", async (req, res) => {
       try {
@@ -765,11 +759,15 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           secret,
         }: WebhookPayload = req.body;
 
-        // Verify webhook secret if provided
-        if (config.webhook.secret && secret !== config.webhook.secret) {
-          res.status(401).json({
+        // This endpoint creates real ClickUp tasks and has no user session, so
+        // the shared secret is the only thing standing in front of it. An unset
+        // WEBHOOK_SECRET disables the endpoint rather than opening it — see
+        // src/middleware/webhookSecret.ts.
+        const secretCheck = checkWebhookSecret(config.webhook.secret, secret);
+        if (!secretCheck.ok) {
+          res.status(secretCheck.status).json({
             success: false,
-            error: "Invalid webhook secret",
+            error: secretCheck.error,
           });
           return;
         }
@@ -784,7 +782,16 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
           commitHash,
         });
 
-        const analyzer = new GitWorkAnalyzer(config.project.path);
+        // LEGACY_COMMIT_OWNER, explicitly: this endpoint is authenticated by a
+        // shared secret and has no user session (see above), so there is no
+        // per-user ledger to use. Written out rather than left to the default so
+        // the choice is visible at the call site.
+        const analyzer = new GitWorkAnalyzer(
+          config.project.path,
+          undefined,
+          grouper,
+          LEGACY_COMMIT_OWNER
+        );
 
         // Determine date range based on webhook type
         let analysisDate = date;
@@ -938,4 +945,10 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
 // Start the server if this file is run directly
 const config = getAppConfig();
 const port = config.webhook.port || 3000;
-startWebhookServer(port);
+// Caught rather than left floating: a startup failure — a refused database, a
+// missing secret — should say so and exit non-zero, not surface as an unhandled
+// rejection whose stack points at the runtime.
+startWebhookServer(port).catch((error: unknown) => {
+  console.error("Failed to start:", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

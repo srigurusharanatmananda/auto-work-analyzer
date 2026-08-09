@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/lib/context/AuthContext';
+import { api, messageFor } from '@/lib/api';
 import Button from '@/lib/components/ui/Button';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 interface Directory {
   name: string;
@@ -26,42 +24,20 @@ interface DirectoryBrowserProps {
 }
 
 export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowserProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BrowseData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDirectories = async (path?: string) => {
-    if (!accessToken) {
-      setError('Not authenticated');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const url = path
-        ? `${BACKEND_URL}/api/browse?path=${encodeURIComponent(path)}`
-        : `${BACKEND_URL}/api/browse`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error || 'Failed to browse directory');
-        toast.error(result.error || 'Failed to browse directory');
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to browse directory';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      setData(await api.get<BrowseData>('/browse', { query: { path } }));
+    } catch (caught) {
+      const message = messageFor(caught, 'Failed to browse directory');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -92,7 +68,7 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-background-secondary rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-border">
@@ -167,7 +143,7 @@ export default function DirectoryBrowser({ onSelect, onCancel }: DirectoryBrowse
                     <span className="text-2xl">{dir.isGitRepo ? '📦' : '📁'}</span>
                     <span className="flex-1 font-medium text-foreground">{dir.name}</span>
                     {dir.isGitRepo && (
-                      <span className="px-2 py-1 bg-success/10 text-success rounded text-xs font-semibold">
+                      <span className="px-2 py-1 bg-success/10 text-success rounded-sm text-xs font-semibold">
                         Git Repo
                       </span>
                     )}

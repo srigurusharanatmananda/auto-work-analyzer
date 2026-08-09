@@ -3,6 +3,7 @@
  */
 
 import fs from 'fs';
+import { LEGACY_COMMIT_OWNER } from './db/schema.js';
 import path from 'path';
 import { DatabaseService } from './services/DatabaseService.js';
 
@@ -60,7 +61,7 @@ async function migrateToDatabase() {
       const analyses: JSONAnalysisHistory[] = JSON.parse(data);
 
       for (const analysis of analyses) {
-        db.saveAnalysis({
+        await db.saveAnalysis({
           id: analysis.id,
           timestamp: analysis.timestamp,
           projectPath: analysis.projectPath,
@@ -89,8 +90,12 @@ async function migrateToDatabase() {
       const commits: JSONProcessedCommit[] = JSON.parse(data);
 
       for (const commit of commits) {
-        db.markCommitAsProcessed({
+        await db.markCommitAsProcessed({
           hash: commit.hash,
+          // These predate any notion of a user, so they join the shared legacy
+          // ledger: counted as processed for everyone rather than re-filed by
+          // the first person to scan the repo.
+          userId: LEGACY_COMMIT_OWNER,
           date: commit.date,
           author: commit.author,
           message: commit.message,
@@ -109,7 +114,9 @@ async function migrateToDatabase() {
   }
 
   // Show statistics
-  const stats = db.getStatistics();
+  // A one-off CLI migration of pre-multi-user data: there is no caller to
+  // scope to, and the point is the whole-database total.
+  const stats = await db.globalStatisticsUnscoped();
 
   // Create backup of JSON files
   if (hasAnalysisHistory || hasProcessedCommits) {
@@ -133,7 +140,7 @@ async function migrateToDatabase() {
   db.close();
 
   console.log('\n✅ Migration completed successfully!');
-  console.log(`   Database location: ${db.getDatabasePath()}`);
+  console.log(`   Database location: ${process.env.DATABASE_URL ?? "(DATABASE_URL unset)"}`);
   console.log('\n🚀 You can now restart your webhook server to use the new database.');
 }
 

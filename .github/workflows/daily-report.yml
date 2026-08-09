@@ -1,0 +1,172 @@
+name: Daily Commit Report to ClickUp
+
+on:
+  schedule:
+    # Runs at 12 AM UTC every day (adjust timezone as needed)
+    # Format: minute hour day month weekday
+    - cron: "0 0 * * *"
+
+  # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests pytz
+
+      - name: Generate and send report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+          CLICKUP_LIST_ID: ${{ secrets.CLICKUP_LIST_ID }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+        run: |
+          python << 'EOF'
+          import os
+          import requests
+          from datetime import datetime, timedelta
+          import json
+          from collections import defaultdict
+
+          # Configuration
+          GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
+          CLICKUP_TOKEN = os.environ['CLICKUP_API_TOKEN']
+          CLICKUP_LIST_ID = os.environ['CLICKUP_LIST_ID']
+          GITHUB_USERNAME = os.environ['GITHUB_USERNAME']
+
+          # Calculate time range (last 24 hours)
+          end_time = datetime.utcnow()
+          start_time = end_time - timedelta(days=1)
+
+          print(f"Fetching commits from {start_time.isoformat()} to {end_time.isoformat()}")
+
+          # GitHub API headers
+          github_headers = {
+              'Authorization': f'token {GITHUB_TOKEN}',
+              'Accept': 'application/vnd.github.v3+json'
+          }
+
+          # Fetch user's repositories and specific org repositories
+          repos = []
+
+          # Fetch personal repos
+          personal_repos_url = f'https://api.github.com/user/repos?affiliation=owner,collaborator&per_page=100'
+          personal_response = requests.get(personal_repos_url, headers=github_headers)
+          repos.extend(personal_response.json())
+
+          # Fetch repos from specific organizations
+          org_names = ['kailasa-ngpt']  # Add more orgs here if needed
+
+          for org in org_names:
+              org_repos_url = f'https://api.github.com/orgs/{org}/repos?per_page=100'
+              org_response = requests.get(org_repos_url, headers=github_headers)
+              
+              if org_response.status_code == 200:
+                  org_repos = org_response.json()
+                  repos.extend(org_repos)
+                  print(f"✓ Fetched {len(org_repos)} repos from {org}")
+              else:
+                  print(f"⚠ Could not fetch repos from {org}: {org_response.status_code}")
+
+          # Remove duplicates (in case a repo appears in both lists)
+          seen = set()
+          unique_repos = []
+          for repo in repos:
+              if repo['full_name'] not in seen:
+                  seen.add(repo['full_name'])
+                  unique_repos.append(repo)
+
+          repos = unique_repos
+          print(f"Total repositories to scan: {len(repos)}")
+
+          # Collect commits by repository
+          commits_by_repo = defaultdict(list)
+          total_commits = 0
+
+          for repo in repos:
+              repo_name = repo['full_name']
+              
+              # Fetch commits for this repo in the last 24 hours
+              commits_url = f"https://api.github.com/repos/{repo_name}/commits"
+              params = {
+                  'author': GITHUB_USERNAME,
+                  'since': start_time.isoformat() + 'Z',
+                  'until': end_time.isoformat() + 'Z'
+              }
+              
+              try:
+                  commits_response = requests.get(commits_url, headers=github_headers, params=params)
+                  commits = commits_response.json()
+                  
+                  if isinstance(commits, list) and len(commits) > 0:
+                      for commit in commits:
+                          commit_data = {
+                              'message': commit['commit']['message'].split('\n')[0],  # First line only
+                              'sha': commit['sha'][:7],  # Short SHA
+                              'url': commit['html_url'],
+                              'timestamp': commit['commit']['author']['date']
+                          }
+                          commits_by_repo[repo_name].append(commit_data)
+                          total_commits += 1
+              except Exception as e:
+                  print(f"Error fetching commits for {repo_name}: {e}")
+                  continue
+
+          # Build the report
+          if total_commits == 0:
+              report_content = f"# Daily Commit Report - {end_time.strftime('%Y-%m-%d')}\n\n"
+              report_content += "No commits found in the last 24 hours.\n"
+          else:
+              report_content = f"# Daily Commit Report - {end_time.strftime('%Y-%m-%d')}\n\n"
+              report_content += f"**Total commits: {total_commits}**\n\n"
+              
+              for repo_name in sorted(commits_by_repo.keys()):
+                  commits = commits_by_repo[repo_name]
+                  report_content += f"## 📦 {repo_name} ({len(commits)} commits)\n\n"
+                  
+                  for commit in commits:
+                      report_content += f"- `{commit['sha']}` {commit['message']}\n"
+                      report_content += f"  [View commit]({commit['url']})\n"
+                  
+                  report_content += "\n"
+
+          print("Report generated:")
+          print(report_content)
+
+          # Send to ClickUp
+          clickup_url = f'https://api.clickup.com/api/v2/list/{CLICKUP_LIST_ID}/task'
+          clickup_headers = {
+              'Authorization': CLICKUP_TOKEN,
+              'Content-Type': 'application/json'
+          }
+
+          task_data = {
+              'name': f'Daily Commit Report - {end_time.strftime("%Y-%m-%d")}',
+              'description': report_content,
+              'status': 'to do',
+              'tags': ['daily-report', 'github-commits']
+          }
+
+          response = requests.post(clickup_url, headers=clickup_headers, json=task_data)
+
+          if response.status_code in [200, 201]:
+              print(f"✅ Successfully created task in ClickUp!")
+              print(f"Task URL: {response.json().get('url', 'N/A')}")
+          else:
+              print(f"❌ Failed to create task in ClickUp: {response.status_code}")
+              print(f"Response: {response.text}")
+              exit(1)
+
+          EOF

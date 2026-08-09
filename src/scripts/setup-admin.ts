@@ -29,7 +29,7 @@ async function setupAdmin() {
     const authService = new AuthService();
     const { AuthDatabaseService } = await import('../services/AuthDatabaseService.js');
     const db = new AuthDatabaseService();
-    const existingUsers = db.getAllUsers(1, 0);
+    const existingUsers = await db.getAllUsers(1, 0);
 
     if (existingUsers.length > 0) {
       console.log('⚠️  Users already exist in the system.');
@@ -122,4 +122,7 @@ async function setupAdmin() {
   }
 }
 
-setupAdmin();
+setupAdmin().catch((error: unknown) => {
+  console.error("Failed to set up the admin user:", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

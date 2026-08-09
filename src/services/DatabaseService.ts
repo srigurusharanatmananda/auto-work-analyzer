@@ -1,362 +1,358 @@
 /**
- * Database Service using SQLite
- * Replaces JSON file-based storage with a proper database
+ * Analyses, work items, and the processed-commit ledger, on Postgres.
  *
- * Implements IDatabaseService interface for easy migration to other databases
+ * Implements IDatabaseService, whose whole purpose was to make exactly this
+ * move possible.
+ *
+ * Two Postgres details this file has to get right, both of which fail silently
+ * rather than loudly if ignored:
+ *
+ *  - **Column aliases are folded to lower case unless quoted.** `AS userId`
+ *    yields a property called `userid`, so every camelCase field would arrive
+ *    undefined and every read would look like a row of empty values. Every
+ *    alias below is quoted.
+ *  - **SUM() returns NULL over zero rows, and numeric as a string.** The
+ *    statistics reads coalesce and cast, so a user with no analyses gets 0
+ *    rather than null, and callers get numbers rather than "0".
  */
 
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import postgres from 'postgres';
+import { getPool } from '../db/pool.js';
+import type { PostgresHandle } from '../db/client.js';
+import { LEGACY_COMMIT_OWNER } from '../db/schema.js';
 import {
   IDatabaseService,
   AnalysisRecord,
+  AnalysisScope,
   WorkItemRecord,
   ProcessedCommitRecord,
   DatabaseStatistics,
 } from './IDatabaseService.js';
 
 // Re-export types for backwards compatibility
-export type { AnalysisRecord, WorkItemRecord, ProcessedCommitRecord };
+export type { AnalysisRecord, AnalysisScope, WorkItemRecord, ProcessedCommitRecord };
+
+/** The analysis column list, aliased once so the four readers cannot drift. */
+const ANALYSIS_COLUMNS = `
+  id, user_id as "userId", timestamp, project_path as "projectPath", date,
+  end_date as "endDate", author, branch, total_commits as "totalCommits",
+  total_work_items as "totalWorkItems", tasks_created as "tasksCreated", summary
+`;
+
+interface RawStatistics {
+  totalAnalyses: number;
+  totalCommitsProcessed: number;
+  totalTasksCreated: number;
+  totalWorkItems: number;
+  projectsAnalyzed: number;
+}
 
 export class DatabaseService implements IDatabaseService {
-  private db: Database.Database;
-  private dbPath: string;
+  private readonly injected?: PostgresHandle;
 
-  constructor(dbPath?: string) {
-    // Create .database directory if it doesn't exist
-    const dbDir = path.join(process.cwd(), '.database');
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-    }
-
-    this.dbPath = dbPath || path.join(dbDir, 'auto-work-analyzer.db');
-    this.db = new Database(this.dbPath);
-
-    // Enable foreign keys
-    this.db.pragma('foreign_keys = ON');
-
-    this.initializeTables();
+  constructor(pg?: PostgresHandle) {
+    this.injected = pg;
   }
 
   /**
-   * Initialize database tables
+   * Resolved on first query, not in the constructor.
+   *
+   * Two reasons, both load-bearing: constructing a store must not require a
+   * reachable database (several call sites build one and never query it), and
+   * a handle captured at construction would ignore a later `setPool` — which is
+   * how the tests point the shared pool at an isolated schema.
    */
-  private initializeTables(): void {
-    // Analysis history table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS analysis_history (
-        id TEXT PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        project_path TEXT NOT NULL,
-        date TEXT NOT NULL,
-        end_date TEXT,
-        author TEXT,
-        branch TEXT,
-        total_commits INTEGER NOT NULL,
-        total_work_items INTEGER NOT NULL,
-        tasks_created INTEGER NOT NULL,
-        summary TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `);
+  private get sql(): postgres.Sql {
+    return (this.injected ?? getPool()).sql;
+  }
 
-    // Work items table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS work_items (
-        id TEXT PRIMARY KEY,
-        analysis_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL,
-        description TEXT,
-        estimated_hours REAL NOT NULL DEFAULT 0,
-        complexity INTEGER NOT NULL DEFAULT 0,
-        files_count INTEGER NOT NULL DEFAULT 0,
-        commits_count INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY (analysis_id) REFERENCES analysis_history(id) ON DELETE CASCADE
-      )
-    `);
+  /**
+   * The ownership predicate for a scoped read, as a composable fragment.
+   *
+   * postgres.js fragments carry their own parameters, so the SQL and its values
+   * cannot drift apart — the failure mode of hand-assembling them is a query
+   * that silently matches everything.
+   */
+  private scopeClause(scope: AnalysisScope) {
+    return scope.includeUnowned
+      ? this.sql`(user_id = ${scope.userId} OR user_id IS NULL)`
+      : this.sql`user_id = ${scope.userId}`;
+  }
 
-    // Processed commits table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS processed_commits (
-        hash TEXT PRIMARY KEY,
-        date TEXT NOT NULL,
-        author TEXT NOT NULL,
-        message TEXT NOT NULL,
-        project_path TEXT NOT NULL,
-        processed_at TEXT NOT NULL,
-        task_id TEXT,
-        task_name TEXT
-      )
-    `);
+  /**
+   * Every analysis, ignoring ownership.
+   *
+   * Only for the two callers that legitimately have no user: `exportToJSON`
+   * (a whole-database dump) and the one-off JSON→SQLite migration script's
+   * summary. Named unmistakably so it cannot be reached for by mistake from a
+   * request handler — those must go through a scope.
+   */
+  async allAnalysesUnscoped(limit: number = 10000, offset: number = 0): Promise<AnalysisRecord[]> {
+    return (await this.sql`
+      SELECT ${this.sql.unsafe(ANALYSIS_COLUMNS)}
+        FROM analysis_history
+       ORDER BY timestamp DESC
+       LIMIT ${limit} OFFSET ${offset}
+    `) as unknown as AnalysisRecord[];
+  }
 
-    // Create indexes for better performance
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_analysis_timestamp ON analysis_history(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_analysis_project ON analysis_history(project_path);
-      CREATE INDEX IF NOT EXISTS idx_work_items_analysis ON work_items(analysis_id);
-      CREATE INDEX IF NOT EXISTS idx_processed_commits_project ON processed_commits(project_path);
-      CREATE INDEX IF NOT EXISTS idx_processed_commits_date ON processed_commits(date);
-    `);
+  /** Whole-database totals, ignoring ownership. See allAnalysesUnscoped. */
+  async globalStatisticsUnscoped(): Promise<DatabaseStatistics> {
+    const [result] = await this.sql<RawStatistics[]>`
+      SELECT
+        COUNT(*)::int                            as "totalAnalyses",
+        COALESCE(SUM(total_commits), 0)::int     as "totalCommitsProcessed",
+        COALESCE(SUM(tasks_created), 0)::int     as "totalTasksCreated",
+        COALESCE(SUM(total_work_items), 0)::int  as "totalWorkItems",
+        COUNT(DISTINCT project_path)::int        as "projectsAnalyzed"
+      FROM analysis_history
+    `;
+    return { ...result! };
   }
 
   // ==================== Analysis History Methods ====================
 
   /**
-   * Save analysis history
+   * `userId` becomes null rather than a placeholder when absent: an unowned row
+   * is a real state (the secret-authenticated webhook has no user), and null is
+   * exactly what the read predicate's `includeUnowned` branch looks for.
    */
-  saveAnalysis(analysis: AnalysisRecord): void {
-    const stmt = this.db.prepare(`
+  async saveAnalysis(analysis: AnalysisRecord): Promise<void> {
+    await this.sql`
       INSERT INTO analysis_history (
-        id, timestamp, project_path, date, end_date, author, branch,
+        id, user_id, timestamp, project_path, date, end_date, author, branch,
         total_commits, total_work_items, tasks_created, summary
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      analysis.id,
-      analysis.timestamp,
-      analysis.projectPath,
-      analysis.date,
-      analysis.endDate || null,
-      analysis.author || null,
-      analysis.branch || null,
-      analysis.totalCommits,
-      analysis.totalWorkItems,
-      analysis.tasksCreated,
-      analysis.summary
-    );
+      ) VALUES (
+        ${analysis.id},
+        ${analysis.userId || null},
+        ${analysis.timestamp},
+        ${analysis.projectPath},
+        ${analysis.date},
+        ${analysis.endDate || null},
+        ${analysis.author || null},
+        ${analysis.branch || null},
+        ${analysis.totalCommits},
+        ${analysis.totalWorkItems},
+        ${analysis.tasksCreated},
+        ${analysis.summary}
+      )
+    `;
   }
 
-  /**
-   * Get analysis history with pagination
-   */
-  getAnalysisHistory(limit: number = 50, offset: number = 0): AnalysisRecord[] {
-    const stmt = this.db.prepare(`
-      SELECT
-        id, timestamp, project_path as projectPath, date, end_date as endDate,
-        author, branch, total_commits as totalCommits,
-        total_work_items as totalWorkItems, tasks_created as tasksCreated, summary
-      FROM analysis_history
-      ORDER BY timestamp DESC
-      LIMIT ? OFFSET ?
-    `);
-
-    return stmt.all(limit, offset) as AnalysisRecord[];
+  async getAnalysisHistory(
+    scope: AnalysisScope,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<AnalysisRecord[]> {
+    return (await this.sql`
+      SELECT ${this.sql.unsafe(ANALYSIS_COLUMNS)}
+        FROM analysis_history
+       WHERE ${this.scopeClause(scope)}
+       ORDER BY timestamp DESC
+       LIMIT ${limit} OFFSET ${offset}
+    `) as unknown as AnalysisRecord[];
   }
 
-  /**
-   * Get analysis by ID
-   */
-  getAnalysisById(id: string): AnalysisRecord | undefined {
-    const stmt = this.db.prepare(`
-      SELECT
-        id, timestamp, project_path as projectPath, date, end_date as endDate,
-        author, branch, total_commits as totalCommits,
-        total_work_items as totalWorkItems, tasks_created as tasksCreated, summary
-      FROM analysis_history
-      WHERE id = ?
-    `);
+  async getAnalysisById(id: string, scope: AnalysisScope): Promise<AnalysisRecord | undefined> {
+    // The scope is part of the WHERE clause rather than a check on the result,
+    // so someone else's id reads as "no such report" — the same 404 an id that
+    // does not exist produces. A 403 here would confirm the id is real.
+    const rows = (await this.sql`
+      SELECT ${this.sql.unsafe(ANALYSIS_COLUMNS)}
+        FROM analysis_history
+       WHERE id = ${id} AND ${this.scopeClause(scope)}
+    `) as unknown as AnalysisRecord[];
 
-    return stmt.get(id) as AnalysisRecord | undefined;
+    return rows[0];
   }
 
-  /**
-   * Get analysis statistics
-   */
-  getStatistics(): DatabaseStatistics {
-    const result = this.db.prepare(`
+  async getStatistics(scope: AnalysisScope): Promise<DatabaseStatistics> {
+    const [result] = (await this.sql`
       SELECT
-        COUNT(*) as totalAnalyses,
-        SUM(total_commits) as totalCommitsProcessed,
-        SUM(tasks_created) as totalTasksCreated,
-        SUM(total_work_items) as totalWorkItems,
-        COUNT(DISTINCT project_path) as projectsAnalyzed
+        COUNT(*)::int                            as "totalAnalyses",
+        COALESCE(SUM(total_commits), 0)::int     as "totalCommitsProcessed",
+        COALESCE(SUM(tasks_created), 0)::int     as "totalTasksCreated",
+        COALESCE(SUM(total_work_items), 0)::int  as "totalWorkItems",
+        COUNT(DISTINCT project_path)::int        as "projectsAnalyzed"
       FROM analysis_history
-    `).get() as any;
+      WHERE ${this.scopeClause(scope)}
+    `) as unknown as RawStatistics[];
 
-    return {
-      totalAnalyses: result.totalAnalyses || 0,
-      totalCommitsProcessed: result.totalCommitsProcessed || 0,
-      totalTasksCreated: result.totalTasksCreated || 0,
-      totalWorkItems: result.totalWorkItems || 0,
-      projectsAnalyzed: result.projectsAnalyzed || 0,
-    };
+    return { ...result! };
   }
 
   // ==================== Work Items Methods ====================
 
-  /**
-   * Save work item
-   */
-  saveWorkItem(workItem: WorkItemRecord): void {
-    const stmt = this.db.prepare(`
+  async saveWorkItem(workItem: WorkItemRecord): Promise<void> {
+    await this.sql`
       INSERT INTO work_items (
         id, analysis_id, name, type, description,
         estimated_hours, complexity, files_count, commits_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      workItem.id,
-      workItem.analysisId,
-      workItem.name,
-      workItem.type,
-      workItem.description || null,
-      workItem.estimatedHours,
-      workItem.complexity,
-      workItem.filesCount,
-      workItem.commitsCount
-    );
+      ) VALUES (
+        ${workItem.id}, ${workItem.analysisId}, ${workItem.name}, ${workItem.type},
+        ${workItem.description || null}, ${workItem.estimatedHours}, ${workItem.complexity},
+        ${workItem.filesCount}, ${workItem.commitsCount}
+      )
+    `;
   }
 
-  /**
-   * Get work items for an analysis
-   */
-  getWorkItemsByAnalysis(analysisId: string): WorkItemRecord[] {
-    const stmt = this.db.prepare(`
+  async getWorkItemsByAnalysis(analysisId: string): Promise<WorkItemRecord[]> {
+    // estimated_hours is `real`, which postgres.js returns as a number; the
+    // integer counts are cast so a future numeric widening cannot start
+    // returning strings to callers that do arithmetic on them.
+    return (await this.sql`
       SELECT
-        id, analysis_id as analysisId, name, type, description,
-        estimated_hours as estimatedHours, complexity,
-        files_count as filesCount, commits_count as commitsCount, created_at as createdAt
+        id, analysis_id as "analysisId", name, type, description,
+        estimated_hours as "estimatedHours", complexity::int as complexity,
+        files_count::int as "filesCount", commits_count::int as "commitsCount",
+        created_at as "createdAt"
       FROM work_items
-      WHERE analysis_id = ?
+      WHERE analysis_id = ${analysisId}
       ORDER BY created_at DESC
-    `);
-
-    return stmt.all(analysisId) as WorkItemRecord[];
+    `) as unknown as WorkItemRecord[];
   }
 
-  /**
-   * Get complete report (analysis + work items) by ID
-   */
-  getCompleteReport(analysisId: string): { analysis: AnalysisRecord; workItems: WorkItemRecord[] } | null {
-    const analysis = this.getAnalysisById(analysisId);
+  async getCompleteReport(
+    analysisId: string,
+    scope: AnalysisScope
+  ): Promise<{ analysis: AnalysisRecord; workItems: WorkItemRecord[] } | null> {
+    const analysis = await this.getAnalysisById(analysisId, scope);
     if (!analysis) {
       return null;
     }
 
-    const workItems = this.getWorkItemsByAnalysis(analysisId);
+    const workItems = await this.getWorkItemsByAnalysis(analysisId);
 
     return { analysis, workItems };
   }
 
-  /**
-   * Get paginated reports with work items
-   */
-  getPaginatedReports(limit: number = 10, offset: number = 0): Array<{
-    analysis: AnalysisRecord;
-    workItems: WorkItemRecord[];
-  }> {
-    const analyses = this.getAnalysisHistory(limit, offset);
+  async getPaginatedReports(
+    scope: AnalysisScope,
+    limit: number = 10,
+    offset: number = 0
+  ): Promise<Array<{ analysis: AnalysisRecord; workItems: WorkItemRecord[] }>> {
+    // Work items are reached only through an analysis the scope already
+    // admitted, so they need no predicate of their own.
+    const analyses = await this.getAnalysisHistory(scope, limit, offset);
 
-    return analyses.map(analysis => ({
-      analysis,
-      workItems: this.getWorkItemsByAnalysis(analysis.id),
-    }));
+    // Concurrent rather than sequential: this renders a page of ten reports,
+    // and ten serial round trips is a visible delay where one batch is not.
+    return Promise.all(
+      analyses.map(async (analysis) => ({
+        analysis,
+        workItems: await this.getWorkItemsByAnalysis(analysis.id),
+      }))
+    );
   }
 
   // ==================== Processed Commits Methods ====================
 
-  /**
-   * Mark commit as processed
-   */
-  markCommitAsProcessed(commit: ProcessedCommitRecord): void {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO processed_commits (
-        hash, date, author, message, project_path, processed_at, task_id, task_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      commit.hash,
-      commit.date,
-      commit.author,
-      commit.message,
-      commit.projectPath,
-      commit.processedAt,
-      commit.taskId || null,
-      commit.taskName || null
-    );
-  }
-
-  /**
-   * Check if commit is processed
-   */
-  isCommitProcessed(hash: string, projectPath: string): boolean {
-    const stmt = this.db.prepare(`
-      SELECT 1 FROM processed_commits
-      WHERE hash = ? AND project_path = ?
-    `);
-
-    return stmt.get(hash, projectPath) !== undefined;
-  }
-
-  /**
-   * Get processed commits
-   */
-  getProcessedCommits(projectPath?: string, limit: number = 100): ProcessedCommitRecord[] {
-    let query = `
-      SELECT
-        hash, date, author, message, project_path as projectPath,
-        processed_at as processedAt, task_id as taskId, task_name as taskName
-      FROM processed_commits
+  async markCommitAsProcessed(commit: ProcessedCommitRecord): Promise<void> {
+    // SQLite's INSERT OR REPLACE. The Postgres spelling is an explicit upsert,
+    // which is also the more honest one: OR REPLACE deletes and re-inserts,
+    // silently dropping any column the new row does not mention.
+    await this.sql`
+      INSERT INTO processed_commits (
+        hash, user_id, date, author, message, project_path, processed_at, task_id, task_name
+      ) VALUES (
+        ${commit.hash}, ${commit.userId}, ${commit.date}, ${commit.author}, ${commit.message},
+        ${commit.projectPath}, ${commit.processedAt},
+        ${commit.taskId || null}, ${commit.taskName || null}
+      )
+      ON CONFLICT (user_id, hash) DO UPDATE SET
+        date = excluded.date,
+        author = excluded.author,
+        message = excluded.message,
+        project_path = excluded.project_path,
+        processed_at = excluded.processed_at,
+        task_id = excluded.task_id,
+        task_name = excluded.task_name
     `;
+  }
 
-    if (projectPath) {
-      query += ` WHERE project_path = ?`;
-    }
+  /**
+   * Keyed on (user, hash) — never on the path.
+   *
+   * Two clones of one repository must still dedup against each other for the
+   * same user: this predicate once filtered on project_path while writes used
+   * INSERT OR REPLACE, so two clones flip-flopped forever, each run re-creating
+   * the other's commits. `project_path` stays on the row as provenance and is
+   * simply not part of the identity.
+   *
+   * The legacy owner matches everyone. Those rows record only that the commit
+   * was filed at all, before anyone tracked by whom; excluding them would make
+   * the first scan after this change re-file every commit in history.
+   */
+  async isCommitProcessed(hash: string, userId: string): Promise<boolean> {
+    const rows = await this.sql`
+      SELECT 1 FROM processed_commits
+       WHERE hash = ${hash}
+         AND user_id IN (${userId}, ${LEGACY_COMMIT_OWNER})
+    `;
+    return rows.length > 0;
+  }
 
-    query += ` ORDER BY processed_at DESC LIMIT ?`;
+  async getProcessedCommits(
+    userId: string,
+    projectPath?: string,
+    limit: number = 100
+  ): Promise<ProcessedCommitRecord[]> {
+    return (await this.sql`
+      SELECT
+        hash, user_id as "userId", date, author, message,
+        project_path as "projectPath", processed_at as "processedAt",
+        task_id as "taskId", task_name as "taskName"
+      FROM processed_commits
+      WHERE user_id IN (${userId}, ${LEGACY_COMMIT_OWNER})
+      ${projectPath ? this.sql`AND project_path = ${projectPath}` : this.sql``}
+      ORDER BY processed_at DESC
+      LIMIT ${limit}
+    `) as unknown as ProcessedCommitRecord[];
+  }
 
-    const stmt = this.db.prepare(query);
-    const params = projectPath ? [projectPath, limit] : [limit];
-
-    return stmt.all(...params) as ProcessedCommitRecord[];
+  /**
+   * Every user's rows. For the admin JSON export only — the same exemption
+   * `allAnalysesUnscoped` carries, and named the same way so an unscoped read
+   * is never something you reach by accident.
+   */
+  async allProcessedCommitsUnscoped(limit: number = 10000): Promise<ProcessedCommitRecord[]> {
+    return (await this.sql`
+      SELECT
+        hash, user_id as "userId", date, author, message,
+        project_path as "projectPath", processed_at as "processedAt",
+        task_id as "taskId", task_name as "taskName"
+      FROM processed_commits
+      ORDER BY processed_at DESC
+      LIMIT ${limit}
+    `) as unknown as ProcessedCommitRecord[];
   }
 
   // ==================== Utility Methods ====================
 
-  /**
-   * Clear all data (use with caution!)
-   */
-  clearAllData(): void {
-    this.db.exec(`
-      DELETE FROM work_items;
-      DELETE FROM processed_commits;
-      DELETE FROM analysis_history;
-    `);
+  /** Clear all data (use with caution!) */
+  async clearAllData(): Promise<void> {
+    // One statement so the foreign key from work_items is never briefly
+    // violated, and CASCADE because analysis_history is referenced.
+    await this.sql`
+      TRUNCATE work_items, processed_commits, analysis_history CASCADE
+    `;
   }
 
   /**
-   * Close database connection
+   * No-op: the pool is owned by `db/pool.ts` and shared, so a store closing it
+   * would disconnect the rest of the process.
    */
-  close(): void {
-    this.db.close();
-  }
+  close(): void {}
 
-  /**
-   * Get database path
-   */
-  getDatabasePath(): string {
-    return this.dbPath;
-  }
-
-  /**
-   * Export data to JSON (for backup)
-   */
-  exportToJSON(): {
+  async exportToJSON(): Promise<{
     analyses: AnalysisRecord[];
     processedCommits: ProcessedCommitRecord[];
-  } {
-    const analyses = this.getAnalysisHistory(10000); // Get all
-    const processedCommits = this.getProcessedCommits(undefined, 10000); // Get all
+  }> {
+    const [analyses, processedCommits] = await Promise.all([
+      this.allAnalysesUnscoped(10000),
+      this.allProcessedCommitsUnscoped(10000),
+    ]);
 
-    return {
-      analyses,
-      processedCommits,
-    };
+    return { analyses, processedCommits };
   }
 }

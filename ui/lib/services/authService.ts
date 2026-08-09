@@ -1,124 +1,57 @@
 /**
- * Authentication Service
- * Handles all authentication-related API calls
+ * The auth endpoints, as functions.
+ *
+ * Was six methods that each repeated the same eight lines of fetch, headers,
+ * credentials and envelope handling; all of that now lives in `ApiClient`. What
+ * is left is the part that is actually about authentication: which path, which
+ * payload, and — the one thing that is not boilerplate — which calls must go out
+ * WITHOUT a token.
+ *
+ * Login, register and refresh are unauthenticated on purpose. Refresh
+ * especially: it is the endpoint the client calls to recover from a 401, so
+ * letting a 401 from it trigger a refresh would recurse forever.
+ *
+ * These throw `ApiError` rather than returning `{ success: false }`. Callers
+ * were already wrapping every one in try/catch and converting failures to
+ * throws; doing it once here removes the branch that was easy to forget.
  */
 
-import { LoginCredentials, RegisterData, AuthResponse, RefreshResponse, User } from '../types/auth';
+import { api } from '../api';
+import { AuthTokens, LoginCredentials, RegisterData, User } from '../types/auth';
 
-const API_URL = 'http://localhost:3009/api/auth';
-
-export class AuthService {
-  /**
-   * Login user
-   */
-  static async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Include cookies
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Login request failed' }));
-      return { success: false, error: error.error || `HTTP error ${response.status}` };
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Register new user
-   */
-  static async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Registration request failed' }));
-      return { success: false, error: error.error || `HTTP error ${response.status}` };
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Refresh access token
-   */
-  static async refreshToken(): Promise<RefreshResponse> {
-    const response = await fetch(`${API_URL}/refresh`, {
-      method: 'POST',
-      credentials: 'include', // Sends refresh token cookie
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Token refresh failed' }));
-      return { success: false, error: error.error || `HTTP error ${response.status}` };
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Logout user
-   */
-  static async logout(accessToken: string): Promise<void> {
-    await fetch(`${API_URL}/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      credentials: 'include',
-    });
-  }
-
-  /**
-   * Get current user
-   */
-  static async getCurrentUser(accessToken: string): Promise<{ success: boolean; data?: { user: User }; error?: string }> {
-    const response = await fetch(`${API_URL}/me`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to get user' }));
-      return { success: false, error: error.error || `HTTP error ${response.status}` };
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Update password
-   */
-  static async updatePassword(
-    accessToken: string,
-    oldPassword: string,
-    newPassword: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const response = await fetch(`${API_URL}/password`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      credentials: 'include',
-      body: JSON.stringify({ oldPassword, newPassword }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Password update failed' }));
-      return { success: false, error: error.error || `HTTP error ${response.status}` };
-    }
-
-    return response.json();
-  }
+/** What a successful sign-in yields. */
+export interface Session extends AuthTokens {
+  user: User;
 }
+
+export const AuthService = {
+  login(credentials: LoginCredentials): Promise<Session> {
+    return api.post<Session>('/auth/login', credentials, { authenticated: false });
+  },
+
+  register(data: RegisterData): Promise<void> {
+    return api.post<void>('/auth/register', data, { authenticated: false });
+  },
+
+  /**
+   * Exchanges the refresh cookie for a new access token.
+   *
+   * Unauthenticated (the cookie is the credential, and see the header) and
+   * driven by `ApiClient`'s renewal path, which single-flights it.
+   */
+  refresh(): Promise<AuthTokens> {
+    return api.post<AuthTokens>('/auth/refresh', undefined, { authenticated: false });
+  },
+
+  logout(): Promise<void> {
+    return api.post<void>('/auth/logout');
+  },
+
+  currentUser(): Promise<{ user: User }> {
+    return api.get<{ user: User }>('/auth/me');
+  },
+
+  updatePassword(oldPassword: string, newPassword: string): Promise<void> {
+    return api.put<void>('/auth/password', { oldPassword, newPassword });
+  },
+};

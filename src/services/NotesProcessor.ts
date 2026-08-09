@@ -15,25 +15,29 @@ export interface ProcessedNote {
 export interface NoteTask {
   text: string;
   lineNumber: number;
+  status?: string;
+  completedDate?: string;
 }
 
 export interface StructuredTask {
   title: string;
   priority?: 'urgent' | 'high' | 'normal' | 'low';
   estimateHours?: number;
+  status?: string;
+  completedDate?: string;
   description: string;
   lineNumber: number;
 }
 
 export class NotesProcessor {
-  // Patterns to identify tasks in notes
+  // Patterns to identify tasks in notes with optional status markers
   private taskPatterns = [
-    /^[-*•]\s+(.+)$/gm,              // Bullet points
-    /^(\d+)\.\s+(.+)$/gm,            // Numbered lists
-    /^TODO:\s*(.+)$/gim,             // TODO items
-    /^FIXME:\s*(.+)$/gim,            // FIXME items
-    /^\[\s*\]\s*(.+)$/gm,            // Checkbox items [ ]
-    /^(?:need to|should|must|have to)\s+(.+)$/gim, // Action phrases
+    /^[-*•]\s+(?:\[([^\]]+)\]\s*)?(.+)$/gm,              // Bullet points with optional [STATUS]
+    /^(\d+)\.\s+(?:\[([^\]]+)\]\s*)?(.+)$/gm,            // Numbered lists with optional [STATUS]
+    /^TODO:\s*(?:\[([^\]]+)\]\s*)?(.+)$/gim,             // TODO items with optional [STATUS]
+    /^FIXME:\s*(?:\[([^\]]+)\]\s*)?(.+)$/gim,            // FIXME items with optional [STATUS]
+    /^\[([x\s])\]\s*(.+)$/gm,                            // Checkbox items [x] or [ ]
+    /^(?:need to|should|must|have to)\s+(.+)$/gim,       // Action phrases
   ];
 
   // Patterns to identify work types
@@ -81,7 +85,7 @@ export class NotesProcessor {
 
       // Convert each extracted task into a DetectedWork item
       for (const task of extractedTasks) {
-        const detectedWork = this.convertToDetectedWork(task.text);
+        const detectedWork = this.convertToDetectedWork(task.text, task.status, task.completedDate);
         if (detectedWork) {
           tasks.push(detectedWork);
         }
@@ -102,9 +106,11 @@ export class NotesProcessor {
 
   /**
    * Parse structured tasks separated by ---
-   * Format: Task X.X: Title
+   * Format: Task X.X: Title (or ### Task X: Title with markdown headings)
    *         Priority: LEVEL
    *         Estimate: X hours
+   *         Status: STATUS_NAME
+   *         Completed: DATE (or Date: DATE or Completed Date: DATE)
    *         Assignee: Name (ignored)
    *         Description: ...
    */
@@ -118,8 +124,9 @@ export class NotesProcessor {
       const lines = section.split('\n').map(l => l.trim());
       let currentLine = 0;
 
-      // Find task title line (Task X.X: Title)
-      const taskTitleRegex = /^Task\s+\d+(?:\.\d+)?:\s*(.+)$/i;
+      // Find task title line (Task X.X: Title or ### Task X: Title)
+      // Supports markdown headings (e.g., ### Task 1:, ## Task 2:, etc.)
+      const taskTitleRegex = /^#{0,6}\s*Task\s+\d+(?:\.\d+)?:\s*(.+)$/i;
       let taskTitle = '';
       let titleIndex = -1;
 
@@ -139,6 +146,9 @@ export class NotesProcessor {
       // Parse metadata and description
       let priority: 'urgent' | 'high' | 'normal' | 'low' = 'normal';
       let estimateHours = 3; // Default
+      let status: string | undefined = undefined;
+      let completedDate: string | undefined = undefined;
+      const explicitTags: string[] = [];
       const descriptionLines: string[] = [];
       let parsingDescription = false;
 
@@ -211,14 +221,52 @@ export class NotesProcessor {
           continue;
         }
 
+        // Parse status (separate line format)
+        const statusMatch = line.match(/^Status:\s*(.+)$/i);
+        if (statusMatch) {
+          status = statusMatch[1].trim();
+          continue;
+        }
+
+        // Parse completed date (separate line format)
+        // Accepts: "Completed: DATE", "Date: DATE", "Completed Date: DATE"
+        const dateMatch = line.match(/^(?:Completed(?:\s+Date)?|Date):\s*(.+)$/i);
+        if (dateMatch) {
+          completedDate = this.parseDate(dateMatch[1].trim());
+          continue;
+        }
+
+        // Parse an explicit tag list: "Tags: mobile, meditation".
+        // Without this branch the whole line fell through to the description
+        // catch-all below, so every task written in the documented format got a
+        // description literally beginning "Tags: ...", and — because the Tags
+        // line preceded "Description:" — the label was no longer leading, so the
+        // label-stripping downstream could not remove it either.
+        const tagsMatch = line.match(/^Tags:\s*(.+)$/i);
+        if (tagsMatch) {
+          explicitTags.push(
+            ...tagsMatch[1]
+              .split(/[,;]/)
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          );
+          continue;
+        }
+
         // Skip assignee line (we use app default)
         if (line.match(/^Assignee:/i)) {
           continue;
         }
 
-        // Skip "Description:" label
-        if (line.match(/^Description:\s*$/i)) {
+        // Skip "Description:" label, on its own line or introducing text on the
+        // same line. The inline form used to keep its label, which only looked
+        // harmless because a downstream strip removed a *leading* one.
+        const descLabelMatch = line.match(/^Description:\s*(.*)$/i);
+        if (descLabelMatch) {
           parsingDescription = true;
+          if (descLabelMatch[1].trim()) {
+            descriptionLines.push(descLabelMatch[1].trim());
+          }
           continue;
         }
 
@@ -253,8 +301,10 @@ export class NotesProcessor {
                         priority === 'high' ? 'high' :
                         priority === 'low' ? 'low' : 'medium';
 
-      // Generate tags
-      const tags = this.generateTags(taskTitle + ' ' + description);
+      // The author's own tags come first and are never dropped; the keyword
+      // heuristics only add to them. Previously an explicit "Tags:" line was
+      // discarded entirely and replaced by guesses.
+      const tags = [...explicitTags, ...this.generateTags(taskTitle + ' ' + description)];
       tags.push('structured-notes');
 
       // Deduplicate tags
@@ -270,7 +320,9 @@ export class NotesProcessor {
         estimatedHours: estimateHours,
         tags: uniqueTags,
         priority, // Add priority for ClickUp
-      } as any); // Type assertion needed because priority is not in DetectedWork interface
+        status, // Add status for ClickUp
+        completedDate, // Add completion date for ClickUp
+      } as any); // Type assertion needed because priority/status/completedDate are not in DetectedWork interface
     }
 
     return tasks;
@@ -289,19 +341,76 @@ export class NotesProcessor {
       if (!line || line.length < 3) continue;
 
       // Check against all task patterns
-      for (const pattern of this.taskPatterns) {
+      for (let patternIndex = 0; patternIndex < this.taskPatterns.length; patternIndex++) {
+        const pattern = this.taskPatterns[patternIndex];
         pattern.lastIndex = 0; // Reset regex
         const match = pattern.exec(line);
 
         if (match) {
-          const taskText = match[1] || match[2] || match[0];
+          let taskText = '';
+          let status: string | undefined = undefined;
+          let completedDate: string | undefined = undefined;
+
+          // Handle different pattern formats
+          if (patternIndex === 4) {
+            // Checkbox pattern: [x] or [ ]
+            const checkboxStatus = match[1].trim();
+            taskText = match[2];
+            status = checkboxStatus.toLowerCase() === 'x' ? 'complete' : undefined;
+          } else if (patternIndex === 0) {
+            // Bullet pattern with optional status: - [STATUS] text or - text
+            status = match[1] || undefined;
+            taskText = match[2];
+          } else if (patternIndex === 1) {
+            // Numbered list with optional status: 1. [STATUS] text or 1. text
+            status = match[2] || undefined;
+            taskText = match[3] || match[2];
+            // If match[3] doesn't exist, match[2] is the text, not status
+            if (!match[3]) {
+              taskText = match[2];
+              status = undefined;
+            }
+          } else if (patternIndex === 2 || patternIndex === 3) {
+            // TODO/FIXME with optional status: TODO: [STATUS] text or TODO: text
+            status = match[1] || undefined;
+            taskText = match[2] || match[1];
+            // If match[2] doesn't exist, match[1] is the text, not status
+            if (!match[2]) {
+              taskText = match[1];
+              status = undefined;
+            }
+          } else {
+            // Action phrases (no status support)
+            taskText = match[1] || match[0];
+          }
+
           const cleanedTask = this.cleanTaskText(taskText);
+
+          // Extract date from status if present (e.g., "DONE - 2024-12-15" or "x - yesterday")
+          if (status && status.includes('-')) {
+            const parts = status.split('-').map(p => p.trim());
+            if (parts.length === 2) {
+              status = parts[0];
+              completedDate = this.parseDate(parts[1]);
+            } else if (parts.length === 4 || parts.length === 3) {
+              // Might be a date like "2024-12-15" without status
+              completedDate = this.parseDate(status);
+              status = undefined;
+            }
+          }
+
+          // Normalize status
+          if (status) {
+            status = this.normalizeStatus(status);
+          }
 
           // Avoid duplicates
           if (cleanedTask && !seenTasks.has(cleanedTask.toLowerCase())) {
             tasks.push({
               text: cleanedTask,
               lineNumber: i + 1,
+              status,
+              completedDate,
             });
             seenTasks.add(cleanedTask.toLowerCase());
           }
@@ -311,6 +420,110 @@ export class NotesProcessor {
     }
 
     return tasks;
+  }
+
+  /**
+   * Normalize status strings to consistent values
+   */
+  private normalizeStatus(status: string): string {
+    const normalized = status.toLowerCase().trim();
+
+    // Map common status variations to standard names
+    const statusMap: Record<string, string> = {
+      'done': 'complete',
+      'completed': 'complete',
+      'finished': 'complete',
+      'complete': 'complete',
+      'x': 'complete',
+      'in progress': 'in progress',
+      'wip': 'in progress',
+      'working': 'in progress',
+      'doing': 'in progress',
+      'started': 'in progress',
+      'todo': 'to do',
+      'pending': 'to do',
+      'backlog': 'to do',
+      'blocked': 'blocked',
+      'on hold': 'blocked',
+      'paused': 'blocked',
+    };
+
+    return statusMap[normalized] || status;
+  }
+
+  /**
+   * Parse and validate date strings
+   * Accepts formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY, etc.
+   */
+  private parseDate(dateString: string): string | undefined {
+    if (!dateString) return undefined;
+
+    const cleaned = dateString.trim();
+
+    // Try parsing as ISO date (YYYY-MM-DD)
+    const isoMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try parsing as MM/DD/YYYY or M/D/YYYY
+    const usMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usMatch) {
+      const [, month, day, year] = usMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try parsing as DD-MM-YYYY or D-M-YYYY
+    const euMatch = cleaned.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (euMatch) {
+      const [, day, month, year] = euMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try parsing relative dates like "today", "yesterday"
+    const now = new Date();
+    const lowerCleaned = cleaned.toLowerCase();
+
+    if (lowerCleaned === 'today') {
+      return now.toISOString().split('T')[0];
+    }
+
+    if (lowerCleaned === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday.toISOString().split('T')[0];
+    }
+
+    // Try parsing natural language like "2 days ago", "1 week ago"
+    const agoMatch = cleaned.match(/^(\d+)\s+(day|week|month)s?\s+ago$/i);
+    if (agoMatch) {
+      const [, amount, unit] = agoMatch;
+      const date = new Date(now);
+      const num = parseInt(amount);
+
+      if (unit.toLowerCase() === 'day') {
+        date.setDate(date.getDate() - num);
+      } else if (unit.toLowerCase() === 'week') {
+        date.setDate(date.getDate() - (num * 7));
+      } else if (unit.toLowerCase() === 'month') {
+        date.setMonth(date.getMonth() - num);
+      }
+
+      return date.toISOString().split('T')[0];
+    }
+
+    // Try JavaScript Date parsing as fallback
+    try {
+      const parsedDate = new Date(cleaned);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      // Invalid date
+    }
+
+    return undefined; // Could not parse date
   }
 
   /**
@@ -356,7 +569,7 @@ export class NotesProcessor {
   /**
    * Convert extracted task text into DetectedWork object
    */
-  private convertToDetectedWork(taskText: string): DetectedWork | null {
+  private convertToDetectedWork(taskText: string, status?: string, completedDate?: string): DetectedWork | null {
     if (!taskText || taskText.length < 3) return null;
 
     const lowerText = taskText.toLowerCase();
@@ -400,7 +613,9 @@ export class NotesProcessor {
       complexity,
       estimatedHours,
       tags,
-    };
+      status, // Include status
+      completedDate, // Include completion date
+    } as any;
   }
 
   /**

@@ -52,6 +52,24 @@ const navigation = [
     ),
   },
   {
+    name: 'Transcripts',
+    href: '/transcripts',
+    icon: (
+      <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+        <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Search Calls',
+    href: '/transcripts/search',
+    icon: (
+      <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    ),
+  },
+  {
     name: 'History',
     href: '/history',
     icon: (
@@ -62,9 +80,23 @@ const navigation = [
   },
 ];
 
+/**
+ * The nav entry a path belongs to: the longest href that prefixes it.
+ *
+ * A plain `startsWith` per item lights up two entries at once as soon as one
+ * route nests under another — `/transcripts/search` matches both `/transcripts`
+ * and itself — and the user cannot tell which page they are on.
+ */
+function activeHref(pathname: string): string {
+  return navigation
+    .filter((item) => (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)))
+    .reduce((longest, item) => (item.href.length > longest.length ? item.href : longest), '');
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const current = activeHref(pathname);
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-background-secondary">
@@ -76,7 +108,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+          const isActive = item.href === current;
 
           return (
             <Link
@@ -113,7 +145,7 @@ export default function Sidebar() {
               </div>
               <div className="flex items-center gap-1">
                 <span className={cn(
-                  "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                  "inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium",
                   user.role === 'admin' ? 'bg-error/20 text-error' :
                   user.role === 'manager' ? 'bg-primary/20 text-primary' :
                   'bg-foreground/20 text-foreground'

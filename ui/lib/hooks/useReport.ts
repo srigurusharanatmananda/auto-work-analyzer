@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/lib/context/AuthContext';
-
-const BACKEND_URL = 'http://localhost:3009';
+import { api, messageFor } from '@/lib/api';
+import { copyToClipboard } from '@/lib/clipboard';
+import type { EnhancedWorkItem } from '@/types';
 
 export interface WorkItem {
   id: string;
@@ -44,7 +44,6 @@ export interface EditableWorkItem extends WorkItem {
 }
 
 export function useReport(reportId: string) {
-  const { accessToken } = useAuth();
   const [report, setReport] = useState<SavedReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,47 +52,26 @@ export function useReport(reportId: string) {
   const [managerSummary, setManagerSummary] = useState<string>('');
   const [isGeneratingManagerSummary, setIsGeneratingManagerSummary] = useState(false);
 
+  // No token gate: every page using this hook renders under `ProtectedRoute`,
+  // which is the one place that decides whether a session exists.
   useEffect(() => {
-    if (accessToken) {
-      loadReport();
-    }
-  }, [reportId, accessToken]);
+    void loadReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportId]);
 
   const loadReport = async () => {
-    if (!accessToken) {
-      setError('Not authenticated');
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/reports/${reportId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setReport(result.data);
-        const items: EditableWorkItem[] = result.data.workItems.map((item: WorkItem) => ({
-          ...item,
-          selected: true,
-          isEditing: false,
-        }));
-        setEditableWorkItems(items);
-      } else {
-        setError(result.error || 'Failed to load report');
-        toast.error(`Failed to load report: ${result.error}`);
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to connect to backend server';
-      setError(errorMsg);
-      toast.error('Failed to load report - backend server may not be running');
-      console.error(err);
+      const loaded = await api.get<SavedReport>(`/reports/${reportId}`);
+      setReport(loaded);
+      setEditableWorkItems(
+        loaded.workItems.map((item) => ({ ...item, selected: true, isEditing: false }))
+      );
+    } catch (caught) {
+      const message = messageFor(caught, 'Failed to load report');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -119,54 +97,33 @@ export function useReport(reportId: string) {
     const item = editableWorkItems.find(i => i.id === id);
     if (!item) return;
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setEnhancingItems(prev => new Set([...prev, id]));
     const toastId = toast.loading('✨ Enhancing with AI...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItemName: item.name,
-          description: item.description,
-          commits: [],
-          filesChanged: [],
-        }),
+      const enhanced = await api.post<EnhancedWorkItem>('/ai-enhance', {
+        workItemName: item.name,
+        description: item.description,
+        commits: [],
+        filesChanged: [],
       });
 
-      const result = await response.json();
+      setEditableWorkItems(items =>
+        items.map(i =>
+          i.id === id
+            ? {
+                ...i,
+                name: enhanced.improvedTitle || i.name,
+                description: enhanced.description,
+                isEditing: true,
+              }
+            : i
+        )
+      );
 
-      if (result.success) {
-        const enhanced = result.data;
-
-        setEditableWorkItems(items =>
-          items.map(i =>
-            i.id === id
-              ? {
-                  ...i,
-                  name: enhanced.improvedTitle || i.name,
-                  description: enhanced.description,
-                  isEditing: true,
-                }
-              : i
-          )
-        );
-
-        toast.success('✨ Enhanced with AI! (Title and description updated)', { id: toastId, duration: 3000 });
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      toast.error(`❌ ${err instanceof Error ? err.message : 'An error occurred'}`, { id: toastId, duration: 5000 });
+      toast.success('✨ Enhanced with AI! (Title and description updated)', { id: toastId, duration: 3000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to enhance with AI')}`, { id: toastId, duration: 5000 });
     } finally {
       setEnhancingItems(prev => {
         const newSet = new Set(prev);
@@ -200,76 +157,38 @@ export function useReport(reportId: string) {
     return lines.join('\n');
   };
 
-  const handleCopySummary = async () => {
-    const reportText = generateSummaryReport();
-    try {
-      await navigator.clipboard.writeText(reportText);
-      toast.success('📋 Summary copied to clipboard!', { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy summary');
-    }
-  };
+  const handleCopySummary = () => copyToClipboard(generateSummaryReport(), 'Summary');
 
-  const handleCopyDetailed = async () => {
-    const reportText = generateDetailedReport();
-    try {
-      await navigator.clipboard.writeText(reportText);
-      toast.success('📋 Detailed report copied to clipboard!', { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy report');
-    }
-  };
+  const handleCopyDetailed = () => copyToClipboard(generateDetailedReport(), 'Detailed report');
 
   const generateManagerSummary = async () => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setIsGeneratingManagerSummary(true);
     const toastId = toast.loading('🤖 Generating manager-friendly summary...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/manager-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItems: editableWorkItems,
-          reportDate: report?.analysis.date,
-        }),
+      const generated = await api.post<{ summary: string }>('/manager-summary', {
+        workItems: editableWorkItems,
+        reportDate: report?.analysis.date,
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        setManagerSummary(result.data.summary);
-        toast.success('✨ Manager summary generated!', { id: toastId, duration: 3000 });
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to generate manager summary'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      toast.error(`❌ ${err instanceof Error ? err.message : 'An error occurred'}`, { id: toastId, duration: 5000 });
+      setManagerSummary(generated.summary);
+      toast.success('✨ Manager summary generated!', { id: toastId, duration: 3000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to generate manager summary')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setIsGeneratingManagerSummary(false);
     }
   };
 
-  const handleCopyManagerSummary = async () => {
+  const handleCopyManagerSummary = () => {
     if (!managerSummary) {
       toast.error('Please generate the manager summary first');
-      return;
+      return Promise.resolve();
     }
-
-    try {
-      await navigator.clipboard.writeText(managerSummary);
-      toast.success('📋 Manager summary copied to clipboard!', { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy manager summary');
-    }
+    return copyToClipboard(managerSummary, 'Manager summary');
   };
 
   return {

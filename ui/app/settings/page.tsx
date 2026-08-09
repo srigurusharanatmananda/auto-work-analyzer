@@ -1,107 +1,64 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
-import { Card, Button, Input, LoadingSpinner } from '@/lib/components/ui';
+import { api, messageFor, DEFAULT_API_BASE_URL } from '@/lib/api';
+import { Card, Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
-
-const BACKEND_URL = 'http://localhost:3009';
 
 interface UserSettings {
   default_assignee?: string;
   backend_url?: string;
-  clickup_api_key?: string;
   clickup_team_id?: string;
   clickup_list_id?: string;
 }
 
 export default function SettingsPage() {
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assignee, setAssignee] = useState('');
-  const [backendUrl, setBackendUrl] = useState('http://localhost:3009');
-  const [clickupApiKey, setClickupApiKey] = useState('');
+  const [backendUrl, setBackendUrl] = useState(DEFAULT_API_BASE_URL);
   const [clickupTeamId, setClickupTeamId] = useState('');
   const [clickupListId, setClickupListId] = useState('');
-  const [showClickupKey, setShowClickupKey] = useState(false);
 
-  // Load settings from backend
+  // No token gate: `ProtectedRoute` below does not render this page until a
+  // session exists.
   useEffect(() => {
-    if (accessToken) {
-      loadSettings();
-    }
-  }, [accessToken]);
+    void loadSettings();
+  }, []);
 
   const loadSettings = async () => {
-    if (!accessToken) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/settings`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        const settings: UserSettings = result.data;
-        setAssignee(settings.default_assignee || '');
-        setBackendUrl(settings.backend_url || 'http://localhost:3009');
-        setClickupApiKey(settings.clickup_api_key || '');
-        setClickupTeamId(settings.clickup_team_id || '');
-        setClickupListId(settings.clickup_list_id || '');
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-      toast.error('Failed to load settings');
+      const settings = await api.get<UserSettings | null>('/auth/settings');
+      setAssignee(settings?.default_assignee || '');
+      setBackendUrl(settings?.backend_url || DEFAULT_API_BASE_URL);
+      setClickupTeamId(settings?.clickup_team_id || '');
+      setClickupListId(settings?.clickup_list_id || '');
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to load settings'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setSaving(true);
     const toastId = toast.loading('Saving settings...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          default_assignee: assignee,
-          backend_url: backendUrl,
-          clickup_api_key: clickupApiKey,
-          clickup_team_id: clickupTeamId,
-          clickup_list_id: clickupListId,
-        }),
+      await api.put('/auth/settings', {
+        default_assignee: assignee,
+        backend_url: backendUrl,
+        clickup_team_id: clickupTeamId,
+        clickup_list_id: clickupListId,
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success('Settings saved successfully!', { id: toastId });
-      } else {
-        toast.error(`Failed to save settings: ${result.error}`, { id: toastId });
-      }
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      toast.error('Failed to save settings', { id: toastId });
+      toast.success('Settings saved successfully!', { id: toastId });
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to save settings'), { id: toastId });
     } finally {
       setSaving(false);
     }
@@ -197,7 +154,7 @@ export default function SettingsPage() {
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                   placeholder="Enter assignee name (e.g., Sri Gurusharanatmananda)"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   This will be used as the default name for reports and EOD summaries
@@ -214,7 +171,7 @@ export default function SettingsPage() {
                   value={backendUrl}
                   onChange={(e) => setBackendUrl(e.target.value)}
                   placeholder="http://localhost:3009"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   The URL where the backend API server is running
@@ -228,30 +185,21 @@ export default function SettingsPage() {
             <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Integration</h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="clickupApiKey" className="block text-sm font-medium text-foreground mb-2">
-                  API Key
-                </label>
-                <div className="relative">
-                  <input
-                    id="clickupApiKey"
-                    type={showClickupKey ? 'text' : 'password'}
-                    value={clickupApiKey}
-                    onChange={(e) => setClickupApiKey(e.target.value)}
-                    placeholder="Enter your ClickUp API key"
-                    className="w-full px-4 py-3 pr-12 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowClickupKey(!showClickupKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-secondary hover:text-foreground transition-colors"
-                  >
-                    {showClickupKey ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                <p className="text-xs text-foreground-tertiary mt-1">
-                  Your ClickUp personal API token for creating tasks
+              {/*
+                The API-key field is gone: ClickUp credentials are stored
+                encrypted per destination now, and the settings endpoint refuses
+                a plaintext key rather than round-tripping one.
+              */}
+              <div className="rounded-xl border border-border bg-background-tertiary p-4">
+                <p className="text-sm text-foreground">
+                  ClickUp API keys are managed per destination and stored encrypted.
                 </p>
+                <a
+                  href="/settings/destinations"
+                  className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                >
+                  Manage destinations &rarr;
+                </a>
               </div>
 
               <div>
@@ -264,7 +212,7 @@ export default function SettingsPage() {
                   value={clickupTeamId}
                   onChange={(e) => setClickupTeamId(e.target.value)}
                   placeholder="Enter your ClickUp team ID"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
               </div>
 
@@ -278,7 +226,7 @@ export default function SettingsPage() {
                   value={clickupListId}
                   onChange={(e) => setClickupListId(e.target.value)}
                   placeholder="Enter your ClickUp list ID"
-                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+                  className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
                 />
                 <p className="text-xs text-foreground-tertiary mt-1">
                   The default list where tasks will be created
@@ -305,6 +253,58 @@ export default function SettingsPage() {
               )}
             </Button>
           </div>
+
+          {/* Task Templates */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Task Templates</h2>
+            <Link
+              href="/settings/templates"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Manage task templates
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Control how work items are rendered into ClickUp task names and descriptions
+            </p>
+          </Card>
+
+          {/* ClickUp Destinations */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">ClickUp Destinations</h2>
+            <Link
+              href="/settings/destinations"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Manage ClickUp destinations
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Choose which ClickUp account, workspace and list tasks are created into
+            </p>
+          </Card>
+
+          {/* Daily repo scan */}
+          <Card className="p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">Daily Repo Scan</h2>
+            <Link
+              href="/settings/scanning"
+              className="flex items-center gap-3 rounded-md px-3 py-2 -mx-3 text-sm font-medium text-foreground-secondary transition-colors hover:bg-background-tertiary hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Configure the daily repo scan
+            </Link>
+            <p className="text-xs text-foreground-tertiary mt-1">
+              Scan every local clone in your organisation and create the day&apos;s tasks
+            </p>
+          </Card>
 
           {/* API Information */}
           <Card className="p-6">

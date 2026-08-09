@@ -2,11 +2,15 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { AnalysisResponse } from '@/types';
+import { AnalysisResponse, DetectedWork, EnhancedWorkItem, GitInfo } from '@/types';
 import DirectoryBrowser from './DirectoryBrowser';
-import TaskPreviewModal from './TaskPreviewModal';
-import { Button, Card, LoadingSpinner, EmptyState } from '@/lib/components/ui';
-import { useAuth } from '@/lib/context/AuthContext';
+import TaskPreviewModal, {
+  repositoryFromProjectPath,
+  workAnalysisWithEditedItems,
+} from './TaskPreviewModal';
+import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
+import { api, messageFor } from '@/lib/api';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface ReportsTabProps {
   selectedProjectPath: string;
@@ -23,10 +27,7 @@ interface EditableWorkItem {
 }
 
 // Backend API URL (webhook server runs on port 3009)
-const BACKEND_URL = 'http://localhost:3009';
-
 export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath }: ReportsTabProps) {
-  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [summaryReport, setSummaryReport] = useState<string>('');
   const [detailedReport, setDetailedReport] = useState<string>('');
@@ -58,32 +59,15 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setLoadingGitInfo(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/git-info?path=${encodeURIComponent(path)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setBranches(result.data.branches || []);
-        setCurrentBranch(result.data.currentBranch || '');
-        setUserEmail(result.data.userEmail || '');
-      } else {
-        setBranches([]);
-        setCurrentBranch('');
-        setUserEmail('');
-      }
-    } catch (err) {
-      console.error('Failed to fetch git info:', err);
+      const info = await api.get<GitInfo>('/git-info', { query: { path } });
+      setBranches(info.branches ?? []);
+      setCurrentBranch(info.currentBranch ?? '');
+      setUserEmail(info.userEmail ?? '');
+    } catch (caught) {
+      // Expected whenever the directory is not a git repository.
+      console.error('Failed to fetch git info:', caught);
       setBranches([]);
       setCurrentBranch('');
       setUserEmail('');
@@ -104,11 +88,6 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
   const handleGenerateReport = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
 
     setLoading(true);
     setSummaryReport('');
@@ -137,23 +116,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const toastId = toast.loading('📊 Generating report...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setWorkAnalysis(result.data);
+      const analysis = await api.post<AnalysisResponse>('/analyze', data);
+      {
+        setWorkAnalysis(analysis);
 
         // Populate editable work items
-        const workItems: EditableWorkItem[] = result.data.workAnalysis.detectedWork.map((work: any, index: number) => ({
+        const workItems: EditableWorkItem[] = analysis.workAnalysis.detectedWork.map((work: DetectedWork, index: number) => ({
           id: `work-${index}-${Date.now()}`,
           name: work.name,
           type: work.type,
@@ -169,11 +137,11 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         // Generate Detailed Report (with descriptions)
         const detailedLines = ['Sri Gurusharanatmanda EOD:'];
 
-        if (result.data.workAnalysis.detectedWork.length === 0) {
+        if (analysis.workAnalysis.detectedWork.length === 0) {
           summaryLines.push('- No work items detected for the selected period');
           detailedLines.push('- No work items detected for the selected period');
         } else {
-          result.data.workAnalysis.detectedWork.forEach((work: any) => {
+          analysis.workAnalysis.detectedWork.forEach((work: DetectedWork) => {
             const emoji = work.type === 'feature' ? '✨' : work.type === 'bug-fix' ? '🐛' : '🔧';
 
             // Summary: just the main point
@@ -194,23 +162,22 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         setDetailedReport(detailedLines.join('\n'));
 
         toast.success(
-          `✅ Generated report with ${result.data.workAnalysis.detectedWork.length} work items!`,
+          `✅ Generated report with ${analysis.workAnalysis.detectedWork.length} work items!`,
           { id: toastId, duration: 3000 }
         );
 
         // Auto-save if enabled
-        if (autoSave && result.data.workAnalysis.detectedWork.length > 0) {
+        if (autoSave && analysis.workAnalysis.detectedWork.length > 0) {
           setTimeout(() => {
             handleSaveReport();
           }, 500);
         }
-      } else {
-        const errorMessage = result.error || 'Report generation failed';
-        toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Report generation failed')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setLoading(false);
     }
@@ -222,12 +189,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(currentReport);
-      toast.success(`📋 ${viewMode === 'summary' ? 'Summary' : 'Detailed'} report copied to clipboard!`, { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to copy report');
-    }
+    await copyToClipboard(currentReport, viewMode === 'summary' ? 'Summary' : 'Detailed report');
   };
 
   const handleBrowseClick = () => {
@@ -342,11 +304,6 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     const item = editableWorkItems.find(i => i.id === id);
     if (!item) return;
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     // Mark as enhancing
     setEnhancingItems(prev => new Set([...prev, id]));
     const toastId = toast.loading('✨ Enhancing with AI...');
@@ -357,26 +314,14 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         w => w.name === item.name
       );
 
-      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItemName: item.name,
-          description: item.description,
-          commits: originalWork?.commits || [],
-          filesChanged: originalWork?.files || [],
-        }),
+      const enhanced = await api.post<EnhancedWorkItem>('/ai-enhance', {
+        workItemName: item.name,
+        description: item.description,
+        commits: originalWork?.commits || [],
+        filesChanged: originalWork?.files || [],
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        const enhanced = result.data;
-
+      {
         // Update the work item with enhanced data and open edit mode
         setEditableWorkItems(items => {
           const updatedItems = items.map(i =>
@@ -409,12 +354,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             toast.success(`⚠️ Detected priority: ${enhanced.priority}`, { duration: 4000 });
           }, 1000);
         }
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId, duration: 5000 });
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to enhance with AI')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setEnhancingItems(prev => {
         const newSet = new Set(prev);
@@ -424,8 +369,17 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     }
   };
 
-  // Transform editable work items to modal format
-  const getWorkItemsForModal = () => {
+  // Transform editable work items to modal format.
+  //
+  // `type` and `complexity` are narrowed here, at the one boundary where a loose
+  // string enters: `type` comes from a <select> with three fixed values, and
+  // `complexity` is copied off the analysis, which already produces the union.
+  //
+  // There is no filesCount/commitsCount here on purpose. `DetectedWork` has never
+  // carried them — they belong to saved reports — so the old
+  // `originalWork?.filesCount || 0` was reading a field that does not exist and
+  // always displayed 0. The modal derives the counts from the arrays instead.
+  const getWorkItemsForModal = (): DetectedWork[] => {
     const selectedItems = editableWorkItems.filter(item => item.selected);
 
     return selectedItems.map(item => {
@@ -436,14 +390,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
 
       return {
         name: item.name,
-        type: item.type,
+        type: item.type as DetectedWork['type'],
         description: item.description,
         estimatedHours: originalWork?.estimatedHours || 0,
         complexity: originalWork?.complexity || 'medium',
         files: originalWork?.files || [],
         commits: originalWork?.commits || [],
-        filesCount: originalWork?.filesCount || 0,
-        commitsCount: originalWork?.commitsCount || 0,
         tags: originalWork?.tags || [],
       };
     });
@@ -461,56 +413,54 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
     setShowTaskPreview(true);
   };
 
-  const handleCreateTasksFromModal = async (editedWorkItems: any[]) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
+  const handleCreateTasksFromModal = async (
+    editedWorkItems: DetectedWork[],
+    templateId: string,
+    destinationId: string
+  ) => {
     setCreatingTasks(true);
     const toastId = toast.loading(`Creating ${editedWorkItems.length} tasks in ClickUp...`);
 
     try {
-      // Create a modified work analysis with edited items from modal
-      const modifiedWorkAnalysis = {
-        ...workAnalysis!.workAnalysis,
-        detectedWork: editedWorkItems.map(item => ({
-          name: item.name,
-          type: item.type,
-          description: item.description,
-          commits: item.commits || [],
-          tags: item.tags || [],
-          files: item.files || [],
-        })),
-      };
+      // Built by the same function the modal's preview request uses, so the
+      // tasks created here are rendered from byte-identical input.
+      const modifiedWorkAnalysis = workAnalysisWithEditedItems(
+        workAnalysis!.workAnalysis,
+        editedWorkItems
+      );
 
-      const response = await fetch(`${BACKEND_URL}/api/create-tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const created = await api.post<{ tasksCreated: number }>(
+        '/create-tasks',
+        // `templateId` MUST be here, not only on the preview request: this is the
+        // legacy `workAnalysis` branch, and it is what renders the tasks that are
+        // actually created. Omitting it would make the picker restyle the preview
+        // and change nothing in ClickUp.
+        //
+        // Note there is no `workItems` key — sending both shapes is a deliberate
+        // 400, because an ambiguous body could silently skip commit dedup.
+        // `destinationId` MUST be here for the same reason `templateId` is: this
+        // is the branch that creates the tasks, so a destination chosen in the
+        // modal but omitted here would retarget the preview and write to the old
+        // list. Omitted when empty so the backend takes its own fallback.
+        {
           workAnalysis: modifiedWorkAnalysis,
           projectPath: selectedProjectPath,
-        }),
+          repository: repositoryFromProjectPath(selectedProjectPath),
+          templateId,
+          ...(destinationId ? { destinationId } : {}),
+        }
+      );
+
+      toast.success(`✅ Created ${created.tasksCreated} tasks in ClickUp!`, {
+        id: toastId,
+        duration: 4000,
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(
-          `✅ Created ${result.data.tasksCreated} tasks in ClickUp!`,
-          { id: toastId, duration: 4000 }
-        );
-        setShowTaskPreview(false);
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to create tasks'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+      setShowTaskPreview(false);
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to create tasks')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setCreatingTasks(false);
     }
@@ -522,58 +472,41 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
       return;
     }
 
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setSavingReport(true);
     const toastId = toast.loading('💾 Saving report...');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/save-report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+      const saved = await api.post<{ savedWorkItems: number }>('/save-report', {
+        projectPath: selectedProjectPath,
+        date: reportMetadata.date,
+        endDate: reportMetadata.endDate,
+        author: reportMetadata.author,
+        branch: reportMetadata.branch,
+        workItems: editableWorkItems.map(item => ({
+          name: item.name,
+          type: item.type,
+          description: item.description,
+          estimatedHours: 0,
+          complexity: 'medium',
+          filesCount: 0,
+          commitsCount: 0,
+        })),
+        summary: {
+          totalCommits: workAnalysis.summary.totalCommits,
+          summary: `Report for ${reportMetadata.date}`,
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          projectPath: selectedProjectPath,
-          date: reportMetadata.date,
-          endDate: reportMetadata.endDate,
-          author: reportMetadata.author,
-          branch: reportMetadata.branch,
-          workItems: editableWorkItems.map(item => ({
-            name: item.name,
-            type: item.type,
-            description: item.description,
-            estimatedHours: 0,
-            complexity: 'medium',
-            filesCount: 0,
-            commitsCount: 0,
-          })),
-          summary: {
-            totalCommits: workAnalysis.summary.totalCommits,
-            summary: `Report for ${reportMetadata.date}`,
-          },
-        }),
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        setReportSaved(true);
-        toast.success(
-          `✅ Report saved successfully! (${result.data.savedWorkItems} work items)`,
-          { id: toastId, duration: 3000 }
-        );
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to save report'}`, { id: toastId, duration: 5000 });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`❌ ${errorMessage}`, { id: toastId, duration: 5000 });
+      setReportSaved(true);
+      toast.success(`✅ Report saved successfully! (${saved.savedWorkItems} work items)`, {
+        id: toastId,
+        duration: 3000,
+      });
+    } catch (caught) {
+      toast.error(`❌ ${messageFor(caught, 'Failed to save report')}`, {
+        id: toastId,
+        duration: 5000,
+      });
     } finally {
       setSavingReport(false);
     }
@@ -601,7 +534,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               name="startDate"
               required
               defaultValue={today}
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
 
@@ -613,7 +546,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               type="date"
               id="endDate"
               name="endDate"
-              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+              className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
             />
           </div>
         </div>
@@ -631,7 +564,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
               onChange={(e) => setSelectedProjectPath(e.target.value)}
               placeholder="/path/to/your/project"
               required
-              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
+              className="flex-1 px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors font-mono text-sm placeholder:text-foreground-tertiary"
             />
             <Button
               type="button"
@@ -655,7 +588,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             id="branch"
             name="branch"
             defaultValue={currentBranch}
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors"
             disabled={!selectedProjectPath || loadingGitInfo}
           >
             <option value="">All Branches</option>
@@ -666,7 +599,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             ))}
           </select>
           <p className="text-xs text-foreground-tertiary mt-1">
-            💡 Select a specific branch to analyze, or leave as "All Branches" to analyze all commits
+            💡 Select a specific branch to analyze, or leave as &quot;All Branches&quot; to analyze all commits
           </p>
         </div>
 
@@ -681,7 +614,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             value={userEmail}
             onChange={(e) => setUserEmail(e.target.value)}
             placeholder="developer@example.com"
-            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
+            className="w-full px-4 py-3 border border-border bg-background-tertiary text-foreground rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary transition-colors placeholder:text-foreground-tertiary"
           />
           <p className="text-xs text-foreground-tertiary mt-1">
             💡 Leave empty to include commits from all authors
@@ -694,7 +627,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
             id="autoSave"
             checked={autoSave}
             onChange={(e) => setAutoSave(e.target.checked)}
-            className="w-5 h-5 accent-primary rounded"
+            className="w-5 h-5 accent-primary rounded-sm"
           />
           <label htmlFor="autoSave" className="text-sm font-medium text-foreground cursor-pointer flex-1">
             💾 Auto-save report after generation
@@ -843,20 +776,20 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               type="checkbox"
                               checked={item.selected}
                               onChange={() => toggleWorkItemSelection(item.id)}
-                              className="w-5 h-5 accent-primary rounded mt-1 flex-shrink-0"
+                              className="w-5 h-5 accent-primary rounded-sm mt-1 shrink-0"
                             />
                             <div className="flex-1 space-y-2">
                               <input
                                 type="text"
                                 value={item.name}
                                 onChange={(e) => updateWorkItem(item.id, 'name', e.target.value)}
-                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg font-semibold focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                                 placeholder="Task name"
                               />
                               <select
                                 value={item.type}
                                 onChange={(e) => updateWorkItem(item.id, 'type', e.target.value)}
-                                className="px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
                               >
                                 <option value="feature">✨ Feature</option>
                                 <option value="bug-fix">🐛 Bug Fix</option>
@@ -865,12 +798,12 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               <textarea
                                 value={item.description}
                                 onChange={(e) => updateWorkItem(item.id, 'description', e.target.value)}
-                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
+                                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-foreground-tertiary"
                                 placeholder="Description (optional)"
                                 rows={2}
                               />
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
+                            <div className="flex gap-2 shrink-0">
                               <Button
                                 onClick={() => toggleEditMode(item.id)}
                                 variant="primary"
@@ -895,13 +828,13 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                             type="checkbox"
                             checked={item.selected}
                             onChange={() => toggleWorkItemSelection(item.id)}
-                            className="w-5 h-5 accent-primary rounded mt-1 flex-shrink-0"
+                            className="w-5 h-5 accent-primary rounded-sm mt-1 shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-foreground flex items-center gap-2">
                               <span>{emoji}</span>
                               <span>{item.name}</span>
-                              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-sm text-xs">
                                 {item.type}
                               </span>
                             </div>
@@ -909,7 +842,7 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
                               <p className="text-sm text-foreground-secondary mt-1">{item.description}</p>
                             )}
                           </div>
-                          <div className="flex gap-2 flex-shrink-0">
+                          <div className="flex gap-2 shrink-0">
                             <Button
                               onClick={() => handleEnhanceWithAI(item.id)}
                               disabled={enhancingItems.has(item.id)}
@@ -1017,9 +950,10 @@ export default function ReportsTab({ selectedProjectPath, setSelectedProjectPath
         />
       )}
 
-      {showTaskPreview && (
+      {showTaskPreview && workAnalysis && (
         <TaskPreviewModal
           workItems={getWorkItemsForModal()}
+          baseWorkAnalysis={workAnalysis.workAnalysis}
           projectPath={selectedProjectPath}
           date={reportMetadata?.date || today}
           onClose={() => setShowTaskPreview(false)}

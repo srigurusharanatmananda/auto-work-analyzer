@@ -3,7 +3,7 @@
  * Rate limiting, input validation, and security headers
  */
 
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { body, validationResult, ValidationChain } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
 
@@ -38,6 +38,51 @@ export const apiRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for pulling a recording in from a link.
+ *
+ * Much tighter than `apiRateLimiter`, because the cost of a request here is not
+ * the request. The caller sends a URL — a few dozen bytes — and the server
+ * answers by downloading up to 500 MB and then spending Whisper time on it. At
+ * the general limit of 100 per window that is 50 GB of egress and a saturated
+ * transcription queue from one caller, entirely within the rules.
+ *
+ * Keyed on the user, not the IP: this route is behind `authenticate`, so there
+ * is a better identity available than an address that a proxy may be
+ * collapsing across everyone in an office.
+ */
+export const mediaFetchRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    error: 'Too many recordings requested',
+    message:
+      'Fetching a recording from a link is limited to 10 per 15 minutes. Upload the file directly if you need more.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Only successful fetches count. A refused link — wrong scheme, private
+  // address, unsupported format — costs a string comparison, and charging it to
+  // a budget that exists for *bandwidth* means someone working out which link
+  // format is accepted gets locked out after ten typos. Probing is still
+  // bounded, by the general 100-per-window `apiRateLimiter` that covers
+  // everything; this limiter is the narrower one for the expensive case.
+  skipFailedRequests: true,
+  // Falls back to the IP for the unauthenticated case, which should not reach
+  // here at all — but a limiter that silently keys everything to `undefined`
+  // when the assumption breaks is a limiter with one shared bucket.
+  //
+  // The fallback goes through `ipKeyGenerator` rather than using `req.ip`
+  // directly: a raw IPv6 address is a /128 out of a /64 the client can rotate
+  // freely, so keying on it is the same as not keying at all. The helper
+  // normalises to the prefix. express-rate-limit refuses to start without it.
+  keyGenerator: (req: Request): string => {
+    const userId = (req as { user?: { userId?: string } }).user?.userId;
+    return userId ?? `ip:${ipKeyGenerator(req.ip ?? '')}`;
+  },
 });
 
 /**
@@ -85,10 +130,9 @@ export const registerValidation: ValidationChain[] = [
     .matches(/^[a-zA-Z\s'-]+$/)
     .withMessage('Full name can only contain letters, spaces, hyphens, and apostrophes'),
 
-  body('role')
-    .optional()
-    .isIn(['admin', 'manager', 'user'])
-    .withMessage('Role must be admin, manager, or user'),
+  // No `role` rule. Registration does not accept a role at all (see the comment
+  // on POST /api/auth/register), and validating one here would wrongly imply
+  // that supplying it is a supported thing to do.
 ];
 
 /**

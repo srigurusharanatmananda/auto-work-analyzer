@@ -8,7 +8,8 @@ import cookieParser from 'cookie-parser';
 import { AuthService } from '../services/AuthService.js';
 import { JWTService } from '../services/JWTService.js';
 import { PasswordService } from '../services/PasswordService.js';
-import { authenticate, authorize } from '../middleware/auth.middleware.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { anyRole } from '../middleware/policy.js';
 import {
   authRateLimiter,
   validate,
@@ -36,14 +37,19 @@ router.post(
   validate,
   async (req: Request, res: Response) => {
     try {
-      const { email, password, fullName, role } = req.body;
+      // `role` is deliberately NOT read from the body. This endpoint is public
+      // and unauthenticated, so honouring a caller-supplied role would let
+      // anyone who can reach the port mint themselves an admin. A role field in
+      // the request is ignored, not rejected — rejecting it would tell an
+      // attacker the field exists. Roles are assigned by an admin afterwards
+      // (PUT /api/users/:id/role) or by the one-time /setup bootstrap.
+      const { email, password, fullName } = req.body;
 
       const authService = new AuthService();
       const result = await authService.register({
         email,
         password,
         fullName,
-        role,
       });
       authService.close();
 
@@ -198,7 +204,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
  * POST /api/auth/logout
  * Requires authentication
  */
-router.post('/logout', authenticate, async (req: Request, res: Response) => {
+router.post('/logout', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const accessToken = req.headers.authorization?.substring(7); // Remove 'Bearer '
@@ -236,10 +242,12 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
  * POST /api/auth/logout-all
  * Requires authentication
  */
-router.post('/logout-all', authenticate, async (req: Request, res: Response) => {
+router.post('/logout-all', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
-    authService.logoutAll(req.user!.userId);
+    // Awaited: without it the revoke is still in flight when this responds
+    // "all sessions logged out", and a rejection lands outside the try.
+    await authService.logoutAll(req.user!.userId);
     authService.close();
 
     // Clear refresh token cookie
@@ -263,10 +271,10 @@ router.post('/logout-all', authenticate, async (req: Request, res: Response) => 
  * GET /api/auth/me
  * Requires authentication
  */
-router.get('/me', authenticate, async (req: Request, res: Response) => {
+router.get('/me', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const authService = new AuthService();
-    const user = authService.getUserById(req.user!.userId);
+    const user = await authService.getUserById(req.user!.userId);
     authService.close();
 
     if (!user) {
@@ -298,6 +306,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
 router.put(
   '/password',
   authenticate,
+  anyRole,
   passwordUpdateValidation,
   validate,
   async (req: Request, res: Response) => {
@@ -355,7 +364,7 @@ router.post('/setup', async (req: Request, res: Response) => {
     const db = new AuthDatabaseService();
 
     // Check if any user exists by trying to get all users with limit 1
-    const users = db.getAllUsers(1, 0);
+    const users = await db.getAllUsers(1, 0);
 
     if (users.length > 0) {
       db.close();
@@ -410,26 +419,33 @@ router.post('/setup', async (req: Request, res: Response) => {
  * Get user settings
  * GET /api/auth/settings
  */
-router.get('/settings', authenticate, async (req: Request, res: Response) => {
+router.get('/settings', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
 
     const authService = new AuthService();
-    const settings = authService.db.getUserSettings(userId);
+    const settings = await authService.getUserSettings(userId);
     authService.close();
 
     // Return default settings if none exist
     const defaultSettings = {
       default_assignee: '',
       backend_url: 'http://localhost:3009',
-      clickup_api_key: '',
       clickup_team_id: '',
       clickup_list_id: '',
     };
 
+    // `clickup_api_key` is deliberately stripped. ClickUp credentials live in
+    // clickup_destinations, encrypted; this endpoint used to hand the plaintext
+    // column straight back, so PUT-then-GET was a working round trip for an
+    // unencrypted credential — beside a destinations subsystem built on the
+    // premise that a key not present on an object cannot leak through one.
+    // Migration 002 nulls the column; this stops it being read.
+    const { clickup_api_key: _omitted, ...safeSettings } = (settings ?? defaultSettings) as Record<string, unknown>;
+
     res.json({
       success: true,
-      data: settings || defaultSettings,
+      data: safeSettings,
     });
   } catch (error) {
     console.error('Get settings error:', error);
@@ -444,26 +460,39 @@ router.get('/settings', authenticate, async (req: Request, res: Response) => {
  * Update user settings
  * PUT /api/auth/settings
  */
-router.put('/settings', authenticate, async (req: Request, res: Response) => {
+router.put('/settings', authenticate, anyRole, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
     const { default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id } = req.body;
 
+    // Refused rather than ignored: silently dropping it would leave a caller
+    // believing their key was saved. Storing it would reintroduce a plaintext
+    // credential that migration 002 exists to remove.
+    if (clickup_api_key) {
+      res.status(400).json({
+        success: false,
+        error:
+          'ClickUp API keys are no longer stored here. Add a destination at /settings/destinations — keys are encrypted per destination.',
+      });
+      return;
+    }
+
     const authService = new AuthService();
-    authService.db.upsertUserSettings(userId, {
+    await authService.upsertUserSettings(userId, {
       default_assignee,
       backend_url,
-      clickup_api_key,
       clickup_team_id,
       clickup_list_id,
     });
 
-    const updatedSettings = authService.db.getUserSettings(userId);
+    const updatedSettings = await authService.getUserSettings(userId);
     authService.close();
+
+    const { clickup_api_key: _stripped, ...safeUpdated } = (updatedSettings ?? {}) as Record<string, unknown>;
 
     res.json({
       success: true,
-      data: updatedSettings,
+      data: safeUpdated,
       message: 'Settings updated successfully',
     });
   } catch (error) {

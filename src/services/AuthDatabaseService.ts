@@ -1,12 +1,26 @@
 /**
- * Authentication Database Service
- * Extends DatabaseService with user authentication tables
- * Following OWASP 2025 security best practices
+ * Users, refresh tokens, the JTI blacklist, login attempts and user settings.
+ *
+ * Two things this file used to rely on that Postgres spells differently, and
+ * both are security-relevant rather than cosmetic:
+ *
+ *  - **Case-insensitive email.** SQLite had `COLLATE NOCASE` on the column and
+ *    on the lookups. Postgres has a unique index on `lower(email)` (see the
+ *    migration) and every read here lowercases before comparing. If that were
+ *    dropped, `Alice@example.com` and `alice@example.com` would become two
+ *    accounts — a login bypass by registration rather than an inconvenience.
+ *  - **`INSERT OR IGNORE` for the blacklist.** Re-blacklisting an already
+ *    revoked jti must be a no-op, not a primary-key error; a logout that throws
+ *    would leave a token live.
+ *
+ * Booleans are real booleans now: is_active, email_verified, revoked and
+ * success were 0/1 integers, and `Boolean(row.is_active)` on a Postgres boolean
+ * still works, so the mapping is kept but no longer load-bearing.
  */
 
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { randomUUID } from 'crypto';
+import { getPool } from '../db/pool.js';
+import type { PostgresHandle } from '../db/client.js';
 
 export interface UserRecord {
   id: string;
@@ -63,528 +77,340 @@ export interface UserSettingsRecord {
   updated_at: string;
 }
 
+function toUser(row: Record<string, unknown>): UserRecord {
+  return {
+    ...(row as unknown as UserRecord),
+    is_active: Boolean(row.is_active),
+    email_verified: Boolean(row.email_verified),
+  };
+}
+
 export class AuthDatabaseService {
-  private db: Database.Database;
-  private dbPath: string;
+  private readonly injected?: PostgresHandle;
 
-  constructor(dbPath?: string) {
-    // Create .database directory if it doesn't exist
-    const dbDir = path.join(process.cwd(), '.database');
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-    }
-
-    this.dbPath = dbPath || path.join(dbDir, 'auto-work-analyzer.db');
-    this.db = new Database(this.dbPath);
-
-    // Enable foreign keys and WAL mode for better concurrency
-    this.db.pragma('foreign_keys = ON');
-    this.db.pragma('journal_mode = WAL');
-
-    this.initializeAuthTables();
+  constructor(pg?: PostgresHandle) {
+    this.injected = pg;
   }
 
   /**
-   * Initialize authentication tables
+   * Resolved on first query, not in the constructor. See DatabaseService: a
+   * store must be constructible without a reachable database, and a captured
+   * handle would ignore a later `setPool`.
    */
-  private initializeAuthTables(): void {
-    // Users table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL COLLATE NOCASE,
-        password_hash TEXT NOT NULL,
-        full_name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'user')),
-        is_active INTEGER NOT NULL DEFAULT 1,
-        email_verified INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        last_login_at TEXT,
-        failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-        locked_until TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-      CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
-    `);
-
-    // Refresh tokens table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS refresh_tokens (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        token_hash TEXT UNIQUE NOT NULL,
-        expires_at TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        revoked INTEGER NOT NULL DEFAULT 0,
-        revoked_at TEXT,
-        user_agent TEXT,
-        ip_address TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
-      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
-      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
-    `);
-
-    // Token blacklist table (for logout and token revocation)
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS token_blacklist (
-        jti TEXT PRIMARY KEY,
-        token_type TEXT NOT NULL CHECK(token_type IN ('access', 'refresh')),
-        expires_at TEXT NOT NULL,
-        blacklisted_at TEXT NOT NULL,
-        reason TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_blacklist_expires ON token_blacklist(expires_at);
-    `);
-
-    // Login attempts table (for rate limiting and security monitoring)
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS login_attempts (
-        id TEXT PRIMARY KEY,
-        email TEXT NOT NULL,
-        ip_address TEXT NOT NULL,
-        user_agent TEXT,
-        success INTEGER NOT NULL,
-        attempted_at TEXT NOT NULL,
-        failure_reason TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email, attempted_at);
-      CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address, attempted_at);
-    `);
-
-    // User settings table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS user_settings (
-        user_id TEXT PRIMARY KEY,
-        default_assignee TEXT,
-        backend_url TEXT,
-        clickup_api_key TEXT,
-        clickup_team_id TEXT,
-        clickup_list_id TEXT,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
-    `);
-
-    // Create default admin user if no users exist
-    this.createDefaultAdminIfNeeded();
-  }
-
-  /**
-   * Create default admin user if database is empty
-   */
-  private createDefaultAdminIfNeeded(): void {
-    const count = this.db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-
-    if (count.count === 0) {
-      console.log('⚠️  No users found. Default admin user will be created on first server start.');
-      console.log('    You should change the default password immediately after first login!');
-    }
+  private get sql() {
+    return (this.injected ?? getPool()).sql;
   }
 
   // ==================== USER OPERATIONS ====================
 
-  /**
-   * Create a new user
-   */
-  createUser(user: Omit<UserRecord, 'created_at' | 'updated_at' | 'failed_login_attempts'>): void {
-    const stmt = this.db.prepare(`
+  async createUser(
+    user: Omit<UserRecord, 'created_at' | 'updated_at' | 'failed_login_attempts'>
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    await this.sql`
       INSERT INTO users (
         id, email, password_hash, full_name, role, is_active,
         email_verified, created_at, updated_at, failed_login_attempts
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-    `);
-
-    const now = new Date().toISOString();
-    stmt.run(
-      user.id,
-      user.email.toLowerCase(),
-      user.password_hash,
-      user.full_name,
-      user.role,
-      user.is_active ? 1 : 0,
-      user.email_verified ? 1 : 0,
-      now,
-      now
-    );
+      ) VALUES (
+        ${user.id}, ${user.email.toLowerCase()}, ${user.password_hash}, ${user.full_name},
+        ${user.role}, ${user.is_active}, ${user.email_verified}, ${now}, ${now}, 0
+      )
+    `;
   }
 
   /**
-   * Get user by email
+   * Lookup is on `lower(email)` on both sides, matching the unique index. A
+   * plain `email = $1` would miss a row stored with different capitalisation
+   * and report "no such user" for an account that exists.
    */
-  getUserByEmail(email: string): UserRecord | undefined {
-    const stmt = this.db.prepare(`
-      SELECT * FROM users WHERE email = ? COLLATE NOCASE
-    `);
-
-    const row = stmt.get(email.toLowerCase()) as any;
-    if (!row) return undefined;
-
-    return {
-      ...row,
-      is_active: Boolean(row.is_active),
-      email_verified: Boolean(row.email_verified),
-    };
+  async getUserByEmail(email: string): Promise<UserRecord | undefined> {
+    const [row] = await this.sql<Array<Record<string, unknown>>>`
+      SELECT * FROM users WHERE lower(email) = ${email.toLowerCase()}
+    `;
+    return row ? toUser(row) : undefined;
   }
 
-  /**
-   * Get user by ID
-   */
-  getUserById(id: string): UserRecord | undefined {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return undefined;
-
-    return {
-      ...row,
-      is_active: Boolean(row.is_active),
-      email_verified: Boolean(row.email_verified),
-    };
+  async getUserById(id: string): Promise<UserRecord | undefined> {
+    const [row] = await this.sql<Array<Record<string, unknown>>>`
+      SELECT * FROM users WHERE id = ${id}
+    `;
+    return row ? toUser(row) : undefined;
   }
 
-  /**
-   * Get all users (admin only)
-   */
-  getAllUsers(limit: number = 50, offset: number = 0): UserRecord[] {
-    const stmt = this.db.prepare(`
+  /** Every user. Admin-only at the route layer. */
+  async getAllUsers(limit: number = 50, offset: number = 0): Promise<UserRecord[]> {
+    const rows = await this.sql<Array<Record<string, unknown>>>`
       SELECT * FROM users
-      ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
-    `);
-
-    const rows = stmt.all(limit, offset) as any[];
-    return rows.map(row => ({
-      ...row,
-      is_active: Boolean(row.is_active),
-      email_verified: Boolean(row.email_verified),
-    }));
+       ORDER BY created_at DESC
+       LIMIT ${limit} OFFSET ${offset}
+    `;
+    return rows.map(toUser);
   }
 
   /**
-   * Update user login info
+   * How many active admins exist, and whether this user is one of them.
+   *
+   * A query rather than a filter over `getAllUsers`, because the caller is
+   * deciding whether an action would lock everyone out of the installation.
+   * Counting a page answers a different question: past the page size an admin
+   * simply becomes invisible, and the guard fails OPEN — it would let you
+   * delete the last one.
    */
-  updateUserLogin(userId: string, success: boolean): void {
+  async countActiveAdmins(userId: string): Promise<{ total: number; includesUser: boolean }> {
+    const [row] = await this.sql<Array<{ total: string; includes_user: boolean }>>`
+      SELECT COUNT(*)::text AS total,
+             COALESCE(BOOL_OR(id = ${userId}), false) AS includes_user
+        FROM users
+       WHERE role = 'admin' AND is_active = true
+    `;
+    return {
+      total: Number(row?.total ?? 0),
+      includesUser: row?.includes_user === true,
+    };
+  }
+
+  async updateUserLogin(userId: string, success: boolean): Promise<void> {
+    const now = new Date().toISOString();
+
     if (success) {
-      this.db.prepare(`
+      await this.sql`
         UPDATE users
-        SET last_login_at = ?,
-            failed_login_attempts = 0,
-            locked_until = NULL,
-            updated_at = ?
-        WHERE id = ?
-      `).run(new Date().toISOString(), new Date().toISOString(), userId);
-    } else {
-      this.db.prepare(`
-        UPDATE users
-        SET failed_login_attempts = failed_login_attempts + 1,
-            updated_at = ?
-        WHERE id = ?
-      `).run(new Date().toISOString(), userId);
+           SET last_login_at = ${now},
+               failed_login_attempts = 0,
+               locked_until = NULL,
+               updated_at = ${now}
+         WHERE id = ${userId}
+      `;
+      return;
     }
+
+    await this.sql`
+      UPDATE users
+         SET failed_login_attempts = failed_login_attempts + 1,
+             updated_at = ${now}
+       WHERE id = ${userId}
+    `;
   }
 
-  /**
-   * Lock user account
-   */
-  lockUserAccount(userId: string, lockDurationMinutes: number): void {
+  async lockUserAccount(userId: string, lockDurationMinutes: number): Promise<void> {
     const lockUntil = new Date(Date.now() + lockDurationMinutes * 60 * 1000).toISOString();
-    this.db.prepare(`
+    await this.sql`
       UPDATE users
-      SET locked_until = ?,
-          updated_at = ?
-      WHERE id = ?
-    `).run(lockUntil, new Date().toISOString(), userId);
+         SET locked_until = ${lockUntil}, updated_at = ${new Date().toISOString()}
+       WHERE id = ${userId}
+    `;
   }
 
   /**
-   * Update user
+   * A partial update, built from only the fields actually present.
+   *
+   * `undefined` means "leave alone", so the object is assembled first and
+   * handed to postgres.js's helper, which emits `SET col = $n` for exactly the
+   * keys given. The previous version concatenated SQL fragments by hand; this
+   * cannot produce a mismatched fragment/parameter pair.
    */
-  updateUser(userId: string, updates: Partial<Pick<UserRecord, 'full_name' | 'email' | 'role' | 'is_active' | 'email_verified'>>): void {
-    const fields: string[] = [];
-    const values: any[] = [];
+  async updateUser(
+    userId: string,
+    updates: Partial<
+      Pick<UserRecord, 'full_name' | 'email' | 'role' | 'is_active' | 'email_verified'>
+    >
+  ): Promise<void> {
+    const patch: Record<string, unknown> = {};
 
-    if (updates.full_name !== undefined) {
-      fields.push('full_name = ?');
-      values.push(updates.full_name);
-    }
-    if (updates.email !== undefined) {
-      fields.push('email = ?');
-      values.push(updates.email.toLowerCase());
-    }
-    if (updates.role !== undefined) {
-      fields.push('role = ?');
-      values.push(updates.role);
-    }
-    if (updates.is_active !== undefined) {
-      fields.push('is_active = ?');
-      values.push(updates.is_active ? 1 : 0);
-    }
-    if (updates.email_verified !== undefined) {
-      fields.push('email_verified = ?');
-      values.push(updates.email_verified ? 1 : 0);
-    }
+    if (updates.full_name !== undefined) patch.full_name = updates.full_name;
+    if (updates.email !== undefined) patch.email = updates.email.toLowerCase();
+    if (updates.role !== undefined) patch.role = updates.role;
+    if (updates.is_active !== undefined) patch.is_active = updates.is_active;
+    if (updates.email_verified !== undefined) patch.email_verified = updates.email_verified;
 
-    if (fields.length === 0) return;
+    if (Object.keys(patch).length === 0) return;
 
-    fields.push('updated_at = ?');
-    values.push(new Date().toISOString());
-    values.push(userId);
+    patch.updated_at = new Date().toISOString();
 
-    const stmt = this.db.prepare(`
-      UPDATE users SET ${fields.join(', ')} WHERE id = ?
-    `);
-    stmt.run(...values);
+    await this.sql`
+      UPDATE users SET ${this.sql(patch, ...Object.keys(patch))} WHERE id = ${userId}
+    `;
   }
 
-  /**
-   * Update user password
-   */
-  updateUserPassword(userId: string, passwordHash: string): void {
-    this.db.prepare(`
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await this.sql`
       UPDATE users
-      SET password_hash = ?,
-          updated_at = ?
-      WHERE id = ?
-    `).run(passwordHash, new Date().toISOString(), userId);
+         SET password_hash = ${passwordHash}, updated_at = ${new Date().toISOString()}
+       WHERE id = ${userId}
+    `;
   }
 
-  /**
-   * Delete user
-   */
-  deleteUser(userId: string): void {
-    this.db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  async deleteUser(userId: string): Promise<void> {
+    await this.sql`DELETE FROM users WHERE id = ${userId}`;
   }
 
   // ==================== REFRESH TOKEN OPERATIONS ====================
 
-  /**
-   * Store refresh token
-   */
-  storeRefreshToken(token: Omit<RefreshTokenRecord, 'created_at' | 'revoked' | 'revoked_at'>): void {
-    this.db.prepare(`
+  async storeRefreshToken(
+    token: Omit<RefreshTokenRecord, 'created_at' | 'revoked' | 'revoked_at'>
+  ): Promise<void> {
+    await this.sql`
       INSERT INTO refresh_tokens (
         id, user_id, token_hash, expires_at, created_at, revoked, user_agent, ip_address
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
-    `).run(
-      token.id,
-      token.user_id,
-      token.token_hash,
-      token.expires_at,
-      new Date().toISOString(),
-      token.user_agent,
-      token.ip_address
-    );
+      ) VALUES (
+        ${token.id}, ${token.user_id}, ${token.token_hash}, ${token.expires_at},
+        ${new Date().toISOString()}, false,
+        ${token.user_agent ?? null}, ${token.ip_address ?? null}
+      )
+    `;
   }
 
-  /**
-   * Get refresh token by hash
-   */
-  getRefreshToken(tokenHash: string): RefreshTokenRecord | undefined {
-    const row = this.db.prepare(`
-      SELECT * FROM refresh_tokens WHERE token_hash = ?
-    `).get(tokenHash) as any;
-
+  async getRefreshToken(tokenHash: string): Promise<RefreshTokenRecord | undefined> {
+    const [row] = await this.sql<Array<Record<string, unknown>>>`
+      SELECT * FROM refresh_tokens WHERE token_hash = ${tokenHash}
+    `;
     if (!row) return undefined;
 
     return {
-      ...row,
+      ...(row as unknown as RefreshTokenRecord),
       revoked: Boolean(row.revoked),
     };
   }
 
-  /**
-   * Revoke refresh token
-   */
-  revokeRefreshToken(tokenHash: string): void {
-    this.db.prepare(`
+  async revokeRefreshToken(tokenHash: string): Promise<void> {
+    await this.sql`
       UPDATE refresh_tokens
-      SET revoked = 1, revoked_at = ?
-      WHERE token_hash = ?
-    `).run(new Date().toISOString(), tokenHash);
+         SET revoked = true, revoked_at = ${new Date().toISOString()}
+       WHERE token_hash = ${tokenHash}
+    `;
   }
 
-  /**
-   * Revoke all user's refresh tokens
-   */
-  revokeAllUserTokens(userId: string): void {
-    this.db.prepare(`
+  async revokeAllUserTokens(userId: string): Promise<void> {
+    await this.sql`
       UPDATE refresh_tokens
-      SET revoked = 1, revoked_at = ?
-      WHERE user_id = ?
-    `).run(new Date().toISOString(), userId);
+         SET revoked = true, revoked_at = ${new Date().toISOString()}
+       WHERE user_id = ${userId}
+    `;
   }
 
-  /**
-   * Clean up expired refresh tokens
-   */
-  cleanupExpiredTokens(): void {
+  async cleanupExpiredTokens(): Promise<void> {
     const now = new Date().toISOString();
-    this.db.prepare(`
-      DELETE FROM refresh_tokens WHERE expires_at < ?
-    `).run(now);
-
-    this.db.prepare(`
-      DELETE FROM token_blacklist WHERE expires_at < ?
-    `).run(now);
+    await this.sql`DELETE FROM refresh_tokens WHERE expires_at < ${now}`;
+    await this.sql`DELETE FROM token_blacklist WHERE expires_at < ${now}`;
   }
 
   // ==================== TOKEN BLACKLIST OPERATIONS ====================
 
   /**
-   * Add token to blacklist
+   * SQLite's `INSERT OR IGNORE`. Re-blacklisting an already-revoked jti has to
+   * be a no-op: a logout that threw on the second call would leave the token
+   * live and report an error the caller cannot act on.
    */
-  blacklistToken(jti: string, tokenType: 'access' | 'refresh', expiresAt: string, reason?: string): void {
-    this.db.prepare(`
-      INSERT OR IGNORE INTO token_blacklist (jti, token_type, expires_at, blacklisted_at, reason)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(jti, tokenType, expiresAt, new Date().toISOString(), reason);
+  async blacklistToken(
+    jti: string,
+    tokenType: 'access' | 'refresh',
+    expiresAt: string,
+    reason?: string
+  ): Promise<void> {
+    await this.sql`
+      INSERT INTO token_blacklist (jti, token_type, expires_at, blacklisted_at, reason)
+      VALUES (${jti}, ${tokenType}, ${expiresAt}, ${new Date().toISOString()}, ${reason ?? null})
+      ON CONFLICT (jti) DO NOTHING
+    `;
   }
 
-  /**
-   * Check if token is blacklisted
-   */
-  isTokenBlacklisted(jti: string): boolean {
-    const row = this.db.prepare(`
-      SELECT 1 FROM token_blacklist WHERE jti = ?
-    `).get(jti);
-    return row !== undefined;
+  async isTokenBlacklisted(jti: string): Promise<boolean> {
+    const rows = await this.sql`SELECT 1 FROM token_blacklist WHERE jti = ${jti}`;
+    return rows.length > 0;
   }
 
   // ==================== LOGIN ATTEMPTS OPERATIONS ====================
 
-  /**
-   * Log login attempt
-   */
-  logLoginAttempt(attempt: Omit<LoginAttemptRecord, 'id' | 'attempted_at'>): void {
-    this.db.prepare(`
-      INSERT INTO login_attempts (id, email, ip_address, user_agent, success, attempted_at, failure_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      `attempt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      attempt.email.toLowerCase(),
-      attempt.ip_address,
-      attempt.user_agent,
-      attempt.success ? 1 : 0,
-      new Date().toISOString(),
-      attempt.failure_reason
-    );
+  async logLoginAttempt(attempt: Omit<LoginAttemptRecord, 'id' | 'attempted_at'>): Promise<void> {
+    await this.sql`
+      INSERT INTO login_attempts (
+        id, email, ip_address, user_agent, success, attempted_at, failure_reason
+      ) VALUES (
+        ${randomUUID()}, ${attempt.email.toLowerCase()}, ${attempt.ip_address},
+        ${attempt.user_agent ?? null}, ${attempt.success}, ${new Date().toISOString()},
+        ${attempt.failure_reason ?? null}
+      )
+    `;
   }
 
-  /**
-   * Get recent failed login attempts
-   */
-  getRecentFailedAttempts(email: string, minutesAgo: number): number {
+  async getRecentFailedAttempts(email: string, minutesAgo: number): Promise<number> {
     const since = new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
-    const row = this.db.prepare(`
-      SELECT COUNT(*) as count
-      FROM login_attempts
-      WHERE email = ? COLLATE NOCASE
-        AND success = 0
-        AND attempted_at > ?
-    `).get(email.toLowerCase(), since) as { count: number };
-
-    return row.count;
+    const [row] = await this.sql<Array<{ count: number }>>`
+      SELECT COUNT(*)::int AS count
+        FROM login_attempts
+       WHERE lower(email) = ${email.toLowerCase()}
+         AND success = false
+         AND attempted_at > ${since}
+    `;
+    return row!.count;
   }
 
-  /**
-   * Get recent failed attempts by IP
-   */
-  getRecentFailedAttemptsByIP(ipAddress: string, minutesAgo: number): number {
+  async getRecentFailedAttemptsByIP(ipAddress: string, minutesAgo: number): Promise<number> {
     const since = new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
-    const row = this.db.prepare(`
-      SELECT COUNT(*) as count
-      FROM login_attempts
-      WHERE ip_address = ?
-        AND success = 0
-        AND attempted_at > ?
-    `).get(ipAddress, since) as { count: number };
+    const [row] = await this.sql<Array<{ count: number }>>`
+      SELECT COUNT(*)::int AS count
+        FROM login_attempts
+       WHERE ip_address = ${ipAddress}
+         AND success = false
+         AND attempted_at > ${since}
+    `;
+    return row!.count;
+  }
 
-    return row.count;
+  // ==================== USER SETTINGS ====================
+
+  async getUserSettings(userId: string): Promise<UserSettingsRecord | null> {
+    const [row] = await this.sql<UserSettingsRecord[]>`
+      SELECT * FROM user_settings WHERE user_id = ${userId}
+    `;
+    return row ?? null;
   }
 
   /**
-   * Get user settings
+   * One upsert instead of a read followed by a branch.
+   *
+   * The read-then-insert-or-update version had a race: two concurrent saves for
+   * a new user both saw "no row" and both inserted, and the second failed on
+   * the primary key.
+   *
+   * Only the keys actually supplied are written, on both legs. That preserves
+   * the previous semantics exactly, including the part that is easy to lose: a
+   * caller passing `null` for a field is *clearing* it, and a caller omitting
+   * the field entirely is leaving it alone. Writing this as
+   * `COALESCE(new, existing)` would collapse those two into one and make
+   * clearing a setting silently do nothing.
    */
-  getUserSettings(userId: string): UserSettingsRecord | null {
-    const settings = this.db.prepare(`
-      SELECT * FROM user_settings WHERE user_id = ?
-    `).get(userId) as UserSettingsRecord | undefined;
+  async upsertUserSettings(
+    userId: string,
+    settings: Partial<Omit<UserSettingsRecord, 'user_id' | 'updated_at'>>
+  ): Promise<void> {
+    const COLUMNS = [
+      'default_assignee',
+      'backend_url',
+      'clickup_api_key',
+      'clickup_team_id',
+      'clickup_list_id',
+    ] as const;
 
-    return settings || null;
+    const now = new Date().toISOString();
+    const supplied = COLUMNS.filter((column) => settings[column] !== undefined);
+
+    const row: Record<string, unknown> = { user_id: userId, updated_at: now };
+    for (const column of supplied) row[column] = settings[column] ?? null;
+
+    // Nothing to change but the timestamp: still an upsert, so a first save
+    // with no fields creates the row rather than doing nothing.
+    const updateColumns = [...supplied, 'updated_at'];
+
+    await this.sql`
+      INSERT INTO user_settings ${this.sql(row, 'user_id', ...supplied, 'updated_at')}
+      ON CONFLICT (user_id) DO UPDATE SET ${this.sql(row, ...updateColumns)}
+    `;
   }
 
   /**
-   * Update or create user settings
+   * No-op: the pool is owned by `db/pool.ts` and shared, so a store closing it
+   * would disconnect the rest of the process.
    */
-  upsertUserSettings(userId: string, settings: Partial<Omit<UserSettingsRecord, 'user_id' | 'updated_at'>>): void {
-    const existing = this.getUserSettings(userId);
-
-    if (existing) {
-      // Update existing settings
-      const updates: string[] = [];
-      const values: any[] = [];
-
-      if (settings.default_assignee !== undefined) {
-        updates.push('default_assignee = ?');
-        values.push(settings.default_assignee);
-      }
-      if (settings.backend_url !== undefined) {
-        updates.push('backend_url = ?');
-        values.push(settings.backend_url);
-      }
-      if (settings.clickup_api_key !== undefined) {
-        updates.push('clickup_api_key = ?');
-        values.push(settings.clickup_api_key);
-      }
-      if (settings.clickup_team_id !== undefined) {
-        updates.push('clickup_team_id = ?');
-        values.push(settings.clickup_team_id);
-      }
-      if (settings.clickup_list_id !== undefined) {
-        updates.push('clickup_list_id = ?');
-        values.push(settings.clickup_list_id);
-      }
-
-      updates.push('updated_at = ?');
-      values.push(new Date().toISOString());
-      values.push(userId);
-
-      this.db.prepare(`
-        UPDATE user_settings
-        SET ${updates.join(', ')}
-        WHERE user_id = ?
-      `).run(...values);
-    } else {
-      // Create new settings
-      this.db.prepare(`
-        INSERT INTO user_settings (
-          user_id, default_assignee, backend_url, clickup_api_key, clickup_team_id, clickup_list_id, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        userId,
-        settings.default_assignee || null,
-        settings.backend_url || null,
-        settings.clickup_api_key || null,
-        settings.clickup_team_id || null,
-        settings.clickup_list_id || null,
-        new Date().toISOString()
-      );
-    }
-  }
-
-  /**
-   * Close database connection
-   */
-  close(): void {
-    this.db.close();
-  }
+  close(): void {}
 }

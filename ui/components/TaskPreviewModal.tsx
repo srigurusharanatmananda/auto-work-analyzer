@@ -1,45 +1,230 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
+/**
+ * Review-before-create, with a template picker.
+ *
+ * Two shapes meet here and it matters which one wins (see task-9 A2).
+ *
+ * The modal edits DETECTED WORK — `workAnalysis.detectedWork`, the legacy shape
+ * — because that is what it is handed (ReportsTab reads it straight off
+ * /api/analyze) and what it must hand back (/api/create-tasks' legacy branch is
+ * the only path that writes history and marks commits processed, and it takes
+ * `workAnalysis`). It deliberately does NOT adopt `src/domain/WorkItem`'s field
+ * names: there would be nothing to gain but a rename and an un-rename, and
+ * sending `workItems` alongside `workAnalysis` is a 400 by design (A5).
+ *
+ * The canonical conversion therefore happens SERVER-side. Both requests below
+ * send `workAnalysis`, so `/api/preview-tasks` derives its items through
+ * `workItemsFromAnalysis` — the very same adapter the create path uses. The
+ * preview cannot disagree with what gets created, because neither side maps
+ * anything itself.
+ */
+
+import { useEffect, useState } from 'react';
+import { api, ApiError, messageFor } from '@/lib/api';
 import { Button, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
+import {
+  Destination,
+  DetectedWork,
+  EnhancedWorkItem,
+  GroupingInfo,
+  RenderedTaskPreview,
+  StatusMapping,
+  Template,
+  WorkAnalysisResult,
+} from '@/types';
 
-const BACKEND_URL = 'http://localhost:3009';
+/** Used until the user picks otherwise — matches the backend's own default. */
+const DEFAULT_TEMPLATE_ID = 'builtin-standard';
 
-interface WorkItem {
-  name: string;
-  type: string;
-  description: string;
-  estimatedHours: number;
-  complexity: string;
-  files: string[];
-  commits: any[];
-  filesCount: number;
-  commitsCount: number;
-  tags: string[];
+/** Debounce on re-rendering the preview after an edit. */
+const PREVIEW_DEBOUNCE_MS = 400;
+
+/**
+ * The single definition of the body both `/api/preview-tasks` and
+ * `/api/create-tasks` are sent. Exported and used by ReportsTab for the create
+ * request too — if the two ever built their `detectedWork` separately, the
+ * preview would drift from what is created, which is the exact failure the
+ * canonical pipeline exists to remove.
+ *
+ * `estimatedHours` and `complexity` are carried through deliberately (A3): the
+ * mapping used to drop them, so a user's edits were discarded and the renderer
+ * fell back to a default estimate and the lowest priority.
+ */
+export function workAnalysisWithEditedItems(
+  base: WorkAnalysisResult,
+  items: DetectedWork[]
+): WorkAnalysisResult {
+  return {
+    ...base,
+    detectedWork: items.map((item) => ({
+      name: item.name,
+      type: item.type,
+      description: item.description,
+      commits: item.commits || [],
+      tags: item.tags || [],
+      files: item.files || [],
+      estimatedHours: item.estimatedHours,
+      complexity: item.complexity,
+    })),
+  };
+}
+
+/**
+ * Derives the `{{repository}}` placeholder value from the analysed project path.
+ * Sent on BOTH requests or neither (A6) — a repository name present in the
+ * preview but absent from the create call would render two different tasks.
+ */
+export function repositoryFromProjectPath(projectPath: string): string | undefined {
+  const name = projectPath.replace(/\/+$/, '').split('/').pop();
+  return name && name.length > 0 ? name : undefined;
+}
+
+/** What `POST /api/preview-tasks` returns. */
+interface PreviewPayload {
+  items: RenderedTaskPreview[];
+  warnings?: string[];
+  statusMapping?: StatusMapping[];
+  grouping?: GroupingInfo | null;
+  destination?: { id: string; name: string; listName?: string; teamName?: string } | null;
 }
 
 interface TaskPreviewModalProps {
-  workItems: WorkItem[];
+  workItems: DetectedWork[];
+  /** The analysis the items came from; re-sent with the user's edits applied. */
+  baseWorkAnalysis: WorkAnalysisResult;
   projectPath: string;
   date: string;
   onClose: () => void;
-  onCreateTasks: (editedWorkItems: WorkItem[]) => void;
+  /**
+   * `destinationId` is empty when the user has no saved destinations — the
+   * backend then falls back to its .env configuration, which is what every run
+   * did before destinations existed.
+   */
+  onCreateTasks: (
+    editedWorkItems: DetectedWork[],
+    templateId: string,
+    destinationId: string
+  ) => void;
 }
 
 export default function TaskPreviewModal({
   workItems: initialWorkItems,
+  baseWorkAnalysis,
   projectPath,
   date,
   onClose,
   onCreateTasks,
 }: TaskPreviewModalProps) {
-  const { accessToken } = useAuth();
-  const [workItems, setWorkItems] = useState<WorkItem[]>(initialWorkItems);
+  const [workItems, setWorkItems] = useState<DetectedWork[]>(initialWorkItems);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
   const [creatingTasks, setCreatingTasks] = useState(false);
+
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE_ID);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinationId, setDestinationId] = useState('');
+  const [rendered, setRendered] = useState<RenderedTaskPreview[]>([]);
+  const [target, setTarget] = useState<{
+    name: string;
+    listName?: string;
+    teamName?: string;
+  } | null>(null);
+  const [statusMapping, setStatusMapping] = useState<StatusMapping[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [grouping, setGrouping] = useState<GroupingInfo | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await api.get<Template[]>('/templates');
+        if (!cancelled) setTemplates(loaded);
+      } catch (error) {
+        // Non-fatal: the picker falls back to the built-in default, which is
+        // what the backend would have used anyway.
+        console.error('Failed to load templates:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Destinations, defaulting to whichever one is marked default — the same one
+  // the backend would pick for a request that names none, so the picker opens
+  // showing what would happen anyway.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await api.get<Destination[]>('/destinations');
+        if (cancelled) return;
+        setDestinations(loaded);
+        const preferred = loaded.find((entry) => entry.isDefault) ?? loaded[0];
+        if (preferred) setDestinationId(preferred.id);
+      } catch (error) {
+        // Non-fatal: with no destination chosen the backend falls back to its
+        // .env configuration, which is the pre-destinations behaviour.
+        console.error('Failed to load destinations:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Re-renders the preview whenever the template, the destination OR the items
+  // change, so the pane always shows the output of the template that will
+  // actually be used, against the list it will actually be written to.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setRendering(true);
+      try {
+        const preview = await api.post<PreviewPayload>('/preview-tasks', {
+          workAnalysis: workAnalysisWithEditedItems(baseWorkAnalysis, workItems),
+          repository: repositoryFromProjectPath(projectPath),
+          templateId,
+          // Omitted rather than sent empty, so the backend takes its own
+          // default-then-.env fallback instead of being handed "".
+          ...(destinationId ? { destinationId } : {}),
+        });
+
+        setRendered(preview.items);
+        setWarnings(preview.warnings ?? []);
+        setStatusMapping(preview.statusMapping ?? []);
+        // Absent unless the request supplied raw commits, which is the only
+        // shape that needed grouping. This modal posts a workAnalysis, so it is
+        // normally null — the badge appears only when the server actually
+        // grouped something.
+        setGrouping(preview.grouping ?? null);
+        setTarget(preview.destination ?? null);
+        setRenderError(null);
+      } catch (error) {
+        setRendered([]);
+        setWarnings([]);
+        setStatusMapping([]);
+        setTarget(null);
+        // A validation failure names the offending field in `details`, which is
+        // far more useful than the generic message that accompanies it.
+        setRenderError(
+          error instanceof ApiError && typeof error.details === 'string'
+            ? error.details
+            : messageFor(error, 'Failed to render preview')
+        );
+      } finally {
+        setRendering(false);
+      }
+    }, PREVIEW_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [templateId, destinationId, workItems, baseWorkAnalysis, projectPath]);
 
   const handleEdit = (index: number, field: 'name' | 'description', value: string) => {
     const updated = [...workItems];
@@ -48,49 +233,28 @@ export default function TaskPreviewModal({
   };
 
   const handleEnhanceWithAI = async (index: number) => {
-    if (!accessToken) {
-      toast.error('Not authenticated');
-      return;
-    }
-
     setEnhancingIndex(index);
     const toastId = toast.loading('✨ Enhancing with AI...');
     const item = workItems[index];
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ai-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          workItemName: item.name,
-          description: item.description,
-          commits: item.commits || [],
-          filesChanged: item.files || [],
-        }),
+      const enhanced = await api.post<EnhancedWorkItem>('/ai-enhance', {
+        workItemName: item.name,
+        description: item.description,
+        commits: item.commits || [],
+        filesChanged: item.files || [],
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        const enhanced = result.data;
-        const updated = [...workItems];
-        updated[index] = {
-          ...updated[index],
-          name: enhanced.improvedTitle || item.name,
-          description: enhanced.description,
-        };
-        setWorkItems(updated);
-        toast.success('✨ Enhanced with AI!', { id: toastId });
-      } else {
-        toast.error(`❌ ${result.error || 'Failed to enhance with AI'}`, { id: toastId });
-      }
+      const updated = [...workItems];
+      updated[index] = {
+        ...updated[index],
+        name: enhanced.improvedTitle || item.name,
+        description: enhanced.description,
+      };
+      setWorkItems(updated);
+      toast.success('✨ Enhanced with AI!', { id: toastId });
     } catch (error) {
-      console.error('Failed to enhance with AI:', error);
-      toast.error('❌ Failed to enhance with AI', { id: toastId });
+      toast.error(`❌ ${messageFor(error, 'Failed to enhance with AI')}`, { id: toastId });
     } finally {
       setEnhancingIndex(null);
     }
@@ -99,7 +263,10 @@ export default function TaskPreviewModal({
   const handleCreateTasks = async () => {
     setCreatingTasks(true);
     try {
-      onCreateTasks(workItems);
+      // The chosen template AND destination go out with the items — without
+      // either, the pickers would restyle/retarget the preview and leave the
+      // created tasks unchanged.
+      onCreateTasks(workItems, templateId, destinationId);
     } catch (error) {
       console.error('Failed to create tasks:', error);
     } finally {
@@ -107,8 +274,11 @@ export default function TaskPreviewModal({
     }
   };
 
+  const selectedTemplateName =
+    templates.find((template) => template.id === templateId)?.name ?? templateId;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-background-secondary rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-border">
@@ -121,6 +291,134 @@ export default function TaskPreviewModal({
           <div className="mt-3 text-xs text-foreground-tertiary">
             <span className="font-semibold">Project:</span> {projectPath} • <span className="font-semibold">Date:</span> {date}
           </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1">
+              <label
+                htmlFor="templateId"
+                className="block text-xs font-semibold text-foreground-secondary mb-1"
+              >
+                Task template
+              </label>
+              <select
+                id="templateId"
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary"
+              >
+                {templates.length === 0 && (
+                  <option value={DEFAULT_TEMPLATE_ID}>Standard (default)</option>
+                )}
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                    {template.isBuiltin ? ' (built-in)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label
+                htmlFor="destinationId"
+                className="block text-xs font-semibold text-foreground-secondary mb-1"
+              >
+                Destination
+              </label>
+              <select
+                id="destinationId"
+                value={destinationId}
+                onChange={(e) => setDestinationId(e.target.value)}
+                className="w-full px-3 py-2 border border-border bg-background-tertiary text-foreground rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Server default (from configuration)</option>
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id}>
+                    {destination.name}
+                    {destination.isDefault ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {rendering && (
+              <div className="flex items-center gap-2 text-xs text-foreground-tertiary pb-2">
+                <LoadingSpinner size="sm" />
+                <span>Rendering...</span>
+              </div>
+            )}
+          </div>
+
+          {/* Where these tasks are about to land. Unmissable on purpose: the
+              whole risk of multiple destinations is creating in the wrong one. */}
+          <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm text-foreground">
+            <span className="font-semibold">Creating in:</span>{' '}
+            {target
+              ? [target.teamName, target.listName].filter(Boolean).join(' → ') || target.name
+              : 'the list configured on the server'}
+          </div>
+
+          {statusMapping.length > 0 && (
+            <div className="mt-3 rounded-lg border border-border bg-background-tertiary p-3">
+              <p className="mb-2 text-xs font-semibold text-foreground-secondary">
+                Status mapping for this list
+              </p>
+              <table className="w-full text-xs">
+                <tbody>
+                  {statusMapping.map((mapping) => (
+                    <tr key={mapping.from}>
+                      <td className="py-0.5 pr-3 text-foreground-secondary">{mapping.from}</td>
+                      <td className="py-0.5 pr-3 text-foreground-tertiary">→</td>
+                      <td className="py-0.5 text-foreground">
+                        {mapping.to ?? (
+                          <span className="text-warning">
+                            not in this list — will use the list default
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-0.5 pl-3 text-right text-foreground-tertiary">
+                        {mapping.method}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {grouping && (
+            <div className="mt-3 rounded-lg border border-border bg-background-tertiary p-3">
+              <p className="text-xs font-semibold text-foreground-secondary">
+                {grouping.mode === 'ai'
+                  ? '🤖 Commits grouped by AI'
+                  : '🔤 Commits grouped by keyword rules'}
+              </p>
+              {grouping.fallbackReason && (
+                <p className="mt-1 whitespace-pre-wrap wrap-break-word text-xs text-warning">
+                  {/* Raw provider/validator text: rendered as escaped content, and
+                      truncated because an all-providers-failed reason lists four. */}
+                  AI grouping was unavailable, so keyword rules were used:{' '}
+                  {grouping.fallbackReason.length > 300
+                    ? `${grouping.fallbackReason.slice(0, 300)}…`
+                    : grouping.fallbackReason}
+                </p>
+              )}
+            </div>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
+              <ul className="list-disc list-inside space-y-1 text-sm text-warning">
+                {warnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {renderError && (
+            <div className="mt-3 rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">
+              {renderError}
+            </div>
+          )}
         </div>
 
         {/* Work Items List */}
@@ -172,12 +470,36 @@ export default function TaskPreviewModal({
                     )}
                   </div>
 
+                  {/* Rendered output — what the chosen template actually produces */}
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground-secondary mb-1">
+                      Rendered by &quot;{selectedTemplateName}&quot;
+                    </label>
+                    {rendered[index] ? (
+                      <div className="border border-primary/40 rounded-lg bg-background-secondary p-3 space-y-2">
+                        <div
+                          className="text-sm font-semibold text-foreground wrap-break-word"
+                          data-testid={`rendered-name-${index}`}
+                        >
+                          {rendered[index].task.name}
+                        </div>
+                        <pre className="text-xs text-foreground-secondary whitespace-pre-wrap font-mono max-h-40 overflow-y-auto">
+{rendered[index].task.description}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-foreground-tertiary">
+                        {rendering ? 'Rendering...' : 'No rendered output.'}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Metadata */}
                   <div className="flex gap-4 text-xs text-foreground-tertiary">
-                    <span>📁 {item.filesCount} files</span>
-                    <span>💾 {item.commitsCount} commits</span>
+                    <span>📁 {(item.files || []).length} files</span>
+                    <span>💾 {(item.commits || []).length} commits</span>
                     <span>⏱️ {item.estimatedHours}h</span>
-                    <span className={`px-2 py-0.5 rounded ${
+                    <span className={`px-2 py-0.5 rounded-sm ${
                       item.complexity === 'high' ? 'bg-red-500/10 text-red-500' :
                       item.complexity === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
                       'bg-green-500/10 text-green-500'

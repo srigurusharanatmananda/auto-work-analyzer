@@ -1,16 +1,41 @@
 node_modules
 ui/node_modules
 .env
+# Next.js reads these in the ui/ package; `.env` alone does not match them, so
+# without these a developer's local config would be committed.
+.env.local
+.env.*.local
 .DS_Store
 dist
 ui/dist
 ui/.next
+# Generated, and not stably: Next 16 rewrites it to reference `.next/types`
+# after `next build` but `.next/dev/types` after `next dev`, so it flips on
+# every dev session and dirties the tree. Tracking it bought nothing — the
+# paths it points at live under the ignored `.next/`, so they do not exist in
+# a fresh clone either way, and `ui/tsconfig.json` already includes both.
+ui/next-env.d.ts
+# tsc --noEmit incremental cache
+*.tsbuildinfo
+
+# Uploaded audio and its transcripts' source files. Recordings are large and
+# often confidential; nothing here belongs in git. The directory itself is
+# created on demand by the upload route.
+storage/
 
 # History data
 .history/
 
 # Database
 .database/
+# Any hand-made DB backup: these carry password hashes and refresh tokens,
+# and the bare `.database/` pattern did not match a sibling backup directory.
+.database.backup*/
+.database.aside/
+
+
+# Generated at runtime by the webhook server
+reports/
 
 # Test files
 test-*.ts

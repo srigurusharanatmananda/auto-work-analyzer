@@ -71,7 +71,7 @@ export default function ReportSummaryPage() {
       <div className="bg-background-secondary rounded-lg border border-border p-6">
         <h4 className="text-sm font-semibold text-foreground mb-3">How to use</h4>
         <ul className="text-sm text-foreground-secondary space-y-2">
-          <li>• Click "Copy Summary" to copy the summary to your clipboard</li>
+          <li>• Click &quot;Copy Summary&quot; to copy the summary to your clipboard</li>
           <li>• Use this format for quick status updates and EOD reports</li>
           <li>• Perfect for team standups or brief progress summaries</li>
         </ul>
