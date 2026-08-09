@@ -110,10 +110,18 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
   }
-}
 
-@utility text-balance {
-  text-wrap: balance;
+  /*
+    v3's preflight set `cursor: pointer` on buttons; v4's does not, and nothing
+    in the app sets it per-button. Without this every <button> — the shared
+    Button, modal close controls, transcript segment rows — hovers with the
+    default arrow. Excluding :disabled keeps `disabled:cursor-not-allowed` and
+    the disabled default working.
+  */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer base {

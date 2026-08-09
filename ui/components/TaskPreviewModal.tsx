@@ -499,7 +499,7 @@ export default function TaskPreviewModal({
                     <span>📁 {(item.files || []).length} files</span>
                     <span>💾 {(item.commits || []).length} commits</span>
                     <span>⏱️ {item.estimatedHours}h</span>
-                    <span className={`px-2 py-0.5 rounded ${
+                    <span className={`px-2 py-0.5 rounded-sm ${
                       item.complexity === 'high' ? 'bg-red-500/10 text-red-500' :
                       item.complexity === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
                       'bg-green-500/10 text-green-500'

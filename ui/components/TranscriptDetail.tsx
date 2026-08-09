@@ -177,7 +177,7 @@ export default function TranscriptDetail({ jobId }: { jobId: string }) {
               </p>
             ) : (
               audioUrl && (
-                // eslint-disable-next-line jsx-a11y/media-has-caption -- the transcript below IS the caption
+                // No <track>: the transcript rendered below IS the caption.
                 <audio
                   ref={audioRef}
                   src={audioUrl}
@@ -219,7 +219,7 @@ export default function TranscriptDetail({ jobId }: { jobId: string }) {
                       <button
                         type="button"
                         onClick={() => seekTo(segment.start)}
-                        className={`flex w-full gap-3 rounded px-2 py-1.5 text-left transition-colors ${
+                        className={`flex w-full gap-3 rounded-sm px-2 py-1.5 text-left transition-colors ${
                           active
                             ? 'bg-primary/15 text-foreground'
                             : 'text-foreground-secondary hover:bg-background-tertiary'
