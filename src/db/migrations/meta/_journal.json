@@ -36,6 +36,13 @@
       "when": 1786124194740,
       "tag": "0004_curious_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786281124431,
+      "tag": "0005_opposite_cloak",
+      "breakpoints": true
     }
   ]
 }
