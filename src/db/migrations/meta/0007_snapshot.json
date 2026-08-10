@@ -1,5 +1,5 @@
 {
-  "id": "0f6b5f7f-1c94-4f92-b162-d45132d2ed5b",
+  "id": "e6844014-342b-4ee6-8d0c-ff1b19b079c7",
   "prevId": "e24fba47-402e-4309-bb87-5fdc55e07da9",
   "version": "7",
   "dialect": "postgresql",
@@ -462,6 +462,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "seq": {
+          "name": "seq",
+          "type": "bigserial",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -691,52 +697,6 @@
           "columns": [
             "user_id",
             "hash"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.rate_limit_hits": {
-      "name": "rate_limit_hits",
-      "schema": "",
-      "columns": {
-        "limiter": {
-          "name": "limiter",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_key": {
-          "name": "client_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hits": {
-          "name": "hits",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "reset_at": {
-          "name": "reset_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "rate_limit_hits_limiter_client_key_pk": {
-          "name": "rate_limit_hits_limiter_client_key_pk",
-          "columns": [
-            "limiter",
-            "client_key"
           ]
         }
       },

@@ -16,6 +16,8 @@ export interface ResourceNote {
   note: string;
   createdAt: string;
   updatedAt: string;
+  /** Insertion-order tiebreaker — see `schema.ts`'s comment on why this exists at all. */
+  seq: number;
 }
 
 interface Row {
@@ -24,6 +26,7 @@ interface Row {
   note: string;
   created_at: string;
   updated_at: string;
+  seq: number;
 }
 
 function toNote(row: Row): ResourceNote {
@@ -33,6 +36,7 @@ function toNote(row: Row): ResourceNote {
     note: row.note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    seq: row.seq,
   };
 }
 
@@ -59,20 +63,22 @@ export class ResourceNotesStore {
   /**
    * Every note this user left on `resourceId`, newest first.
    *
-   * `id DESC` is a secondary sort, not a claim that a higher uuid is
-   * actually newer — `id` is random (`randomUUID()`), so it carries no
-   * chronological meaning. What it buys is determinism: two notes created
-   * within the same millisecond tie on `created_at`, and Postgres does not
-   * guarantee any particular order for tied rows across repeated queries
-   * without a full tiebreaker. Without this, "newest first" could show a
-   * different order on every page load for the same two notes.
+   * `seq DESC` is the secondary sort, not `id DESC` — `id` is a random uuid
+   * with no relationship to insertion order, which would make ties
+   * deterministic but not actually correct: it would resolve the same way
+   * on every query, but that one way could just as easily put the OLDER of
+   * two same-millisecond notes on top, permanently. `seq` is a Postgres
+   * `bigserial`, assigned at insert time, so it is the one column here
+   * guaranteed to reflect real insertion order regardless of how close
+   * together two creates land — see `schema.ts`'s comment on `seq` for why
+   * this needed a real column rather than a formula over existing ones.
    */
   async list(userId: string, resourceId: string): Promise<ResourceNote[]> {
     const rows = await this.sql<Row[]>`
-      SELECT id, resource_id, note, created_at, updated_at
+      SELECT id, resource_id, note, created_at, updated_at, seq
         FROM learn_resource_notes
        WHERE user_id = ${userId} AND resource_id = ${resourceId}
-       ORDER BY created_at DESC, id DESC
+       ORDER BY created_at DESC, seq DESC
     `;
     return rows.map(toNote);
   }
@@ -84,7 +90,7 @@ export class ResourceNotesStore {
     const [row] = await this.sql<Row[]>`
       INSERT INTO learn_resource_notes (id, user_id, resource_id, note, created_at, updated_at)
       VALUES (${id}, ${userId}, ${resourceId}, ${note}, ${now}, ${now})
-      RETURNING id, resource_id, note, created_at, updated_at
+      RETURNING id, resource_id, note, created_at, updated_at, seq
     `;
     return toNote(row!);
   }

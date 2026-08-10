@@ -52,6 +52,7 @@
  *    that yields the same result for `true` as it did for `1`.
  */
 import {
+  bigserial,
   boolean,
   check,
   index,
@@ -583,6 +584,19 @@ export const learnAudioCache = pgTable('learn_audio_cache', {
  *
  * `resourceId` is a plain string, not a foreign key: resources live in code
  * (`resources.ts`), not in a table this schema could reference.
+ *
+ * `seq` is the one column in this schema that IS a database-native
+ * auto-increment, unlike `id` above or any other table's identity column —
+ * deliberately, because it answers a different question than identity does.
+ * `created_at` is a JS-written millisecond-resolution string, so two notes
+ * created close enough together can tie on it, and `ORDER BY created_at
+ * DESC` alone is then free to return either order on any given query
+ * (Postgres does not guarantee stability for ties with no full tiebreaker).
+ * `seq` exists purely to break that tie, and only a value Postgres itself
+ * assigns at insert time is guaranteed to reflect true insertion order
+ * regardless of how close together two inserts land — `id` (a random uuid)
+ * could not do this even as a secondary sort key, since it carries no
+ * relationship to when a row was actually written.
  */
 export const learnResourceNotes = pgTable(
   'learn_resource_notes',
@@ -593,6 +607,7 @@ export const learnResourceNotes = pgTable(
     note: text('note').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
   },
   (table) => [
     // "Every note this user left on this resource" (newest first) is the one

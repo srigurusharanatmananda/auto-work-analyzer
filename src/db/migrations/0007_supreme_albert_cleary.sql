@@ -1,0 +1,1 @@
+ALTER TABLE "learn_resource_notes" ADD COLUMN "seq" bigserial NOT NULL;

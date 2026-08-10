@@ -70,12 +70,7 @@ describe('create / list', () => {
     assert.equal(aliceNotes[0]!.note, "Alice's note.");
   });
 
-  test('newest note comes first', async () => {
-    // Distinct injected timestamps, not two real-clock calls a millisecond
-    // apart: real creates can (and did, in CI) land in the same millisecond,
-    // at which point "newest first" depended on an unordered Postgres tie —
-    // see list()'s own comment. Injecting `now` removes the race instead of
-    // asserting a guarantee the system doesn't actually make.
+  test('newest note comes first, with distinct timestamps', async () => {
     const early = new ResourceNotesStore(db, () => 1_000);
     const late = new ResourceNotesStore(db, () => 2_000);
 
@@ -84,6 +79,26 @@ describe('create / list', () => {
 
     const rows = await notes.list(ALICE, 'skt-primer-perry');
     assert.equal(rows[0]!.id, second.id);
+    assert.equal(rows[1]!.id, first.id);
+  });
+
+  test('newest note comes first EVEN when two notes tie on the same millisecond', async () => {
+    // The actual race this store exists to survive: an earlier version of
+    // this test used two timestamps a full second apart, which never
+    // exercised a tie at all — `id DESC` (a random uuid, no chronological
+    // meaning) could have been silently backwards half the time and this
+    // suite would still have been green. `seq` (a real Postgres bigserial,
+    // assigned at insert time) is what actually makes insertion order
+    // recoverable when `created_at` itself cannot distinguish the two rows.
+    const sameInstant = new ResourceNotesStore(db, () => 5_000);
+
+    const first = await sameInstant.create(ALICE, 'skt-primer-perry', 'First.');
+    const second = await sameInstant.create(ALICE, 'skt-primer-perry', 'Second.');
+    assert.equal(first.createdAt, second.createdAt, 'the test setup itself must tie on created_at, or this proves nothing');
+    assert.ok(second.seq > first.seq, 'seq must still reflect real insertion order even when created_at cannot');
+
+    const rows = await notes.list(ALICE, 'skt-primer-perry');
+    assert.equal(rows[0]!.id, second.id, 'the later insert (higher seq) must sort first despite the created_at tie');
     assert.equal(rows[1]!.id, first.id);
   });
 });
