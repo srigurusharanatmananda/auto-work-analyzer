@@ -72,13 +72,52 @@ export class AiClient {
 }
 
 /**
+ * Every provider body below hangs the *entire* fallback chain if it never
+ * settles: AiClient.complete()'s fallthrough only helps once a provider's
+ * promise actually rejects, and none of `fetch`/the Gemini SDK reject on
+ * their own just because the other end never answers. Same convention as
+ * `TTS_TIMEOUT_MS` / `WHISPER_TIMEOUT_MS` elsewhere in this repo (see
+ * SpeechClient.ts / WhisperClient.ts): a sane default, overridable via env
+ * for a slower provider or network. Override with AI_PROVIDER_TIMEOUT_MS.
+ */
+const DEFAULT_PROVIDER_TIMEOUT_MS = 30_000;
+
+function getProviderTimeoutMs(): number {
+  return Number(process.env.AI_PROVIDER_TIMEOUT_MS) || DEFAULT_PROVIDER_TIMEOUT_MS;
+}
+
+/**
+ * True for the error `fetch` rejects with when the `AbortSignal.timeout()`
+ * passed as its own `signal` fires. Node/undici names that error
+ * "TimeoutError" (verified against the runtime, not assumed) — distinct
+ * from "AbortError", which is what a manually-aborted AbortController
+ * produces. Both names are accepted defensively since the exact spelling is
+ * runtime-dependent; anything else (ECONNREFUSED, a real 5xx after
+ * `response.text()`, etc.) is a genuine failure and must pass through
+ * unchanged so the caller sees the real cause.
+ */
+function isProviderTimeoutError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+}
+
+export interface CreateAiClientOptions {
+  /**
+   * Injectable so tests can intercept the real provider HTTP calls without
+   * hitting real APIs — mirrors the `fetchImpl?: typeof fetch` + `??`
+   * pattern already used by SpeechClient.ts / GeminiSpeechClient.ts.
+   */
+  fetchImpl?: typeof fetch;
+}
+
+/**
  * Builds the chain from environment variables.
  *
  * Each block is gated on its own key, exactly as ManagerSummaryAIService gated
  * it, so an install with only GROQ_API_KEY gets the same single-provider chain
  * it got before.
  */
-export function createAiClientFromEnv(): AiClient {
+export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiClient {
+  const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
   const providers: AiProvider[] = [];
 
   // Provider 1: Google Gemini (multiple models)
@@ -86,11 +125,36 @@ export function createAiClientFromEnv(): AiClient {
     const gemini = (label: string, model: string): AiProvider => ({
       name: label,
       generate: async (prompt: string) => {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const { GoogleGenerativeAI, GoogleGenerativeAIAbortError } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
         const generativeModel = genAI.getGenerativeModel({ model });
-        const result = await generativeModel.generateContent(prompt);
-        return result.response.text();
+        const timeoutMs = getProviderTimeoutMs();
+
+        // Unlike the three fetch()-based providers below, this genuinely
+        // does support cancellation: `generateContent`'s second argument is
+        // typed as `SingleRequestOptions` (checked against
+        // node_modules/@google/generative-ai's own .d.ts, not assumed),
+        // which accepts both `timeout` and `signal`. The SDK's own docs
+        // note the caveat that aborting is "client-only" — Google may keep
+        // processing the request server-side — but that's exactly what we
+        // need here: the *promise this function returns* settles, which is
+        // all AiClient.complete()'s fallthrough cares about. On timeout the
+        // SDK rejects with its own `GoogleGenerativeAIAbortError`; that's
+        // converted below into a plain Error with a message that says
+        // "timed out" so it reads the same as the other providers' timeout
+        // errors instead of a Gemini-specific class name.
+        try {
+          const result = await generativeModel.generateContent(prompt, {
+            timeout: timeoutMs,
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+          return result.response.text();
+        } catch (error) {
+          if (error instanceof GoogleGenerativeAIAbortError) {
+            throw new Error(`${label} request timed out after ${timeoutMs}ms`);
+          }
+          throw error;
+        }
       },
     });
 
@@ -114,19 +178,29 @@ export function createAiClientFromEnv(): AiClient {
     providers.push({
       name: "Groq Llama 3.3 70B",
       generate: async (prompt: string) => {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: 1024,
-          }),
-        });
+        const timeoutMs = getProviderTimeoutMs();
+        let response: Response;
+        try {
+          response = await fetchImpl("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "llama-3.3-70b-versatile",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.7,
+              max_tokens: 1024,
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+        } catch (error) {
+          if (isProviderTimeoutError(error)) {
+            throw new Error(`Groq request timed out after ${timeoutMs}ms`);
+          }
+          throw error;
+        }
 
         if (!response.ok) {
           const error = await response.text();
@@ -134,7 +208,16 @@ export function createAiClientFromEnv(): AiClient {
         }
 
         const data = await response.json();
-        return data.choices[0].message.content;
+        // The retired-Gemini-model incident (see the comment above) is the
+        // same failure mode a response-shape change would cause here: a
+        // silent 404/shape drift would otherwise surface as an opaque
+        // "Cannot read properties of undefined" instead of a message that
+        // names the provider and shows the actual payload.
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string") {
+          throw new Error(`Groq API returned an unexpected response shape: ${JSON.stringify(data)}`);
+        }
+        return content;
       },
     });
   }
@@ -144,24 +227,34 @@ export function createAiClientFromEnv(): AiClient {
     providers.push({
       name: "Hugging Face Qwen 2.5 72B",
       generate: async (prompt: string) => {
-        const response = await fetch(
-          "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              inputs: prompt,
-              parameters: {
-                max_new_tokens: 1024,
-                temperature: 0.7,
-                return_full_text: false,
+        const timeoutMs = getProviderTimeoutMs();
+        let response: Response;
+        try {
+          response = await fetchImpl(
+            "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+                "Content-Type": "application/json",
               },
-            }),
+              body: JSON.stringify({
+                inputs: prompt,
+                parameters: {
+                  max_new_tokens: 1024,
+                  temperature: 0.7,
+                  return_full_text: false,
+                },
+              }),
+              signal: AbortSignal.timeout(timeoutMs),
+            }
+          );
+        } catch (error) {
+          if (isProviderTimeoutError(error)) {
+            throw new Error(`Hugging Face request timed out after ${timeoutMs}ms`);
           }
-        );
+          throw error;
+        }
 
         if (!response.ok) {
           const error = await response.text();
@@ -169,7 +262,13 @@ export function createAiClientFromEnv(): AiClient {
         }
 
         const data = await response.json();
-        return data[0].generated_text;
+        const generatedText = Array.isArray(data) ? data[0]?.generated_text : undefined;
+        if (typeof generatedText !== "string") {
+          throw new Error(
+            `Hugging Face API returned an unexpected response shape: ${JSON.stringify(data)}`
+          );
+        }
+        return generatedText;
       },
     });
   }
@@ -179,20 +278,30 @@ export function createAiClientFromEnv(): AiClient {
     providers.push({
       name: "OpenRouter (Free Models)",
       generate: async (prompt: string) => {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/auto-work-analyzer",
-          },
-          body: JSON.stringify({
-            model: "meta-llama/llama-3.3-70b-instruct:free",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: 1024,
-          }),
-        });
+        const timeoutMs = getProviderTimeoutMs();
+        let response: Response;
+        try {
+          response = await fetchImpl("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://github.com/auto-work-analyzer",
+            },
+            body: JSON.stringify({
+              model: "meta-llama/llama-3.3-70b-instruct:free",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.7,
+              max_tokens: 1024,
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+        } catch (error) {
+          if (isProviderTimeoutError(error)) {
+            throw new Error(`OpenRouter request timed out after ${timeoutMs}ms`);
+          }
+          throw error;
+        }
 
         if (!response.ok) {
           const error = await response.text();
@@ -200,7 +309,11 @@ export function createAiClientFromEnv(): AiClient {
         }
 
         const data = await response.json();
-        return data.choices[0].message.content;
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string") {
+          throw new Error(`OpenRouter API returned an unexpected response shape: ${JSON.stringify(data)}`);
+        }
+        return content;
       },
     });
   }
