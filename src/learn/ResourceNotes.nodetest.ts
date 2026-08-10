@@ -71,8 +71,16 @@ describe('create / list', () => {
   });
 
   test('newest note comes first', async () => {
-    const first = await notes.create(ALICE, 'skt-primer-perry', 'First.');
-    const second = await notes.create(ALICE, 'skt-primer-perry', 'Second.');
+    // Distinct injected timestamps, not two real-clock calls a millisecond
+    // apart: real creates can (and did, in CI) land in the same millisecond,
+    // at which point "newest first" depended on an unordered Postgres tie —
+    // see list()'s own comment. Injecting `now` removes the race instead of
+    // asserting a guarantee the system doesn't actually make.
+    const early = new ResourceNotesStore(db, () => 1_000);
+    const late = new ResourceNotesStore(db, () => 2_000);
+
+    const first = await early.create(ALICE, 'skt-primer-perry', 'First.');
+    const second = await late.create(ALICE, 'skt-primer-perry', 'Second.');
 
     const rows = await notes.list(ALICE, 'skt-primer-perry');
     assert.equal(rows[0]!.id, second.id);

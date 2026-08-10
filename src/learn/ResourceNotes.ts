@@ -38,9 +38,17 @@ function toNote(row: Row): ResourceNote {
 
 export class ResourceNotesStore {
   private readonly injected?: PostgresHandle;
+  private readonly nowFn: () => number;
 
-  constructor(pg?: PostgresHandle) {
+  constructor(pg?: PostgresHandle, now?: () => number) {
     this.injected = pg;
+    // Injectable so a test can create two notes with distinct timestamps
+    // without depending on real-clock luck — see the `ORDER BY` comment on
+    // `list()` for why two notes created in the same millisecond used to be
+    // an unreliable, order-flipping test (caught 2026-08-10 by an unrelated
+    // branch's independent test run, not something the original PR's own
+    // test run happened to hit).
+    this.nowFn = now ?? Date.now;
   }
 
   /** Resolved on first query, not in the constructor. See Progress.ts's sql getter for why. */
@@ -48,20 +56,30 @@ export class ResourceNotesStore {
     return (this.injected ?? getPool()).sql;
   }
 
-  /** Every note this user left on `resourceId`, newest first. */
+  /**
+   * Every note this user left on `resourceId`, newest first.
+   *
+   * `id DESC` is a secondary sort, not a claim that a higher uuid is
+   * actually newer — `id` is random (`randomUUID()`), so it carries no
+   * chronological meaning. What it buys is determinism: two notes created
+   * within the same millisecond tie on `created_at`, and Postgres does not
+   * guarantee any particular order for tied rows across repeated queries
+   * without a full tiebreaker. Without this, "newest first" could show a
+   * different order on every page load for the same two notes.
+   */
   async list(userId: string, resourceId: string): Promise<ResourceNote[]> {
     const rows = await this.sql<Row[]>`
       SELECT id, resource_id, note, created_at, updated_at
         FROM learn_resource_notes
        WHERE user_id = ${userId} AND resource_id = ${resourceId}
-       ORDER BY created_at DESC
+       ORDER BY created_at DESC, id DESC
     `;
     return rows.map(toNote);
   }
 
   async create(userId: string, resourceId: string, note: string): Promise<ResourceNote> {
     const id = randomUUID();
-    const now = new Date().toISOString();
+    const now = new Date(this.nowFn()).toISOString();
 
     const [row] = await this.sql<Row[]>`
       INSERT INTO learn_resource_notes (id, user_id, resource_id, note, created_at, updated_at)
