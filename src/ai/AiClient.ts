@@ -100,6 +100,32 @@ function isProviderTimeoutError(error: unknown): boolean {
   return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
 }
 
+/**
+ * `fetchImpl` with `AbortSignal.timeout()` wired in, and a timeout converted
+ * to a plain `Error` naming the provider — the exact three-step shape
+ * (attach the signal, catch, rethrow-or-relabel) that Groq/Hugging
+ * Face/OpenRouter each need identically. Pulled out once three near-verbatim
+ * copies existed, so a future fix to timeout detection (another accepted
+ * error name, say) cannot be applied to one provider and forgotten in the
+ * other two.
+ */
+async function fetchWithTimeout(
+  fetchImpl: typeof fetch,
+  url: string,
+  init: RequestInit,
+  providerLabel: string,
+  timeoutMs: number
+): Promise<Response> {
+  try {
+    return await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    if (isProviderTimeoutError(error)) {
+      throw new Error(`${providerLabel} request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
 export interface CreateAiClientOptions {
   /**
    * Injectable so tests can intercept the real provider HTTP calls without
@@ -134,18 +160,21 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
         // does support cancellation: `generateContent`'s second argument is
         // typed as `SingleRequestOptions` (checked against
         // node_modules/@google/generative-ai's own .d.ts, not assumed),
-        // which accepts both `timeout` and `signal`. The SDK's own docs
-        // note the caveat that aborting is "client-only" — Google may keep
-        // processing the request server-side — but that's exactly what we
-        // need here: the *promise this function returns* settles, which is
-        // all AiClient.complete()'s fallthrough cares about. On timeout the
-        // SDK rejects with its own `GoogleGenerativeAIAbortError`; that's
+        // which accepts a `signal` (an equivalent `timeout` field also
+        // exists but only wires up a second, redundant internal abort for
+        // the identical deadline — `signal` alone is the same mechanism the
+        // fetch-based providers already use, so this stays one timer, not
+        // two). The SDK's own docs note the caveat that aborting is
+        // "client-only" — Google may keep processing the request
+        // server-side — but that's exactly what we need here: the *promise
+        // this function returns* settles, which is all
+        // AiClient.complete()'s fallthrough cares about. On timeout the SDK
+        // rejects with its own `GoogleGenerativeAIAbortError`; that's
         // converted below into a plain Error with a message that says
         // "timed out" so it reads the same as the other providers' timeout
         // errors instead of a Gemini-specific class name.
         try {
           const result = await generativeModel.generateContent(prompt, {
-            timeout: timeoutMs,
             signal: AbortSignal.timeout(timeoutMs),
           });
           return result.response.text();
@@ -178,10 +207,10 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
     providers.push({
       name: "Groq Llama 3.3 70B",
       generate: async (prompt: string) => {
-        const timeoutMs = getProviderTimeoutMs();
-        let response: Response;
-        try {
-          response = await fetchImpl("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetchWithTimeout(
+          fetchImpl,
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
             method: "POST",
             headers: {
               Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
@@ -193,14 +222,10 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
               temperature: 0.7,
               max_tokens: 1024,
             }),
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-        } catch (error) {
-          if (isProviderTimeoutError(error)) {
-            throw new Error(`Groq request timed out after ${timeoutMs}ms`);
-          }
-          throw error;
-        }
+          },
+          "Groq",
+          getProviderTimeoutMs()
+        );
 
         if (!response.ok) {
           const error = await response.text();
@@ -227,34 +252,27 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
     providers.push({
       name: "Hugging Face Qwen 2.5 72B",
       generate: async (prompt: string) => {
-        const timeoutMs = getProviderTimeoutMs();
-        let response: Response;
-        try {
-          response = await fetchImpl(
-            "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-                "Content-Type": "application/json",
+        const response = await fetchWithTimeout(
+          fetchImpl,
+          "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              inputs: prompt,
+              parameters: {
+                max_new_tokens: 1024,
+                temperature: 0.7,
+                return_full_text: false,
               },
-              body: JSON.stringify({
-                inputs: prompt,
-                parameters: {
-                  max_new_tokens: 1024,
-                  temperature: 0.7,
-                  return_full_text: false,
-                },
-              }),
-              signal: AbortSignal.timeout(timeoutMs),
-            }
-          );
-        } catch (error) {
-          if (isProviderTimeoutError(error)) {
-            throw new Error(`Hugging Face request timed out after ${timeoutMs}ms`);
-          }
-          throw error;
-        }
+            }),
+          },
+          "Hugging Face",
+          getProviderTimeoutMs()
+        );
 
         if (!response.ok) {
           const error = await response.text();
@@ -278,10 +296,10 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
     providers.push({
       name: "OpenRouter (Free Models)",
       generate: async (prompt: string) => {
-        const timeoutMs = getProviderTimeoutMs();
-        let response: Response;
-        try {
-          response = await fetchImpl("https://openrouter.ai/api/v1/chat/completions", {
+        const response = await fetchWithTimeout(
+          fetchImpl,
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
             method: "POST",
             headers: {
               Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -294,14 +312,10 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
               temperature: 0.7,
               max_tokens: 1024,
             }),
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-        } catch (error) {
-          if (isProviderTimeoutError(error)) {
-            throw new Error(`OpenRouter request timed out after ${timeoutMs}ms`);
-          }
-          throw error;
-        }
+          },
+          "OpenRouter",
+          getProviderTimeoutMs()
+        );
 
         if (!response.ok) {
           const error = await response.text();

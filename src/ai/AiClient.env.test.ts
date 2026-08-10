@@ -16,9 +16,20 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createAiClientFromEnv } from "./AiClient.js";
 
-// Every real-provider env var, saved and restored around each test so this
-// file never leaks state into (or picks up state from) other test files.
-const ENV_KEYS = ["GOOGLE_API_KEY", "GROQ_API_KEY", "HUGGINGFACE_API_KEY", "OPENROUTER_API_KEY"];
+// Every real-provider env var, PLUS AI_PROVIDER_TIMEOUT_MS (set by the
+// timeout test below) — saved and restored around each test so this file
+// never leaks state into (or picks up state from) other test files. Restored
+// unconditionally in afterEach rather than by a manual `delete` at the end of
+// the one test that sets it: if that test's own assertion ever throws before
+// reaching the cleanup line, the manual delete never runs and
+// AI_PROVIDER_TIMEOUT_MS=50 leaks into every later test in this process.
+const ENV_KEYS = [
+  "GOOGLE_API_KEY",
+  "GROQ_API_KEY",
+  "HUGGINGFACE_API_KEY",
+  "OPENROUTER_API_KEY",
+  "AI_PROVIDER_TIMEOUT_MS",
+];
 const savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -146,7 +157,51 @@ describe("createAiClientFromEnv - per-provider timeout", () => {
     const client = createAiClientFromEnv({ fetchImpl });
 
     await expect(client.complete("prompt")).rejects.toThrow(/Groq request timed out after 50ms/);
-
-    delete process.env.AI_PROVIDER_TIMEOUT_MS;
   });
 });
+
+describe("createAiClientFromEnv - OpenRouter provider body", () => {
+  test("happy path: parses choices[0].message.content", async () => {
+    process.env.OPENROUTER_API_KEY = "test-key";
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: "hello from openrouter" } }] }),
+        { status: 200 }
+      )) as typeof fetch;
+
+    const client = createAiClientFromEnv({ fetchImpl });
+    const result = await client.complete("prompt");
+
+    expect(result.text).toBe("hello from openrouter");
+    expect(result.provider).toBe("OpenRouter (Free Models)");
+  });
+
+  test("malformed response (missing content field) throws a clear error, not a TypeError", async () => {
+    process.env.OPENROUTER_API_KEY = "test-key";
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ choices: [{ message: {} }] }), { status: 200 })) as typeof fetch;
+
+    const client = createAiClientFromEnv({ fetchImpl });
+
+    await expect(client.complete("prompt")).rejects.toThrow(/unexpected response shape/);
+  });
+
+  test("non-ok HTTP status throws with the response body's error text included", async () => {
+    process.env.OPENROUTER_API_KEY = "test-key";
+    const fetchImpl = (async () =>
+      new Response("insufficient credits", { status: 402 })) as typeof fetch;
+
+    const client = createAiClientFromEnv({ fetchImpl });
+
+    await expect(client.complete("prompt")).rejects.toThrow(/insufficient credits/);
+  });
+});
+
+// Gemini is deliberately NOT covered here: it goes through
+// @google/generative-ai's own internal transport, not fetchImpl, so
+// fetchImpl injection structurally cannot intercept it. Its timeout/
+// abort-error handling (see AiClient.ts) is exercised only by reading the
+// SDK's actual .d.ts and by the real per-provider timeout test above
+// exercising the SHARED fetchWithTimeout/isProviderTimeoutError logic the
+// fetch-based providers use — Gemini's own catch branch for
+// GoogleGenerativeAIAbortError has no equivalent automated coverage.
