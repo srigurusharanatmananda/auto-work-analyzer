@@ -1,6 +1,12 @@
 node_modules
 ui/node_modules
 .env
+# Any real-secrets backup of .env — one of these (.env.backup) was committed
+# and tracked since the initial commit with a live ClickUp API key inside.
+# `.env` alone does not match it; `.env.*.local` below is Next.js-specific and
+# doesn't match it either. Untracked 2026-08-10, key rotated separately.
+.env.backup
+.env.*.backup
 # services/whisper and services/tts are real Python, not just Dockerfiles —
 # a local syntax check or IDE run leaves this behind on the host.
 __pycache__/
