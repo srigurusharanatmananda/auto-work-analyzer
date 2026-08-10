@@ -128,7 +128,7 @@ export const resources: readonly Resource[] = [
     sourceUrl: 'https://www.tamilvu.org/coresite/download/ABC_Tamil.pdf',
     type: 'primer',
     howToRead:
-      "This is already this app's primary curriculum source, so read it lesson-by-lesson in lockstep with the app's own stages rather than skimming. Skip the dedication and foreword (pages 1-3, context only). Lesson 1 teaches the 12 vowels plus the 6 consonants the app's 'letters' stage covers with only their default inherent vowel. Lesson 2 introduces all 18 consonants and the pulli (dead-consonant) mark together, with the app's own first four vocabulary words (கண், கல், ண்ணம், பல்) as its own — read it in full before touching the app's pulli-stage lessons.",
+      "This is already this app's primary curriculum source, so read it lesson-by-lesson in lockstep with the app's own stages rather than skimming. Skip the dedication and foreword (pages 1-3, context only). Lesson 1 teaches the 12 vowels alongside the 6 consonants the app's 'letters' stage currently covers with only their default inherent vowel — the app has not introduced any vowel yet, so treat that half of Lesson 1 as ahead of where the app is today, not already-covered ground. Lesson 2 introduces all 18 consonants and the pulli (dead-consonant) mark together, with the app's own first four vocabulary words (கண், கல், மண், பல்) as its own — read it in full before touching the app's pulli-stage lessons.",
     license:
       "Unresolved / likely still under copyright. The scanned text itself states \"Selling right: PAARI NILAYAM, 59 Broadway, Madras-1\" (the original 1968 print publisher) with no CC or public-domain notice. Free-to-download hosting is not evidence of an open license — do not treat as safe to redistribute or quote at length.",
   },
@@ -140,7 +140,7 @@ export const resources: readonly Resource[] = [
     sourceUrl: 'https://ta.wiktionary.org/',
     type: 'dictionary',
     howToRead:
-      "Use as a lookup tool for individual words met in a lesson, not something to read front-to-back — search directly for a word (~408,000 entries). Look up the app's own four pulli-final words (கண், கல், ணம், பல்) to see how a real dictionary presents a dead-consonant-final word; the definition-list and etymology sections are the useful parts, the multi-language translation block at the bottom can be skipped.",
+      "Use as a lookup tool for individual words met in a lesson, not something to read front-to-back — search directly for a word (~408,000 entries). Look up the app's own four pulli-final words (கண், கல், மண், பல்) to see how a real dictionary presents a dead-consonant-final word; the definition-list and etymology sections are the useful parts, the multi-language translation block at the bottom can be skipped.",
     license: 'CC BY-SA 4.0, stated in the page footer.',
     embeddableExcerpt:
       'தமிழ் (tamiḻ) — primary sense: the Tamil language. Source: Tamil Wiktionary, ta.wiktionary.org/wiki/தமிழ், CC BY-SA 4.0.',
@@ -153,7 +153,7 @@ export const resources: readonly Resource[] = [
     sourceUrl: 'https://www.howtolearnalanguage.info/languages/tamil/alphabet',
     type: 'audio',
     howToRead:
-      'Go straight to the vowel and consonant tables and click every play button, repeating the sound aloud immediately rather than listening passively. Do the 13 vowels first, then the 18 consonants — the same 12+18 split ABC of Tamil and this app’s own letters stage use, so the order will feel familiar. Ignore the course/discount banners; the alphabet-and-audio table itself is free with no signup gate.',
+      "Go straight to the vowel and consonant tables and click every play button, repeating the sound aloud immediately rather than listening passively. Do the 13 vowels first, then the 18 consonants — the same order ABC of Tamil uses. The app's own letters stage currently teaches only 6 of those 18 consonants (plus 2 pulli marks) and no vowels yet, so use this resource to get ahead of the app on pronunciation, not to expect a lesson-for-lesson match against what's in the app today. Ignore the course/discount banners; the alphabet-and-audio table itself is free with no signup gate.",
     license:
       'No explicit license notice found. Treat as ordinary all-rights-reserved content: free for personal practice, not confirmed safe to redistribute.',
   },

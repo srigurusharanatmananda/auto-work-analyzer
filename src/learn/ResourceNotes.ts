@@ -72,14 +72,21 @@ export class ResourceNotesStore {
   }
 
   /**
-   * Scoped to the caller: deletes nothing and does not throw if `noteId`
-   * belongs to someone else or does not exist — indistinguishable from a
-   * genuine miss, same reasoning as `TemplateStore.remove`, so this can't be
-   * used to probe whether another user's note id exists.
+   * Scoped to the caller AND to `resourceId`: deletes nothing and does not
+   * throw if `noteId` belongs to someone else, belongs to a different
+   * resource than the one named, or does not exist — indistinguishable from
+   * a genuine miss, same reasoning as `TemplateStore.remove`, so this can't
+   * be used to probe whether another user's (or another resource's) note id
+   * exists. The `resourceId` scope matters even though `noteId` alone is
+   * already globally unique: without it, `DELETE /resources/:id/notes/:noteId`
+   * would silently delete a note that belongs to a DIFFERENT resource than
+   * the one in the URL, as long as the caller owns it — the route's shape
+   * implies that scoping, so the store should actually enforce it.
    */
-  async remove(userId: string, noteId: string): Promise<void> {
+  async remove(userId: string, resourceId: string, noteId: string): Promise<void> {
     await this.sql`
-      DELETE FROM learn_resource_notes WHERE id = ${noteId} AND user_id = ${userId}
+      DELETE FROM learn_resource_notes
+       WHERE id = ${noteId} AND user_id = ${userId} AND resource_id = ${resourceId}
     `;
   }
 

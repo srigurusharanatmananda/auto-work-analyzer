@@ -101,9 +101,14 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   });
 
   router.delete('/:id/notes/:noteId', authenticate, anyRole, async (req: Request, res: Response) => {
+    if (!resourceById(req.params.id)) {
+      res.status(404).json({ success: false, error: 'No such resource' });
+      return;
+    }
+
     const notes = newNotes();
     try {
-      await notes.remove(req.user!.userId, req.params.noteId);
+      await notes.remove(req.user!.userId, req.params.id, req.params.noteId);
       res.json({ success: true, data: null });
     } catch (error) {
       console.error('Failed to delete resource note:', error);

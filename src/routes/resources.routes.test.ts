@@ -57,11 +57,9 @@ function fakeNotes(): ResourceNotesStore & { store: Map<string, ResourceNote[]> 
       store.set(key, [created, ...(store.get(key) ?? [])]);
       return created;
     },
-    async remove(userId: string, noteId: string) {
-      for (const [key, notes] of store) {
-        if (!key.startsWith(`${userId}:`)) continue;
-        store.set(key, notes.filter((n) => n.id !== noteId));
-      }
+    async remove(userId: string, resourceId: string, noteId: string) {
+      const key = keyOf(userId, resourceId);
+      store.set(key, (store.get(key) ?? []).filter((n) => n.id !== noteId));
     },
     close() {},
   } as unknown as ResourceNotesStore & { store: Map<string, ResourceNote[]> };
@@ -232,6 +230,42 @@ describe('notes', () => {
       const listed = await fetch(`${baseUrl}/skt-primer-perry/notes`);
       const body = await listed.json();
       expect(body.data.length).toBe(0);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('DELETE 404s for an unknown resource', async () => {
+    const app = buildApp({ notesFactory: fakeNotes });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/does-not-exist/notes/some-note-id`, { method: 'DELETE' });
+      expect(res.status).toBe(404);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('DELETE via the wrong resource id does not remove a note that belongs to a different resource', async () => {
+    const notes = fakeNotes();
+    const app = buildApp({ notesFactory: () => notes });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const created = await fetch(`${baseUrl}/skt-primer-perry/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: 'about the primer' }),
+      });
+      const { data } = await created.json();
+
+      // tam-abc-of-tamil is a real resource id, just not the one this note belongs to.
+      await fetch(`${baseUrl}/tam-abc-of-tamil/notes/${data.id}`, { method: 'DELETE' });
+
+      const listed = await fetch(`${baseUrl}/skt-primer-perry/notes`);
+      const body = await listed.json();
+      expect(body.data.length).toBe(1);
     } finally {
       server.close();
     }

@@ -84,7 +84,7 @@ describe('remove', () => {
   test('removes the caller’s own note', async () => {
     const created = await notes.create(ALICE, 'skt-primer-perry', 'To be deleted.');
 
-    await notes.remove(ALICE, created.id);
+    await notes.remove(ALICE, 'skt-primer-perry', created.id);
 
     const rows = await notes.list(ALICE, 'skt-primer-perry');
     assert.deepEqual(rows, []);
@@ -93,13 +93,26 @@ describe('remove', () => {
   test('does not remove another user’s note, and does not throw', async () => {
     const bobsNote = await notes.create(BOB, 'skt-primer-perry', "Bob's note.");
 
-    await notes.remove(ALICE, bobsNote.id);
+    await notes.remove(ALICE, 'skt-primer-perry', bobsNote.id);
 
     const rows = await notes.list(BOB, 'skt-primer-perry');
     assert.equal(rows.length, 1, "Alice removing Bob's note id must not delete it");
   });
 
+  test('does not remove a note that belongs to a different resource, even for the right user', async () => {
+    // The property resources.routes.ts's DELETE /:id/notes/:noteId relies on:
+    // a note id is globally unique, but the URL's :id still has to match the
+    // note's actual resource, or a caller could delete a note "through" the
+    // wrong resource's URL as long as they own it.
+    const note = await notes.create(ALICE, 'skt-primer-perry', 'About the primer.');
+
+    await notes.remove(ALICE, 'tam-abc-of-tamil', note.id);
+
+    const rows = await notes.list(ALICE, 'skt-primer-perry');
+    assert.equal(rows.length, 1, 'removing via the wrong resourceId must not delete the note');
+  });
+
   test('removing a non-existent id does not throw', async () => {
-    await notes.remove(ALICE, 'does-not-exist');
+    await notes.remove(ALICE, 'skt-primer-perry', 'does-not-exist');
   });
 });
