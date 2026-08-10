@@ -336,8 +336,12 @@ export interface RepoScanResult {
   tasksCreated: number;
   destination: string | null;
   fetchFailed?: string;
+  /** Set when analyzeWork() exceeded the server's per-repo timeout — see DailyScanner.ts's ANALYZE_TIMEOUT_MS. */
+  analyzeTimedOut?: string;
   error?: string;
   wouldCreate?: Array<{ name: string; description: string }>;
+  fetchMs?: number;
+  analyzeMs?: number;
 }
 
 export interface ScanRunSummary {
