@@ -6,13 +6,28 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { body, validationResult, ValidationChain } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
+import { PostgresRateLimitStore } from './PostgresRateLimitStore.js';
+
+/**
+ * Fifteen minutes, shared by all three limiters below. Named once so the
+ * `windowMs` passed to `rateLimit()` and the one passed to each limiter's
+ * `PostgresRateLimitStore` cannot drift apart — a store whose own idea of the
+ * window differs from the limiter's `max` would silently mis-time resets.
+ */
+const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 
 /**
  * Rate limiter for authentication endpoints
  * Stricter limits to prevent brute force attacks
+ *
+ * Backed by Postgres, not the default in-memory store: see
+ * `PostgresRateLimitStore.ts` for why. `limiter: 'auth'` scopes this
+ * limiter's rows away from `apiRateLimiter`'s and `mediaFetchRateLimiter`'s,
+ * which matters because all three fall back to the same key — the caller's
+ * IP — for an unauthenticated request.
  */
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: FIFTEEN_MINUTES_MS,
   max: 5, // 5 requests per window
   message: {
     success: false,
@@ -23,13 +38,14 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   // Skip successful requests from counting
   skipSuccessfulRequests: true,
+  store: new PostgresRateLimitStore({ limiter: 'auth', windowMs: FIFTEEN_MINUTES_MS }),
 });
 
 /**
  * Rate limiter for general API endpoints
  */
 export const apiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: FIFTEEN_MINUTES_MS,
   max: 100, // 100 requests per window
   message: {
     success: false,
@@ -38,6 +54,7 @@ export const apiRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore({ limiter: 'api', windowMs: FIFTEEN_MINUTES_MS }),
 });
 
 /**
@@ -54,7 +71,7 @@ export const apiRateLimiter = rateLimit({
  * collapsing across everyone in an office.
  */
 export const mediaFetchRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: FIFTEEN_MINUTES_MS,
   max: 10,
   message: {
     success: false,
@@ -83,6 +100,7 @@ export const mediaFetchRateLimiter = rateLimit({
     const userId = (req as { user?: { userId?: string } }).user?.userId;
     return userId ?? `ip:${ipKeyGenerator(req.ip ?? '')}`;
   },
+  store: new PostgresRateLimitStore({ limiter: 'media-fetch', windowMs: FIFTEEN_MINUTES_MS }),
 });
 
 /**
@@ -216,44 +234,6 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
 
   // Permissions policy (formerly Feature-Policy)
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-
-  next();
-}
-
-/**
- * CORS configuration for authentication
- * More restrictive than general CORS
- */
-export function corsAuthConfig(req: Request, res: Response, next: NextFunction): void {
-  const origin = req.headers.origin;
-
-  if (origin) {
-    // Allow localhost and local network IPs
-    const allowedPatterns = [
-      /^http:\/\/localhost:\d+$/,
-      /^http:\/\/127\.0\.0\.1:\d+$/,
-      /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
-      /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,
-      /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/,
-    ];
-
-    // Also allow FRONTEND_URL from env if set
-    const isAllowed = allowedPatterns.some(pattern => pattern.test(origin)) ||
-                      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL);
-
-    if (isAllowed) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    }
-  }
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(204);
-    return;
-  }
 
   next();
 }

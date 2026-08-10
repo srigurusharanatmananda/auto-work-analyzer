@@ -72,7 +72,12 @@ app.use(cors({
       /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/,
     ];
 
-    const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
+    // Also allow FRONTEND_URL from env if set — the only way this app can be
+    // deployed anywhere but localhost, since the patterns above are all
+    // localhost/private-IP.
+    const isAllowed =
+      allowedPatterns.some(pattern => pattern.test(origin)) ||
+      (!!process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL);
     if (isAllowed) {
       callback(null, true);
     } else {
