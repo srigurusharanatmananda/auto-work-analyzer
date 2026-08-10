@@ -26,6 +26,7 @@ import { createReportsRouter } from "./routes/reports.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createLearnRouter } from "./routes/learn.routes.js";
 import { createResourcesRouter } from "./routes/resources.routes.js";
+import { createTranslateRouter } from "./routes/translate.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
@@ -260,6 +261,12 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         useAiGrouping ? `AI (${aiClient.providerNames.join(", ")})` : "heuristic"
       }`
     );
+
+    // Sanskrit/Tamil <-> English translation, plus transliteration either
+    // way — shares the same provider chain commit grouping uses. Mounted
+    // here specifically because aiClient does not exist any earlier in
+    // startup (see the comment on its own construction above).
+    app.use("/api/translate", createTranslateRouter({ aiClient }));
 
     app.use(
       "/api",

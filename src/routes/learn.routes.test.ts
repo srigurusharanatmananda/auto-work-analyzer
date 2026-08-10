@@ -126,6 +126,35 @@ async function listen(app: express.Express) {
   return { server, baseUrl: `http://localhost:${port}/api/learn` };
 }
 
+describe('GET /learn/lessons', () => {
+  test('returns the whole manifest, in order, regardless of progress', async () => {
+    const app = buildApp({ progressFactory: fakeProgress });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/lessons?language=sanskrit`);
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.lessons).toEqual(sanskritManifest.lessons);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects an invalid language', async () => {
+    const app = buildApp({ progressFactory: fakeProgress });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/lessons?language=klingon`);
+      expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+});
+
 describe('GET /learn/next', () => {
   test('returns the first lesson and correct counts for a fresh user', async () => {
     const progress = fakeProgress();
