@@ -600,3 +600,41 @@ export const learnResourceNotes = pgTable(
     index('idx_learn_resource_notes_user_resource').on(table.userId, table.resourceId),
   ]
 );
+
+// ==================== Rate limiting ====================
+
+/**
+ * Hit counts for `express-rate-limit`, one row per (limiter, client), backed
+ * by Postgres instead of `MemoryStore` — see `PostgresRateLimitStore.ts`.
+ *
+ * `MemoryStore` resets on restart and does not see hits from any other
+ * process, which is exactly the coordination problem `scan_leases` already
+ * solves for scan claims: a single shared table, an atomic
+ * `INSERT ... ON CONFLICT` instead of a read-then-write. This table is the
+ * same idea applied to a hit counter instead of a claim.
+ *
+ * `limiter` scopes `clientKey` rather than the two columns being merged into
+ * one hashed id (the way `learnProgress.id` merges its tuple): `authRateLimiter`,
+ * `apiRateLimiter` and `mediaFetchRateLimiter` all key on the same value for an
+ * unauthenticated caller (their IP), and each limiter is a separate budget —
+ * without `limiter`, one caller tripping the strict auth limit would also spend
+ * their much larger general-API budget on the same row. Composite primary key,
+ * not a generated id, so the one query shape every `Store` method needs
+ * ("the row for this limiter and this client") is a primary-key lookup, the
+ * same reasoning `scan_leases` gives for keying on `(user_id, scan_date)`
+ * instead of an id column.
+ */
+export const rateLimitHits = pgTable(
+  'rate_limit_hits',
+  {
+    /** Which rate limiter this row belongs to, e.g. `'auth'`, `'api'`. */
+    limiter: text('limiter').notNull(),
+    /** Whatever the limiter's `keyGenerator` returned — an IP or a user id. */
+    clientKey: text('client_key').notNull(),
+    /** Requests counted in the current window. */
+    hits: integer('hits').notNull().default(0),
+    /** When the current window ends and `hits` resets to 0. */
+    resetAt: text('reset_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.limiter, table.clientKey] })]
+);
