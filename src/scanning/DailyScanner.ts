@@ -201,7 +201,6 @@ export class DailyScanner {
             `analyzeWork exceeded ${analyzeTimeoutMs}ms for ${repo.slug}`
           );
         } catch (error) {
-          result.analyzeMs = Date.now() - analyzeStart;
           if (error instanceof TimeoutError) {
             // Recorded, not fatal: this repo is skipped for today, but a
             // pathological repo must never stop the rest of the org's repos
@@ -212,8 +211,14 @@ export class DailyScanner {
             continue;
           }
           throw error;
+        } finally {
+          // One assignment, not one per exit path: `analyzeMs` is documented
+          // to always be set once this step is done, however it ended — a
+          // future new catch branch (or an early return) added between here
+          // and where this used to be duplicated could otherwise forget to
+          // set it on that one new path.
+          result.analyzeMs = Date.now() - analyzeStart;
         }
-        result.analyzeMs = Date.now() - analyzeStart;
 
         result.commits = analysis.totalCommits;
         result.workItems = analysis.detectedWork.length;

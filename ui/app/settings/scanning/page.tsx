@@ -409,6 +409,11 @@ export default function ScanningSettingsPage() {
                           Fetch failed, scanned local history only: {repo.fetchFailed}
                         </p>
                       )}
+                      {repo.analyzeTimedOut && (
+                        <p className="mt-1 text-xs text-error">
+                          Skipped — took too long to analyze: {repo.analyzeTimedOut}
+                        </p>
+                      )}
                       {repo.error && <p className="mt-1 text-xs text-error">{repo.error}</p>}
 
                       {(repo.wouldCreate ?? []).length > 0 && (
