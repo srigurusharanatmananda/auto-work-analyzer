@@ -44,6 +44,20 @@ export interface Lesson {
   readonly composedOf: readonly string[];
 }
 
+/**
+ * How a stage's `text` must reconstruct from its `composedOf` dependencies'
+ * `text` — the one thing `validateManifest` could not check until this rule
+ * existed, and content authors were relying on comments alone to get right.
+ * `words` concatenate directly (`कण` = `क` + `ण`); `sentences` join with a
+ * single space (`नरः वदति` = `नरः` + ` ` + `वदति`) — Sanskrit and Tamil are
+ * both written left-to-right with spaces between words but none within one,
+ * so this is a property of the stage, not a per-language choice.
+ */
+const JOINER: Readonly<Record<'words' | 'sentences', string>> = {
+  words: '',
+  sentences: ' ',
+};
+
 export interface Manifest {
   readonly language: Language;
   /**
@@ -65,8 +79,12 @@ function prerequisiteStage(stage: Stage): Stage | null {
 
 /**
  * Every way a manifest can fail to be a curriculum: a lesson id reused, a
- * dependency that does not exist, a dependency from the wrong stage, or a
- * dependency that has not been taught yet because it appears later.
+ * dependency that does not exist, a dependency from the wrong stage, a
+ * dependency that has not been taught yet because it appears later, or a
+ * `text` that does not actually reconstruct from `composedOf` per `JOINER`.
+ * That last check is what stops `composedOf` from silently drifting out of
+ * sync with `text` — a typo, a stale copy-paste, or swapped word order would
+ * previously pass every other check here.
  *
  * Returns every violation found rather than stopping at the first, since a
  * content author fixing a manifest by hand wants the whole list in one pass.
@@ -75,6 +93,7 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
   const errors: ManifestError[] = [];
   const indexById = new Map<string, number>();
   const stageById = new Map<string, Stage>();
+  const textById = new Map<string, string>();
 
   manifest.lessons.forEach((lesson, index) => {
     if (indexById.has(lesson.id)) {
@@ -83,6 +102,7 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
     }
     indexById.set(lesson.id, index);
     stageById.set(lesson.id, lesson.stage);
+    textById.set(lesson.id, lesson.text);
   });
 
   manifest.lessons.forEach((lesson, index) => {
@@ -106,12 +126,15 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
       return;
     }
 
+    let everyDepResolved = true;
+
     for (const depId of lesson.composedOf) {
       const depIndex = indexById.get(depId);
       const depStage = stageById.get(depId);
 
       if (depIndex === undefined || depStage === undefined) {
         errors.push({ lessonId: lesson.id, reason: `composedOf references unknown lesson '${depId}'` });
+        everyDepResolved = false;
         continue;
       }
       if (depStage !== wantStage) {
@@ -124,6 +147,25 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
         errors.push({
           lessonId: lesson.id,
           reason: `composedOf '${depId}' has not been taught yet — it appears later in the manifest`,
+        });
+      }
+    }
+
+    // Only checked once every dependency actually resolved — an unknown-id
+    // error above already explains why reconstruction can't be checked, and
+    // piling a second, derived error on top of it would just be noise.
+    // `lesson.stage`, not `wantStage`: the joiner is a property of what this
+    // lesson IS (a word or a sentence), not of the prerequisite stage it
+    // draws on.
+    if (everyDepResolved) {
+      const joiner = JOINER[lesson.stage as 'words' | 'sentences'];
+      const reconstructed = lesson.composedOf.map((depId) => textById.get(depId)).join(joiner);
+      if (reconstructed !== lesson.text) {
+        errors.push({
+          lessonId: lesson.id,
+          reason:
+            `text '${lesson.text}' does not match composedOf reconstructed as '${reconstructed}' ` +
+            `(joining ${lesson.stage} with ${JSON.stringify(joiner)})`,
         });
       }
     }

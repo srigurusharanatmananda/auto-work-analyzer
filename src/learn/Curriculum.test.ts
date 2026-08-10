@@ -50,7 +50,12 @@ const tamilManifest: Manifest = {
     {
       id: 'tam-mana',
       stage: 'words',
-      text: 'மன',
+      // மந, with ந (dental na, tam-na's own text) — not மன with ன (alveolar
+      // na), an easy typo given how visually similar the two are. Caught by
+      // validateManifest's own text/composedOf reconstruction check when
+      // this fixture briefly had the wrong one, which is the whole point of
+      // that check existing.
+      text: 'மந',
       gloss: 'illustrative only — not authored Tamil vocabulary',
       composedOf: ['tam-ma', 'tam-na'],
     },
@@ -64,7 +69,7 @@ const tamilManifest: Manifest = {
     {
       id: 'tam-sentence',
       stage: 'sentences',
-      text: 'மன நர',
+      text: 'மந நர',
       gloss: 'illustrative only',
       composedOf: ['tam-mana', 'tam-nara'],
     },
@@ -149,6 +154,38 @@ describe.each([
 
     const errors = validateManifest(reversed);
     expect(errors.some((error) => error.reason.includes('has not been taught yet'))).toBe(true);
+  });
+
+  test('a word whose text does not match its composedOf reconstruction is rejected', () => {
+    const wordLesson = manifest.lessons.find((lesson) => lesson.stage === 'words')!;
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === wordLesson.id ? { ...lesson, text: 'not-what-composedOf-spells' } : lesson
+      ),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: wordLesson.id,
+      reason: expect.stringContaining('does not match composedOf reconstructed as'),
+    });
+  });
+
+  test('a sentence whose text does not join its composedOf words with a single space is rejected', () => {
+    const sentenceLesson = manifest.lessons.find((lesson) => lesson.stage === 'sentences')!;
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === sentenceLesson.id ? { ...lesson, text: lesson.text.replace(' ', '') } : lesson
+      ),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: sentenceLesson.id,
+      reason: expect.stringContaining('does not match composedOf reconstructed as'),
+    });
   });
 
   test('a duplicate lesson id is rejected', () => {
