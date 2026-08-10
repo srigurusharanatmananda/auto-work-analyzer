@@ -1,6 +1,6 @@
 {
-  "id": "0f6b5f7f-1c94-4f92-b162-d45132d2ed5b",
-  "prevId": "e24fba47-402e-4309-bb87-5fdc55e07da9",
+  "id": "a6880373-c389-48a9-8c09-464502f70937",
+  "prevId": "0f6b5f7f-1c94-4f92-b162-d45132d2ed5b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -460,6 +460,12 @@
         "updated_at": {
           "name": "updated_at",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seq": {
+          "name": "seq",
+          "type": "bigserial",
           "primaryKey": false,
           "notNull": true
         }
