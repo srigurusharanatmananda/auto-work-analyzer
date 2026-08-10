@@ -105,7 +105,18 @@ def _synthesize_sync(text: str, voice: str, prosody: str) -> bytes:
         prompt_attention_mask=prompt_inputs.attention_mask,
         max_new_tokens=MAX_NEW_TOKENS,
     )
-    audio_arr = generation.cpu().numpy().squeeze()
+    # do_sample=True (the model's own default) means generation length is
+    # stochastic — observed directly (2026-08-10, synthesizing 'वन'): a
+    # generation that terminates almost immediately squeezes all the way
+    # down to a 0-d scalar array (ndim 0, shape ()), and soundfile.write
+    # indexes into that shape to decide the channel count, failing with
+    # "tuple index out of range" on an empty shape tuple. `atleast_1d`
+    # guarantees at least one dimension survives regardless of how short
+    # the generation was, so this fails loudly and clearly (if the audio is
+    # genuinely empty) rather than crashing on an unrelated-looking error.
+    import numpy as np
+
+    audio_arr = np.atleast_1d(generation.cpu().numpy().squeeze())
 
     import soundfile as sf
 
