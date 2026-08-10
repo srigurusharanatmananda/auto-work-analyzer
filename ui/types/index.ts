@@ -381,6 +381,10 @@ export interface LearnResource {
   howToRead: string;
   license: string;
   embeddableExcerpt?: string;
+  /** Original in-app teaching commentary written for this app. Not a reproduction of the source. */
+  inAppNotes?: string;
+  /** A confirmed-embeddable YouTube `/embed/...` URL. Only set on `type: 'video'` resources. */
+  embedUrl?: string;
 }
 
 /** Mirrors the `ResourceNote` shape in `src/learn/ResourceNotes.ts`. */
