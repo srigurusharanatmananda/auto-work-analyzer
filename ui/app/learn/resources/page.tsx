@@ -145,12 +145,19 @@ function ResourceReader({ resource }: { resource: LearnResource }) {
 
       {resource.embedUrl && (
         <div className="aspect-video w-full overflow-hidden rounded-md bg-background-tertiary">
+          {/*
+            No `sandbox` attribute: YouTube's player needs both allow-scripts
+            and allow-same-origin to work at all, and that combination lets the
+            framed page remove the sandbox on itself — so it adds no real
+            isolation while still breaking in-player navigation (clicking the
+            video title/channel). `embedUrl` is a hardcoded youtube.com URL,
+            never user input, so there is nothing untrusted being framed here.
+          */}
           <iframe
             src={resource.embedUrl}
             title={resource.title}
             className="h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
             allowFullScreen
           />
         </div>
