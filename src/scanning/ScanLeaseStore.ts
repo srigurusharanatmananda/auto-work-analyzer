@@ -22,6 +22,7 @@
  */
 
 import { getPool } from "../db/pool.js";
+import { stamp } from "../db/timestamp.js";
 import type { PostgresHandle } from "../db/client.js";
 
 /**
@@ -48,10 +49,6 @@ export type LeaseOutcome<T> =
   | { acquired: true; result: T }
   | { acquired: false; result?: undefined };
 
-/** UTC ISO, matching the text timestamps the rest of the schema stores. */
-function stamp(at: number): string {
-  return new Date(at).toISOString();
-}
 
 export interface ClaimOptions {
   /**

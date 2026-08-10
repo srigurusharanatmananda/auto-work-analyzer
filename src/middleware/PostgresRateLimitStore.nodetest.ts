@@ -6,6 +6,8 @@
  */
 import { after, before, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { PostgresRateLimitStore } from './PostgresRateLimitStore.js';
 import { createTestDatabase, type TestDatabase } from '../testing/postgresFixture.js';
 
@@ -118,6 +120,50 @@ describe('decrement', () => {
     await store.decrement('never-seen');
     const result = await store.get('never-seen');
     assert.equal(result, undefined);
+  });
+});
+
+describe('express-rate-limit integration', () => {
+  /**
+   * The real bug this guards against: express-rate-limit's own double-count
+   * guard buckets stores by `store.constructor.name` when `localKeys` is
+   * falsy — which every instance of THIS class shares, regardless of
+   * `limiter`. Production stacks two of these (`apiRateLimiter` mounted
+   * globally, `authRateLimiter` mounted on auth routes specifically) on the
+   * same request, and without a distinct `prefix` per instance (see
+   * `prefixFor`), that single request would throw `ERR_ERL_DOUBLE_COUNT` —
+   * not a contrived scenario, the normal path for every `/api/auth/*`
+   * request. Exercised here with two REAL `rateLimit()` middlewares stacked
+   * on one real Express route, not by asserting on `prefix`/`localKeys`
+   * directly, since what actually matters is that express-rate-limit's own
+   * validation logic is satisfied end to end.
+   */
+  test('two different limiters stacked on one request do not trigger a false double-count', async () => {
+    const outer = rateLimit({
+      windowMs: WINDOW_MS,
+      limit: 100,
+      store: new PostgresRateLimitStore({ limiter: 'api-like', windowMs: WINDOW_MS, sql: db, now: () => now }),
+    });
+    const inner = rateLimit({
+      windowMs: WINDOW_MS,
+      limit: 5,
+      store: new PostgresRateLimitStore({ limiter: 'auth-like', windowMs: WINDOW_MS, sql: db, now: () => now }),
+    });
+
+    const app = express();
+    app.use(outer);
+    app.get('/login', inner, (_req, res) => res.json({ ok: true }));
+
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as { port: number }).port;
+      const res = await fetch(`http://localhost:${port}/login`);
+      assert.equal(res.status, 200, 'a request through two independently-scoped limiters must succeed, not 500');
+      const body = await res.json();
+      assert.deepEqual(body, { ok: true });
+    } finally {
+      server.close();
+    }
   });
 });
 

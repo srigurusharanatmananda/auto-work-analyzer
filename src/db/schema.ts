@@ -623,6 +623,15 @@ export const learnResourceNotes = pgTable(
  * ("the row for this limiter and this client") is a primary-key lookup, the
  * same reasoning `scan_leases` gives for keying on `(user_id, scan_date)`
  * instead of an id column.
+ *
+ * Known accepted limitation: nothing purges a row once its client stops
+ * sending requests — unlike a TTL-backed store (Redis), this table grows by
+ * one row per unique (limiter, client) ever seen, including bots/scanners
+ * probing a public login form. Not urgent at this app's current scale (see
+ * STATUS.md's own framing of who this runs for), but a real deployment
+ * fronting genuinely public traffic would eventually want a periodic
+ * `DELETE WHERE reset_at < now() - retention` sweep — there is no cron
+ * infrastructure in this app to hang that off of yet.
  */
 export const rateLimitHits = pgTable(
   'rate_limit_hits',

@@ -17,6 +17,7 @@
  * drive window expiry without waiting on a real clock.
  */
 import { getPool } from '../db/pool.js';
+import { stamp } from '../db/timestamp.js';
 import type { PostgresHandle } from '../db/client.js';
 import type { ClientRateLimitInfo, Store } from 'express-rate-limit';
 
@@ -42,13 +43,41 @@ export interface PostgresRateLimitStoreDeps {
   now?: () => number;
 }
 
-/** UTC ISO, matching the text timestamps the rest of the schema stores. */
-function stamp(at: number): string {
-  return new Date(at).toISOString();
+/**
+ * express-rate-limit's own double-count guard buckets stores by
+ * `store.constructor.name` when `localKeys` is falsy (the correct setting
+ * for a database-backed store — see `PostgresRateLimitStore.localKeys`
+ * below), which collapses every instance of THIS class into one shared
+ * bucket regardless of `limiter`. Without a distinct `prefix` per instance,
+ * a single request that passes through more than one of this app's three
+ * limiters (e.g. any `/api/auth/*` request also hits the globally-mounted
+ * `apiRateLimiter`) would throw `ERR_ERL_DOUBLE_COUNT` — ask
+ * express-rate-limit's own source (`singleCount` in its dist bundle) why:
+ * the check is meant to catch a genuine misconfiguration (one store, one
+ * key, incremented twice for one request), and three logically-independent
+ * limiters sharing one store CLASS is a false positive of exactly that
+ * heuristic, not the bug it exists to catch.
+ */
+export function prefixFor(limiter: string): string {
+  return `${limiter}:`;
 }
 
+
 export class PostgresRateLimitStore implements Store {
-  constructor(private readonly deps: PostgresRateLimitStoreDeps) {}
+  /**
+   * false: rows in `rate_limit_hits` genuinely are shared across every
+   * process that points at the same Postgres — the entire reason this store
+   * exists instead of `MemoryStore`. See `prefixFor` above for the OTHER
+   * half of this, since `localKeys: false` is what makes the constructor-name
+   * bucketing collision possible in the first place.
+   */
+  readonly localKeys = false;
+  /** See `prefixFor`. Distinguishes this instance from a sibling limiter's, in the double-count check only — never touches an actual stored key. */
+  readonly prefix: string;
+
+  constructor(private readonly deps: PostgresRateLimitStoreDeps) {
+    this.prefix = prefixFor(deps.limiter);
+  }
 
   private get sql() {
     return (this.deps.sql ?? getPool()).sql;
@@ -119,6 +148,19 @@ export class PostgresRateLimitStore implements Store {
    * request was known. Floored at 0: a request that arrives after the window
    * has already rolled over (and been zeroed by the next `increment`) must not
    * push the new window negative.
+   *
+   * Known imprecision, not unique to this store: `decrement(key)` receives no
+   * way to identify WHICH window's hit to undo, only `key`. If a request
+   * takes longer than the window (`mediaFetchRateLimiter`'s own fetch timeout
+   * is 30 minutes against this file's 15-minute window — see
+   * `security.middleware.ts`), the window can roll over before that request's
+   * outcome is known, and this un-counts whatever the CURRENT window's hits
+   * happen to be, which may by then belong to a different, unrelated request.
+   * Checked express-rate-limit's own `MemoryStore.decrement` (its dist
+   * bundle) to confirm this is not a defect this store introduces: it has
+   * the identical limitation, for the identical reason — the `Store`
+   * interface's `decrement(key)` signature carries no window identity for
+   * any implementation to check against.
    */
   async decrement(key: string): Promise<void> {
     await this.sql`
