@@ -74,11 +74,25 @@ export default function TranslatePage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <LanguagePicker value={from} onChange={setFrom} label="From" />
+          <LanguagePicker
+            value={from}
+            onChange={(value) => {
+              setFrom(value);
+              setResult(null);
+            }}
+            label="From"
+          />
           <Button variant="ghost" size="sm" onClick={swap} aria-label="Swap languages">
             ⇄
           </Button>
-          <LanguagePicker value={to} onChange={setTo} label="To" />
+          <LanguagePicker
+            value={to}
+            onChange={(value) => {
+              setTo(value);
+              setResult(null);
+            }}
+            label="To"
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

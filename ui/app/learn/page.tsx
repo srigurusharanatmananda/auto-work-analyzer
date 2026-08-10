@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
@@ -23,6 +23,13 @@ export default function LearnPage() {
   // null = showing the live "next" lesson from the server. Set to browse
   // an already-unlocked lesson without touching progress — see `displayIndex`.
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  // Lets recordSeen (fired for one language) discard its response if the user
+  // has since switched languages — `language` itself can't do this, since a
+  // closure over it is fixed at call time, not live.
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     let ignore = false;
@@ -58,12 +65,11 @@ export default function LearnPage() {
     };
   }, [language]);
 
-  // Where the "live" frontier sits in `lessons` — one past the end once
-  // every lesson has been seen, since there is no next unseen lesson to
-  // point at, but "Previous" from the completed card should still work.
-  const frontierIndex = progress?.lesson
-    ? lessons.findIndex((l) => l.id === progress.lesson!.id)
-    : lessons.length;
+  // Where the "live" frontier sits in `lessons`. Progress only ever advances
+  // through lessons in order, so `seenCount` lessons seen means index
+  // `seenCount` is the next (or, once every lesson is seen, one past the
+  // end — "Previous" from the completed card should still work).
+  const frontierIndex = progress?.seenCount ?? 0;
 
   const displayIndex = reviewIndex ?? frontierIndex;
   const displayLesson: LearnLesson | null =
@@ -73,6 +79,7 @@ export default function LearnPage() {
   async function recordSeen(correct: boolean) {
     if (!progress?.lesson || isReviewing) return;
 
+    const requestLanguage = language;
     setActionLoading(true);
     try {
       const data = await api.post<LearnProgress>('/learn/seen', {
@@ -80,7 +87,9 @@ export default function LearnPage() {
         lessonId: progress.lesson.id,
         correct,
       });
-      setProgress(data);
+      // Discard a response for a language the user has since switched away
+      // from — otherwise it would clobber the newly-loaded language's progress.
+      if (languageRef.current === requestLanguage) setProgress(data);
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to record your answer'));
     } finally {
@@ -227,7 +236,11 @@ export default function LearnPage() {
         )}
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Button variant="ghost" onClick={goPrevious} disabled={loading || displayIndex <= 0}>
+          <Button
+            variant="ghost"
+            onClick={goPrevious}
+            disabled={loading || actionLoading || displayIndex <= 0}
+          >
             ← Previous
           </Button>
 
