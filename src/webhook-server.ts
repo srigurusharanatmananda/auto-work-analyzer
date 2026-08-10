@@ -25,6 +25,7 @@ import { createUsersRouter } from "./routes/users.routes.js";
 import { createReportsRouter } from "./routes/reports.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createLearnRouter } from "./routes/learn.routes.js";
+import { createResourcesRouter } from "./routes/resources.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
 import { CredentialCipher, loadCipherFromEnv } from "./destinations/CredentialCipher.js";
@@ -210,6 +211,11 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // HTTP. Self-constructs its Postgres- and filesystem-backed dependencies
     // the same way the routers above do — no shared store to pass in here.
     app.use("/api/learn", createLearnRouter());
+
+    // Reading resources for the same two languages, and a learner's own
+    // notes on each — separate router because it has nothing to do with
+    // lesson progress, but same self-constructing-dependencies pattern.
+    app.use("/api/resources", createResourcesRouter());
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(cipher, pool);

@@ -1,6 +1,6 @@
 # Project status
 
-**Last verified: 2026-08-09.** Everything here was checked against the repo on
+**Last verified: 2026-08-10.** Everything here was checked against the repo on
 that date, not recalled.
 
 If you are picking this up cold, read this file first. There is no `CLAUDE.md`
@@ -21,10 +21,11 @@ Re-verify this file too — the commands to do so are in each section.
 ## What this is
 
 `auto-work-analyzer` turns work into ClickUp tasks. It started as git commits →
-tasks and now also does call recordings → transcript → action items → tasks.
+tasks and now also does call recordings → transcript → action items → tasks —
+and, since phase 7, teaches the operator Sanskrit and Tamil on the side.
 
-One Express API, one Next.js UI, Postgres, and a Python Whisper service in
-`services/whisper`.
+One Express API, one Next.js UI, Postgres, and two Python model-serving
+containers (`services/whisper`, `services/tts`).
 
 ```
 src/
@@ -34,6 +35,7 @@ src/
   destinations/  ClickUp destinations, URL parsing, encrypted credentials
   formatting/    templates and renderers
   grouping/      AI commit grouping
+  learn/         Sanskrit/Tamil curriculum engine, transliteration, speech, audio cache, progress
   middleware/    auth, RBAC policy, rate limiting, security
   routes/        the HTTP surface
   scanning/      org-wide daily repo scan, scheduler, lease
@@ -42,6 +44,7 @@ src/
   transcription/ audio ingest, Whisper client, job queue, SSRF guard
 ui/              Next 16 + Tailwind 4 front-end
 services/whisper Python faster-whisper container
+services/tts     Python Indic-Parler-TTS container (Sanskrit speech; Tamil uses Gemini directly)
 ```
 
 **State management of note:** background work is in-process, not a queue.
@@ -56,15 +59,22 @@ not by leader election.
 ```bash
 npx tsc --noEmit          # clean
 npm run lint              # clean  (eslint src)
-bun test                  # 512 pass, 0 fail
-npm run test:db           # 445 pass, 0 fail  (needs Postgres up)
+bun test                  # 589 pass, 0 fail
+npm run test:db           # 450 pass, 0 fail  (needs Postgres up)
 
 cd ui
 npx tsc --noEmit          # clean
 npx next build            # clean
-bun test                  # 53 pass, 0 fail
+bun test                  # 54 pass, 0 fail
 npm run lint              # clean; 14 warnings — pre-existing, see Known issues
 ```
+
+`docker compose up tts` also needs to be running for real Sanskrit audio
+(`services/tts`, Indic-Parler-TTS, gated model — see env.example's
+`HUGGINGFACE_API_KEY`). CPU inference is slow — several minutes per lesson on
+a cache miss — so `npm run learn:pregenerate-sanskrit-audio` should be run
+once (or after any manifest change) rather than leaving a learner to hit that
+cold path live.
 
 `npm test` runs lint → bun → db in that order.
 
@@ -97,15 +107,24 @@ To read the retired plan and its reasoning:
 | **2 — Data platform** | Drizzle migrations replace `CREATE TABLE IF NOT EXISTS`; every store on Postgres | 5 migrations in `src/db/migrations`; `better-sqlite3` survives only in the one-way import path and its tests |
 | **6 — Transcripts → ClickUp** | Extraction with a verbatim-quote validator, review UI, real Whisper end to end, per-call filing destinations, unattended sweep, transcript search, playback aligned to transcript, URL ingestion behind an SSRF guard | `src/calls/`, `src/transcription/` |
 | **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4, `next lint` → flat-config `eslint` | `ui/package.json`; `ui/app/globals.css` now holds the theme as `@theme`, and `tailwind.config.ts` is gone |
+| **7 — Learning module** | Curriculum engine, both languages, stages 1-2 (letters, words); real speech for both (Gemini for Tamil, self-hosted Indic-Parler-TTS for Sanskrit); UI at `/learn` | `src/learn/`, `services/tts/`, `ui/app/learn/`. PRs #4-#8. [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md), with a 2026-08-10 update reversing its original Sanskrit-via-Kannada design after testing against the real backend found raw Devanagari works better for it |
 
 `POST /api/webhook` is intentionally unauthenticated — it is gated by a shared
 secret and refuses the request when that secret is unset. That is not a gap.
+
+**Phase 7's one real remaining gap: stage 3 (sentences) is empty for both
+languages.** Not an engine limitation — `Curriculum.ts` already supports it —
+a content one: the seed vocabulary for both languages deliberately avoids
+vowel signs, conjuncts and verb forms a real sentence needs (see each
+manifest's own header for why). Extending it is "content work for whoever
+authors it next, not an engine change," and per the design doc's own risk
+note, needs the one human quality gate this module can't automate: a beginner
+cannot detect a bad teacher.
 
 ### Still to do
 
 | Phase | What | State |
 |---|---|---|
-| **7 — Learning module** | Sanskrit/Tamil teaching | **Next up.** Specced 2026-08-08, not started. [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md). Both languages in scope; no open questions |
 | **— Analytics** | A reporting view over work items, scans and calls | **Undecided.** Raised in conversation, never scoped. Nothing depends on it |
 
 ### Not doing
@@ -140,17 +159,17 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
-**Phase 7: the learning module.** The spec is complete and has no open
-questions — build the `Transliterator` first, since it is the one place a silent
-error is unrecoverable, and Sanskrit before Tamil so the engine is tested
-against the harder case.
+**Phase 7 stage 3: sentence content, for both languages.** The one real gap
+left in the learning module — see its row in Done, above. Content work, not
+an engine change, and needs the human quality gate the design doc itself
+calls for before it ships to the one real learner.
 
-Before that, one thing worth deciding: **the `ui/` upgrade has not been looked
-at by a human eye.** It was verified by diffing the class tokens used in source
-against the selectors in the compiled CSS — which is what caught the opaque
-modal backdrops — but "every utility emits the right rule" is not the same
-claim as "the pages look right". Layout and spacing regressions would survive
-that check. Worth a pass through the app before this branch is merged.
+**The `ui/` upgrade still has not been looked at by a human eye**, for the
+whole app, not just `/learn`. It was verified by diffing the class tokens
+used in source against the selectors in the compiled CSS — which is what
+caught the opaque modal backdrops — but "every utility emits the right rule"
+is not the same claim as "the pages look right". Layout and spacing
+regressions would survive that check.
 
 Smaller deployment-readiness items, none blocking anything today, are in
 **Known issues** below. One search annoyance worth knowing: `.next/` build
@@ -165,7 +184,6 @@ dated design document is lost the moment that document ages out.
 
 | Where | Issue | Impact |
 |---|---|---|
-| `services/whisper/main.py` | `TranscriptionRequest.call_id` is typed `str`, but `TranscriptionResponse.callId` is typed `int`. A non-numeric id therefore fails Pydantic validation and surfaces as `Transcription failed: 1 validation error`. | None in production — the app only ever passes numeric ids. It bites anything else calling the service, including probes and manual testing, and the error names validation rather than the id. Found 2026-08-08 while running the Sanskrit probe. Fix by widening `callId` to `str` on the response, matching the request-side comment that already claims the wider type "costs nothing". |
 | `src/middleware/security.middleware.ts` | Rate limiting is in-memory. | Resets on restart, and is per-process rather than per-installation. Only matters once this runs behind more than one instance. |
 | `src/webhook-server.ts` | CORS is configured for a single localhost origin. | Blocks any non-local deployment. |
 | `ui/` (12 components) | `npm run lint` reports 14 warnings: 12 `react-hooks/set-state-in-effect`, 2 `react-hooks/immutability`. Both rules are downgraded from error in `ui/eslint.config.mjs`. | Pre-existing, and newly *visible* rather than newly broken — those two rules ship in `eslint-config-next@16`, and before it `next lint` was in no gate, so ui linting had never actually run. Downgraded rather than fixed so the script is not red on a clean checkout; re-ordering effects across 12 components is a behavioural change that deserves its own diff and a browser to verify it in. Nothing is known to misbehave because of them. Delete the override block once they are fixed. |

@@ -365,3 +365,25 @@ export interface LearnProgress {
   seenCount: number;
   total: number;
 }
+
+/** Mirrors the `Resource` shape in `src/learn/content/resources.ts`. */
+export interface LearnResource {
+  id: string;
+  language: LearnLanguage;
+  title: string;
+  author: string;
+  sourceUrl: string;
+  type: 'article' | 'book' | 'video' | 'course' | 'dictionary' | 'audio' | 'primer';
+  howToRead: string;
+  license: string;
+  embeddableExcerpt?: string;
+}
+
+/** Mirrors the `ResourceNote` shape in `src/learn/ResourceNotes.ts`. */
+export interface LearnResourceNote {
+  id: string;
+  resourceId: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
