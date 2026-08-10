@@ -89,12 +89,17 @@ export const tamilManifest: Manifest = {
       composedOf: [],
     },
     {
-      id: 'tam-pulli-na',
+      id: 'tam-pulli-alveolar-na',
       stage: 'letters',
       // Alveolar ṉ — a different letter from ந (dental na) and ண் (retroflex
       // ṇ, already taught above), even though ந/ன carry no audible
       // distinction in modern spoken Tamil (the primer still lists them as
       // separate graphemes, which is what matters for reading/writing).
+      // Named 'alveolar-na' rather than the bare 'na' that already-taught
+      // tam-letter-na uses, mirroring tam-pulli-nna's own doubled-consonant
+      // disambiguation for the same reason — an id that reads like a dead
+      // form of an unrelated already-taught letter is exactly the kind of
+      // mistake a future word could silently make.
       text: 'ன்',
       gloss: 'ṉ — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
@@ -150,7 +155,7 @@ export const tamilManifest: Manifest = {
       stage: 'words',
       text: 'நான்',
       gloss: 'nān — I',
-      composedOf: ['tam-letter-naa', 'tam-pulli-na'],
+      composedOf: ['tam-letter-naa', 'tam-pulli-alveolar-na'],
     },
     {
       id: 'tam-word-yaar',
@@ -169,11 +174,8 @@ export const tamilManifest: Manifest = {
       // Tamil equational sentences take no copula, so the two words
       // juxtaposed already form the complete sentence.
       //
-      // composedOf here is two WORDS (per Curriculum.ts: a sentence composes
-      // from the stage before it), joined by a single space in the actual
-      // text — the convention for every future sentence-stage entry:
-      // concatenate composedOf's words with one space between each, not
-      // directly.
+      // composedOf is two WORDS (see Curriculum.ts's JOINER for how a
+      // sentence's text is required to reconstruct from them).
       text: 'நான் யார்',
       gloss: 'nān yār — who am I? (lit. "I who?")',
       composedOf: ['tam-word-naan', 'tam-word-yaar'],

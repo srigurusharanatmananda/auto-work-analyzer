@@ -63,18 +63,10 @@ export const sanskritManifest: Manifest = {
       id: 'skt-letter-da',
       stage: 'letters',
       // Voiced, unaspirated dental stop — distinct from ध (dha, already
-      // taught: voiced, ASPIRATED) and from त (ta, below: unvoiced).
+      // taught: voiced, ASPIRATED) and from the त in skt-letter-ti below
+      // (unvoiced). त itself is not taught bare — see skt-letter-ti for why.
       text: 'द',
       gloss: 'da',
-      composedOf: [],
-    },
-    {
-      id: 'skt-letter-ta',
-      stage: 'letters',
-      // Unvoiced, unaspirated dental stop — distinct from द (da, above) and
-      // थ (tha, not taught here).
-      text: 'त',
-      gloss: 'ta',
       composedOf: [],
     },
     {
@@ -90,14 +82,22 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     {
-      id: 'skt-letter-i-matra',
+      id: 'skt-letter-ti',
       stage: 'letters',
-      // Wikner, Lesson 6.A.1 "Vowels after Consonants": a vowel sign that
-      // replaces a consonant's inherent -a; written after the consonant it
-      // modifies but displayed to that consonant's visual left (e.g. ब + ि
-      // = बि, "bi" — Wikner's own worked example for this exact vowel sign).
-      text: 'ि',
-      gloss: 'i (vowel sign, attaches to a preceding consonant)',
+      // त (already needed for वदति below) plus the short-i vowel sign,
+      // fused into one atomic letter — the same choice this file's Tamil
+      // sibling makes for நா/யா, and for the same reason: a vowel sign is
+      // meant to attach to a consonant, so teaching it as its own bare
+      // glyph (as an earlier draft of this file did) has nothing to
+      // visually attach to and would not render the way a learner will
+      // ever actually see it. Wikner, Lesson 6.A.1 "Vowels after
+      // Consonants": a vowel sign replaces a consonant's inherent -a and is
+      // written after the consonant it modifies but displayed to that
+      // consonant's visual left (Wikner's own worked example: ब + the same
+      // vowel sign = बि, "bi") — त + the same vowel sign = ति, "ti", by the
+      // identical rule.
+      text: 'ति',
+      gloss: 'ti',
       composedOf: [],
     },
 
@@ -164,7 +164,7 @@ export const sanskritManifest: Manifest = {
       // in the same Lesson 3.B.3 exercise-4 sentence naraḥ is drawn from.
       text: 'वदति',
       gloss: 'vadati — speaks (he/she/it)',
-      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-ta', 'skt-letter-i-matra'],
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-ti'],
     },
 
     {
@@ -179,11 +179,8 @@ export const sanskritManifest: Manifest = {
       // verb, and that an explicit subject displaces the pronoun a bare verb
       // like vadati ("he/she/it speaks") would otherwise imply.
       //
-      // composedOf here is two WORDS, not letters (per Curriculum.ts: a
-      // sentence composes from the stage before it, i.e. words) — joined by
-      // a single space in the actual text, which is the convention for every
-      // future sentence-stage entry: concatenate composedOf's words with one
-      // space between each, not directly.
+      // composedOf is two WORDS (see Curriculum.ts's JOINER for how a
+      // sentence's text is required to reconstruct from them).
       text: 'नरः वदति',
       gloss: 'naraḥ vadati — the man speaks',
       composedOf: ['skt-word-narah', 'skt-word-vadati'],
