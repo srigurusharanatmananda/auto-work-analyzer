@@ -46,8 +46,22 @@ and the [Vāgdhenu](https://huggingface.co/prathoshap/vagdhenu) chant system, is
 to **synthesise from Kannada transliteration**. Kannada script does not carry the
 schwa-deletion convention, so the phonology comes out closer to Sanskrit.
 
-**Consequence for this design: the learner is shown Devanagari; the synthesiser
-is fed Kannada.** Transliteration is an internal step, invisible in the UI.
+**Consequence for this design (as originally written): the learner is shown
+Devanagari; the synthesiser is fed Kannada.** Transliteration is an internal
+step, invisible in the UI.
+
+> **Update, 2026-08-10 — reversed for the backend actually shipped.** The
+> paragraph above was written for `sanskrit_tts`/Vāgdhenu, neither of which
+> has native Sanskrit training. `services/tts` runs Indic-Parler-TTS itself
+> (see "Sanskrit TTS now exists properly" just below) — it does, and testing
+> against the real running container found the opposite of what this section
+> predicts: Kannada input reliably produced *longer, garbled* audio for the
+> same short word (Whisper-ASR-probed, same method as the 2026-08-08 probe
+> under Verification below) than raw Devanagari did. `Transliterator.ts` is
+> now identity for Sanskrit too. See its file header and
+> `Transliterator.test.ts` for the current reasoning and evidence; treat this
+> section as the historical record of why the seam was built, not as current
+> behavior.
 
 ### Sanskrit TTS now exists properly
 
@@ -171,7 +185,10 @@ Follows the existing module shape (`src/calls/`, `src/scanning/`):
 ```
 src/learn/
   Curriculum.ts        the stage/lesson graph; what is unlocked and what is next
-  Transliterator.ts    Devanagari|Tamil → Kannada for synthesis. THE seam.
+  Transliterator.ts    the script-routing seam. Identity for both languages
+                        today — see its file header for why that reverses
+                        what this doc originally specified (2026-08-10 update
+                        above).
   SpeechClient.ts      Indic-Parler-TTS; mirrors WhisperClient's shape
   AudioCache.ts        synthesised audio keyed by (text, voice, prosody)
   Progress.ts          what has been seen, what is due
@@ -179,9 +196,10 @@ src/learn/
 
 Two notes on the seams:
 
-- **`Transliterator` is the piece to get right.** The Kannada-routing trick lives
-  here and nowhere else. If a better Sanskrit voice appears that takes Devanagari
-  directly, this becomes a no-op and nothing else changes.
+- **`Transliterator` is the piece to get right.** A script-routing trick, if one
+  is ever needed again, lives here and nowhere else — not because one is
+  currently active (it is not; see the 2026-08-10 update above), but because
+  this is where the next backend swap should reintroduce it, if it needs one.
 - **`AudioCache` is not an optimisation, it is the architecture.** At one user the
   same hundred lessons are replayed constantly; synthesising each time wastes
   compute and makes the app feel slow for no reason. Cache keyed on the text and
@@ -218,9 +236,11 @@ else about the voice should be adjustable — it is a teaching voice, not a toy.
 - **Indic-Parler-TTS is 0.9B and CPU inference will be slow.** The cache hides
   this for repeat plays but not for first plays. Measure before designing the
   lesson flow around instant audio.
-- **Transliteration correctness is silent when wrong.** A bad Devanagari→Kannada
-  mapping produces confident, wrong pronunciation that the learner will faithfully
-  copy. Needs a test with known pairs, not a spot check.
+- **Transliteration correctness is silent when wrong.** Whatever `Transliterator`
+  actually does (identity, today — see the 2026-08-10 update above) produces
+  confident, wrong pronunciation if it is wrong, and the learner has no way to
+  tell. Needs verification against the real backend, not a spot check — which
+  is exactly how the identity change above was decided, not assumed.
 - **No pronunciation feedback means no error detection at all** in stages 1–3.
   The learner can practise a mistake indefinitely. Worth stating as an accepted
   limitation rather than pretending recognition covers it.

@@ -1,17 +1,16 @@
 /**
- * Text -> speech, via the Indic-Parler-TTS service this deliberately expects
- * to live beside Whisper (see `services/whisper` and `WhisperClient.ts`).
+ * Text -> speech, via the Indic-Parler-TTS service that lives beside Whisper
+ * (see `services/tts`, `services/whisper` and `WhisperClient.ts`).
  *
- * There is no `services/tts` yet — this client is written against a
- * **provisional, guessed HTTP contract**: a `/health` endpoint and a
- * `POST /synthesize` endpoint that takes `{ text, voice, prosody }` and
- * returns raw audio bytes. That guess is modelled on `services/whisper`'s own
- * shape (a Python model-serving container with a health check and one real
- * endpoint), because `SpeechClient` is meant to mirror `WhisperClient`
- * deliberately: same health-check-then-call shape, same injectable
- * fetch/sleep so tests never open a socket. Once a real TTS server exists,
- * this contract should be treated as a starting point to reconcile against
- * reality, not as settled.
+ * The HTTP contract this client was originally written against — a
+ * `/health` endpoint and a `POST /synthesize` endpoint that takes
+ * `{ text, voice, prosody }` and returns raw audio bytes — was a guess,
+ * modelled on `services/whisper`'s own shape, before `services/tts` existed.
+ * `services/tts/main.py` was built to match that guess exactly, and the
+ * match has been verified against the real, running container (2026-08-10):
+ * health-check-then-synthesize works as written here. `SpeechClient` mirrors
+ * `WhisperClient` deliberately: same health-check-then-call shape, same
+ * injectable fetch/sleep so tests never open a socket.
  *
  * Deliberately absent: `containerPathFor` / any file-path rewriting.
  * WhisperClient rewrites a host path because Whisper opens the file itself
@@ -87,10 +86,14 @@ const HEALTH_POLL_MS = 5_000;
 
 /**
  * A single lesson line is short, but CPU inference for this model is not
- * instant. Generous by necessity, same as WhisperClient. Override with
- * TTS_TIMEOUT_MS.
+ * instant — measured against the real container (2026-08-10), even a single
+ * two-character word took several minutes. 60s (this constant's value before
+ * that measurement) silently aborted every real synthesis attempt: this is
+ * the inner timeout `withTimeout` below actually races against
+ * `learn.routes.ts`'s own outer AbortController, so raising that outer bound
+ * alone did nothing until this one moved too. Override with TTS_TIMEOUT_MS.
  */
-const DEFAULT_SYNTHESIZE_TIMEOUT_MS = 60 * 1000;
+const DEFAULT_SYNTHESIZE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export class SpeechUnavailableError extends Error {
   constructor(message: string) {

@@ -4,10 +4,10 @@
  * Every backend piece already exists — `Curriculum` (what's next),
  * `Progress` (what's been seen), `AudioCache` (text to speech, cached),
  * `Transliterator` (script the learner sees vs. script the synthesiser is
- * fed), and now two speech backends: `SpeechClient` (the provisional
- * Indic-Parler-TTS contract, no server yet) and `GeminiSpeechClient` (real,
- * already-configured, Tamil-only per Gemini's supported languages). This
- * file only wires them behind three routes; see
+ * fed), and two speech backends: `SpeechClient` (self-hosted Indic-Parler-TTS,
+ * see `services/tts` — Sanskrit, which Gemini does not support) and
+ * `GeminiSpeechClient` (real, already-configured, Tamil-only per Gemini's
+ * supported languages). This file only wires them behind three routes; see
  * `docs/specs/2026-08-08-learning-module-design.md`.
  *
  * Follows `reports.routes.ts`'s shape: a `createLearnRouter(deps)` factory
@@ -33,16 +33,16 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
 
 /**
- * Which language gets which speech backend. Tamil has a real,
- * already-configured provider (Gemini, verified to support Tamil — see
- * GeminiSpeechClient.ts); Sanskrit does not, and stays on the provisional
- * client until one exists. One instance per language, not per request —
- * both clients are stateless enough to share.
+ * Which language gets which speech backend. Tamil uses Gemini (verified to
+ * support Tamil — see GeminiSpeechClient.ts); Sanskrit uses the self-hosted
+ * Indic-Parler-TTS container (services/tts) via SpeechClient — Gemini has no
+ * Sanskrit voice. One instance per language, not per request — both clients
+ * are stateless enough to share.
  */
 function defaultSpeechClientFor(): (language: Language) => SpeechSynthesizer {
   const gemini = new GeminiSpeechClient();
-  const provisional = new SpeechClient();
-  return (language) => (language === 'tamil' ? gemini : provisional);
+  const selfHosted = new SpeechClient();
+  return (language) => (language === 'tamil' ? gemini : selfHosted);
 }
 
 export interface LearnRouterDeps {
@@ -184,8 +184,9 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // real provider voice name. Kept separate from what's actually passed to
     // synthesize() below: that must stay `undefined` when the caller didn't
     // ask for one, so each backend's OWN default applies (GeminiSpeechClient
-    // defaults to a real Gemini voice, "Kore"; the provisional SpeechClient
-    // has its own). Passing the literal string 'default' straight through —
+    // defaults to a real Gemini voice, "Kore"; SpeechClient's own server has
+    // its own, "Aryan" — see services/tts/main.py's DEFAULT_VOICE). Passing
+    // the literal string 'default' straight through —
     // the bug this comment replaces — sent 'default' to the live Gemini API
     // as a voice name, which Gemini does not have, breaking every Tamil
     // request that didn't name a voice explicitly.
@@ -193,15 +194,26 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     const requestedVoice = trimmedVoice !== '' ? trimmedVoice : undefined;
 
     // A learner is waiting synchronously on this request, unlike a background
-    // transcription job — SpeechClient's own default health-check timeout
-    // (3 minutes, generous by design for a slow-loading model) would leave
-    // "Play audio" hung that long on every cache miss while no TTS server
-    // exists for the provisional client. Aborting sooner makes its poll loop
-    // notice on the next iteration and throw SpeechUnavailableError, which
-    // the catch below already turns into a fast 503. For GeminiSpeechClient
-    // (Tamil) this is just a generous outer bound — a real API call should
-    // finish well inside it.
-    const SPEAK_TIMEOUT_MS = 15_000;
+    // transcription job. This used to be 15s, fast-failing on the assumption
+    // that no TTS server existed yet for Sanskrit's client. One now does
+    // (services/tts, self-hosted Indic-Parler-TTS, CPU-only because Docker
+    // Desktop on macOS cannot pass the Apple GPU through) — and measured
+    // against the real container, even a two-character word took several
+    // minutes to synthesise. `npm run learn:pregenerate-sanskrit-audio` is
+    // the actual fix for that latency (it warms AudioCache so real requests
+    // are cache hits, per AudioCache.ts's own design comment: "the same
+    // hundred lessons are replayed constantly... this cache is what makes
+    // replay free"). This timeout is just the outer safety bound for a cache
+    // MISS that slips through anyway, generous enough not to abort mid
+    // -synthesis. For GeminiSpeechClient (Tamil), a real API call finishes
+    // well inside it regardless.
+    //
+    // Set strictly above SpeechClient's own DEFAULT_SYNTHESIZE_TIMEOUT_MS
+    // (10 min): that inner timeout is what should actually fire on a slow
+    // cache miss, since it raises the more specific SpeechUnavailableError.
+    // This outer one existing at all is a backstop against a future
+    // SpeechSynthesizer implementation that does not enforce its own bound.
+    const SPEAK_TIMEOUT_MS = 11 * 60 * 1000;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 

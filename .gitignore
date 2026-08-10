@@ -1,6 +1,10 @@
 node_modules
 ui/node_modules
 .env
+# services/whisper and services/tts are real Python, not just Dockerfiles —
+# a local syntax check or IDE run leaves this behind on the host.
+__pycache__/
+*.pyc
 # Next.js reads these in the ui/ package; `.env` alone does not match them, so
 # without these a developer's local config would be committed.
 .env.local
