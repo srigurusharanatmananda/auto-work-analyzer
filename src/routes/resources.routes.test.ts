@@ -52,6 +52,7 @@ function fakeNotes(): ResourceNotesStore & { store: Map<string, ResourceNote[]> 
         note,
         createdAt: new Date(counter).toISOString(),
         updatedAt: new Date(counter).toISOString(),
+        seq: counter,
       };
       const key = keyOf(userId, resourceId);
       store.set(key, [created, ...(store.get(key) ?? [])]);
