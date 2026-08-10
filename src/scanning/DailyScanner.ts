@@ -28,12 +28,51 @@ import {
 import { workItemsFromAnalysis } from "../sources/GitWorkSource.js";
 import type { CommitGrouper } from "../grouping/CommitGrouper.js";
 import type { DestinationResolver } from "../destinations/DestinationResolver.js";
-import type { ClickUpConfig } from "../types/index.js";
+import type { ClickUpConfig, WorkAnalysisResult } from "../types/index.js";
 
 const execFileAsync = promisify(execFile);
 
 /** A fetch needing credentials must fail, not hang the whole run. */
 const FETCH_TIMEOUT_MS = 60_000;
+
+/**
+ * analyzeWork() has no single subprocess handle to bound the way gitFetch
+ * bounds "git fetch": it shells out to git for `git log` with no timeout of
+ * its own (see GitWorkAnalyzer.getCommitsForDateRange), can call an AI grouper
+ * over the network, and touches SQLite via HistoryService. There is nothing
+ * clean to thread a native timeout through across all of that, so `withTimeout`
+ * below races it instead — generous enough that even a large repo finishes
+ * comfortably inside it, short enough that one repo stuck on a slow disk or a
+ * hung AI call cannot swallow the rest of the sequential scan.
+ */
+const ANALYZE_TIMEOUT_MS = 5 * 60_000;
+
+/** Thrown by `withTimeout` when the timer, not the raced promise, loses. */
+class TimeoutError extends Error {}
+
+/**
+ * Races `promise` against a timer of `ms` milliseconds.
+ *
+ * This is an OUTER race, not a cancellation: analyzeWork's own git subprocess
+ * or AI call has no handle out here to kill, so losing the race only stops
+ * this loop from waiting on it — whatever analyzeWork was doing keeps running
+ * in the background, unobserved, until it settles (or the process exits).
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new TimeoutError(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 
 export interface RepoScanResult {
   slug: string;
@@ -50,8 +89,24 @@ export interface RepoScanResult {
   tasksCreated: number;
   destination: string | null;
   fetchFailed?: string;
+  /**
+   * Set when analyzeWork() lost the ANALYZE_TIMEOUT_MS race instead of
+   * returning. Recorded, not fatal, the same as `fetchFailed` above — the loop
+   * moves on to the next repo rather than throwing, but the day's work for
+   * this repo was not analysed and nothing was filed for it.
+   */
+  analyzeTimedOut?: string;
   error?: string;
   wouldCreate?: Array<{ name: string; description: string }>;
+  /**
+   * How long the fetch and analyze steps actually took, so a repo that is slow
+   * but stays under ANALYZE_TIMEOUT_MS is still visible in the summary instead
+   * of looking identical to a fast one. `analyzeMs` is set whether analyzeWork
+   * finished, failed, or timed out — whatever wall-clock time was actually
+   * spent waiting on it.
+   */
+  fetchMs?: number;
+  analyzeMs?: number;
 }
 
 export interface ScanRunSummary {
@@ -70,6 +125,12 @@ export interface DailyScannerDeps {
   clickUpFactory?: (config: ClickUpConfig) => ClickUpService;
   discover?: typeof discoverRepos;
   fetchRepo?: (path: string) => Promise<void>;
+  /**
+   * Overrides ANALYZE_TIMEOUT_MS. Exists so a test can shrink a 5-minute wait
+   * to a handful of milliseconds instead of actually waiting 5 minutes to
+   * prove the race fires; production callers should never need it.
+   */
+  analyzeTimeoutMs?: number;
 }
 
 async function gitFetch(path: string): Promise<void> {
@@ -87,6 +148,7 @@ export class DailyScanner {
     const settings = await this.deps.registry.getSettings(userId);
     const discover = this.deps.discover ?? discoverRepos;
     const fetchRepo = this.deps.fetchRepo ?? gitFetch;
+    const analyzeTimeoutMs = this.deps.analyzeTimeoutMs ?? ANALYZE_TIMEOUT_MS;
 
     const discovery: DiscoveryResult = await discover(settings.root, settings.owner);
     const results: RepoScanResult[] = [];
@@ -106,6 +168,7 @@ export class DailyScanner {
       };
 
       try {
+        const fetchStart = Date.now();
         try {
           await fetchRepo(repo.path);
         } catch (error) {
@@ -113,22 +176,44 @@ export class DailyScanner {
           // and the flag tells the user why a repo may look thin.
           result.fetchFailed = error instanceof Error ? error.message : String(error);
         }
+        result.fetchMs = Date.now() - fetchStart;
 
         const analyzer =
           this.deps.analyzerFactory?.(repo.path, userId) ??
           new GitWorkAnalyzer(repo.path, undefined, this.deps.grouper, userId);
 
-        // "--all" is load-bearing: git log with no revision argument walks HEAD
-        // only, so work committed on a branch that is not checked out would be
-        // invisible. The Reports tab's "All Branches" option passes undefined and
-        // therefore does NOT do this.
-        const analysis = await analyzer.analyzeWork(
-          opts.date,
-          opts.date,
-          settings.authorIdentities.length > 0 ? settings.authorIdentities : undefined,
-          "--all",
-          false
-        );
+        let analysis: WorkAnalysisResult;
+        const analyzeStart = Date.now();
+        try {
+          // "--all" is load-bearing: git log with no revision argument walks
+          // HEAD only, so work committed on a branch that is not checked out
+          // would be invisible. The Reports tab's "All Branches" option passes
+          // undefined and therefore does NOT do this.
+          analysis = await withTimeout(
+            analyzer.analyzeWork(
+              opts.date,
+              opts.date,
+              settings.authorIdentities.length > 0 ? settings.authorIdentities : undefined,
+              "--all",
+              false
+            ),
+            analyzeTimeoutMs,
+            `analyzeWork exceeded ${analyzeTimeoutMs}ms for ${repo.slug}`
+          );
+        } catch (error) {
+          result.analyzeMs = Date.now() - analyzeStart;
+          if (error instanceof TimeoutError) {
+            // Recorded, not fatal: this repo is skipped for today, but a
+            // pathological repo must never stop the rest of the org's repos
+            // from being scanned. See ANALYZE_TIMEOUT_MS for why this is a
+            // race rather than a guaranteed kill of analyzeWork's own work.
+            result.analyzeTimedOut = error.message;
+            results.push(result);
+            continue;
+          }
+          throw error;
+        }
+        result.analyzeMs = Date.now() - analyzeStart;
 
         result.commits = analysis.totalCommits;
         result.workItems = analysis.detectedWork.length;

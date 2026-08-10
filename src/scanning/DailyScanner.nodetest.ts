@@ -202,6 +202,43 @@ describe("DailyScanner", () => {
     assert.ok(alpha.tasksCreated > 0);
   });
 
+  test("a repo whose analyzeWork hangs past the timeout is recorded, not thrown, and the scan continues", async () => {
+    const good = makeRepo("alpha", "git@github.com:kailasa-ngpt/alpha.git");
+    commitIn(good, "feat: alpha works", "dev@example.com");
+    const stuck = makeRepo("zeta", "git@github.com:kailasa-ngpt/zeta.git");
+    commitIn(stuck, "feat: zeta hangs", "dev@example.com");
+
+    let attempts = 0;
+    const summary = await scanner({
+      // Real default is 5 minutes; shrunk here so the test proves the race
+      // fires without actually waiting 5 minutes. Still generous enough that
+      // alpha's real (non-stubbed) analyzeWork — a genuine git subprocess
+      // plus SQLite dedup lookups — finishes well inside it.
+      analyzeTimeoutMs: 3000,
+      analyzerFactory: (projectPath: string) => {
+        attempts += 1;
+        if (projectPath.endsWith("zeta")) {
+          return {
+            // Never resolves and never rejects — the pathological case a
+            // hung subprocess or a stuck AI call produces. Without the
+            // ANALYZE_TIMEOUT_MS race, this hangs the whole sequential loop
+            // forever and node:test itself would time out the run.
+            analyzeWork: () => new Promise(() => {}),
+          } as unknown as GitWorkAnalyzer;
+        }
+        return new GitWorkAnalyzer(projectPath);
+      },
+    }).run("user-1", { date: DATE });
+
+    assert.equal(attempts, 2, "both repos must be attempted");
+    const zeta = summary.repos.find((r) => r.slug.endsWith("zeta"))!;
+    const alpha = summary.repos.find((r) => r.slug.endsWith("alpha"))!;
+    assert.match(zeta.analyzeTimedOut!, /exceeded/i);
+    assert.equal(zeta.error, undefined, "a timeout is recorded on its own field, not as a generic error");
+    assert.ok(zeta.analyzeMs! >= 0, "the time actually spent waiting must still be recorded");
+    assert.ok(alpha.tasksCreated > 0, "the next repo must still be scanned and filed");
+  });
+
   test("picks up commits from every configured identity and no one else's", async () => {
     const path = makeRepo("alpha", "git@github.com:kailasa-ngpt/alpha.git");
     commitIn(path, "feat: from work email", "work@example.com");
