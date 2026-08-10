@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
@@ -114,11 +115,16 @@ export default function LearnPage() {
   return (
     <ProtectedRoute>
       <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Learn</h1>
-          <p className="mt-2 text-foreground-secondary">
-            Work through letters, words, and sentences one lesson at a time.
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Learn</h1>
+            <p className="mt-2 text-foreground-secondary">
+              Work through letters, words, and sentences one lesson at a time.
+            </p>
+          </div>
+          <Link href="/learn/resources">
+            <Button variant="ghost">Reading resources →</Button>
+          </Link>
         </div>
 
         <div className="mb-6 flex rounded-lg border border-border overflow-hidden w-fit">

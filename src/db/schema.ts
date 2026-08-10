@@ -567,3 +567,36 @@ export const learnAudioCache = pgTable('learn_audio_cache', {
     .notNull()
     .default(sql`(now() at time zone 'utc')::text`),
 });
+
+/**
+ * A learner's own notes on a reading resource (`src/learn/content/resources.ts`
+ * — a curated, static, data-not-code manifest, the same pattern as the
+ * curriculum manifests; resources themselves are not in this table).
+ *
+ * `id` is a generated uuid, not a hash like `learnProgress.id` — this is
+ * `TemplateStore`'s pattern, not `Progress`'s, because the two tables answer
+ * different questions. `learnProgress` is upsert-scoped: "the row for
+ * (user, language, lesson)" is a single slot a hash id can address directly.
+ * A resource note is not a slot — a learner can leave several independent
+ * notes on the same resource over time, so there is no natural tuple to
+ * derive a single id from, and `ON CONFLICT` has nothing to target.
+ *
+ * `resourceId` is a plain string, not a foreign key: resources live in code
+ * (`resources.ts`), not in a table this schema could reference.
+ */
+export const learnResourceNotes = pgTable(
+  'learn_resource_notes',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    resourceId: text('resource_id').notNull(),
+    note: text('note').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    // "Every note this user left on this resource" (newest first) is the one
+    // query shape this table exists to answer.
+    index('idx_learn_resource_notes_user_resource').on(table.userId, table.resourceId),
+  ]
+);
