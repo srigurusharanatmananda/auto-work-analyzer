@@ -107,19 +107,22 @@ To read the retired plan and its reasoning:
 | **2 — Data platform** | Drizzle migrations replace `CREATE TABLE IF NOT EXISTS`; every store on Postgres | 5 migrations in `src/db/migrations`; `better-sqlite3` survives only in the one-way import path and its tests |
 | **6 — Transcripts → ClickUp** | Extraction with a verbatim-quote validator, review UI, real Whisper end to end, per-call filing destinations, unattended sweep, transcript search, playback aligned to transcript, URL ingestion behind an SSRF guard | `src/calls/`, `src/transcription/` |
 | **4 — One front-end** | Next 15 → 16, Tailwind 3 → 4, `next lint` → flat-config `eslint` | `ui/package.json`; `ui/app/globals.css` now holds the theme as `@theme`, and `tailwind.config.ts` is gone |
-| **7 — Learning module** | Curriculum engine, both languages, stages 1-2 (letters, words); real speech for both (Gemini for Tamil, self-hosted Indic-Parler-TTS for Sanskrit); UI at `/learn` | `src/learn/`, `services/tts/`, `ui/app/learn/`. PRs #4-#8. [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md), with a 2026-08-10 update reversing its original Sanskrit-via-Kannada design after testing against the real backend found raw Devanagari works better for it |
+| **7 — Learning module** | Curriculum engine, both languages, all three stages reachable (letters, words, one sentence each); real speech for both (Gemini for Tamil, self-hosted Indic-Parler-TTS for Sanskrit); UI at `/learn`, with lesson Previous/Next navigation, a translate/transliterate tool, and in-app reading resources (excerpts, notes, video/playlist embeds, full public-domain book scans, your own PDF uploads) | `src/learn/`, `services/tts/`, `ui/app/learn/`. PRs #4-#8, #16-#20. [`docs/specs/2026-08-08-learning-module-design.md`](docs/specs/2026-08-08-learning-module-design.md) (2026-08-10 update reversing its Sanskrit-via-Kannada design), [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md) (content depth plan) |
 
 `POST /api/webhook` is intentionally unauthenticated — it is gated by a shared
 secret and refuses the request when that secret is unset. That is not a gap.
 
-**Phase 7's one real remaining gap: stage 3 (sentences) is empty for both
-languages.** Not an engine limitation — `Curriculum.ts` already supports it —
-a content one: the seed vocabulary for both languages deliberately avoids
-vowel signs, conjuncts and verb forms a real sentence needs (see each
-manifest's own header for why). Extending it is "content work for whoever
-authors it next, not an engine change," and per the design doc's own risk
-note, needs the one human quality gate this module can't automate: a beginner
-cannot detect a bad teacher.
+**Phase 7's real remaining gap: content depth, not the one-sentence-per-language
+minimum stage 3 needed to prove the engine.** That minimum shipped 2026-08-10.
+What's still thin — 17-19 lessons per language total, sized to hand-verify
+completely rather than to actually teach the language — is scoped in
+[`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md),
+whose first tranche (the complete Sanskrit alphabet, 50 letters up from 9)
+shipped alongside it. Not an engine limitation — `Curriculum.ts` already
+supports arbitrarily more content in all three stages — a content one, and
+per the design doc's own risk note, needs the one human quality gate this
+module can't automate: a beginner cannot detect a bad teacher. The plan's
+"What's next, in order" section is the actual backlog here.
 
 ### Still to do
 
@@ -159,10 +162,13 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
-**Phase 7 stage 3: sentence content, for both languages.** The one real gap
-left in the learning module — see its row in Done, above. Content work, not
-an engine change, and needs the human quality gate the design doc itself
-calls for before it ships to the one real learner.
+**Phase 7 content depth, per the new curriculum plan.** Next tranche: Sanskrit
+vowel signs (Wikner Lesson 6), then Tamil's alphabet-completion tranche
+mirroring the Sanskrit one already shipped — see
+[`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
+"What's next, in order". Content work, not an engine change, and needs the
+human quality gate the design doc itself calls for before it ships to the
+one real learner.
 
 **The `ui/` upgrade still has not been looked at by a human eye**, for the
 whole app, not just `/learn`. It was verified by diffing the class tokens

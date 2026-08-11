@@ -1,0 +1,167 @@
+# Sanskrit and Tamil curriculum: beginner to advanced
+
+**Status: plan, partially executed.** Extends
+[`2026-08-08-learning-module-design.md`](2026-08-08-learning-module-design.md),
+which built the engine and left content as "phase 7's one real remaining
+gap" (see [`../../STATUS.md`](../../STATUS.md)). That design doc's own stage
+list is unchanged by this one — stages 1-3 (letters, words, sentences) are
+still the whole deliverable, stage 4 (chanting, Vedic pitch accent) is still
+deferred, and nothing here proposes touching `Curriculum.ts`. This document
+is about what goes **inside** those three stages: right now, 17-19 lessons
+per language that were sized to prove the engine works, not to teach the
+language. It maps out how much further each stage can go using sources
+already verified in this codebase, and ships the first tranche.
+
+## Why this exists
+
+The operator's own words: "the lessons look too scantty, only 17 lessons,
+that is not real," plus a request to research six Sanskrit-adjacent apps
+found on the Mac App Store and use them to inform a "full learning
+curriculum, from beginner to expert" (certification features explicitly
+out of scope — there is one learner, not a cohort).
+
+Both manifests (`content/sanskrit.ts`, `content/tamil.ts`) call themselves a
+"seed, not a curriculum" in their own header comments. That was accurate and
+deliberate at the time: `STATUS.md` records stage 3 (sentences) as
+empty until 2026-08-10, closed with exactly one sentence per language,
+chosen for being the smallest change that proved the engine could hold a
+real sentence at all. It was never meant to be the final size — just small
+enough to hand-verify completely, per the design doc's own quality bar: "a
+beginner cannot detect a bad teacher, which makes this the one quality gate
+that has to be human."
+
+That quality bar is the reason this plan is a plan and not a 2,000-line
+diff. Every existing lesson in both manifests was individually checked
+against a primary source before it shipped. Scaling that up by 50-100x in
+one pass would either take the same care and be too large to review, or cut
+corners on exactly the thing the design doc calls unrecoverable. So: **this
+document is the map, executed in tranches**, each one sized to actually get
+the same hand-verification the existing 17-19 lessons got.
+
+## What the six researched apps actually offer
+
+None of the six is a full course. Each is a single-skill tool:
+
+| App | What it actually is | Relevant to this plan? |
+|---|---|---|
+| Pronounce Sanskrit | Yoga-chant pronunciation drills (asanas, chakras, invocations) | Organizing principle only (see below) — not a source of lesson content |
+| Sanskrit Writer ($14.99) | IAST/Devanāgarī/Brāhmī input method + on-the-fly declension tables | Feature idea, not curriculum content |
+| Cologne Sanskrit Lexicon | The CDSD dictionaries, packaged natively | Already covered — `skt-cdsl-mw` in `resources.ts` |
+| Sanskrit Lexicon | 250k-word dictionary; backs out root + grammar tags from an inflected form typed in | Feature idea for the "expert" reading tier (below) |
+| Chitrakshar | Alphabet flashcards + auto-generated quiz bank, Hindi/Marathi/Sanskrit/English side by side | Reinforcement-mechanic idea, not curriculum content |
+| Mudrakshar | Devanāgarī handwriting/stroke-order tracing, 422 letterforms | Real gap — this app currently teaches *reading*, never *writing* |
+
+Two concrete, out-of-scope-for-now feature ideas came out of this, flagged
+here rather than silently dropped:
+
+1. **Handwriting/stroke-order practice.** The lesson engine's data model is
+   recognition (`Lesson.text`, shown for the learner to read), not
+   production. Adding a writing-practice mode is a real, separate feature —
+   worth a future ticket, not a `Manifest` change.
+2. **"Paste an inflected form, get the root + grammar tags."** This is
+   exactly the skill Wikner Lessons 12-14 exist to teach by hand (dictionary
+   navigation, Dhatu-Pāṭha lookup) and exactly what Sanskrit Lexicon and
+   Ambuda's reader both automate. Worth eventually surfacing as an in-app
+   tool once the reading tier (below) is reached — not a lesson-content
+   item either.
+
+The one idea that DOES inform lesson-content shape: Mudrakshar's
+vowel → consonant → **barākhaḍī** (systematic consonant+vowel-sign matrix)
+progression is a real traditional teaching order, and lines up with exactly
+what Wikner Lesson 6 does (vowel signs attached to already-taught
+consonants) — corroboration, not a new idea, but worth naming as such.
+
+## Sanskrit track — Charles Wikner, *A Practical Sanskrit Introductory*
+
+Already the cited source for every existing Sanskrit lesson. It is a
+genuine 15-lesson beginner-to-intermediate course (its own preface: lifts a
+reader "who knows nothing of Sanskrit" to the point of applying
+Monier-Williams' dictionary and the Dhātu-Pāṭha to reading scripture) —
+public domain by the author's own stated release, already read in full
+(`wikner2.pdf`/`.txt` in this session's working files, not paraphrased from
+training-time recall).
+
+| Lessons | Topic | Engine stage | Status |
+|---|---|---|---|
+| 1.A-3.A | Full alphabet: 14 vowels, anusvara+visarga, 25 stops, 4 semivowels, 3 sibilants, ha | `letters` | **Shipped this pass** — 50 letters (up from 9) |
+| 6.A | Vowel signs (mātrā) attached to consonants | `letters` | Not started |
+| 7.A | Halanta, conjunct consonants (kṣa, jña, etc.) | `letters` | Not started |
+| 4.A-5.A, 8.A | Devanāgarī variant forms, numerals, nasal substitution | `letters` | Not started |
+| 1.B-9.B | Dhātu concept, verb intro, noun cases, gender, adjectives, adverbs, verbal prefixes | `words` | 7 words shipped (2026-08-09/10); the rest of this vocabulary is the next tranche |
+| 9.A | Vowel accents, alphabet variations | `letters` | Not started |
+| 10.A-11.A | Sandhi (vowel, consonant, visarga) | grammar, feeds `sentences` | Not started — **real sentences need this**: Sanskrit word-boundaries change sound under sandhi, so a "sentences" stage that ignores it teaches a form learners won't meet in real text |
+| 10.B-11.B | Compound words (dvandva, tatpuruṣa, avyayībhāva, bahuvrīhi) | `words`/`sentences` | Not started |
+| 12.A-14.A | Monier-Williams dictionary navigation, Dhātu-Pāṭha | tool skill, not lesson content | Already partly covered by `resources.ts`'s `skt-cdsl-mw`/`skt-ambuda-library` `inAppNotes`; could be deepened there, not here |
+| 15.A | Applying the above to reading scripture | `sentences` (expert tier) | Not started — see below |
+
+**Expert tier, beyond Wikner:** Wikner's own last lesson points at "the study
+of the scriptures" without supplying scripture text itself (staying
+grammar-focused throughout). The natural continuation, once sandhi and case
+morphology are solid, is graded real reading — short, well-known,
+public-domain verses (e.g. gīta or Upaniṣad excerpts already in the public
+domain, the same bar every existing sentence in this file has already had
+to clear) as `sentences`-stage entries, each with the same per-item
+verification the existing narah-vadati sentence got.
+
+## Tamil track — T.B. Siddalingaiah, *ABC of Tamil, Book One*
+
+Also the existing cited source (Tamil Virtual Academy, read in full,
+`abc_tamil.txt`/`ABC_Tamil.pdf` in this session's working files). 21 lessons,
+ending at basic cases and present tense — genuinely "Book One" of what the
+title implies is a longer series.
+
+| Lessons | Topic | Engine stage | Status |
+|---|---|---|---|
+| 1-2 | 12 vowels, 18 consonants + pulli (dead-consonant mark) | `letters` | Partial — 0 of 12 vowels taught independently (only two vowel+consonant combinations exist, நா/யா); 6 of 18 consonants taught with their inherent vowel, plus 4 more taught only in dead (pulli) form for the words that need them |
+| 3-7, 9-11, 13-15 | Consonantal vowels (vowel signs on each consonant) | `letters` | Only 2 of these combinations taught (நா, யா) |
+| 8 | Numbers | `words` | Not started |
+| 12 | Conjunction (junction rules between letters) | grammar, feeds `sentences` | Not started — Tamil's equivalent gate before real multi-word sentences, same role sandhi plays for Sanskrit |
+| 16 | Remaining letters (Grantha letters for loanwords, etc.) | `letters` | Not started |
+| 17-18 | Present tense | `words`/`sentences` | Not started |
+| 19-21 | Cases: accusative (implied), dative, genitive | `words`/`sentences` | Not started |
+
+**Beyond Book One:** the primer's own title implies a Book Two; not yet
+located/verified this session. Absent that, the existing catalogue's
+`tam-wikibooks` (Wikibooks Tamil, CC BY-SA, already excerpted in-app) and
+`tam-omniglot`/`tam-audio-htla` cover intermediate grammar and the
+pronunciation contrasts (ல/ள/ழ, ண/ன/ந, ர/ற) a "Book One only" learner would
+still be missing — the expert tier for Tamil should draw on these plus
+whatever a located Book Two supplies, verified the same way before any of
+it becomes lesson content.
+
+**Sequencing note, unchanged from the design doc:** Sanskrit is built first
+tranche-by-tranche; Tamil mirrors the same shape as pure data once a
+tranche's pattern is proven on Sanskrit, per "Sanskrit first... because it
+is the harder case" in the original design doc. This plan's first shipped
+tranche is therefore Sanskrit-only; Tamil's equivalent alphabet-completion
+tranche is the next one, not this one.
+
+## What shipped in this pass
+
+`content/sanskrit.ts`: the complete alphabet (50 letters, up from 9) —
+every vowel, anusvara, all 25 stops, all 4 semivowels, all 3 sibilants, ha —
+cited to the exact Wikner subsection per group, in Wikner's own
+alphabetical order. The 7 existing words and 1 sentence are unchanged; nothing
+that already worked was touched, only what was missing around it.
+
+## What's next, in order
+
+1. **Sanskrit vowel signs** (Wikner 6.A) — attach each already-taught vowel
+   to each already-taught consonant. Mechanical in the same way this
+   tranche was (a real, complete table to transcribe, not a judgment call),
+   but larger: up to 14 vowels x 33 consonants, in practice far fewer since
+   only combinations Wikner's own vocabulary actually uses need teaching.
+2. **Sanskrit words** drawing on the now-complete alphabet, following
+   Wikner's own B-section vocabulary and noun/verb paradigms (Lessons 1.B-9.B).
+3. **Tamil alphabet completion**, mirroring tranche 1's shape.
+4. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
+   sentences that read like real text rather than two words placed side by
+   side.
+5. **Expert-tier reading** for both languages, once the above make it
+   possible to verify a real sentence the same rigorous way the existing
+   one was.
+
+Each step gets the same treatment this one did: read the actual primer
+section (not recalled from training data), cite it per item, run
+`validateManifest` (via `bun test src/learn/content/manifests.test.ts`)
+before calling it done.
