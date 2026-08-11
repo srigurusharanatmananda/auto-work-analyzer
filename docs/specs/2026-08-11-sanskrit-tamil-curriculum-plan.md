@@ -76,6 +76,41 @@ progression is a real traditional teaching order, and lines up with exactly
 what Wikner Lesson 6 does (vowel signs attached to already-taught
 consonants) — corroboration, not a new idea, but worth naming as such.
 
+## Round 2: named web resources, and why levels are numbered, not named after either real ladder
+
+A second round of feedback — "still too basic, re-organize it into learning
+levels" — named ten more resources and asked that they inform the redesign.
+Checked live (each URL actually fetched, not assumed) rather than taken on
+the names alone, since several turned out not to be what they sounded like:
+
+| # | Resource | Verdict |
+|---|---|---|
+| 1 | Samskrita Bharati | **Real & active — added** (`skt-samskrita-bharati`). A genuine spoken-Sanskrit organization, samskritabharati.in. Free 10-day "Spoken Sanskrit Classes", plus a paid, certificate-granting correspondence ladder: **Pravesha → Parichaya → Shiksha → Kovida**, six months each, ~2 years to reading the Gītā. |
+| 2 | learnsanskrit.org | Already catalogued (`skt-learnsanskrit-course`) — confirmed its full structure: Introduction → Sounds → Starting Out → Nouns → Verbs → Odds and Ends → References → Panini, linear "core" then free branching. No change needed, already accurately described. |
+| 3 | sanskritdocuments.org | Real & active, but a pure e-text repository — no level structure, nothing to borrow. Not added; doesn't fit this catalogue's "howToRead a specific thing" shape. |
+| 4 | Ashtadhyayi.com / "DeoDoc" | **Real & active — added** (`skt-ashtadhyayi`). A specialist Pāṇinian-grammar platform (Sūtrapāṭha, Dhātupāṭha, a derivation generator). "DeoDoc" could not be verified as a real, separate thing — likely a misattribution; not pursued further. |
+| 5 | Vyoma Linguistic Labs | Already partly catalogued (their YouTube channel, `skt-pravesha-course`/`skt-sandhi-grammar-video`). Confirmed they're bigger than that — sanskritfromhome.org runs 300+ courses grouped by learner *persona* (kids, university, professionals...) rather than by numbered level. Not added as a separate entry — the YouTube content already catalogued is the free, structured slice of the same organization. |
+| 6 | "Ashish Chaturvedi" / "Sanskrit From Home" (YouTube) | **Could not verify as named.** No channel by that exact name teaches Sanskrit; "Sanskrit From Home" is the platform in #5, not a distinct channel. Not added. |
+| 7 | Tamil Virtual Academy / tamilvu.org | Same publisher as the already-catalogued `tam-abc-of-tamil`. Confirmed its full ladder: Certificate → Higher Certificate → Diploma → Higher Diploma → Degree (B.A. Tamilology) — a real, government-affiliated program. Not added as a separate resource (credential-shaped, and the user asked to leave certification out) — instead noted as one line in the existing entry's `howToRead`, so a reader knows it exists without this app treating it as a track to complete. |
+| 8 | learn101.org / "Ezhuthu" | learn101.org real but a flat, unordered topic list — confirms what a level-less resource looks like, nothing to borrow. "Ezhuthu" is not one identifiable resource (the word just means "letter/script" in Tamil); not pursued. |
+| 9 | "Learn Tamil" / "Tamil Padam" (YouTube) | **Could not verify as named.** "Learn Tamil" matches many unrelated channels; "Tamil Padam" appears confused with "Thamizh Padam," a movie/entertainment channel, not a learning resource. Not added. |
+| 10 | Madhura Tamil / TamilCube | TamilCube already catalogued (`tam-tamilcube-chart`). "Madhura Tamil" (tamilmadhura.com) turned out to be a **Tamil fiction/serial-story site**, not a course, despite the name — not added. |
+
+Also checked: the user's claim that Duolingo has no Sanskrit course. **Confirmed true** — not in Duolingo's course incubator or any current app-store listing.
+
+**Why the five levels above are named "The Alphabet" / "First Words" / etc.
+and not "Pravesha/Parichaya/Shiksha/Kovida" or "Certificate/Diploma/Degree":**
+both real ladders found above are language-specific and one is explicitly a
+paid credential program — adopting either verbatim would either only fit
+one language (breaking the design doc's "one engine, language-agnostic"
+principle for `Curriculum.ts`) or reintroduce exactly the certification
+framing this round's feedback asked to leave out. The five levels are
+content-described instead, sized to be reachable by both languages' actual
+primers, and cross-reference cleanly onto either real ladder for anyone who
+also wants the formal version: level 1-2 here is roughly Samskrita
+Bharati's free 10-day class or TVA's Certificate tier; level 3-5 is roughly
+where Pravesha/Parichaya or TVA's Diploma tier would pick up.
+
 ## Sanskrit track — Charles Wikner, *A Practical Sanskrit Introductory*
 
 Already the cited source for every existing Sanskrit lesson. It is a
@@ -148,6 +183,15 @@ every vowel, anusvara, all 25 stops, all 4 semivowels, all 3 sibilants, ha —
 cited to the exact Wikner subsection per group, in Wikner's own
 alphabetical order. The 7 existing words and 1 sentence are unchanged; nothing
 that already worked was touched, only what was missing around it.
+
+**Second pass, same PR series:** the explicit numbered level system in
+`Curriculum.ts` (`LevelId`/`LevelInfo`/`LEVELS`, a new required `level` field
+on every `Lesson`, and a `validateManifest` check that a lesson may not claim
+a lower level than what it depends on), backfilled onto every existing lesson
+in both manifests, plus a levels-overview strip and per-lesson level badge in
+`ui/app/learn`. Two new verified resources (`skt-samskrita-bharati`,
+`skt-ashtadhyayi`) and one existing entry's `howToRead` updated per the
+Round 2 table above.
 
 ## What's next, in order
 
