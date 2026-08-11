@@ -134,12 +134,80 @@ export default function LearnResourcesPage() {
 }
 
 function ResourceReader({ resource }: { resource: LearnResource }) {
+  const hasInAppContent = Boolean(
+    resource.embedUrl || resource.embeddableBookUrl || resource.embeddableExcerpt || resource.inAppNotes,
+  );
+
   return (
     <Card className="flex flex-col gap-5">
       <div>
         <p className="text-xl font-semibold text-foreground">{resource.title}</p>
         <p className="mt-1 text-sm text-foreground-secondary">{resource.author}</p>
       </div>
+
+      {resource.embedUrl && (
+        <div className="aspect-video w-full overflow-hidden rounded-md bg-background-tertiary">
+          {/*
+            No `sandbox` attribute: YouTube's player needs both allow-scripts
+            and allow-same-origin to work at all, and that combination lets the
+            framed page remove the sandbox on itself — so it adds no real
+            isolation while still breaking in-player navigation (clicking the
+            video title/channel). `embedUrl` is a hardcoded youtube.com URL,
+            never user input, so there is nothing untrusted being framed here.
+          */}
+          <iframe
+            src={resource.embedUrl}
+            title={resource.title}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      )}
+
+      {resource.embeddableBookUrl && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+            Read the full, public-domain scan here
+          </p>
+          {/*
+            Same reasoning as the YouTube embed below: no `sandbox` attribute.
+            archive.org's BookReader needs allow-scripts + allow-same-origin to
+            function, and that pair lets a framed page strip its own sandbox
+            anyway — so sandboxing here would only break the reader, not add
+            isolation. `embeddableBookUrl` is a hardcoded archive.org URL, never
+            user input.
+          */}
+          <iframe
+            src={resource.embeddableBookUrl}
+            title={`${resource.title} — full scan`}
+            className="mt-2 h-[600px] w-full rounded-md border border-border bg-background-tertiary"
+            allowFullScreen
+          />
+        </div>
+      )}
+
+      {resource.embeddableExcerpt && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+            {resource.embeddableBookUrl ? 'Highlighted excerpt (typed, searchable)' : 'Read it here'}
+          </p>
+          <div className="mt-2 max-h-96 overflow-y-auto rounded-md border border-border bg-background-tertiary p-4">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-foreground">
+              {resource.embeddableExcerpt}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {resource.inAppNotes && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+            In-app notes
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{resource.inAppNotes}</p>
+        </div>
+      )}
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
@@ -148,20 +216,22 @@ function ResourceReader({ resource }: { resource: LearnResource }) {
         <p className="mt-1 text-sm text-foreground">{resource.howToRead}</p>
       </div>
 
-      {resource.embeddableExcerpt && (
-        <blockquote className="border-l-2 border-border pl-4 text-sm text-foreground-secondary italic">
-          {resource.embeddableExcerpt}
-        </blockquote>
-      )}
-
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">License</p>
         <p className="mt-1 text-sm text-foreground-secondary">{resource.license}</p>
       </div>
 
-      <a href={resource.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-fit">
-        <Button variant="secondary">Open resource ↗</Button>
-      </a>
+      <div>
+        {hasInAppContent && (
+          <p className="mb-2 text-xs text-foreground-tertiary">
+            Prefer the source itself, or the content above isn&apos;t enough? It&apos;s also available
+            externally:
+          </p>
+        )}
+        <a href={resource.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-fit">
+          <Button variant={hasInAppContent ? 'ghost' : 'secondary'}>Open resource ↗</Button>
+        </a>
+      </div>
 
       <div className="border-t border-border pt-5">
         <NotesPanel resourceId={resource.id} />
