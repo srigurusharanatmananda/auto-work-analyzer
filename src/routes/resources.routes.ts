@@ -260,6 +260,14 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
     let found;
     try {
       found = await uploads.getUnscoped(req.params.id);
+    } catch (error) {
+      console.error('Failed to look up an upload for streaming:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to open your upload',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return;
     } finally {
       uploads.close();
     }
@@ -329,6 +337,16 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
     res.json({ success: true, data });
   });
 
+  /**
+   * Curated resources only — deliberately NOT extended to accept an upload
+   * id the way `/:id/notes` was. An upload (`LearnResourceUpload`: title,
+   * sizeBytes, createdAt...) is not shape-compatible with a curated
+   * `Resource` (howToRead, license, embeddableExcerpt...), so "readable"
+   * here would have to mean "return whichever of two different shapes
+   * matches" — a real design question, not a one-line fix, and nothing in
+   * this app calls this route for an upload id today (the UI gets upload
+   * data from `GET /uploads` and its own detail state, never this route).
+   */
   router.get('/:id', authenticate, anyRole, (req: Request, res: Response) => {
     const resource = resourceById(req.params.id);
 
@@ -341,13 +359,18 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   });
 
   router.get('/:id/notes', authenticate, anyRole, async (req: Request, res: Response) => {
-    if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
-      res.status(404).json({ success: false, error: 'No such resource' });
-      return;
-    }
-
     const notes = newNotes();
     try {
+      // Moved inside this try, not left as a bare `await` before it: a
+      // transient DB error from resourceIsReadable's own upload lookup used
+      // to become an unhandled promise rejection here, same class of bug the
+      // token-mint route was already fixed for — see resourceUploadTokens.ts's
+      // sibling route.
+      if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
+        res.status(404).json({ success: false, error: 'No such resource' });
+        return;
+      }
+
       const data = await notes.list(req.user!.userId, req.params.id);
       res.json({ success: true, data });
     } catch (error) {
@@ -363,19 +386,19 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   });
 
   router.post('/:id/notes', authenticate, anyRole, async (req: Request, res: Response) => {
-    if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
-      res.status(404).json({ success: false, error: 'No such resource' });
-      return;
-    }
-
-    const { note } = req.body ?? {};
-    if (typeof note !== 'string' || note.trim().length === 0) {
-      res.status(400).json({ success: false, error: 'note must be a non-empty string' });
-      return;
-    }
-
     const notes = newNotes();
     try {
+      if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
+        res.status(404).json({ success: false, error: 'No such resource' });
+        return;
+      }
+
+      const { note } = req.body ?? {};
+      if (typeof note !== 'string' || note.trim().length === 0) {
+        res.status(400).json({ success: false, error: 'note must be a non-empty string' });
+        return;
+      }
+
       const data = await notes.create(req.user!.userId, req.params.id, note.trim());
       res.status(201).json({ success: true, data });
     } catch (error) {
@@ -391,13 +414,13 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   });
 
   router.delete('/:id/notes/:noteId', authenticate, anyRole, async (req: Request, res: Response) => {
-    if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
-      res.status(404).json({ success: false, error: 'No such resource' });
-      return;
-    }
-
     const notes = newNotes();
     try {
+      if (!(await resourceIsReadable(req.user!.userId, req.params.id))) {
+        res.status(404).json({ success: false, error: 'No such resource' });
+        return;
+      }
+
       await notes.remove(req.user!.userId, req.params.id, req.params.noteId);
       res.json({ success: true, data: null });
     } catch (error) {

@@ -52,6 +52,14 @@ export default function LearnResourcesPage() {
   // one call.
   const [uploadElapsedSec, setUploadElapsedSec] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Lets an in-flight upload/delete/uploads-list request discard its result
+  // if the user has since switched languages — `language` itself can't do
+  // this from inside an async callback, since a closure over it is fixed at
+  // call time, not live. Same idiom as `languageRef` in `/learn/page.tsx`.
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   // Lazy initializer, not an effect: this page only ever renders client-side
   // (behind ProtectedRoute), so there is no SSR mismatch to avoid, and a
@@ -109,7 +117,10 @@ export default function LearnResourcesPage() {
   const loadUploads = useCallback(async (lang: LearnLanguage) => {
     try {
       const data = await api.get<LearnResourceUpload[]>('/resources/uploads', { query: { language: lang } });
-      setUploads(data);
+      // Discards a response for a language the user has since switched away
+      // from — otherwise a slower request for the PREVIOUS language could
+      // resolve after a faster one for the new language and clobber it.
+      if (languageRef.current === lang) setUploads(data);
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to load your uploads'));
     }
@@ -123,19 +134,28 @@ export default function LearnResourcesPage() {
       setSelected(null);
       setIsMaximized(false);
       // Cleared up front, not left stale: `loading` goes false as soon as the
-      // curated list resolves, but `loadUploads` below is a separate, slower
-      // request — without this, the "Your uploads" panel would keep showing
-      // the PREVIOUS language's uploads for that gap.
+      // curated list resolves, but `loadUploads` below is a separate request
+      // racing it — without this, the "Your uploads" panel would keep
+      // showing the PREVIOUS language's uploads for that gap.
       setUploads([]);
-      try {
-        const data = await api.get<LearnResource[]>('/resources', { query: { language } });
-        if (!ignore) setResources(data);
-      } catch (caught) {
-        if (!ignore) toast.error(messageFor(caught, 'Failed to load resources'));
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-      if (!ignore) await loadUploads(language);
+
+      // Two independent GETs with no data dependency on each other — fired
+      // together, not one awaited before the other starts, so a tab switch
+      // costs max(resources, uploads) instead of their sum.
+      const resourcesLoad = api
+        .get<LearnResource[]>('/resources', { query: { language } })
+        .then((data) => {
+          if (!ignore) setResources(data);
+        })
+        .catch((caught) => {
+          if (!ignore) toast.error(messageFor(caught, 'Failed to load resources'));
+        })
+        .finally(() => {
+          if (!ignore) setLoading(false);
+        });
+      const uploadsLoad = loadUploads(language);
+
+      await Promise.all([resourcesLoad, uploadsLoad]);
     }
 
     void loadAll();
@@ -150,6 +170,7 @@ export default function LearnResourcesPage() {
     e.target.value = '';
     if (!file) return;
 
+    const requestLanguage = language;
     setUploading(true);
     setUploadElapsedSec(0);
     const startedAt = Date.now();
@@ -158,12 +179,18 @@ export default function LearnResourcesPage() {
       const title = file.name.replace(/\.pdf$/i, '');
       const body = new FormData();
       body.append('file', file);
-      body.append('language', language);
+      body.append('language', requestLanguage);
       body.append('title', title);
       const created = await api.post<LearnResourceUpload>('/resources/uploads', body);
-      setUploads((prev) => [created, ...prev]);
-      setSelected({ kind: 'upload', data: created });
-      setIsMaximized(false);
+      // If the user switched languages while a large upload was still in
+      // flight, the upload itself already succeeded server-side — just don't
+      // insert it into (and force-select it into) whatever OTHER language's
+      // view is showing now. Switching back re-fetches it via loadUploads.
+      if (languageRef.current === requestLanguage) {
+        setUploads((prev) => [created, ...prev]);
+        setSelected({ kind: 'upload', data: created });
+        setIsMaximized(false);
+      }
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to upload that file'));
     } finally {

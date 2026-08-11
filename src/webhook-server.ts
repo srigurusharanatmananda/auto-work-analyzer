@@ -221,14 +221,22 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // Reading resources for the same two languages, a learner's own notes on
     // each, and a learner's own uploaded books — separate router because it
     // has nothing to do with lesson progress, but same self-constructing-
-    // dependencies pattern. Shares TRANSCRIPTION_STORAGE_ROOT with the
-    // transcription router below rather than a dedicated env var: both are
-    // "where this app keeps files a user gave it", and one bind-mounted
-    // volume to configure in production beats two.
+    // dependencies pattern.
+    //
+    // Deliberately NOT sharing TRANSCRIPTION_STORAGE_ROOT with the
+    // transcription router below, despite both being "where this app keeps
+    // files a user gave it": docker-compose.yml bind-mounts that exact host
+    // directory, whole, into the Whisper container (see its own comment on
+    // why — Whisper opens audio files rather than receiving bytes). Writing
+    // uploaded PDFs under that same directory would hand a container that
+    // runs third-party model code filesystem access to every user's uploaded
+    // books, an unrelated data category it has no business seeing. A
+    // different directory name means Whisper's mount simply does not reach
+    // it, no docker-compose.yml change required.
     app.use(
       "/api/resources",
       createResourcesRouter({
-        storageRoot: path.resolve(process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"),
+        storageRoot: path.resolve(process.env.RESOURCE_UPLOADS_ROOT ?? "storage-resources"),
       })
     );
 
