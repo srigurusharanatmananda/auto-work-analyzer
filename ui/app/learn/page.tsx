@@ -170,12 +170,16 @@ export default function LearnPage() {
     });
     return { ...level, doneCount, totalCount };
   });
-  // Falls back to the LAST lesson's level, not the first non-empty one: once
-  // every lesson is seen, displayLesson is null (the "completed" card shows
-  // instead), and the last lesson in manifest order is the highest level
-  // actually reached — level 1 would be wrong here even though it is the
-  // first level with any content at all.
-  const currentLevelId = displayLesson?.level ?? lessons[lessons.length - 1]?.level ?? 1;
+  // Falls back to the HIGHEST level with any content, not the last lesson in
+  // array order: once every lesson is seen, displayLesson is null (the
+  // "completed" card shows instead), and Curriculum.ts's own LEVELS comment
+  // is explicit that level is a display grouping, not guaranteed sorted
+  // across the whole manifest — a later-added lesson could land after
+  // higher-level content while itself being a lower level (backfilling more
+  // level-1 vocabulary, say). Taking the max avoids depending on an
+  // ordering the engine never promised.
+  const currentLevelId =
+    displayLesson?.level ?? (lessons.length > 0 ? Math.max(...lessons.map((l) => l.level)) : 1);
 
   return (
     <ProtectedRoute>

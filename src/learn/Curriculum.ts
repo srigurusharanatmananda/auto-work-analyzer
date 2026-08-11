@@ -121,18 +121,6 @@ function prerequisiteStage(stage: Stage): Stage | null {
   return index <= 0 ? null : STAGE_SEQUENCE[index - 1];
 }
 
-/**
- * Every way a manifest can fail to be a curriculum: a lesson id reused, a
- * dependency that does not exist, a dependency from the wrong stage, a
- * dependency that has not been taught yet because it appears later, or a
- * `text` that does not actually reconstruct from `composedOf` per `JOINER`.
- * That last check is what stops `composedOf` from silently drifting out of
- * sync with `text` — a typo, a stale copy-paste, or swapped word order would
- * previously pass every other check here.
- *
- * Returns every violation found rather than stopping at the first, since a
- * content author fixing a manifest by hand wants the whole list in one pass.
- */
 /** Everything a dependency lookup needs to know about an earlier lesson, one entry per lesson id. */
 interface LessonMeta {
   readonly index: number;
@@ -141,6 +129,19 @@ interface LessonMeta {
   readonly level: LevelId;
 }
 
+/**
+ * Every way a manifest can fail to be a curriculum: a lesson id reused, a
+ * dependency that does not exist, a dependency from the wrong stage, a
+ * dependency that has not been taught yet because it appears later, a
+ * dependency whose level is higher than the lesson built from it, or a
+ * `text` that does not actually reconstruct from `composedOf` per `JOINER`.
+ * That last check is what stops `composedOf` from silently drifting out of
+ * sync with `text` — a typo, a stale copy-paste, or swapped word order would
+ * previously pass every other check here.
+ *
+ * Returns every violation found rather than stopping at the first, since a
+ * content author fixing a manifest by hand wants the whole list in one pass.
+ */
 export function validateManifest(manifest: Manifest): readonly ManifestError[] {
   const errors: ManifestError[] = [];
   const metaById = new Map<string, LessonMeta>();

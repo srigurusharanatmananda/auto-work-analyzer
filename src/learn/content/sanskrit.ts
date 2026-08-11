@@ -187,9 +187,10 @@ export const sanskritManifest: Manifest = {
       gloss: 'ṅa',
       composedOf: [],
     },
-    // ca-varga (palatal) — ja (row 3) is already taught; declared below,
-    // with skt-word-vadati and its other pre-existing dependents, rather
-    // than moved here
+    // ca-varga (palatal) — row 3, ja, pre-existed this tranche (added
+    // 2026-08-10) and is declared LATER in this array, not here: see
+    // skt-letter-ja below, grouped with skt-word-vadati and its other
+    // pre-existing dependents rather than moved into this row's position
     { id: 'skt-letter-ca', stage: 'letters', level: 1, text: 'च', gloss: 'ca', composedOf: [] },
     { id: 'skt-letter-cha', stage: 'letters', level: 1, text: 'छ', gloss: 'cha', composedOf: [] },
     { id: 'skt-letter-jha', stage: 'letters', level: 1, text: 'झ', gloss: 'jha', composedOf: [] },
@@ -217,13 +218,16 @@ export const sanskritManifest: Manifest = {
       gloss: 'ṇa',
       composedOf: [],
     },
-    // ta-varga (dental) — da/dha/na already exist; ta/tha complete the row
+    // ta-varga (dental) — da/dha/na pre-existed this tranche and are
+    // declared LATER in this array (see skt-letter-da/-dha/-na below, same
+    // reasoning as skt-letter-ja above); ta/tha here are the two genuinely
+    // new members completing the row.
     {
       id: 'skt-letter-ta',
       stage: 'letters',
       level: 1,
-      // Unvoiced, unaspirated dental stop — distinct from द (da, already
-      // taught: VOICED) and ध (dha, already taught: voiced AND aspirated).
+      // Unvoiced, unaspirated dental stop — distinct from द (da, declared
+      // below: VOICED) and ध (dha, declared below: voiced AND aspirated).
       // Previously taught only fused with a vowel sign in skt-letter-ti;
       // this is the same sound bare.
       text: 'त',
