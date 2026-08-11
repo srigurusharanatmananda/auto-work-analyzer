@@ -328,7 +328,10 @@ describe('notes', () => {
 });
 
 describe('uploads', () => {
-  async function withApp<T>(run: (baseUrl: string) => Promise<T>): Promise<T> {
+  async function withApp<T>(
+    run: (baseUrl: string) => Promise<T>,
+    routerDeps: Partial<Parameters<typeof createResourcesRouter>[0]> = {}
+  ): Promise<T> {
     const storageRoot = await mkdtemp(join(tmpdir(), 'resource-uploads-test-'));
     // One instance, not the bare factory: `newUploads()` is called fresh per
     // route handler, and the bare factory would hand each call its own empty
@@ -336,7 +339,12 @@ describe('uploads', () => {
     // notes tests' `notesFactory: () => notes` vs plain `fakeNotes`.
     const uploads = fakeUploads();
     const notes = fakeNotes();
-    const app = buildApp({ notesFactory: () => notes, uploadsFactory: () => uploads, storageRoot });
+    const app = buildApp({
+      notesFactory: () => notes,
+      uploadsFactory: () => uploads,
+      storageRoot,
+      ...routerDeps,
+    });
     const { server, baseUrl } = await listen(app);
     try {
       return await run(baseUrl);
@@ -382,6 +390,27 @@ describe('uploads', () => {
       const res = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData('not-a-book.txt') });
       expect(res.status).toBe(400);
     });
+  });
+
+  test('POST rejects a file over the configured size limit, with a message naming it', async () => {
+    // A real 500 MB round trip has no place in a unit test — the limit itself
+    // is what's under test, so it is overridden down to something a 64-byte
+    // fake PDF can actually exceed, rather than uploading a genuinely huge file.
+    await withApp(
+      async (baseUrl) => {
+        const body = new FormData();
+        body.append('file', new Blob([new Uint8Array(64)], { type: 'application/pdf' }), 'big-book.pdf');
+        body.append('language', 'sanskrit');
+        body.append('title', 'Big Book');
+
+        const res = await fetch(`${baseUrl}/uploads`, { method: 'POST', body });
+        expect(res.status).toBe(400);
+        const { error } = await res.json();
+        expect(error).toContain('larger than');
+        expect(error).toContain('MB limit');
+      },
+      { maxUploadBytes: 32 }
+    );
   });
 
   test('token round-trip: mint then stream the exact bytes uploaded', async () => {

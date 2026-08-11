@@ -34,10 +34,19 @@ export interface ResourcesRouterDeps {
   uploadsFactory?: () => ResourceUploadsStore;
   /** Where uploaded books are written. Required whenever uploads are exercised — no on-disk default, same reasoning as `TranscriptionRouterDeps.storageRoot`. */
   storageRoot?: string;
+  /** Overridden in tests, so the rejection path can be exercised without actually writing 500 MB to disk. */
+  maxUploadBytes?: number;
 }
 
-/** Generous for a scanned book with images per page; a text-only PDF is a fraction of this. */
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+/**
+ * 50 MB turned out to be too low for a real scanned book — a few hundred
+ * image-heavy pages routinely exceeds it. Multer streams the upload straight
+ * to disk (see `storage` below); nothing here buffers it in memory, so this
+ * limit exists to bound disk usage, not RAM. 500 MB comfortably covers even
+ * a large multi-hundred-page scan while still catching an accidental
+ * non-book upload before it fills the disk.
+ */
+const DEFAULT_MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf']);
 
 function isResourceLanguage(value: unknown): value is ResourceLanguage {
@@ -49,6 +58,7 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   const newNotes = deps.notesFactory ?? (() => new ResourceNotesStore());
   const newUploads = deps.uploadsFactory ?? (() => new ResourceUploadsStore());
   const uploadsDir = resolve(deps.storageRoot ?? 'storage', 'resource-uploads');
+  const maxUploadBytes = deps.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
 
   /**
    * A note can live on a curated resource OR on the caller's own upload —
@@ -80,7 +90,7 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
         cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
       },
     }),
-    limits: { fileSize: MAX_UPLOAD_BYTES },
+    limits: { fileSize: maxUploadBytes },
     fileFilter: (_req, file, cb) => {
       if (ALLOWED_UPLOAD_EXTENSIONS.has(extname(file.originalname).toLowerCase())) {
         cb(null, true);
@@ -101,7 +111,7 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
         success: false,
         error:
           error?.code === 'LIMIT_FILE_SIZE'
-            ? `That file is larger than the ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB limit.`
+            ? `That file is larger than the ${Math.round(maxUploadBytes / 1024 / 1024)} MB limit.`
             : error instanceof Error
               ? error.message
               : 'Upload rejected',

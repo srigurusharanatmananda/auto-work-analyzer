@@ -45,6 +45,12 @@ export default function LearnResourcesPage() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // `fetch` (what the shared `api` client is built on) has no reliable
+  // cross-browser upload-progress event, so this is a ticking clock rather
+  // than a byte count — enough to show a genuinely-large upload is still
+  // working, not stuck, without a bespoke non-fetch transport just for this
+  // one call.
+  const [uploadElapsedSec, setUploadElapsedSec] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lazy initializer, not an effect: this page only ever renders client-side
@@ -145,6 +151,9 @@ export default function LearnResourcesPage() {
     if (!file) return;
 
     setUploading(true);
+    setUploadElapsedSec(0);
+    const startedAt = Date.now();
+    const ticker = setInterval(() => setUploadElapsedSec(Math.round((Date.now() - startedAt) / 1000)), 1000);
     try {
       const title = file.name.replace(/\.pdf$/i, '');
       const body = new FormData();
@@ -158,6 +167,7 @@ export default function LearnResourcesPage() {
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to upload that file'));
     } finally {
+      clearInterval(ticker);
       setUploading(false);
     }
   }
@@ -270,7 +280,7 @@ export default function LearnResourcesPage() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                 >
-                  {uploading ? 'Uploading...' : '+ Upload a book'}
+                  {uploading ? `Uploading… ${uploadElapsedSec}s` : '+ Upload a book'}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -280,6 +290,11 @@ export default function LearnResourcesPage() {
                   onChange={handleFileChosen}
                 />
               </div>
+              {uploading && (
+                <p className="text-xs text-foreground-tertiary">
+                  Large scanned books can take a few minutes — this keeps working in the background.
+                </p>
+              )}
 
               {uploads.length === 0 ? (
                 <Card className="py-6 text-center">
@@ -510,6 +525,11 @@ function UploadReader({
   onDelete: () => void;
 }) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  // Bumped by the Reload button to force a fresh mint below without
+  // duplicating the effect's body — a long reading session can outlast even
+  // the 2-hour upload token, or hit a one-off connection hiccup, and there is
+  // otherwise no way back short of deselecting and reselecting the upload.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -530,7 +550,7 @@ function UploadReader({
     return () => {
       ignore = true;
     };
-  }, [upload.id]);
+  }, [upload.id, reloadKey]);
 
   return (
     <>
@@ -542,13 +562,23 @@ function UploadReader({
             {new Date(upload.createdAt).toLocaleDateString()}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={onDelete}>
-          Delete
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+            Reload
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onDelete}>
+            Delete
+          </Button>
+        </div>
       </div>
 
       {fileUrl ? (
         <iframe
+          // Keyed by the URL itself, not just given a new `src`: a fresh
+          // mount discards whatever broken/stuck state the PDF viewer was in
+          // from a previous failed load, instead of asking it to recover in
+          // place.
+          key={fileUrl}
           src={fileUrl}
           title={upload.title}
           className={

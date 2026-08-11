@@ -14,8 +14,18 @@
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-/** Matches `audioTokens.ts`'s `TOKEN_TTL_MS` — long enough to load and page through a book once, short enough to go stale in history/logs. */
-export const TOKEN_TTL_MS = 10 * 60 * 1000;
+/**
+ * Deliberately much longer than `audioTokens.ts`'s 10 minutes. A PDF viewer
+ * does not load a whole book up front — it streams pages progressively as
+ * the reader scrolls, issuing fresh range requests against this same
+ * `src` URL for as long as the tab stays open. A 10-minute window meant any
+ * book actually read for more than 10 minutes started 401ing mid-session —
+ * worse the LARGER the book, since a bigger book means a longer reading
+ * session, which is exactly the "some PDFs [the bigger ones] are not
+ * viewable" report this was sized to fix. Two hours comfortably covers one
+ * sitting; the reader has an explicit Reload action for anything longer.
+ */
+export const TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 
 function signingKey(): Buffer {
   const secret =
