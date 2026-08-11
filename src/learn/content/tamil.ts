@@ -1,8 +1,15 @@
 /**
- * Letters, plus a first small set of real words — extended 2026-08-09 after
- * a curriculum-resource survey turned up the actual pedagogy real Tamil
- * courses use, correcting an assumption made when this file was first
- * written; and again 2026-08-10, reaching this file's first real sentence.
+ * As of 2026-08-11: the complete Tamil alphabet (all 12 vowels, the āytham,
+ * all 18 consonants — ABC of Tamil, Lessons One and Two), plus a first small
+ * set of real words and one sentence, extended 2026-08-09/10. See
+ * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
+ * beginner-to-advanced plan this is a tranche of — mirrors the Sanskrit
+ * manifest's own tranche-2 alphabet completion, same day, same rigor.
+ *
+ * The paragraphs below describe the file's state BEFORE this tranche
+ * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
+ * historical record of why those specific words/sentence were chosen, which
+ * is still exactly why they are still here.
  *
  * The 2026-08-10 extension is sourced from the same primer as everything
  * else here — ABC of Tamil, Lesson Three ("Consonantal Vowels (contd.)"),
@@ -52,12 +59,188 @@ import type { Manifest } from '../Curriculum.js';
 export const tamilManifest: Manifest = {
   language: 'tamil',
   lessons: [
+    // ================= Letters: the complete alphabet =================
+    // Extension, 2026-08-11 (tranche 2): the original six consonants (ka ta
+    // na ma va pa) and two pulli marks taught NO vowel at all and only 6 of
+    // 18 consonants. This tranche completes both — all 12 vowels plus the
+    // āytham, and all 18 consonants in Siddalingaiah's own fixed
+    // alphabetical order (ABC of Tamil, Lesson One for vowels, Lesson Two
+    // for consonants) — mirroring the Sanskrit manifest's own tranche-2
+    // reorganization: existing ids keep their id/text/gloss unchanged and
+    // simply take their correct place in that order.
+    //
+    // Encoding note: the cached primer extraction (a 1968 PDF) uses a
+    // non-Unicode, glyph-mapped font, so the raw text file contains Latin-1
+    // placeholder codepoints standing in for Tamil letterforms, not Tamil
+    // Unicode itself. Every glyph below was identified from its LETTER'S
+    // fixed, unambiguous position in the standard 12-vowel/18-consonant
+    // Tamil order — not decoded from that font mapping — and cross-checked
+    // against two self-confirming clues the primer's own English prose
+    // gives directly: it states its two vowel sounds absent from Sanskrit
+    // are items 7 and 10 (which can only be short எ/ஒ), and that its final
+    // consonant "is an alveolar sound" (which can only be ன) — the
+    // identical evidentiary method this file's own pre-existing pulli
+    // entries already relied on, not a new or lower bar.
+
+    // --- The twelve vowels plus āytham, ABC of Tamil Lesson One ---
+    { id: 'tam-letter-a', stage: 'letters', level: 1, text: 'அ', gloss: "a — as in 'but', 'cut', 'shut'", composedOf: [] },
+    { id: 'tam-letter-aa', stage: 'letters', level: 1, text: 'ஆ', gloss: "ā — as in 'cot', 'pot'", composedOf: [] },
+    { id: 'tam-letter-i', stage: 'letters', level: 1, text: 'இ', gloss: "i — as in 'tin', 'pin'", composedOf: [] },
+    { id: 'tam-letter-ii', stage: 'letters', level: 1, text: 'ஈ', gloss: "ī — as in 'feet', 'sheet'", composedOf: [] },
+    { id: 'tam-letter-u', stage: 'letters', level: 1, text: 'உ', gloss: "u — as in 'put', 'foot'", composedOf: [] },
+    { id: 'tam-letter-uu', stage: 'letters', level: 1, text: 'ஊ', gloss: "ū — as in 'moon', 'mood'", composedOf: [] },
+    {
+      id: 'tam-letter-e',
+      stage: 'letters',
+      level: 1,
+      // Lesson One's own note: its two vowel sounds absent from Sanskrit are
+      // items 7 and 10 of the twelve — the fact that self-confirms this is
+      // short e and not some other vowel.
+      text: 'எ',
+      gloss: "e — as in 'emit', 'emblem'; one of the two Tamil vowel sounds absent from Sanskrit",
+      composedOf: [],
+    },
+    { id: 'tam-letter-ee', stage: 'letters', level: 1, text: 'ஏ', gloss: "ē — as in 'ape', 'mane'", composedOf: [] },
+    { id: 'tam-letter-ai', stage: 'letters', level: 1, text: 'ஐ', gloss: "ai — as in 'idle', 'item'", composedOf: [] },
+    {
+      id: 'tam-letter-o',
+      stage: 'letters',
+      level: 1,
+      // The other Sanskrit-absent sound — see tam-letter-e's comment.
+      text: 'ஒ',
+      gloss: "o — as in 'omit', 'opinion'; the other Tamil vowel sound absent from Sanskrit",
+      composedOf: [],
+    },
+    { id: 'tam-letter-oo', stage: 'letters', level: 1, text: 'ஓ', gloss: "ō — as in 'show', 'coal'", composedOf: [] },
+    { id: 'tam-letter-au', stage: 'letters', level: 1, text: 'ஔ', gloss: "au — as in 'fowl', 'now'", composedOf: [] },
+    {
+      id: 'tam-letter-aytham',
+      stage: 'letters',
+      level: 1,
+      // A 13th letter Lesson One adds after its twelve vowels proper — a
+      // fixed, unique grapheme, not part of either the vowel or consonant
+      // set, so its identity is unambiguous regardless of the source font.
+      text: 'ஃ',
+      gloss: "āytham — pronounced almost like 'ach' in 'stomach'",
+      composedOf: [],
+    },
+
+    // --- The eighteen consonants, ABC of Tamil Lesson Two, fixed alphabetical order ---
     { id: 'tam-letter-ka', stage: 'letters', level: 1, text: 'க', gloss: 'ka', composedOf: [] },
+    { id: 'tam-letter-nga', stage: 'letters', level: 1, text: 'ங', gloss: "ṅa — the nasal sound in 'sing'", composedOf: [] },
+    { id: 'tam-letter-ca', stage: 'letters', level: 1, text: 'ச', gloss: "ca — as 'ch' in 'chip', 'birch'", composedOf: [] },
+    { id: 'tam-letter-nya', stage: 'letters', level: 1, text: 'ஞ', gloss: "ña — the nasal sound in 'ginger'", composedOf: [] },
+    {
+      id: 'tam-letter-tta',
+      stage: 'letters',
+      level: 1,
+      // Retroflex ṭ — a different letter from த (dental ta, already taught)
+      // — doubled "tt" in the id, mirroring tam-pulli-nna's own
+      // retroflex-disambiguation convention.
+      text: 'ட',
+      gloss: "ṭa — retroflex t, as in 'cut', 'put'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-nna',
+      stage: 'letters',
+      level: 1,
+      // The bare, inherent-vowel form of the consonant already taught only
+      // as its dead form, tam-pulli-nna (ண்) below — Lesson Two's own
+      // presentation teaches every consonant, this one included, with its
+      // inherent vowel first ("the first vowel, Ü, is added to and
+      // pronounced"), the pulli form being a second, separate grapheme
+      // layered on top, not a substitute for this one.
+      text: 'ண',
+      gloss: "ṇa — retroflex n, the nasal sound in 'round'",
+      composedOf: [],
+    },
     { id: 'tam-letter-ta', stage: 'letters', level: 1, text: 'த', gloss: 'ta', composedOf: [] },
     { id: 'tam-letter-na', stage: 'letters', level: 1, text: 'ந', gloss: 'na', composedOf: [] },
-    { id: 'tam-letter-ma', stage: 'letters', level: 1, text: 'ம', gloss: 'ma', composedOf: [] },
-    { id: 'tam-letter-va', stage: 'letters', level: 1, text: 'வ', gloss: 'va', composedOf: [] },
     { id: 'tam-letter-pa', stage: 'letters', level: 1, text: 'ப', gloss: 'pa', composedOf: [] },
+    { id: 'tam-letter-ma', stage: 'letters', level: 1, text: 'ம', gloss: 'ma', composedOf: [] },
+    {
+      id: 'tam-letter-ya',
+      stage: 'letters',
+      level: 1,
+      // Bare consonant — previously only present fused inside tam-letter-yaa
+      // (ய + ஆ) below. Lesson Two teaches it on its own too.
+      text: 'ய',
+      gloss: "ya — as in 'young'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-ra',
+      stage: 'letters',
+      level: 1,
+      // Bare, inherent-vowel form — same reasoning as tam-letter-nna above,
+      // for the consonant already taught only as its dead form tam-pulli-ra
+      // (ர்) below.
+      text: 'ர',
+      gloss: "ra — as in 'rust', 'rum'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-la',
+      stage: 'letters',
+      level: 1,
+      // Bare, inherent-vowel form — same reasoning as tam-letter-nna, for
+      // the consonant already taught only as its dead form tam-pulli-la
+      // (ல்) below.
+      text: 'ல',
+      gloss: "la — as in 'lump', 'lung'",
+      composedOf: [],
+    },
+    { id: 'tam-letter-va', stage: 'letters', level: 1, text: 'வ', gloss: 'va', composedOf: [] },
+    {
+      id: 'tam-letter-zha',
+      stage: 'letters',
+      level: 1,
+      // The retroflex approximant at the centre of "தமிழ்" (Tamil) itself —
+      // no English equivalent (see tam-audio-htla's inAppNotes in
+      // resources.ts for why this is the sound learners most often flatten
+      // into a plain l).
+      text: 'ழ',
+      gloss: "ḻa — like the first syllable of French 'Jean'; transliterated 'zh' or 'l'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-lla',
+      stage: 'letters',
+      level: 1,
+      // Retroflex l — a different letter from ல (la, above). Doubled "ll" in
+      // the id, mirroring tam-letter-tta's own disambiguation.
+      text: 'ள',
+      gloss: "ḷa — retroflex l, as in 'pearl'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-rra',
+      stage: 'letters',
+      level: 1,
+      // A trill/tap, not a retroflex — a different letter from ர (ra,
+      // above). Doubled "rr" in the id for the same disambiguation reason.
+      text: 'ற',
+      gloss: "ṟa — as 'rrh' in 'catarrh'",
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-alveolar-na',
+      stage: 'letters',
+      level: 1,
+      // Bare, inherent-vowel form of the consonant already taught only as
+      // its dead form tam-pulli-alveolar-na (ன்) below — named
+      // "alveolar-na", not bare "na", to stay distinct from already-taught
+      // tam-letter-na (dental na, ந), mirroring that pulli entry's own id
+      // choice. Position confirmed by Lesson Two's own "this is an alveolar
+      // sound" remark, the identical self-confirming clue tam-pulli-alveolar
+      // -na's existing comment already relies on.
+      text: 'ன',
+      gloss: "ṉa — alveolar n, as in 'nun'",
+      composedOf: [],
+    },
+
+    // --- Pre-existing dead (pulli) and bound-vowel-sign forms, unchanged ---
     {
       id: 'tam-pulli-nna',
       stage: 'letters',
