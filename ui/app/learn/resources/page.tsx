@@ -61,6 +61,10 @@ export default function LearnResourcesPage() {
       : DEFAULT_LIST_WIDTH;
   });
   const draggingRef = useRef(false);
+  // The currently-attached window listeners, if a drag is in progress — lets
+  // the unmount effect below remove them even if the mouse is never released
+  // (e.g. the user navigates away mid-drag), which `onUp` alone cannot do.
+  const dragListenersRef = useRef<{ onMove: (e: MouseEvent) => void; onUp: () => void } | null>(null);
 
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -75,6 +79,7 @@ export default function LearnResourcesPage() {
       draggingRef.current = false;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      dragListenersRef.current = null;
       // Persisted on release, not on every move — a resize in progress does
       // not need hundreds of localStorage writes.
       setListWidth((current) => {
@@ -82,8 +87,17 @@ export default function LearnResourcesPage() {
         return current;
       });
     };
+    dragListenersRef.current = { onMove, onUp };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (!dragListenersRef.current) return;
+      window.removeEventListener('mousemove', dragListenersRef.current.onMove);
+      window.removeEventListener('mouseup', dragListenersRef.current.onUp);
+    };
   }, []);
 
   const loadUploads = useCallback(async (lang: LearnLanguage) => {
@@ -102,6 +116,11 @@ export default function LearnResourcesPage() {
       setLoading(true);
       setSelected(null);
       setIsMaximized(false);
+      // Cleared up front, not left stale: `loading` goes false as soon as the
+      // curated list resolves, but `loadUploads` below is a separate, slower
+      // request — without this, the "Your uploads" panel would keep showing
+      // the PREVIOUS language's uploads for that gap.
+      setUploads([]);
       try {
         const data = await api.get<LearnResource[]>('/resources', { query: { language } });
         if (!ignore) setResources(data);
@@ -147,7 +166,15 @@ export default function LearnResourcesPage() {
     try {
       await api.delete(`/resources/uploads/${id}`);
       setUploads((prev) => prev.filter((u) => u.id !== id));
-      setSelected((current) => (current?.kind === 'upload' && current.data.id === id ? null : current));
+      // Deleting the upload currently open in full screen would otherwise leave
+      // `isMaximized` true with nothing selected — invisible in the moment
+      // (full screen requires a selection, so this falls back to the split
+      // view), but the NEXT card clicked would then snap straight into full
+      // screen unasked, since `isMaximized && reader` goes true again.
+      if (selected?.kind === 'upload' && selected.data.id === id) {
+        setSelected(null);
+        setIsMaximized(false);
+      }
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to delete that upload'));
     }

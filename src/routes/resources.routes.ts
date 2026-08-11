@@ -217,6 +217,13 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
           expiresAt: new Date(expiresAt).toISOString(),
         },
       });
+    } catch (error) {
+      console.error('Failed to mint an upload token:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to open your upload',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
     } finally {
       uploads.close();
     }

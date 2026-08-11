@@ -431,6 +431,26 @@ describe('uploads', () => {
     });
   });
 
+  test('a store error while minting a token is a 500, not a hung request', async () => {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'resource-uploads-test-'));
+    const throwingUploads: ResourceUploadsStore = {
+      ...fakeUploads(),
+      async get() {
+        throw new Error('connection reset');
+      },
+    };
+    const app = buildApp({ notesFactory: fakeNotes, uploadsFactory: () => throwingUploads, storageRoot });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/uploads/some-id/token`, { method: 'POST' });
+      expect(res.status).toBe(500);
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  });
+
   test('DELETE removes the upload and the file route 404s afterward', async () => {
     await withApp(async (baseUrl) => {
       const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
