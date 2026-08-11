@@ -133,22 +133,24 @@ function prerequisiteStage(stage: Stage): Stage | null {
  * Returns every violation found rather than stopping at the first, since a
  * content author fixing a manifest by hand wants the whole list in one pass.
  */
+/** Everything a dependency lookup needs to know about an earlier lesson, one entry per lesson id. */
+interface LessonMeta {
+  readonly index: number;
+  readonly stage: Stage;
+  readonly text: string;
+  readonly level: LevelId;
+}
+
 export function validateManifest(manifest: Manifest): readonly ManifestError[] {
   const errors: ManifestError[] = [];
-  const indexById = new Map<string, number>();
-  const stageById = new Map<string, Stage>();
-  const textById = new Map<string, string>();
-  const levelById = new Map<string, LevelId>();
+  const metaById = new Map<string, LessonMeta>();
 
   manifest.lessons.forEach((lesson, index) => {
-    if (indexById.has(lesson.id)) {
+    if (metaById.has(lesson.id)) {
       errors.push({ lessonId: lesson.id, reason: 'duplicate lesson id' });
       return;
     }
-    indexById.set(lesson.id, index);
-    stageById.set(lesson.id, lesson.stage);
-    textById.set(lesson.id, lesson.text);
-    levelById.set(lesson.id, lesson.level);
+    metaById.set(lesson.id, { index, stage: lesson.stage, text: lesson.text, level: lesson.level });
   });
 
   manifest.lessons.forEach((lesson, index) => {
@@ -175,21 +177,20 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
     let everyDepResolved = true;
 
     for (const depId of lesson.composedOf) {
-      const depIndex = indexById.get(depId);
-      const depStage = stageById.get(depId);
+      const dep = metaById.get(depId);
 
-      if (depIndex === undefined || depStage === undefined) {
+      if (dep === undefined) {
         errors.push({ lessonId: lesson.id, reason: `composedOf references unknown lesson '${depId}'` });
         everyDepResolved = false;
         continue;
       }
-      if (depStage !== wantStage) {
+      if (dep.stage !== wantStage) {
         errors.push({
           lessonId: lesson.id,
-          reason: `composedOf '${depId}' is a '${depStage}' lesson, expected '${wantStage}'`,
+          reason: `composedOf '${depId}' is a '${dep.stage}' lesson, expected '${wantStage}'`,
         });
       }
-      if (depIndex >= index) {
+      if (dep.index >= index) {
         errors.push({
           lessonId: lesson.id,
           reason: `composedOf '${depId}' has not been taught yet — it appears later in the manifest`,
@@ -201,11 +202,10 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
       // is built from is not a display choice, it is incoherent: a learner
       // "at level 1" would be shown a word that reaches back into level 2
       // content they have not been told exists yet.
-      const depLevel = levelById.get(depId);
-      if (depLevel !== undefined && depLevel > lesson.level) {
+      if (dep.level > lesson.level) {
         errors.push({
           lessonId: lesson.id,
-          reason: `is level ${lesson.level} but depends on '${depId}', which is level ${depLevel}`,
+          reason: `is level ${lesson.level} but depends on '${depId}', which is level ${dep.level}`,
         });
       }
     }
@@ -218,7 +218,7 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
     // draws on.
     if (everyDepResolved) {
       const joiner = JOINER[lesson.stage as 'words' | 'sentences'];
-      const reconstructed = lesson.composedOf.map((depId) => textById.get(depId)).join(joiner);
+      const reconstructed = lesson.composedOf.map((depId) => metaById.get(depId)?.text).join(joiner);
       if (reconstructed !== lesson.text) {
         errors.push({
           lessonId: lesson.id,

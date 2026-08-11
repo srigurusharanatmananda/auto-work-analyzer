@@ -241,7 +241,7 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     sourceUrl: 'https://samskritabharati.in',
     type: 'course',
     howToRead:
-      'Start with their free "Spoken Sanskrit Classes" — a 10-day course explicitly requiring no prior knowledge, immersion-style (much like their own YouTube presence, already catalogued here as skt-pravesha-course). Beyond that free tier, their correspondence course is a real, named four-level ladder — Pravesha, Parichaya, Shiksha, Kovida, six months each, roughly two years to reach reading the Gita and speaking/writing — but each level is a paid, certificate-granting program, not something this app tracks or needs; use it only if a formal, guided course alongside self-study appeals, not as a prerequisite for anything here.',
+      'Start with their free "Spoken Sanskrit Classes" — a 10-day course explicitly requiring no prior knowledge, taught immersion-style: mostly in Sanskrit itself, by mimicry and repetition rather than grammar rules first. Beyond that free tier, their correspondence course is a real, named four-level ladder — Pravesha, Parichaya, Shiksha, Kovida, six months each, roughly two years to reach reading the Gita and speaking/writing — but each level is a paid, certificate-granting program, not something this app tracks or needs; use it only if a formal, guided course alongside self-study appeals, not as a prerequisite for anything here.',
     license:
       '© Samskrita Bharati, all rights reserved (stated in the site footer). The free 10-day class is free to attend, not openly licensed content.',
   },
@@ -253,7 +253,7 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     sourceUrl: 'https://ashtadhyayi.com',
     type: 'course',
     howToRead:
-      "Not for early stages — this is a specialist study platform for Panini's Ashtadhyayi itself (Sutrapatha, Dhatupatha, multiple traditional commentaries, a prakriya/derivation generator that shows the sutra-by-sutra derivation of any word form, offline mode, bookmarks). Come back once sandhi and noun/verb morphology are solid (the same gating this catalogue already applies to Ambuda and the sandhi-grammar video) — its actual audience is someone already reading Sanskrit who wants to see WHY a form is what it is, rule by rule, not someone learning what the forms are in the first place.",
+      "Not for early stages — this is a specialist study platform for Panini's Ashtadhyayi itself (Sutrapatha, Dhatupatha, multiple traditional commentaries, a prakriya/derivation generator that shows the sutra-by-sutra derivation of any word form, offline mode, bookmarks). Come back once sandhi and noun/verb morphology are solid (the same gating this catalogue already applies to Ambuda) — its actual audience is someone already reading Sanskrit who wants to see WHY a form is what it is, rule by rule, not someone learning what the forms are in the first place.",
     license: 'No explicit license or copyright statement found on the site.',
   },
 
