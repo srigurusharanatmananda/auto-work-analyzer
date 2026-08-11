@@ -391,3 +391,13 @@ export interface LearnResourceNote {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Mirrors `TranslateLanguage` in `src/routes/translate.routes.ts`. */
+export type TranslateLanguage = 'english' | LearnLanguage;
+
+/** The `data` payload of `POST /translate`. */
+export interface TranslateResult {
+  translation: string;
+  translationTransliteration?: string;
+  sourceTransliteration?: string;
+}

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
-import type { LearnLanguage, LearnProgress } from '@/types';
+import type { LearnLanguage, LearnLesson, LearnProgress } from '@/types';
 
 const LANGUAGE_LABEL: Record<LearnLanguage, string> = {
   sanskrit: 'Sanskrit',
@@ -15,40 +15,71 @@ const LANGUAGE_LABEL: Record<LearnLanguage, string> = {
 
 export default function LearnPage() {
   const [language, setLanguage] = useState<LearnLanguage>('sanskrit');
+  const [lessons, setLessons] = useState<LearnLesson[]>([]);
   const [progress, setProgress] = useState<LearnProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
+  // null = showing the live "next" lesson from the server. Set to browse
+  // an already-unlocked lesson without touching progress — see `displayIndex`.
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  // Lets recordSeen (fired for one language) discard its response if the user
+  // has since switched languages — `language` itself can't do this, since a
+  // closure over it is fixed at call time, not live.
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     let ignore = false;
 
-    async function loadNext() {
+    async function load() {
       setLoading(true);
       // Cleared up front, not just left stale on failure: without this, a
       // failed fetch after switching languages would keep showing the
       // PREVIOUS language's lesson under the newly-selected tab.
       setProgress(null);
+      setLessons([]);
+      setReviewIndex(null);
       try {
-        const data = await api.get<LearnProgress>('/learn/next', { query: { language } });
-        if (!ignore) setProgress(data);
+        const [lessonsData, progressData] = await Promise.all([
+          api.get<{ lessons: LearnLesson[] }>('/learn/lessons', { query: { language } }),
+          api.get<LearnProgress>('/learn/next', { query: { language } }),
+        ]);
+        if (!ignore) {
+          setLessons(lessonsData.lessons);
+          setProgress(progressData);
+        }
       } catch (caught) {
-        if (!ignore) toast.error(messageFor(caught, 'Failed to load the next lesson'));
+        if (!ignore) toast.error(messageFor(caught, 'Failed to load the lesson'));
       } finally {
         if (!ignore) setLoading(false);
       }
     }
 
-    void loadNext();
+    void load();
 
     return () => {
       ignore = true;
     };
   }, [language]);
 
-  async function recordSeen(correct: boolean) {
-    if (!progress?.lesson) return;
+  // Where the "live" frontier sits in `lessons`. Progress only ever advances
+  // through lessons in order, so `seenCount` lessons seen means index
+  // `seenCount` is the next (or, once every lesson is seen, one past the
+  // end — "Previous" from the completed card should still work).
+  const frontierIndex = progress?.seenCount ?? 0;
 
+  const displayIndex = reviewIndex ?? frontierIndex;
+  const displayLesson: LearnLesson | null =
+    displayIndex >= 0 && displayIndex < lessons.length ? lessons[displayIndex]! : null;
+  const isReviewing = reviewIndex !== null && reviewIndex < frontierIndex;
+
+  async function recordSeen(correct: boolean) {
+    if (!progress?.lesson || isReviewing) return;
+
+    const requestLanguage = language;
     setActionLoading(true);
     try {
       const data = await api.post<LearnProgress>('/learn/seen', {
@@ -56,7 +87,9 @@ export default function LearnPage() {
         lessonId: progress.lesson.id,
         correct,
       });
-      setProgress(data);
+      // Discard a response for a language the user has since switched away
+      // from — otherwise it would clobber the newly-loaded language's progress.
+      if (languageRef.current === requestLanguage) setProgress(data);
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to record your answer'));
     } finally {
@@ -65,7 +98,7 @@ export default function LearnPage() {
   }
 
   async function playAudio() {
-    if (!progress?.lesson) return;
+    if (!displayLesson) return;
 
     setAudioLoading(true);
     try {
@@ -75,7 +108,7 @@ export default function LearnPage() {
       // without reimplementing either.
       const response = await api.rawRequest('/learn/speak', {
         method: 'POST',
-        body: { language, text: progress.lesson.text },
+        body: { language, text: displayLesson.text },
       });
 
       if (!response.ok) {
@@ -107,7 +140,17 @@ export default function LearnPage() {
     }
   }
 
-  const lesson = progress?.lesson ?? null;
+  function goPrevious() {
+    if (displayIndex > 0) setReviewIndex(displayIndex - 1);
+  }
+
+  function goNext() {
+    if (reviewIndex === null) return;
+    // One step short of the frontier stays in review; landing exactly on it
+    // hands back to "live" mode, so Got it/Need practice reappear.
+    setReviewIndex(reviewIndex + 1 >= frontierIndex ? null : reviewIndex + 1);
+  }
+
   const seenCount = progress?.seenCount ?? 0;
   const total = progress?.total ?? 0;
   const pct = total > 0 ? Math.min(100, Math.round((seenCount / total) * 100)) : 0;
@@ -122,9 +165,14 @@ export default function LearnPage() {
               Work through letters, words, and sentences one lesson at a time.
             </p>
           </div>
-          <Link href="/learn/resources">
-            <Button variant="ghost">Reading resources →</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/learn/translate">
+              <Button variant="ghost">Translate →</Button>
+            </Link>
+            <Link href="/learn/resources">
+              <Button variant="ghost">Reading resources →</Button>
+            </Link>
+          </div>
         </div>
 
         <div className="mb-6 flex rounded-lg border border-border overflow-hidden w-fit">
@@ -153,6 +201,7 @@ export default function LearnPage() {
             </div>
             <p className="mt-1 text-xs text-foreground-tertiary">
               {seenCount} / {total} lessons
+              {isReviewing && " — won't change until you're back to your current lesson"}
             </p>
           </div>
         )}
@@ -161,13 +210,20 @@ export default function LearnPage() {
           <div className="flex justify-center py-12">
             <LoadingSpinner size="lg" />
           </div>
-        ) : lesson ? (
+        ) : displayLesson ? (
           <Card className="flex flex-col items-center gap-4 py-12 text-center">
-            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground-secondary">
-              {lesson.stage}
-            </span>
-            <p className="text-5xl font-semibold text-foreground">{lesson.text}</p>
-            <p className="text-sm text-foreground-secondary">{lesson.gloss}</p>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground-secondary">
+                {displayLesson.stage}
+              </span>
+              {isReviewing && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  Reviewing
+                </span>
+              )}
+            </div>
+            <p className="text-5xl font-semibold text-foreground">{displayLesson.text}</p>
+            <p className="text-sm text-foreground-secondary">{displayLesson.gloss}</p>
           </Card>
         ) : (
           <Card className="py-12 text-center">
@@ -180,26 +236,39 @@ export default function LearnPage() {
           </Card>
         )}
 
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => recordSeen(false)}
-            disabled={!lesson || actionLoading}
-          >
-            Need practice
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => recordSeen(true)}
-            disabled={!lesson || actionLoading}
-          >
-            Got it
-          </Button>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Button
             variant="ghost"
-            onClick={playAudio}
-            disabled={!lesson || audioLoading}
+            onClick={goPrevious}
+            disabled={loading || actionLoading || displayIndex <= 0}
           >
+            ← Previous
+          </Button>
+
+          {isReviewing ? (
+            <Button variant="secondary" onClick={goNext}>
+              Next →
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => recordSeen(false)}
+                disabled={!displayLesson || actionLoading}
+              >
+                Need practice
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => recordSeen(true)}
+                disabled={!displayLesson || actionLoading}
+              >
+                Got it
+              </Button>
+            </>
+          )}
+
+          <Button variant="ghost" onClick={playAudio} disabled={!displayLesson || audioLoading}>
             {audioLoading ? 'Playing...' : 'Play audio'}
           </Button>
         </div>

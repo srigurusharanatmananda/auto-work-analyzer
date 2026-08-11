@@ -85,6 +85,28 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
   const audioCache = deps.audioCache ?? new AudioCache();
   const speechClientFor = deps.speechClientFor ?? defaultSpeechClientFor();
 
+  /**
+   * The whole manifest, in order — not scoped to this user's progress.
+   * Public curriculum data (`content/sanskrit.ts`/`content/tamil.ts` are
+   * already static, checked-in content, nothing secret about them), added
+   * specifically so the UI can implement "go back to a lesson I already
+   * saw": `GET /next` only ever returns the single next UNSEEN lesson, with
+   * no notion of a previous one, so there was nothing for a "Previous"
+   * button to show. The UI fetches this once per language and combines it
+   * with `seenCount` from `/next`/`/seen` to know how far is unlocked.
+   */
+  router.get('/lessons', authenticate, anyRole, (req: Request, res: Response) => {
+    const languageParam = req.query.language;
+    const manifest = typeof languageParam === 'string' ? manifestFor(languageParam) : null;
+
+    if (!manifest) {
+      res.status(400).json({ success: false, error: "language must be 'sanskrit' or 'tamil'" });
+      return;
+    }
+
+    res.json({ success: true, data: { lessons: manifest.lessons } });
+  });
+
   router.get('/next', authenticate, anyRole, async (req: Request, res: Response) => {
     const languageParam = req.query.language;
     const manifest = typeof languageParam === 'string' ? manifestFor(languageParam) : null;
