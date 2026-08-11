@@ -385,6 +385,8 @@ export interface LearnResource {
   inAppNotes?: string;
   /** A confirmed-embeddable YouTube `/embed/...` URL. Only set on `type: 'video'` resources. */
   embedUrl?: string;
+  /** A confirmed-embeddable archive.org `/embed/<identifier>` URL for a whole public-domain scan. */
+  embeddableBookUrl?: string;
 }
 
 /** Mirrors the `ResourceNote` shape in `src/learn/ResourceNotes.ts`. */

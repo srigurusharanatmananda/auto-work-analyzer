@@ -134,7 +134,9 @@ export default function LearnResourcesPage() {
 }
 
 function ResourceReader({ resource }: { resource: LearnResource }) {
-  const hasInAppContent = Boolean(resource.embedUrl || resource.embeddableExcerpt || resource.inAppNotes);
+  const hasInAppContent = Boolean(
+    resource.embedUrl || resource.embeddableBookUrl || resource.embeddableExcerpt || resource.inAppNotes,
+  );
 
   return (
     <Card className="flex flex-col gap-5">
@@ -163,10 +165,32 @@ function ResourceReader({ resource }: { resource: LearnResource }) {
         </div>
       )}
 
+      {resource.embeddableBookUrl && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+            Read the full, public-domain scan here
+          </p>
+          {/*
+            Same reasoning as the YouTube embed below: no `sandbox` attribute.
+            archive.org's BookReader needs allow-scripts + allow-same-origin to
+            function, and that pair lets a framed page strip its own sandbox
+            anyway — so sandboxing here would only break the reader, not add
+            isolation. `embeddableBookUrl` is a hardcoded archive.org URL, never
+            user input.
+          */}
+          <iframe
+            src={resource.embeddableBookUrl}
+            title={`${resource.title} — full scan`}
+            className="mt-2 h-[600px] w-full rounded-md border border-border bg-background-tertiary"
+            allowFullScreen
+          />
+        </div>
+      )}
+
       {resource.embeddableExcerpt && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
-            Read it here
+            {resource.embeddableBookUrl ? 'Highlighted excerpt (typed, searchable)' : 'Read it here'}
           </p>
           <div className="mt-2 max-h-96 overflow-y-auto rounded-md border border-border bg-background-tertiary p-4">
             <pre className="whitespace-pre-wrap font-sans text-sm text-foreground">

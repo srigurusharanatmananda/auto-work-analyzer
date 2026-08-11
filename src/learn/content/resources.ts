@@ -25,6 +25,13 @@
  * `embedUrl` is for a video resource whose uploader has not disabled
  * embedding (confirmed via YouTube's oEmbed endpoint, not assumed) — an
  * actual inline player, not just a thumbnail link.
+ *
+ * `embeddableBookUrl` is the archive.org equivalent for a full public-domain
+ * scan: their `/embed/<identifier>` BookReader, which archive.org itself
+ * documents as an embed target (no X-Frame-Options/frame-ancestors block —
+ * confirmed live, not assumed). Only set where the *whole* work is public
+ * domain, not merely "free to read" — that is a much narrower bar than
+ * `inAppNotes` or `embeddableExcerpt` and most resources here don't clear it.
  */
 
 export type ResourceLanguage = 'sanskrit' | 'tamil';
@@ -47,6 +54,8 @@ export interface Resource {
   readonly inAppNotes?: string;
   /** A confirmed-embeddable YouTube `/embed/...` URL. Only set on `type: 'video'` resources. */
   readonly embedUrl?: string;
+  /** A confirmed-embeddable archive.org `/embed/<identifier>` URL for a whole public-domain scan. */
+  readonly embeddableBookUrl?: string;
 }
 
 export const resources: readonly Resource[] = [
@@ -61,6 +70,7 @@ export const resources: readonly Resource[] = [
       'Devanagari and the alphabet are covered in the unnumbered introductory material (§§1-91) before Lesson I begins on page 24 — read that first. Lesson I itself teaches the present indicative active of the unaccented a-class verb (वद् vad, "speak") and Lesson II continues with gunated stems; full sandhi comes later, not by Lesson II as often assumed. Treat the paradigm tables (noun/verb declension charts) in the appendix as a reference to flip back to, not something to read straight through. Skip the comparative-philology footnotes on a first pass — they compare Sanskrit to Greek/Latin and are not needed to learn the language. The romanization predates IAST (Perry\'s ç = IAST ś) — check the key on the early pages before assuming an unfamiliar diacritic is a typo.',
     license:
       'Public domain (Internet Archive metadata: "no visible notice of copyright; stated date 1885," catalogued NOT_IN_COPYRIGHT).',
+    embeddableBookUrl: 'https://archive.org/embed/sanskritprimerba00perruoft',
     embeddableExcerpt: `Lesson I (Edward Delavan Perry, "A Sanskrit Primer," 1885, pp. 24-26)
 
 92. Verbs. Present Indicative active. Unaccented a-class. A number of roots
