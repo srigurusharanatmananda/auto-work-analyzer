@@ -233,6 +233,29 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     inAppNotes:
       'The gap between finishing a primer and reading real Sanskrit has two specific causes, and knowing them is what a reader tool like this is actually for. First, sandhi: Sanskrit fuses word edges rather than just placing words side by side — a final vowel and a following initial vowel merge into a third vowel, and final -ah shifts to -o before a voiced sound, so ramah gacchati is written ramo gacchati. A line of classical Sanskrit is often one unbroken string with no reliable spaces, so before looking a word up you must guess where it began and what shape it had before the fusion — a skill trained by seeing thousands of already-split examples, not by memorising rules in the abstract. Second, compounding (samasa): several stems strung together with internal case endings dropped and the relationship between parts left implicit — "X and Y", "the Y of X", "the Y which is X" — sometimes five or six members long. A reader tool closes both gaps by presenting text with sandhi already split, and for each word an analysis: its stem/root, part of speech, and — for a noun — case and number, or — for a verb — person, number, tense and voice, which is what turns a dictionary lookup into knowing that naranam is genitive plural and must attach to some other noun in the sentence. Use it honestly: read the line, guess its structure out loud, and only then reveal the analysis — revealing first turns reading into passive translation-watching.',
   },
+  {
+    id: 'skt-samskrita-bharati',
+    language: 'sanskrit',
+    title: 'Samskrita Bharati — Spoken Sanskrit Classes',
+    author: 'Samskrita Bharati',
+    sourceUrl: 'https://samskritabharati.in',
+    type: 'course',
+    howToRead:
+      'Start with their free "Spoken Sanskrit Classes" — a 10-day course explicitly requiring no prior knowledge, taught immersion-style: mostly in Sanskrit itself, by mimicry and repetition rather than grammar rules first. Beyond that free tier, their correspondence course is a real, named four-level ladder — Pravesha, Parichaya, Shiksha, Kovida, six months each, roughly two years to reach reading the Gita and speaking/writing — but each level is a paid, certificate-granting program, not something this app tracks or needs; use it only if a formal, guided course alongside self-study appeals, not as a prerequisite for anything here.',
+    license:
+      '© Samskrita Bharati, all rights reserved (stated in the site footer). The free 10-day class is free to attend, not openly licensed content.',
+  },
+  {
+    id: 'skt-ashtadhyayi',
+    language: 'sanskrit',
+    title: "Ashtadhyayi.com — Panini's grammar, with a derivation generator",
+    author: 'Ashtadhyayi.com',
+    sourceUrl: 'https://ashtadhyayi.com',
+    type: 'course',
+    howToRead:
+      "Not for early stages — this is a specialist study platform for Panini's Ashtadhyayi itself (Sutrapatha, Dhatupatha, multiple traditional commentaries, a prakriya/derivation generator that shows the sutra-by-sutra derivation of any word form, offline mode, bookmarks). Come back once sandhi and noun/verb morphology are solid (the same gating this catalogue already applies to Ambuda) — its actual audience is someone already reading Sanskrit who wants to see WHY a form is what it is, rule by rule, not someone learning what the forms are in the first place.",
+    license: 'No explicit license or copyright statement found on the site.',
+  },
 
   {
     id: 'tam-abc-of-tamil',
@@ -242,7 +265,7 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     sourceUrl: 'https://www.tamilvu.org/coresite/download/ABC_Tamil.pdf',
     type: 'primer',
     howToRead:
-      "This is already this app's primary curriculum source, so read it lesson-by-lesson in lockstep with the app's own stages rather than skimming. Skip the dedication and foreword (pages 1-3, context only). Lesson 1 teaches the 12 vowels alongside the 6 consonants the app's 'letters' stage currently covers with only their default inherent vowel — the app has not introduced any vowel yet, so treat that half of Lesson 1 as ahead of where the app is today, not already-covered ground. Lesson 2 introduces all 18 consonants and the pulli (dead-consonant) mark together, with the app's own first four vocabulary words (கண், கல், மண், பல்) as its own — read it in full before touching the app's pulli-stage lessons.",
+      "This is already this app's primary curriculum source, so read it lesson-by-lesson in lockstep with the app's own stages rather than skimming. Skip the dedication and foreword (pages 1-3, context only). Lesson 1 teaches the 12 vowels alongside the 6 consonants the app's 'letters' stage currently covers with only their default inherent vowel — the app has not introduced any vowel yet, so treat that half of Lesson 1 as ahead of where the app is today, not already-covered ground. Lesson 2 introduces all 18 consonants and the pulli (dead-consonant) mark together, with the app's own first four vocabulary words (கண், கல், மண், பல்) as its own — read it in full before touching the app's pulli-stage lessons. Its publisher, Tamil Virtual Academy (tamilvu.org), also runs a much larger, formal Certificate-through-Degree program beyond this one free Book One PDF — worth knowing exists, not something this app tracks or needs.",
     license:
       "Unresolved / likely still under copyright. The scanned text itself states \"Selling right: PAARI NILAYAM, 59 Broadway, Madras-1\" (the original 1968 print publisher) with no CC or public-domain notice. Free-to-download hosting is not evidence of an open license — do not treat as safe to redistribute or quote at length.",
     inAppNotes:

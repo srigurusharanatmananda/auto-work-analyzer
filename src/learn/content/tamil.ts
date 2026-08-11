@@ -52,15 +52,16 @@ import type { Manifest } from '../Curriculum.js';
 export const tamilManifest: Manifest = {
   language: 'tamil',
   lessons: [
-    { id: 'tam-letter-ka', stage: 'letters', text: 'க', gloss: 'ka', composedOf: [] },
-    { id: 'tam-letter-ta', stage: 'letters', text: 'த', gloss: 'ta', composedOf: [] },
-    { id: 'tam-letter-na', stage: 'letters', text: 'ந', gloss: 'na', composedOf: [] },
-    { id: 'tam-letter-ma', stage: 'letters', text: 'ம', gloss: 'ma', composedOf: [] },
-    { id: 'tam-letter-va', stage: 'letters', text: 'வ', gloss: 'va', composedOf: [] },
-    { id: 'tam-letter-pa', stage: 'letters', text: 'ப', gloss: 'pa', composedOf: [] },
+    { id: 'tam-letter-ka', stage: 'letters', level: 1, text: 'க', gloss: 'ka', composedOf: [] },
+    { id: 'tam-letter-ta', stage: 'letters', level: 1, text: 'த', gloss: 'ta', composedOf: [] },
+    { id: 'tam-letter-na', stage: 'letters', level: 1, text: 'ந', gloss: 'na', composedOf: [] },
+    { id: 'tam-letter-ma', stage: 'letters', level: 1, text: 'ம', gloss: 'ma', composedOf: [] },
+    { id: 'tam-letter-va', stage: 'letters', level: 1, text: 'வ', gloss: 'va', composedOf: [] },
+    { id: 'tam-letter-pa', stage: 'letters', level: 1, text: 'ப', gloss: 'pa', composedOf: [] },
     {
       id: 'tam-pulli-nna',
       stage: 'letters',
+      level: 1,
       text: 'ண்',
       // Retroflex ṇ — a different letter from ந (dental na) already taught
       // above, not a variant spelling of it.
@@ -70,6 +71,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-pulli-la',
       stage: 'letters',
+      level: 1,
       text: 'ல்',
       gloss: 'l — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
@@ -79,6 +81,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-letter-naa',
       stage: 'letters',
+      level: 1,
       // ந (dental na, already taught) + the vowel sign for ஆ (long ā).
       // Lesson Three's own combination table gives this exact pairing:
       // "ந் + ஆ = நா (nā)". Modelled as one atomic letter, the same way the
@@ -91,6 +94,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-pulli-alveolar-na',
       stage: 'letters',
+      level: 1,
       // Alveolar ṉ — a different letter from ந (dental na) and ண் (retroflex
       // ṇ, already taught above), even though ந/ன carry no audible
       // distinction in modern spoken Tamil (the primer still lists them as
@@ -107,6 +111,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-letter-yaa',
       stage: 'letters',
+      level: 1,
       // ய (ya) + the vowel sign for ஆ (long ā). Lesson Three's combination
       // table: "ய் + ஆ = யா (yā)".
       text: 'யா',
@@ -116,6 +121,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-pulli-ra',
       stage: 'letters',
+      level: 1,
       text: 'ர்',
       gloss: 'r — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
@@ -124,6 +130,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-kan',
       stage: 'words',
+      level: 2,
       text: 'கண்',
       gloss: 'kaṇ — eye',
       composedOf: ['tam-letter-ka', 'tam-pulli-nna'],
@@ -131,6 +138,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-kal',
       stage: 'words',
+      level: 2,
       text: 'கல்',
       gloss: 'kal — stone',
       composedOf: ['tam-letter-ka', 'tam-pulli-la'],
@@ -138,6 +146,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-man',
       stage: 'words',
+      level: 2,
       text: 'மண்',
       gloss: 'maṇ — earth, soil',
       composedOf: ['tam-letter-ma', 'tam-pulli-nna'],
@@ -145,6 +154,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-pal',
       stage: 'words',
+      level: 2,
       text: 'பல்',
       gloss: 'pal — tooth',
       composedOf: ['tam-letter-pa', 'tam-pulli-la'],
@@ -153,6 +163,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-naan',
       stage: 'words',
+      level: 2,
       text: 'நான்',
       gloss: 'nān — I',
       composedOf: ['tam-letter-naa', 'tam-pulli-alveolar-na'],
@@ -160,6 +171,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-word-yaar',
       stage: 'words',
+      level: 2,
       text: 'யார்',
       gloss: 'yār — who?',
       composedOf: ['tam-letter-yaa', 'tam-pulli-ra'],
@@ -168,6 +180,7 @@ export const tamilManifest: Manifest = {
     {
       id: 'tam-sentence-naan-yaar',
       stage: 'sentences',
+      level: 2,
       // Not assembled from separately-sourced words — the primer's own next
       // line after teaching நான் and யார், quoted exactly as printed (see
       // file header for its own inconsistent punctuation on this page).

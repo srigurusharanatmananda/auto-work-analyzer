@@ -14,12 +14,13 @@ import { type Manifest, nextLesson, validateManifest } from './Curriculum.js';
 const sanskritManifest: Manifest = {
   language: 'sanskrit',
   lessons: [
-    { id: 'skt-ma', stage: 'letters', text: 'म', gloss: 'ma', composedOf: [] },
-    { id: 'skt-na', stage: 'letters', text: 'न', gloss: 'na', composedOf: [] },
-    { id: 'skt-ra', stage: 'letters', text: 'र', gloss: 'ra', composedOf: [] },
+    { id: 'skt-ma', stage: 'letters', level: 1, text: 'म', gloss: 'ma', composedOf: [] },
+    { id: 'skt-na', stage: 'letters', level: 1, text: 'न', gloss: 'na', composedOf: [] },
+    { id: 'skt-ra', stage: 'letters', level: 1, text: 'र', gloss: 'ra', composedOf: [] },
     {
       id: 'skt-mana',
       stage: 'words',
+      level: 2,
       text: 'मन',
       gloss: 'mind',
       composedOf: ['skt-ma', 'skt-na'],
@@ -27,6 +28,7 @@ const sanskritManifest: Manifest = {
     {
       id: 'skt-nara',
       stage: 'words',
+      level: 2,
       text: 'नर',
       gloss: 'man',
       composedOf: ['skt-na', 'skt-ra'],
@@ -34,6 +36,7 @@ const sanskritManifest: Manifest = {
     {
       id: 'skt-sentence',
       stage: 'sentences',
+      level: 2,
       text: 'मन नर',
       gloss: 'illustrative only — not authored Sanskrit grammar',
       composedOf: ['skt-mana', 'skt-nara'],
@@ -44,12 +47,13 @@ const sanskritManifest: Manifest = {
 const tamilManifest: Manifest = {
   language: 'tamil',
   lessons: [
-    { id: 'tam-ma', stage: 'letters', text: 'ம', gloss: 'ma', composedOf: [] },
-    { id: 'tam-na', stage: 'letters', text: 'ந', gloss: 'na', composedOf: [] },
-    { id: 'tam-ra', stage: 'letters', text: 'ர', gloss: 'ra', composedOf: [] },
+    { id: 'tam-ma', stage: 'letters', level: 1, text: 'ம', gloss: 'ma', composedOf: [] },
+    { id: 'tam-na', stage: 'letters', level: 1, text: 'ந', gloss: 'na', composedOf: [] },
+    { id: 'tam-ra', stage: 'letters', level: 1, text: 'ர', gloss: 'ra', composedOf: [] },
     {
       id: 'tam-mana',
       stage: 'words',
+      level: 2,
       // மந, with ந (dental na, tam-na's own text) — not மன with ன (alveolar
       // na), an easy typo given how visually similar the two are. Caught by
       // validateManifest's own text/composedOf reconstruction check when
@@ -62,6 +66,7 @@ const tamilManifest: Manifest = {
     {
       id: 'tam-nara',
       stage: 'words',
+      level: 2,
       text: 'நர',
       gloss: 'illustrative only',
       composedOf: ['tam-na', 'tam-ra'],
@@ -69,6 +74,7 @@ const tamilManifest: Manifest = {
     {
       id: 'tam-sentence',
       stage: 'sentences',
+      level: 2,
       text: 'மந நர',
       gloss: 'illustrative only',
       composedOf: ['tam-mana', 'tam-nara'],
@@ -198,6 +204,23 @@ describe.each([
     expect(errors).toContainEqual({
       lessonId: manifest.lessons[0].id,
       reason: 'duplicate lesson id',
+    });
+  });
+
+  test('a lesson claiming a lower level than what it depends on is rejected', () => {
+    const wordLesson = manifest.lessons.find((lesson) => lesson.stage === 'words')!;
+    const [depId] = wordLesson.composedOf;
+    // Bump one of the word's own letter dependencies to level 3 — now higher
+    // than the level-2 word built from it, which is the violation this checks.
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) => (lesson.id === depId ? { ...lesson, level: 3 } : lesson)),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: wordLesson.id,
+      reason: expect.stringContaining(`is level 2 but depends on '${depId}', which is level 3`),
     });
   });
 });

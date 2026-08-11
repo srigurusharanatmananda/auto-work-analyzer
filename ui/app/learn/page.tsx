@@ -7,6 +7,7 @@ import { api, messageFor } from '@/lib/api';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type { LearnLanguage, LearnLesson, LearnProgress } from '@/types';
+import { LEARN_LEVELS } from '@/types';
 
 const LANGUAGE_LABEL: Record<LearnLanguage, string> = {
   sanskrit: 'Sanskrit',
@@ -155,6 +156,31 @@ export default function LearnPage() {
   const total = progress?.total ?? 0;
   const pct = total > 0 ? Math.min(100, Math.round((seenCount / total) * 100)) : 0;
 
+  // Per-level counts, derived the same way `frontierIndex` is: lessons are
+  // learned strictly in manifest order, so "seen" is exactly `lessons[0..
+  // seenCount-1]" — no separate per-lesson seen/unseen field exists or needs
+  // to, client-side, to answer "how much of level 3 is done".
+  const levelStats = LEARN_LEVELS.map((level) => {
+    let totalCount = 0;
+    let doneCount = 0;
+    lessons.forEach((lesson, index) => {
+      if (lesson.level !== level.id) return;
+      totalCount += 1;
+      if (index < seenCount) doneCount += 1;
+    });
+    return { ...level, doneCount, totalCount };
+  });
+  // Falls back to the HIGHEST level with any content, not the last lesson in
+  // array order: once every lesson is seen, displayLesson is null (the
+  // "completed" card shows instead), and Curriculum.ts's own LEVELS comment
+  // is explicit that level is a display grouping, not guaranteed sorted
+  // across the whole manifest — a later-added lesson could land after
+  // higher-level content while itself being a lower level (backfilling more
+  // level-1 vocabulary, say). Taking the max avoids depending on an
+  // ordering the engine never promised.
+  const currentLevelId =
+    displayLesson?.level ?? (lessons.length > 0 ? Math.max(...lessons.map((l) => l.level)) : 1);
+
   return (
     <ProtectedRoute>
       <div className="p-8">
@@ -162,7 +188,7 @@ export default function LearnPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Learn</h1>
             <p className="mt-2 text-foreground-secondary">
-              Work through letters, words, and sentences one lesson at a time.
+              Five levels, beginner to expert — one lesson at a time.
             </p>
           </div>
           <div className="flex gap-2">
@@ -192,6 +218,35 @@ export default function LearnPage() {
         </div>
 
         {!loading && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {levelStats.map((level) => {
+              const isCurrent = level.id === currentLevelId;
+              const isEmpty = level.totalCount === 0;
+              return (
+                <div
+                  key={level.id}
+                  title={level.description}
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    isCurrent
+                      ? 'border-primary bg-primary/10'
+                      : isEmpty
+                        ? 'border-border opacity-50'
+                        : 'border-border'
+                  }`}
+                >
+                  <p className={`font-semibold ${isCurrent ? 'text-primary' : 'text-foreground'}`}>
+                    Level {level.id}: {level.name}
+                  </p>
+                  <p className="mt-0.5 text-foreground-tertiary">
+                    {isEmpty ? 'Coming soon' : `${level.doneCount} / ${level.totalCount} done`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && (
           <div className="mb-6 max-w-md">
             <div className="h-2 w-full overflow-hidden rounded-lg bg-background-tertiary">
               <div
@@ -213,6 +268,9 @@ export default function LearnPage() {
         ) : displayLesson ? (
           <Card className="flex flex-col items-center gap-4 py-12 text-center">
             <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                Level {displayLesson.level}: {LEARN_LEVELS.find((l) => l.id === displayLesson.level)?.name}
+              </span>
               <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground-secondary">
                 {displayLesson.stage}
               </span>
