@@ -23,8 +23,17 @@
  * the external link stays as the secondary, click-through option.
  *
  * `embedUrl` is for a video resource whose uploader has not disabled
- * embedding (confirmed via YouTube's oEmbed endpoint, not assumed) — an
- * actual inline player, not just a thumbnail link.
+ * embedding — an actual inline player, not just a thumbnail link. Also
+ * covers a whole PLAYLIST via YouTube's `/embed/videoseries?list=<id>` form
+ * (e.g. `skt-varnamala-audio`, `skt-pravesha-course`, `tam-pronunciation-
+ * playlist`) — same field, same iframe treatment in the UI, since a playlist
+ * embed is just a different YouTube embed path, not a different mechanism.
+ * A single video is confirmed via YouTube's oEmbed endpoint (a 401/404 there
+ * means embedding is disabled); oEmbed does not itself validate a *playlist*
+ * embed, so each playlist URL here was ALSO rendered in a real iframe served
+ * from a real http origin and screenshotted before being added — an
+ * `about:blank`/no-origin test page is not sufficient, it 153s even for a
+ * perfectly embeddable playlist.
  *
  * `embeddableBookUrl` is the archive.org equivalent for a full public-domain
  * scan: their `/embed/<identifier>` BookReader, which archive.org itself
@@ -220,6 +229,32 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     embedUrl: 'https://www.youtube.com/embed/videoseries?list=PLFLFOfuyaIHvExkYbtlMM_mS1m5yRZtO2',
   },
   {
+    id: 'skt-pravesha-course',
+    language: 'sanskrit',
+    title: 'Samskrita Bharati — Pravesha (spoken-Sanskrit beginner course, 88 episodes)',
+    author: 'Learn Sanskrit Online : vyoma-samskrta-pathasala (Vyoma Labs)',
+    sourceUrl: 'https://www.youtube.com/playlist?list=PLWV98cyTzbXzF0LyF8liA00e2JYcNtCTU',
+    type: 'video',
+    howToRead:
+      "Samskrita Bharati's full beginner course, taught almost entirely IN Sanskrit (immersion-style — the point is to start understanding spoken Sanskrit directly, not to have every word glossed in English). Watch the main lecture episodes in playlist order; the interspersed 'Homework Solution' episodes are optional reinforcement from a different presenter, skippable on a first pass. This is a genuinely different skill from the app's letters/reading stages — pair it with, don't substitute it for, a primer's grammar.",
+    license:
+      "Standard YouTube/creator copyright — free to view, embeddable via YouTube's official iframe player (confirmed: playlist embed loads correctly; individual videos spot-checked not embed-disabled via the oEmbed API). Not licensed for download or redistribution.",
+    embedUrl: 'https://www.youtube.com/embed/videoseries?list=PLWV98cyTzbXzF0LyF8liA00e2JYcNtCTU',
+  },
+  {
+    id: 'skt-sandhi-grammar-video',
+    language: 'sanskrit',
+    title: 'Samhita, Sandhi Class, Savarnadeergha — Sanskrit Grammar & Composition',
+    author: 'Dr. Sowmya Krishnapur / Learn Sanskrit Online : vyoma-samskrta-pathasala',
+    sourceUrl: 'https://www.youtube.com/watch?v=KaMyTphi37g',
+    type: 'video',
+    howToRead:
+      "A grammar explainer on sandhi (word-fusion rules) from Vyoma's separate 'Sanskrit Grammar & Composition' course. Intermediate, not day-one — the same gating the catalogue already applies to Ambuda: come back once the alphabet and basic noun/verb forms are done, since sandhi is exactly the skill that closes the gap between a primer and reading real Sanskrit (see Ambuda's own inAppNotes below for why).",
+    license:
+      "Standard YouTube/creator copyright — free to view, embeddable via YouTube's official iframe player (confirmed not embed-disabled via the oEmbed API).",
+    embedUrl: 'https://www.youtube.com/embed/KaMyTphi37g',
+  },
+  {
     id: 'skt-ambuda-library',
     language: 'sanskrit',
     title: 'Ambuda — free open library of Sanskrit texts and tools',
@@ -274,6 +309,45 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
       'No explicit license notice found. Treat as ordinary all-rights-reserved content: free for personal practice, not confirmed safe to redistribute.',
     inAppNotes:
       "Audio is not optional for Tamil, because its spelling deliberately underspecifies pronunciation: there is one letter per place of articulation for the hard consonants (க ச ட த ப ற) and no separate letters for voiced or aspirated versions the way Devanagari has. க் is written identically everywhere but sounds different depending on position: plain voiceless [k] word-initially (கல் kal); long voiceless [kː] when doubled (பக்கம் pakkam); voiced [g] after its matching nasal (தங்கம், heard as tangam); softened toward [x]/[gh]/[h] between vowels (பாகம் heard closer to paham than pakam). The same four-way pattern runs across the hard set, with two exceptions: ச is commonly [s] between vowels, and ற behaves as a trill/tap rather than a softened stop — none of this is written down. Three further contrasts are hard to learn from text alone and are the real reason to use audio: the l-type and n-type letters (ல ள ழ and ன ண ந) are genuinely distinct sounds, with ழ — the retroflex approximant in தமிழ் itself — having no English equivalent and being the sound learners most often flatten into a plain l; vowel length is phonemic (short/long differ roughly two-to-one in duration and swapping them changes the word, not just the style); and the retroflex series (ட ண ள ழ) curls the tongue tip back to a position English never uses. Play each letter, say it back immediately, and record yourself occasionally — passive listening trains recognition only, production trains the tongue positions that actually distinguish these sounds.",
+  },
+  {
+    id: 'tam-pronunciation-playlist',
+    language: 'tamil',
+    title: 'Tamil Pronunciation (40-episode drill series)',
+    author: 'Active Learning Foundation',
+    sourceUrl: 'https://www.youtube.com/playlist?list=PLKMYkafPduYFDrYeOJeXBdzimfCI7kycI',
+    type: 'video',
+    howToRead:
+      "Drills exactly the contrasts this app's own tam-audio-htla notes above flag as unlearnable from text alone — ல/ள/ழ, ண/ன/ந, ர/ற. Watch in playlist order and repeat each sound aloud immediately; this is production practice (making the sound), not a script-introduction sequence, so pair it with 'ABC of Tamil' for letter shapes first, not instead of it.",
+    license:
+      "Standard YouTube/creator copyright — free to view, embeddable via YouTube's official iframe player (confirmed: playlist embed loads correctly; individual videos spot-checked not embed-disabled via the oEmbed API).",
+    embedUrl: 'https://www.youtube.com/embed/videoseries?list=PLKMYkafPduYFDrYeOJeXBdzimfCI7kycI',
+  },
+  {
+    id: 'tam-mellinam-drill-video',
+    language: 'tamil',
+    title: 'Teaching Tamil — ஙஞண நமன (mellinam/nasal consonant drill)',
+    author: 'Active Learning Foundation',
+    sourceUrl: 'https://www.youtube.com/watch?v=zHaG4HY3qtk',
+    type: 'video',
+    howToRead:
+      "A reading drill for the mellinam (nasal) consonant set — ங ஞ ண ந ம ன. Use once the app's own letters stage has introduced pulli-final forms, as a listen-and-repeat companion, not a first introduction to the letters themselves.",
+    license:
+      "Standard YouTube/creator copyright — free to view, embeddable via YouTube's official iframe player (confirmed not embed-disabled via the oEmbed API).",
+    embedUrl: 'https://www.youtube.com/embed/zHaG4HY3qtk',
+  },
+  {
+    id: 'tam-vallinam-drill-video',
+    language: 'tamil',
+    title: 'Learn Tamil Easy — கசடதபற (vallinam/hard consonant drill)',
+    author: 'Active Learning Foundation',
+    sourceUrl: 'https://www.youtube.com/watch?v=1L7bnzcEKUw',
+    type: 'video',
+    howToRead:
+      'A reading drill for the vallinam (hard) consonant set — க ச ட த ப ற. Pairs with the mellinam drill above to cover both consonant classes with real audio; the same set whose position-dependent pronunciation is explained in tam-audio-htla\'s inAppNotes above.',
+    license:
+      "Standard YouTube/creator copyright — free to view, embeddable via YouTube's official iframe player (confirmed not embed-disabled via the oEmbed API).",
+    embedUrl: 'https://www.youtube.com/embed/1L7bnzcEKUw',
   },
   {
     id: 'tam-omniglot',

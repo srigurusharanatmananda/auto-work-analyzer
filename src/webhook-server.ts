@@ -218,10 +218,19 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // the same way the routers above do — no shared store to pass in here.
     app.use("/api/learn", createLearnRouter());
 
-    // Reading resources for the same two languages, and a learner's own
-    // notes on each — separate router because it has nothing to do with
-    // lesson progress, but same self-constructing-dependencies pattern.
-    app.use("/api/resources", createResourcesRouter());
+    // Reading resources for the same two languages, a learner's own notes on
+    // each, and a learner's own uploaded books — separate router because it
+    // has nothing to do with lesson progress, but same self-constructing-
+    // dependencies pattern. Shares TRANSCRIPTION_STORAGE_ROOT with the
+    // transcription router below rather than a dedicated env var: both are
+    // "where this app keeps files a user gave it", and one bind-mounted
+    // volume to configure in production beats two.
+    app.use(
+      "/api/resources",
+      createResourcesRouter({
+        storageRoot: path.resolve(process.env.TRANSCRIPTION_STORAGE_ROOT ?? "storage"),
+      })
+    );
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(cipher, pool);

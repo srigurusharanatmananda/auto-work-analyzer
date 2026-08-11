@@ -33,7 +33,7 @@ describe('postgres test fixture', () => {
     // shows up here rather than as a confusing "relation does not exist" in
     // some unrelated suite. Bump it deliberately when a migration adds a table —
     // that is the guard working, not noise.
-    assert.equal(tables.length, 20, `expected 20 tables, got: ${tables.join(', ')}`);
+    assert.equal(tables.length, 21, `expected 21 tables, got: ${tables.join(', ')}`);
     assert.ok(tables.includes('users'));
     assert.ok(tables.includes('task_templates'));
     assert.ok(tables.includes('analysis_history'));
@@ -45,9 +45,11 @@ describe('postgres test fixture', () => {
     assert.ok(tables.includes('learn_progress'));
     // From migration 0006 — resource notes.
     assert.ok(tables.includes('learn_resource_notes'));
-    // From migration 0007 — the Postgres-backed rate limit store, and proof
-    // the newest migration ran.
+    // From migration 0007 — the Postgres-backed rate limit store.
     assert.ok(tables.includes('rate_limit_hits'));
+    // From migration 0009 — a learner's own uploaded books, and proof the
+    // newest migration ran.
+    assert.ok(tables.includes('learn_resource_uploads'));
   });
 
   test('unqualified writes land in the test schema, never in public', async () => {

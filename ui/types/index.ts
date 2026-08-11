@@ -398,6 +398,17 @@ export interface LearnResourceNote {
   updatedAt: string;
 }
 
+/** Mirrors the `ResourceUpload` shape in `src/learn/ResourceUploads.ts`. */
+export interface LearnResourceUpload {
+  id: string;
+  userId: string;
+  language: LearnLanguage;
+  title: string;
+  originalFilename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 /** Mirrors `TranslateLanguage` in `src/routes/translate.routes.ts`. */
 export type TranslateLanguage = 'english' | LearnLanguage;
 
