@@ -616,6 +616,37 @@ export const learnResourceNotes = pgTable(
   ]
 );
 
+/**
+ * A learner's own uploaded book/PDF for a language, read in-app alongside the
+ * curated `resources.ts` list. Unlike a curated resource, an upload has no
+ * static id in code — it is a row a user created — so `id` here IS the
+ * identity `resources.routes.ts` looks up, the same role `resourceId` plays
+ * for a curated entry.
+ *
+ * `storedFilename` is a server-generated uuid-based name on disk (see
+ * `resources.routes.ts`'s multer config), never the browser-supplied
+ * `originalFilename` — the same path-traversal/collision reasoning as
+ * `transcription_jobs.audioPath`.
+ */
+export const learnResourceUploads = pgTable(
+  'learn_resource_uploads',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    language: text('language').notNull(),
+    title: text('title').notNull(),
+    originalFilename: text('original_filename').notNull(),
+    storedFilename: text('stored_filename').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [
+    // "This user's uploads for this language" is the one listing query this
+    // table exists to answer — same shape as learn_resource_notes's index.
+    index('idx_learn_resource_uploads_user_language').on(table.userId, table.language),
+  ]
+);
+
 // ==================== Rate limiting ====================
 
 /**

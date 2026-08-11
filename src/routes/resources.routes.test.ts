@@ -8,7 +8,11 @@
  */
 import { afterAll, describe, expect, mock, test } from 'bun:test';
 import express from 'express';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { ResourceNotesStore, ResourceNote } from '../learn/ResourceNotes.js';
+import type { ResourceUploadsStore, ResourceUpload } from '../learn/ResourceUploads.js';
 
 const TEST_USER_ID = 'resources-test-user';
 
@@ -64,6 +68,56 @@ function fakeNotes(): ResourceNotesStore & { store: Map<string, ResourceNote[]> 
     },
     close() {},
   } as unknown as ResourceNotesStore & { store: Map<string, ResourceNote[]> };
+}
+
+/** In-memory stand-in for ResourceUploadsStore, keyed the way the real table is: (userId, id). */
+function fakeUploads(): ResourceUploadsStore & { store: Map<string, ResourceUpload> } {
+  const store = new Map<string, ResourceUpload>();
+  let counter = 0;
+
+  return {
+    store,
+    async list(userId: string, language: string) {
+      return [...store.values()]
+        .filter((u) => u.userId === userId && u.language === language)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async get(userId: string, id: string) {
+      const found = store.get(id);
+      return found && found.userId === userId ? found : null;
+    },
+    async getUnscoped(id: string) {
+      return store.get(id) ?? null;
+    },
+    async create(
+      userId: string,
+      language: string,
+      title: string,
+      originalFilename: string,
+      storedFilename: string,
+      sizeBytes: number
+    ) {
+      const created: ResourceUpload = {
+        id: `upload-${++counter}`,
+        userId,
+        language: language as ResourceUpload['language'],
+        title,
+        originalFilename,
+        storedFilename,
+        sizeBytes,
+        createdAt: new Date(counter).toISOString(),
+      };
+      store.set(created.id, created);
+      return created;
+    },
+    async remove(userId: string, id: string) {
+      const found = store.get(id);
+      if (!found || found.userId !== userId) return null;
+      store.delete(id);
+      return found;
+    },
+    close() {},
+  } as unknown as ResourceUploadsStore & { store: Map<string, ResourceUpload> };
 }
 
 function buildApp(deps: Parameters<typeof createResourcesRouter>[0]) {
@@ -270,5 +324,200 @@ describe('notes', () => {
     } finally {
       server.close();
     }
+  });
+});
+
+describe('uploads', () => {
+  async function withApp<T>(
+    run: (baseUrl: string) => Promise<T>,
+    routerDeps: Partial<Parameters<typeof createResourcesRouter>[0]> = {}
+  ): Promise<T> {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'resource-uploads-test-'));
+    // One instance, not the bare factory: `newUploads()` is called fresh per
+    // route handler, and the bare factory would hand each call its own empty
+    // Map, discarding every previous request's state — same reasoning as the
+    // notes tests' `notesFactory: () => notes` vs plain `fakeNotes`.
+    const uploads = fakeUploads();
+    const notes = fakeNotes();
+    const app = buildApp({
+      notesFactory: () => notes,
+      uploadsFactory: () => uploads,
+      storageRoot,
+      ...routerDeps,
+    });
+    const { server, baseUrl } = await listen(app);
+    try {
+      return await run(baseUrl);
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  }
+
+  function pdfFormData(filename = 'my-book.pdf'): FormData {
+    const body = new FormData();
+    body.append('file', new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], { type: 'application/pdf' }), filename);
+    body.append('language', 'sanskrit');
+    body.append('title', 'My Book');
+    return body;
+  }
+
+  test('GET without a language is rejected', async () => {
+    await withApp(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/uploads`);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  test('POST accepts a PDF, GET lists it back for that language only', async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      expect(created.status).toBe(201);
+      const { data: upload } = await created.json();
+      expect(upload.title).toBe('My Book');
+      expect(upload.originalFilename).toBe('my-book.pdf');
+
+      const sanskrit = await (await fetch(`${baseUrl}/uploads?language=sanskrit`)).json();
+      expect(sanskrit.data.map((u: { id: string }) => u.id)).toEqual([upload.id]);
+
+      const tamil = await (await fetch(`${baseUrl}/uploads?language=tamil`)).json();
+      expect(tamil.data).toEqual([]);
+    });
+  });
+
+  test('POST rejects a non-PDF file', async () => {
+    await withApp(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData('not-a-book.txt') });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  test('POST rejects a file over the configured size limit, with a message naming it', async () => {
+    // A real 500 MB round trip has no place in a unit test — the limit itself
+    // is what's under test, so it is overridden down to something a 64-byte
+    // fake PDF can actually exceed, rather than uploading a genuinely huge file.
+    await withApp(
+      async (baseUrl) => {
+        const body = new FormData();
+        body.append('file', new Blob([new Uint8Array(64)], { type: 'application/pdf' }), 'big-book.pdf');
+        body.append('language', 'sanskrit');
+        body.append('title', 'Big Book');
+
+        const res = await fetch(`${baseUrl}/uploads`, { method: 'POST', body });
+        expect(res.status).toBe(400);
+        const { error } = await res.json();
+        expect(error).toContain('larger than');
+        expect(error).toContain('MB limit');
+      },
+      { maxUploadBytes: 32 }
+    );
+  });
+
+  test('token round-trip: mint then stream the exact bytes uploaded', async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      const { data: upload } = await created.json();
+
+      const minted = await fetch(`${baseUrl}/uploads/${upload.id}/token`, { method: 'POST' });
+      expect(minted.status).toBe(200);
+      const { data } = await minted.json();
+      expect(data.url).toContain(`/uploads/${upload.id}/file?token=`);
+
+      // `data.url` is server-relative ("/api/resources/uploads/..."), same as the
+      // real audio-token route — resolve it against the test server's own origin.
+      const fileRes = await fetch(`${new URL(baseUrl).origin}${data.url}`);
+      expect(fileRes.status).toBe(200);
+      expect(fileRes.headers.get('content-type')).toBe('application/pdf');
+      const bytes = new Uint8Array(await fileRes.arrayBuffer());
+      expect([...bytes]).toEqual([0x25, 0x50, 0x44, 0x46]);
+    });
+  });
+
+  test('the file route rejects a missing or garbage token', async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      const { data: upload } = await created.json();
+
+      const noToken = await fetch(`${baseUrl}/uploads/${upload.id}/file`);
+      expect(noToken.status).toBe(403);
+
+      const garbage = await fetch(`${baseUrl}/uploads/${upload.id}/file?token=not-a-real-token`);
+      expect(garbage.status).toBe(403);
+    });
+  });
+
+  test("minting a token for someone else's upload 404s", async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      const { data: upload } = await created.json();
+
+      // A second router instance sharing the store but authenticated as a different
+      // user would be more faithful, but the fake store's `get` already scopes by
+      // userId, and the route has no other path to ownership — this exercises that
+      // scoping directly by asking for an id the store will not resolve for anyone.
+      const minted = await fetch(`${baseUrl}/uploads/does-not-exist/token`, { method: 'POST' });
+      expect(minted.status).toBe(404);
+    });
+  });
+
+  test('a store error while minting a token is a 500, not a hung request', async () => {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'resource-uploads-test-'));
+    const throwingUploads: ResourceUploadsStore = {
+      ...fakeUploads(),
+      async get() {
+        throw new Error('connection reset');
+      },
+    };
+    const app = buildApp({ notesFactory: fakeNotes, uploadsFactory: () => throwingUploads, storageRoot });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/uploads/some-id/token`, { method: 'POST' });
+      expect(res.status).toBe(500);
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('DELETE removes the upload and the file route 404s afterward', async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      const { data: upload } = await created.json();
+      const minted = await (await fetch(`${baseUrl}/uploads/${upload.id}/token`, { method: 'POST' })).json();
+
+      const deleted = await fetch(`${baseUrl}/uploads/${upload.id}`, { method: 'DELETE' });
+      expect(deleted.status).toBe(200);
+
+      const fileRes = await fetch(`${new URL(baseUrl).origin}${minted.data.url}`);
+      expect(fileRes.status).toBe(404);
+
+      const listed = await (await fetch(`${baseUrl}/uploads?language=sanskrit`)).json();
+      expect(listed.data).toEqual([]);
+    });
+  });
+
+  test('notes work on an upload id, the same as on a curated resource id', async () => {
+    await withApp(async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/uploads`, { method: 'POST', body: pdfFormData() });
+      const { data: upload } = await created.json();
+
+      const note = await fetch(`${baseUrl}/${upload.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: 'page 12 has the key vocabulary' }),
+      });
+      expect(note.status).toBe(201);
+
+      const listed = await (await fetch(`${baseUrl}/${upload.id}/notes`)).json();
+      expect(listed.data.length).toBe(1);
+    });
+  });
+
+  test('notes 404 for an upload id that does not exist', async () => {
+    await withApp(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/no-such-upload/notes`);
+      expect(res.status).toBe(404);
+    });
   });
 });

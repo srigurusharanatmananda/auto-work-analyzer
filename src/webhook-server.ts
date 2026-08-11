@@ -218,10 +218,27 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // the same way the routers above do — no shared store to pass in here.
     app.use("/api/learn", createLearnRouter());
 
-    // Reading resources for the same two languages, and a learner's own
-    // notes on each — separate router because it has nothing to do with
-    // lesson progress, but same self-constructing-dependencies pattern.
-    app.use("/api/resources", createResourcesRouter());
+    // Reading resources for the same two languages, a learner's own notes on
+    // each, and a learner's own uploaded books — separate router because it
+    // has nothing to do with lesson progress, but same self-constructing-
+    // dependencies pattern.
+    //
+    // Deliberately NOT sharing TRANSCRIPTION_STORAGE_ROOT with the
+    // transcription router below, despite both being "where this app keeps
+    // files a user gave it": docker-compose.yml bind-mounts that exact host
+    // directory, whole, into the Whisper container (see its own comment on
+    // why — Whisper opens audio files rather than receiving bytes). Writing
+    // uploaded PDFs under that same directory would hand a container that
+    // runs third-party model code filesystem access to every user's uploaded
+    // books, an unrelated data category it has no business seeing. A
+    // different directory name means Whisper's mount simply does not reach
+    // it, no docker-compose.yml change required.
+    app.use(
+      "/api/resources",
+      createResourcesRouter({
+        storageRoot: path.resolve(process.env.RESOURCE_UPLOADS_ROOT ?? "storage-resources"),
+      })
+    );
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(cipher, pool);
