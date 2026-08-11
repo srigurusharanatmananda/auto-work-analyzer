@@ -84,15 +84,16 @@ export const sanskritManifest: Manifest = {
     // skt-word-vadati already depends on it.
 
     // --- The fourteen vowels, Wikner 1.A.3-1.A.6 ---
-    { id: 'skt-letter-a', stage: 'letters', text: 'अ', gloss: 'a', composedOf: [] },
-    { id: 'skt-letter-aa', stage: 'letters', text: 'आ', gloss: 'ā', composedOf: [] },
-    { id: 'skt-letter-i', stage: 'letters', text: 'इ', gloss: 'i', composedOf: [] },
-    { id: 'skt-letter-ii', stage: 'letters', text: 'ई', gloss: 'ī', composedOf: [] },
-    { id: 'skt-letter-u', stage: 'letters', text: 'उ', gloss: 'u', composedOf: [] },
-    { id: 'skt-letter-uu', stage: 'letters', text: 'ऊ', gloss: 'ū', composedOf: [] },
+    { id: 'skt-letter-a', stage: 'letters', level: 1, text: 'अ', gloss: 'a', composedOf: [] },
+    { id: 'skt-letter-aa', stage: 'letters', level: 1, text: 'आ', gloss: 'ā', composedOf: [] },
+    { id: 'skt-letter-i', stage: 'letters', level: 1, text: 'इ', gloss: 'i', composedOf: [] },
+    { id: 'skt-letter-ii', stage: 'letters', level: 1, text: 'ई', gloss: 'ī', composedOf: [] },
+    { id: 'skt-letter-u', stage: 'letters', level: 1, text: 'उ', gloss: 'u', composedOf: [] },
+    { id: 'skt-letter-uu', stage: 'letters', level: 1, text: 'ऊ', gloss: 'ū', composedOf: [] },
     {
       id: 'skt-letter-ri',
       stage: 'letters',
+      level: 1,
       // Wikner 1.A.4: a genuine vowel (the vocalic r. at the centre of
       // Kr.s.n.a), not r followed by a vowel — pronounced with the tongue
       // tip raised, not as "ri". Common today, unlike its long/l. siblings below.
@@ -103,6 +104,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-letter-rii',
       stage: 'letters',
+      level: 1,
       // Wikner 1.A.4, verbatim: "not used in the standard grammar." Taught
       // for alphabet completeness (it is one of the sixteen śakti in 1.A.7's
       // own list), not because a learner will meet it in real words.
@@ -113,6 +115,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-letter-li',
       stage: 'letters',
+      level: 1,
       // Wikner 1.A.4: occurs only in inflections of one root, kl.p ("to
       // manage, to be well ordered").
       text: 'ऌ',
@@ -122,6 +125,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-letter-lii',
       stage: 'letters',
+      level: 1,
       // Wikner 1.A.4, verbatim: "The long l. is not used in the standard
       // grammar" — the rarest letter in the alphabet, listed only because
       // 1.A.7 lists it among the sixteen śakti.
@@ -129,15 +133,16 @@ export const sanskritManifest: Manifest = {
       gloss: 'ḹ (theoretical — not used in standard grammar)',
       composedOf: [],
     },
-    { id: 'skt-letter-e', stage: 'letters', text: 'ए', gloss: 'e', composedOf: [] },
-    { id: 'skt-letter-ai', stage: 'letters', text: 'ऐ', gloss: 'ai', composedOf: [] },
-    { id: 'skt-letter-o', stage: 'letters', text: 'ओ', gloss: 'o', composedOf: [] },
-    { id: 'skt-letter-au', stage: 'letters', text: 'औ', gloss: 'au', composedOf: [] },
+    { id: 'skt-letter-e', stage: 'letters', level: 1, text: 'ए', gloss: 'e', composedOf: [] },
+    { id: 'skt-letter-ai', stage: 'letters', level: 1, text: 'ऐ', gloss: 'ai', composedOf: [] },
+    { id: 'skt-letter-o', stage: 'letters', level: 1, text: 'ओ', gloss: 'o', composedOf: [] },
+    { id: 'skt-letter-au', stage: 'letters', level: 1, text: 'औ', gloss: 'au', composedOf: [] },
 
     // --- Anusvara and visarga, the other two of the "sixteen śakti", Wikner 1.A.7 ---
     {
       id: 'skt-letter-anusvara',
       stage: 'letters',
+      level: 1,
       // Wikner 1.A.7: "an 'after sound', a nasal sound following a vowel...
       // sounded through the nose only". Shown bare, matching how visarga
       // just below is already shown bare in this file, even though both are
@@ -151,6 +156,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-letter-visarga',
       stage: 'letters',
+      level: 1,
       // Wikner, Lesson 1.A.7 "The Sixteen śakti": "The visarga (ḥ), or
       // visarjanīya, is an unvoiced breath following a vowel, and is
       // breathed through the mouth position of that vowel." Also the
@@ -163,13 +169,14 @@ export const sanskritManifest: Manifest = {
 
     // --- The twenty-five stops, Wikner 2.A.2/2.A.4, ka-varga through pa-varga ---
     // ka-varga (guttural)
-    { id: 'skt-letter-ka', stage: 'letters', text: 'क', gloss: 'ka', composedOf: [] },
-    { id: 'skt-letter-kha', stage: 'letters', text: 'ख', gloss: 'kha', composedOf: [] },
-    { id: 'skt-letter-ga', stage: 'letters', text: 'ग', gloss: 'ga', composedOf: [] },
-    { id: 'skt-letter-gha', stage: 'letters', text: 'घ', gloss: 'gha', composedOf: [] },
+    { id: 'skt-letter-ka', stage: 'letters', level: 1, text: 'क', gloss: 'ka', composedOf: [] },
+    { id: 'skt-letter-kha', stage: 'letters', level: 1, text: 'ख', gloss: 'kha', composedOf: [] },
+    { id: 'skt-letter-ga', stage: 'letters', level: 1, text: 'ग', gloss: 'ga', composedOf: [] },
+    { id: 'skt-letter-gha', stage: 'letters', level: 1, text: 'घ', gloss: 'gha', composedOf: [] },
     {
       id: 'skt-letter-nga',
       stage: 'letters',
+      level: 1,
       // The guttural nasal (Wikner's _na row 5 of ka-varga) — distinct from
       // both ña (ca-varga's nasal, skt-letter-nya below) and ṇa (ṭa-varga's
       // nasal, skt-letter-nna below) and na (ta-varga's nasal, already
@@ -183,12 +190,13 @@ export const sanskritManifest: Manifest = {
     // ca-varga (palatal) — ja (row 3) is already taught; declared below,
     // with skt-word-vadati and its other pre-existing dependents, rather
     // than moved here
-    { id: 'skt-letter-ca', stage: 'letters', text: 'च', gloss: 'ca', composedOf: [] },
-    { id: 'skt-letter-cha', stage: 'letters', text: 'छ', gloss: 'cha', composedOf: [] },
-    { id: 'skt-letter-jha', stage: 'letters', text: 'झ', gloss: 'jha', composedOf: [] },
+    { id: 'skt-letter-ca', stage: 'letters', level: 1, text: 'च', gloss: 'ca', composedOf: [] },
+    { id: 'skt-letter-cha', stage: 'letters', level: 1, text: 'छ', gloss: 'cha', composedOf: [] },
+    { id: 'skt-letter-jha', stage: 'letters', level: 1, text: 'झ', gloss: 'jha', composedOf: [] },
     {
       id: 'skt-letter-nya',
       stage: 'letters',
+      level: 1,
       // ca-varga's nasal — see skt-letter-nga's comment for why this gets a
       // distinct id rather than reusing "na".
       text: 'ञ',
@@ -196,13 +204,14 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     // ṭa-varga (cerebral/retroflex) — none of this row exists yet
-    { id: 'skt-letter-tta', stage: 'letters', text: 'ट', gloss: 'ṭa', composedOf: [] },
-    { id: 'skt-letter-ttha', stage: 'letters', text: 'ठ', gloss: 'ṭha', composedOf: [] },
-    { id: 'skt-letter-dda', stage: 'letters', text: 'ड', gloss: 'ḍa', composedOf: [] },
-    { id: 'skt-letter-ddha', stage: 'letters', text: 'ढ', gloss: 'ḍha', composedOf: [] },
+    { id: 'skt-letter-tta', stage: 'letters', level: 1, text: 'ट', gloss: 'ṭa', composedOf: [] },
+    { id: 'skt-letter-ttha', stage: 'letters', level: 1, text: 'ठ', gloss: 'ṭha', composedOf: [] },
+    { id: 'skt-letter-dda', stage: 'letters', level: 1, text: 'ड', gloss: 'ḍa', composedOf: [] },
+    { id: 'skt-letter-ddha', stage: 'letters', level: 1, text: 'ढ', gloss: 'ḍha', composedOf: [] },
     {
       id: 'skt-letter-nna',
       stage: 'letters',
+      level: 1,
       // ṭa-varga's (retroflex) nasal — see skt-letter-nga's comment.
       text: 'ण',
       gloss: 'ṇa',
@@ -212,6 +221,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-letter-ta',
       stage: 'letters',
+      level: 1,
       // Unvoiced, unaspirated dental stop — distinct from द (da, already
       // taught: VOICED) and ध (dha, already taught: voiced AND aspirated).
       // Previously taught only fused with a vowel sign in skt-letter-ti;
@@ -220,40 +230,42 @@ export const sanskritManifest: Manifest = {
       gloss: 'ta',
       composedOf: [],
     },
-    { id: 'skt-letter-tha', stage: 'letters', text: 'थ', gloss: 'tha', composedOf: [] },
+    { id: 'skt-letter-tha', stage: 'letters', level: 1, text: 'थ', gloss: 'tha', composedOf: [] },
     // pa-varga (labial) — none of this row exists yet
-    { id: 'skt-letter-pa', stage: 'letters', text: 'प', gloss: 'pa', composedOf: [] },
-    { id: 'skt-letter-pha', stage: 'letters', text: 'फ', gloss: 'pha', composedOf: [] },
-    { id: 'skt-letter-ba', stage: 'letters', text: 'ब', gloss: 'ba', composedOf: [] },
-    { id: 'skt-letter-bha', stage: 'letters', text: 'भ', gloss: 'bha', composedOf: [] },
-    { id: 'skt-letter-ma', stage: 'letters', text: 'म', gloss: 'ma', composedOf: [] },
+    { id: 'skt-letter-pa', stage: 'letters', level: 1, text: 'प', gloss: 'pa', composedOf: [] },
+    { id: 'skt-letter-pha', stage: 'letters', level: 1, text: 'फ', gloss: 'pha', composedOf: [] },
+    { id: 'skt-letter-ba', stage: 'letters', level: 1, text: 'ब', gloss: 'ba', composedOf: [] },
+    { id: 'skt-letter-bha', stage: 'letters', level: 1, text: 'भ', gloss: 'bha', composedOf: [] },
+    { id: 'skt-letter-ma', stage: 'letters', level: 1, text: 'म', gloss: 'ma', composedOf: [] },
 
     // --- The four semivowels, Wikner 3.A.1 (va/ra already exist) ---
-    { id: 'skt-letter-ya', stage: 'letters', text: 'य', gloss: 'ya', composedOf: [] },
-    { id: 'skt-letter-ra', stage: 'letters', text: 'र', gloss: 'ra', composedOf: [] },
-    { id: 'skt-letter-la', stage: 'letters', text: 'ल', gloss: 'la', composedOf: [] },
-    { id: 'skt-letter-va', stage: 'letters', text: 'व', gloss: 'va', composedOf: [] },
+    { id: 'skt-letter-ya', stage: 'letters', level: 1, text: 'य', gloss: 'ya', composedOf: [] },
+    { id: 'skt-letter-ra', stage: 'letters', level: 1, text: 'र', gloss: 'ra', composedOf: [] },
+    { id: 'skt-letter-la', stage: 'letters', level: 1, text: 'ल', gloss: 'la', composedOf: [] },
+    { id: 'skt-letter-va', stage: 'letters', level: 1, text: 'व', gloss: 'va', composedOf: [] },
 
     // --- The three sibilants, Wikner 3.A.2 ---
-    { id: 'skt-letter-sha', stage: 'letters', text: 'श', gloss: 'śa', composedOf: [] },
+    { id: 'skt-letter-sha', stage: 'letters', level: 1, text: 'श', gloss: 'śa', composedOf: [] },
     {
       id: 'skt-letter-ssa',
       stage: 'letters',
+      level: 1,
       // Retroflex ṣa — distinct from श (śa, palatal, above) and स (sa,
       // dental, below). Wikner 3.A.2: "s.a like the 'sh' in 'ship'."
       text: 'ष',
       gloss: 'ṣa',
       composedOf: [],
     },
-    { id: 'skt-letter-sa', stage: 'letters', text: 'स', gloss: 'sa', composedOf: [] },
+    { id: 'skt-letter-sa', stage: 'letters', level: 1, text: 'स', gloss: 'sa', composedOf: [] },
 
     // --- ha, the last letter of the alphabet, Wikner 3.A.3 ---
-    { id: 'skt-letter-ha', stage: 'letters', text: 'ह', gloss: 'ha', composedOf: [] },
+    { id: 'skt-letter-ha', stage: 'letters', level: 1, text: 'ह', gloss: 'ha', composedOf: [] },
 
     // --- Pre-existing exception, unchanged: kept only because skt-word-vadati depends on it ---
     {
       id: 'skt-letter-ja',
       stage: 'letters',
+      level: 1,
       // ca-varga row 3 — its correct place in the grid above, but left
       // where it already was rather than moved, since nothing requires
       // moving it and every other id in this file is stable by design.
@@ -261,12 +273,13 @@ export const sanskritManifest: Manifest = {
       gloss: 'ja',
       composedOf: [],
     },
-    { id: 'skt-letter-dha', stage: 'letters', text: 'ध', gloss: 'dha', composedOf: [] },
-    { id: 'skt-letter-na', stage: 'letters', text: 'न', gloss: 'na', composedOf: [] },
-    { id: 'skt-letter-da', stage: 'letters', text: 'द', gloss: 'da', composedOf: [] },
+    { id: 'skt-letter-dha', stage: 'letters', level: 1, text: 'ध', gloss: 'dha', composedOf: [] },
+    { id: 'skt-letter-na', stage: 'letters', level: 1, text: 'न', gloss: 'na', composedOf: [] },
+    { id: 'skt-letter-da', stage: 'letters', level: 1, text: 'द', gloss: 'da', composedOf: [] },
     {
       id: 'skt-letter-ti',
       stage: 'letters',
+      level: 1,
       // त (now also taught bare, above) plus the short-i vowel sign, fused
       // into one atomic letter — the same choice this file's Tamil sibling
       // makes for நா/யா, and for the same reason: a vowel sign is meant to
@@ -290,6 +303,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-nara',
       stage: 'words',
+      level: 2,
       text: 'नर',
       gloss: 'nara — man',
       composedOf: ['skt-letter-na', 'skt-letter-ra'],
@@ -297,6 +311,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-jana',
       stage: 'words',
+      level: 2,
       text: 'जन',
       gloss: 'jana — people',
       composedOf: ['skt-letter-ja', 'skt-letter-na'],
@@ -304,6 +319,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-vana',
       stage: 'words',
+      level: 2,
       text: 'वन',
       gloss: 'vana — forest',
       composedOf: ['skt-letter-va', 'skt-letter-na'],
@@ -311,6 +327,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-dhana',
       stage: 'words',
+      level: 2,
       text: 'धन',
       gloss: 'dhana — wealth',
       composedOf: ['skt-letter-dha', 'skt-letter-na'],
@@ -318,6 +335,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-raja',
       stage: 'words',
+      level: 2,
       // Unmarked "raja" (dust, pollen) — not rājā "king", which needs the ā
       // vowel sign this seed does not teach. Worth a comment precisely
       // because the two are one macron apart and that macron is meaning-bearing,
@@ -331,6 +349,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-narah',
       stage: 'words',
+      level: 2,
       // The nominative singular (prathamā, eka-vacana) of नर — not the bare
       // stem skt-word-nara above, which is grammatically incomplete on its
       // own. Wikner, Lesson 3.B.2's declension table gives naraḥ for exactly
@@ -344,6 +363,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-vadati',
       stage: 'words',
+      level: 2,
       // Root √vad, class 1 (bhvādi-gaṇa), 3rd person singular present,
       // parasmaipada. Wikner, Lesson 1.B.2: "√vad remains clearly
       // recognizable in the form vadati 'he/she/it speaks'." Also the verb
@@ -356,6 +376,7 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-sentence-narah-vadati',
       stage: 'sentences',
+      level: 2,
       // Not invented: a literal sub-clause of Wikner's own Lesson 3.B.3
       // exercise-4 sentence "aśvaḥ tiṣṭhati ca naraḥ vadati ca" ("the horse
       // stands and the man speaks"), stripped of "aśvaḥ tiṣṭhati ca" (the

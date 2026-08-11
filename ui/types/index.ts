@@ -354,10 +354,39 @@ export interface ScanRunSummary {
 
 export type LearnLanguage = 'sanskrit' | 'tamil';
 
+/** Mirrors `LevelId` in `src/learn/Curriculum.ts`. */
+export type LearnLevelId = 1 | 2 | 3 | 4 | 5;
+
+export interface LearnLevelInfo {
+  id: LearnLevelId;
+  name: string;
+  description: string;
+}
+
+/**
+ * Mirrors `LEVELS` in `src/learn/Curriculum.ts` — same reasoning as
+ * `LANGUAGE_LABEL`/`TYPE_LABEL` elsewhere in this app: a small, stable
+ * constant map, mirrored rather than fetched, per this codebase's own
+ * established convention for exactly this shape of data.
+ */
+export const LEARN_LEVELS: readonly LearnLevelInfo[] = [
+  { id: 1, name: 'The Alphabet', description: 'Every letter, read on sight — no meaning yet, just recognition.' },
+  { id: 2, name: 'First Words', description: 'Real vocabulary, built only from letters already taught.' },
+  {
+    id: 3,
+    name: 'Grammar & Sentences',
+    description:
+      'Sandhi (Sanskrit) or letter-junction rules (Tamil), noun cases, verb forms — sentences that read like real text, not two words placed side by side.',
+  },
+  { id: 4, name: 'Reading Practice', description: 'Graded reading of real text, dictionary in hand.' },
+  { id: 5, name: 'Classical Texts', description: 'Unglossed reading of real scripture/literature, and composition.' },
+];
+
 /** Mirrors the lesson shape in `src/routes/learn.routes.ts`. */
 export interface LearnLesson {
   id: string;
   stage: string;
+  level: LearnLevelId;
   text: string;
   gloss: string;
   composedOf: string[];

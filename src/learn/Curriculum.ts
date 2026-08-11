@@ -23,10 +23,54 @@ export type Stage = 'letters' | 'words' | 'sentences';
 /** Stage 4 ("Chanting") is deferred per the spec and has no lesson shape yet. */
 const STAGE_SEQUENCE: readonly Stage[] = ['letters', 'words', 'sentences'];
 
+/**
+ * The learner-facing tier a lesson belongs to — coarser than `stage`, and
+ * answering a different question. `stage` is the engine's dependency
+ * mechanism ("a word is built from letters, in order"); `level` is what a
+ * learner sees as "how far along am I" and never gates anything itself —
+ * two lessons in the same stage can be different levels (a first, common
+ * word versus an obscure one built the same way), and `validateManifest`
+ * only checks that level is monotonic with dependency order, not that it
+ * lines up with stage. See `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`
+ * for why these five and not some other number — they are that plan's own
+ * beginner/intermediate/upper-intermediate/advanced tiers, given names and
+ * numbers so the UI can show a learner where they actually are.
+ */
+export type LevelId = 1 | 2 | 3 | 4 | 5;
+
+export interface LevelInfo {
+  readonly id: LevelId;
+  readonly name: string;
+  readonly description: string;
+}
+
+/**
+ * Order matters here in exactly one way: it is display order, not a
+ * dependency chain like `STAGE_SEQUENCE` — nothing checks that level 3
+ * content exists before level 4 does, only that a given LESSON's level is
+ * not lower than what it depends on (see `validateManifest`). A language
+ * can genuinely have level 4 content before level 3, if that is what its
+ * primer actually teaches first; the UI showing "coming soon" for an empty
+ * level is a content-completeness signal, not an engine rule.
+ */
+export const LEVELS: readonly LevelInfo[] = [
+  { id: 1, name: 'The Alphabet', description: 'Every letter, read on sight — no meaning yet, just recognition.' },
+  { id: 2, name: 'First Words', description: 'Real vocabulary, built only from letters already taught.' },
+  {
+    id: 3,
+    name: 'Grammar & Sentences',
+    description: 'Sandhi (Sanskrit) or letter-junction rules (Tamil), noun cases, verb forms — sentences that read like real text, not two words placed side by side.',
+  },
+  { id: 4, name: 'Reading Practice', description: 'Graded reading of real text, dictionary in hand.' },
+  { id: 5, name: 'Classical Texts', description: 'Unglossed reading of real scripture/literature, and composition.' },
+];
+
 export interface Lesson {
   /** Unique within the manifest. Stable — `Progress` persists it. */
   readonly id: string;
   readonly stage: Stage;
+  /** Which of `LEVELS` this lesson belongs to — see that constant's own comment for what level is and is not. */
+  readonly level: LevelId;
   /** What the learner sees, in the language's native script. */
   readonly text: string;
   /** English gloss, for the UI — not used by the engine itself. */
@@ -94,6 +138,7 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
   const indexById = new Map<string, number>();
   const stageById = new Map<string, Stage>();
   const textById = new Map<string, string>();
+  const levelById = new Map<string, LevelId>();
 
   manifest.lessons.forEach((lesson, index) => {
     if (indexById.has(lesson.id)) {
@@ -103,6 +148,7 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
     indexById.set(lesson.id, index);
     stageById.set(lesson.id, lesson.stage);
     textById.set(lesson.id, lesson.text);
+    levelById.set(lesson.id, lesson.level);
   });
 
   manifest.lessons.forEach((lesson, index) => {
@@ -147,6 +193,19 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
         errors.push({
           lessonId: lesson.id,
           reason: `composedOf '${depId}' has not been taught yet — it appears later in the manifest`,
+        });
+      }
+
+      // Level is a display grouping, not a dependency chain (see LEVELS's own
+      // comment) — but a lesson claiming an EARLIER level than something it
+      // is built from is not a display choice, it is incoherent: a learner
+      // "at level 1" would be shown a word that reaches back into level 2
+      // content they have not been told exists yet.
+      const depLevel = levelById.get(depId);
+      if (depLevel !== undefined && depLevel > lesson.level) {
+        errors.push({
+          lessonId: lesson.id,
+          reason: `is level ${lesson.level} but depends on '${depId}', which is level ${depLevel}`,
         });
       }
     }
