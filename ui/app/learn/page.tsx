@@ -201,6 +201,7 @@ export default function LearnPage() {
             </div>
             <p className="mt-1 text-xs text-foreground-tertiary">
               {seenCount} / {total} lessons
+              {isReviewing && " — won't change until you're back to your current lesson"}
             </p>
           </div>
         )}
