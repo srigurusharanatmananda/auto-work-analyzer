@@ -214,10 +214,10 @@ source directly rather than trusting the drafting agent's own summary):
   kind of error adversarial verification exists to catch before it reaches
   the one real learner.
 - Tamil alphabet completion (ABC of Tamil, Lessons One/Two): 25 new
-  letters — all 12 vowels, the āytham, and all 12 consonants not yet
-  taught in any form, plus the bare inherent-vowel form of the 4 consonants
-  previously taught only as their dead (pulli) form. Both verifiers signed
-  off with no issues.
+  letters — all 12 vowels, the āytham, 8 consonants not yet taught in any
+  form, and the bare inherent-vowel form of the 4 consonants previously
+  taught only as their dead (pulli) form. Both verifiers signed off with no
+  issues.
 
 Sanskrit: 58 → 71 lessons. Tamil: 19 → 44 lessons.
 

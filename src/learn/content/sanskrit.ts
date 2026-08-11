@@ -325,28 +325,34 @@ export const sanskritManifest: Manifest = {
     // two specific cells.
     //
     // Deliberately not extended to बॄ/बॢ/बॣ (long-r̥/l̥/long-l̥), even though
-    // Wikner's table includes them: this file's own existing bare-vowel
-    // entries already call ṝ/ḹ "theoretical — not used in standard grammar"
-    // (skt-letter-rii/-lii), so sign-forms of them would be extending
-    // coverage of letters already flagged as not worth teaching. Also not
+    // Wikner's table includes them. For बॄ/बॣ specifically: this file's own
+    // existing bare-vowel entries already call ṝ/ḹ "theoretical — not used
+    // in standard grammar" (skt-letter-rii/-lii), so sign-forms of them
+    // would be extending coverage of letters already flagged as not worth
+    // teaching. बॢ (short l̥) is a separate case — its bare counterpart
+    // skt-letter-li is only "rare" (occurs in forms of one root, √kḷp), not
+    // theoretical — but that root's own inflected forms are well beyond
+    // this file's current word list, so its sign form isn't needed yet
+    // either; it can be added once a word actually calls for it. Also not
     // extended to र/ह + any vowel sign: Wikner 6.A.1 names रु/हृ as explicit
     // EXCEPTIONS to "these vowel signs are used with all consonants," but the
     // sentence explaining what the exception actually is does not survive in
     // this extraction — proposing a form for an explicitly-flagged exception
     // whose rule cannot be read would be exactly the kind of guess this file
     // does not make.
-    { id: 'skt-letter-bi', stage: 'letters', level: 1, text: 'बि', gloss: 'bi', composedOf: [] },
     {
       id: 'skt-letter-baa',
       stage: 'letters',
       level: 1,
       // Table row 1 (a/ā) — transliteration lost to OCR corruption on this
       // cell specifically, position inferred from the table's own stated
-      // vowel-pair order (see block comment above).
+      // vowel-pair order (see block comment above). Placed here, ahead of
+      // skt-letter-bi, to match that same a/ā-before-i/ī row order.
       text: 'बा',
       gloss: 'bā',
       composedOf: [],
     },
+    { id: 'skt-letter-bi', stage: 'letters', level: 1, text: 'बि', gloss: 'bi', composedOf: [] },
     {
       id: 'skt-letter-bii',
       stage: 'letters',
@@ -387,11 +393,18 @@ export const sanskritManifest: Manifest = {
       id: 'skt-letter-ki',
       stage: 'letters',
       level: 1,
-      // Wikner 6.A.1's own second worked example, illustrating a DIFFERENT
-      // rule from the ब table above: for i/e/o/ai/au specifically, the sign
-      // is written above the consonant (not to its right), linking to the
-      // consonant's top horizontal bar at its rightmost junction if there is
-      // more than one. क is already taught (skt-letter-ka).
+      // Wikner 6.A.1's own second worked example, for the same short-i sign
+      // as skt-letter-ti's बि, on a different consonant: क is already taught
+      // (skt-letter-ka). 6.A.1 groups i/e/o/ai/au together as embellishments
+      // written above the letter, linking to the consonant's top horizontal
+      // bar (at its rightmost junction if the consonant meets the bar more
+      // than once) — this is about where the sign's connecting stroke
+      // attaches, not a claim that the whole glyph sits to the consonant's
+      // right. For i specifically, 6.A.2 goes on to note the sign is still
+      // written "back to front," i.e. to the consonant's visual left (the
+      // same fact skt-letter-ti's comment states) — the two descriptions
+      // are Wikner's own two different lenses on the same sign, not a
+      // contradiction.
       text: 'कि',
       gloss: 'ki',
       composedOf: [],

@@ -117,8 +117,9 @@ minimum stage 3 needed to prove the engine.** That minimum shipped 2026-08-10.
 What's still thin overall is scoped in
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md),
 whose tranches so far: the complete alphabets for both languages (Sanskrit
-62 letters, Tamil 37 letters plus 4 dead/pulli forms — up from 9 and 6+2
-respectively), a first batch of Sanskrit vowel signs (Wikner 6.A.1), and one
+62 letters, Tamil 37 letters total — 33 live forms plus 4 dead/pulli forms
+— up from 9 and 6+2 respectively), a first batch of Sanskrit vowel signs
+(Wikner 6.A.1), and one
 new Sanskrit word (a second candidate, proposed then independently flagged
 by two adversarial verifiers and dropped — see the plan doc's own account of
 why). Sanskrit: 71 lessons total. Tamil: 44. Not an engine limitation —
