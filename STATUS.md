@@ -114,15 +114,18 @@ secret and refuses the request when that secret is unset. That is not a gap.
 
 **Phase 7's real remaining gap: content depth, not the one-sentence-per-language
 minimum stage 3 needed to prove the engine.** That minimum shipped 2026-08-10.
-What's still thin — 17-19 lessons per language total, sized to hand-verify
-completely rather than to actually teach the language — is scoped in
-[`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md),
-whose first tranche (the complete Sanskrit alphabet, 50 letters up from 9)
-shipped alongside it. Not an engine limitation — `Curriculum.ts` already
-supports arbitrarily more content in all three stages — a content one, and
-per the design doc's own risk note, needs the one human quality gate this
-module can't automate: a beginner cannot detect a bad teacher. The plan's
-"What's next, in order" section is the actual backlog here.
+What's still thin overall is scoped in
+[`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md):
+Tamil is still 19 lessons total, sized to hand-verify completely rather than
+to actually teach the language; Sanskrit's first tranche off that plan (the
+complete alphabet, 50 letters up from 9) shipped alongside it, taking
+Sanskrit to 58 lessons total — ahead of Tamil, per the design doc's own
+"Sanskrit first, Tamil mirrors as data" sequencing. Not an engine
+limitation — `Curriculum.ts` already supports arbitrarily more content in
+all three stages — a content one, and per the design doc's own risk note,
+needs the one human quality gate this module can't automate: a beginner
+cannot detect a bad teacher. The plan's "What's next, in order" section is
+the actual backlog here.
 
 ### Still to do
 
@@ -163,8 +166,9 @@ the decision is cheap to reverse on evidence.
 ## Next
 
 **Phase 7 content depth, per the new curriculum plan.** Next tranche: Sanskrit
-vowel signs (Wikner Lesson 6), then Tamil's alphabet-completion tranche
-mirroring the Sanskrit one already shipped — see
+vowel signs (Wikner Lesson 6); then Sanskrit words drawing on the now-complete
+alphabet; then Tamil's alphabet-completion tranche mirroring the Sanskrit one
+already shipped — see
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
 "What's next, in order". Content work, not an engine change, and needs the
 human quality gate the design doc itself calls for before it ships to the

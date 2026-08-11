@@ -7,10 +7,12 @@ gap" (see [`../../STATUS.md`](../../STATUS.md)). That design doc's own stage
 list is unchanged by this one — stages 1-3 (letters, words, sentences) are
 still the whole deliverable, stage 4 (chanting, Vedic pitch accent) is still
 deferred, and nothing here proposes touching `Curriculum.ts`. This document
-is about what goes **inside** those three stages: right now, 17-19 lessons
-per language that were sized to prove the engine works, not to teach the
-language. It maps out how much further each stage can go using sources
-already verified in this codebase, and ships the first tranche.
+is about what goes **inside** those three stages. Before this plan's first
+tranche (below), that was 17-19 lessons per language — sized to prove the
+engine works, not to teach the language. It maps out how much further each
+stage can go using sources already verified in this codebase, and ships
+that first tranche now: Sanskrit is 58 lessons as of this PR; Tamil is
+still 19, its own equivalent tranche being the next item in the plan.
 
 ## Why this exists
 
@@ -20,15 +22,18 @@ found on the Mac App Store and use them to inform a "full learning
 curriculum, from beginner to expert" (certification features explicitly
 out of scope — there is one learner, not a cohort).
 
-Both manifests (`content/sanskrit.ts`, `content/tamil.ts`) call themselves a
-"seed, not a curriculum" in their own header comments. That was accurate and
+Before this plan, `content/sanskrit.ts` called itself, verbatim, "a seed,
+not a curriculum" in its own header comment (rewritten by this same PR —
+see its current header for the file's new self-description). `tamil.ts`
+never used that exact phrase but described the same state of affairs:
+"letters, plus a first small set of real words." Both were accurate and
 deliberate at the time: `STATUS.md` records stage 3 (sentences) as
 empty until 2026-08-10, closed with exactly one sentence per language,
 chosen for being the smallest change that proved the engine could hold a
-real sentence at all. It was never meant to be the final size — just small
-enough to hand-verify completely, per the design doc's own quality bar: "a
-beginner cannot detect a bad teacher, which makes this the one quality gate
-that has to be human."
+real sentence at all. Neither was ever meant to be the final size — just
+small enough to hand-verify completely, per the design doc's own quality
+bar: "a beginner cannot detect a bad teacher, which makes this the one
+quality gate that has to be human."
 
 That quality bar is the reason this plan is a plan and not a 2,000-line
 diff. Every existing lesson in both manifests was individually checked
