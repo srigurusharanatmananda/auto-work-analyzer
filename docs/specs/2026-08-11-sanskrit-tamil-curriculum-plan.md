@@ -432,7 +432,7 @@ Sanskrit: 89 → 91 lessons. Tamil: 236 → 237 lessons.
 ## What's next, in order
 
 1. **More case morphology and verb conjugation**, both languages — still
-   short of what expert-tier reading needs. Sanskrit now has all four
+   short of what expert-tier reading needs. Sanskrit now has all five
    non-oblique-plural cases (nominative, accusative, genitive,
    instrumental, dative) singular for नर (fewer for वृक्ष/अश्व); ablative and
    locative remain, plus dual/plural for any case, plus a second verb root
