@@ -42,7 +42,9 @@
  * `resources.ts` entry `tam-andronov-grammar`, for the full citation.
  * Tranche 13 adds this file's first negation, செய்யாதே ("don't do!",
  * literary negative imperative singular, Andronov §229) — zero new
- * letters, same source.
+ * letters, same source. Tranche 14 adds this file's first tense beyond
+ * present/past, future (செய்வேன், "I shall do", Andronov §110/§115) —
+ * zero new letters again.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1202,6 +1204,39 @@ export const tamilManifest: Manifest = {
       text: 'செய்யாதே',
       gloss: 'ceyyātē — don\'t do! (literary negative imperative, singular)',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tee'],
+    },
+
+    // ================= Future tense (level 3) =================
+    // Extension, 2026-08-12 (tranche 14): per the tranche-13 operator
+    // decision — grammar completeness on its own merits, not gated on the
+    // two calibration verses — this file's first tense beyond present and
+    // past: future.
+    //
+    // Andronov §110/§115 (archive.org text lines 11996-12003, 12121-12124)
+    // give TWO different forms for செய்'s own future 1st person singular:
+    // "ceytal 'to do' - ceykeen 'I shall do'" (§110's own rule list, line
+    // 12000) versus "ceytal 'to do' - ceyveen 'I shall do'" (§115, line
+    // 12124) — and §110's OWN worked example sentence two lines after its
+    // rule list already uses "ceyveen", not "ceykeen" (line 12003).
+    // Neither is a fluke: ceyveen recurs in four separate real quoted
+    // sentences across the book (TU 82, JP 37, BKa 326, JSP 26) and is the
+    // form §115 names explicitly as Colloquial/Modern Tamil's own
+    // standard; ceykeen recurs too, once, in a real quotation from
+    // Tiruvācakam (line 13472, a 9th-century classical text) — a rarer,
+    // likely classical/poetic register, not a transcription error. This
+    // file ships ceyveen as the modern colloquial standard, not as the
+    // only form Tamil grammar allows.
+    {
+      id: 'tam-word-seyveen',
+      stage: 'words',
+      level: 3,
+      // வே (already an atomic letter, வ + the ē vowel sign, tranche 5)
+      // plays the same role தே/றா/யா play elsewhere in this file's own
+      // tense/person system — plain concatenation of already-taught
+      // letters reaches the real spelling directly, no sandhiRule needed.
+      text: 'செய்வேன்',
+      gloss: 'seyvēṉ — I shall do, I will do (1st person singular, future)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-vee', 'tam-pulli-alveolar-na'],
     },
   ],
 };

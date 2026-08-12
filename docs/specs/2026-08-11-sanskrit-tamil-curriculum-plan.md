@@ -585,24 +585,60 @@ still be the right path, but it is a multi-tranche commitment, not a
 "one more slice" one, and worth naming as such rather than discovering it
 tranche by tranche.
 
+**Operator decision, after tranche 13**: treat BG 2.47 and Thirukkural 1 as
+calibration verses, not a checklist. They already did their job — surfacing
+cases, tenses, persons, and now pronouns/particles/mood as real gaps — and
+continuing to gate every future tranche on whether it moves these two
+*specific* verses would fit the plan to the benchmark rather than the
+language. Future tranches target grammar completeness on its own merits;
+reading-readiness gets re-checked in general (a freshly-chosen verse,
+picked for what it needs rather than for being the same two), not against
+these two by name.
+
+**Fifteenth pass — tranche 14**: acts on the tranche-13 decision — grammar
+completeness on its own merits, not gated on the two calibration verses.
+
+- **Sanskrit — a second particle**: हे (vocative, "O!") and the sentence हे
+  नर ("O man!"). Neither needed a new source or a new primer section —
+  both come from tables this file had already read and cited (Wikner
+  5.B.1 for cases, already the source for नरः/नरम्/नरस्य/नरेण/नराय; 9.B.1
+  for इति's own avyaya classification) but hadn't fully mined. नर's own
+  vocative singular is identical in spelling to its bare stem (standard
+  a-stem declension), so the sentence reuses the already-taught
+  skt-word-nara directly — no new "vocative form" word needed. One new
+  atomic letter, हे (reusing the े sign already proven on five other
+  consonants).
+- **Tamil — future tense**: செய்வேன் ("I shall do"/"I will do"), sourced
+  from a genuinely two-sided passage: Andronov gives BOTH "ceykeen" (a
+  rule-list form) and "ceyveen" (the same section's own worked example,
+  plus a separate rule statement, plus three more real quoted sentences
+  elsewhere in the book) for செய்'s future 1st person. Verification caught
+  this file's first draft understating "ceykeen" as likely erroneous, when
+  it is in fact independently attested too (a real quotation from
+  Tiruvācakam, a 9th-century classical text) — a rarer register, not a
+  mistake. Shipped ceyveen as the modern colloquial standard (named as
+  such by Andronov's own §115), with the comment corrected to say so
+  honestly rather than overstating confidence. Zero new letters.
+
+One verifier per language; both clean (the Tamil one is the correction
+above — a real finding, addressed before merge, not after).
+
+Sanskrit: 106 → 109 lessons. Tamil: 245 → 246 lessons.
+
 ## What's next, in order
 
-1. **A scoping decision**: keep chasing BG 2.47/Thirukkural 1 specifically
-   (accepting the multi-tranche cost above), or treat them as *calibration*
-   verses that did their job — they found real gaps (cases, tenses,
-   persons, now pronouns/particles/mood) — and let the NEXT few tranches
-   target grammar completeness for its own sake (a second-person pronoun,
-   more particles, Tamil future tense) rather than continuing to gate every
-   tranche on whether it moves these two specific verses. Either is
-   defensible; this plan shouldn't decide it unilaterally.
-2. **Whichever that resolves to**: Sanskrit second-person pronoun, more
-   particles, mood coverage; Tamil future tense, more negation forms,
-   dative/genitive for more nouns — scoped from real primer/source content
-   the way every tranche so far has been, not assumed.
-3. **Expert-tier reading** for both languages, once a real short verse is
-   fully decomposable into taught vocabulary and taught grammar — at that
-   point, source and read the actual verse in full (public-domain, per this
-   plan's own quality bar) before any of it becomes lesson content.
+1. **Grammar completeness, scoped from real primer/source content**:
+   Sanskrit second-person pronoun (still not found in Wikner — may need a
+   second source, or may simply not be available this way), more particles
+   and mood coverage; Tamil more negation forms (indicative, plural,
+   colloquial), dative/genitive for more nouns, more tenses/persons. Each
+   still needs its own citation the way every tranche so far has had.
+2. **Expert-tier reading** for both languages, once a real short verse —
+   freshly chosen for what it needs, not assumed to be one of the two
+   calibration verses above — is fully decomposable into taught vocabulary
+   and taught grammar. At that point, source and read the actual verse in
+   full (public-domain, per this plan's own quality bar) before any of it
+   becomes lesson content.
 
 Each step gets the same treatment this one did: read the actual primer
 section (not recalled from training data), cite it per item, run
