@@ -163,7 +163,7 @@ close (11 of 12 words in that verse, and all 7 in Thirukkural 1, are
 still unreachable) — see the plan doc's own tranche-13 checkpoint for why
 continuing to chase these two specific verses is now a real multi-tranche
 commitment, not a "one more slice" one, and needs a scoping decision.
-Sanskrit: 107 lessons total.
+Sanskrit: 106 lessons total.
 Tamil: 245. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this

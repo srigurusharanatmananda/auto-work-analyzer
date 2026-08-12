@@ -534,10 +534,11 @@ Tamil negation alone.
   but standard Sanskrit grammar is unambiguous that अस्तु is 3rd person
   (the loṭ-lakāra paradigm for अस् is असानि/एधि/**अस्तु** — 1st/2nd/3rd).
   Quoted faithfully in the comment for an honest sourcing trail; glossed
-  correctly for the learner, not per the mislabel. Needed three new atomic
-  letters: नौ (reusing the ौ sign already proven on ब), स् (a word-final
-  halanta, same category as म्), तु (reusing the ु sign already proven on
-  ब).
+  correctly for the learner, not per the mislabel. Needed two new atomic
+  letters: नौ (reusing the ौ sign already proven on ब), and स्तु (स + त, an
+  ordinary word-internal conjunct — स् sits mid-word in अस्तु, not
+  word-final, so this is the same category as श्व/स्य/ष्ठ, not a plain
+  halanta — combined with the ु sign already proven on ब).
 - **Tamil — first negation**: செய்யாதே ("don't do!", literary negative
   imperative singular), Andronov §229. Negation turned out messier than
   past tense — separate literary/colloquial registers and separate
@@ -554,7 +555,7 @@ overreach; one Tamil finding tightened a comment's morpheme boundaries —
 morpheme -ee, though the grapheme-level composedOf was already exactly
 right).
 
-Sanskrit: 101 → 107 lessons. Tamil: 244 → 245 lessons.
+Sanskrit: 101 → 106 lessons. Tamil: 244 → 245 lessons.
 
 **Checkpoint, after tranche 13**: re-tested against both benchmarks — the
 last checkpoint was after tranche 10, and three tranches (11-13) had

@@ -657,25 +657,20 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     {
-      id: 'skt-letter-sa-halanta',
+      id: 'skt-letter-stu',
       stage: 'letters',
       level: 1,
-      // Wikner 7.A.1, same category as skt-letter-ma-halanta: a
-      // word-final dead consonant, needed only because skt-word-astu
-      // below needs it.
-      text: 'स्',
-      gloss: 's — word-final, no vowel',
-      composedOf: [],
-    },
-    {
-      id: 'skt-letter-tu',
-      stage: 'letters',
-      level: 1,
-      // Reuses the ु sign already proven on ब (skt-letter-bu, tranche 2)
-      // — the same sign, a different consonant, needed only because
-      // skt-word-astu below needs it.
-      text: 'तु',
-      gloss: 'tu',
+      // Wikner 7.A.1-7.A.2, same reasoning as skt-letter-shva/skt-letter-
+      // sya/skt-letter-shtha: स followed immediately by त WITHIN one word
+      // (अस्तु — स् sits mid-word, not word-final) is a conjunct, not a
+      // plain halanta letter — the same distinction this file already
+      // draws for every other word-internal virama. स्त (an ordinary,
+      // non-special conjunct) + the ु sign already proven on ब
+      // (skt-letter-bu, tranche 2), combined the same way ष्ठा combines
+      // the ष्ठ conjunct with ा. Needed only because skt-word-astu below
+      // needs it.
+      text: 'स्तु',
+      gloss: 'stu',
       composedOf: [],
     },
 
@@ -1153,23 +1148,37 @@ export const sanskritManifest: Manifest = {
     },
     {
       id: 'skt-word-nau',
+      // Level 3, not 2: this is a case-marked pronoun form (dual,
+      // accusative/dative/genitive — see below), the same reasoning
+      // every other case-marked word in this file (naram, narasya,
+      // narena, naraya) is level 3 for, not new bare vocabulary the way
+      // skt-word-aham (nominative, a pronoun's own basic complete form)
+      // is.
       stage: 'words',
-      level: 2,
+      level: 3,
       // Wikner's front-matter Invocation analysis, line 207: "nau |
       // genitive dual of personal pronoun 'I', giving the meaning 'of us
-      // both (student and teacher)', or simply 'our'." Dual, not
+      // both (student and teacher)', or simply 'our'." That is नौ's
+      // function IN THIS SPECIFIC VERSE, not its only one: नौ is the
+      // shared enclitic dual form covering accusative, dative, AND
+      // genitive alike (standard Sanskrit pronominal-enclitic behaviour,
+      // not unique to this word) — glossed below accordingly, rather
+      // than overclaiming "genitive" as नौ's one fixed case. Dual, not
       // singular — "we two", the traditional teacher-student pair the
       // Invocation itself addresses. composedOf is the one letter this
       // word IS (Curriculum.ts's words JOINER is '', so a single-letter
       // composedOf reconstructs exactly).
       text: 'नौ',
-      gloss: 'nau — of us two, our (genitive dual personal pronoun)',
+      gloss: 'nau — us two, of us two, to/for us two (accusative/genitive/dative dual personal pronoun — case-ambiguous by design)',
       composedOf: ['skt-letter-nau'],
     },
     {
       id: 'skt-word-astu',
+      // Level 3, not 2: an imperative-mood verb form, the same reasoning
+      // every other mood/person-marked verb in this file (naye,
+      // tishthami) is level 3 for.
       stage: 'words',
-      level: 2,
+      level: 3,
       // Wikner's front-matter Invocation analysis, line 226: "Astu | rst
       // [first] person singular imperative of as (to be), i.e. 'let it
       // be', 'may it be', or simply 'be!'" Quoted faithfully, but flagged:
@@ -1182,7 +1191,7 @@ export const sanskritManifest: Manifest = {
       // error even though the word itself and its meaning are exactly his.
       text: 'अस्तु',
       gloss: 'astu — let it be, may it be, be! (3rd person singular imperative of √as, "to be")',
-      composedOf: ['skt-letter-a', 'skt-letter-sa-halanta', 'skt-letter-tu'],
+      composedOf: ['skt-letter-a', 'skt-letter-stu'],
     },
   ],
 };
