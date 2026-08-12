@@ -1,10 +1,14 @@
 /**
- * As of 2026-08-11: the complete Tamil alphabet (all 12 vowels, the āytham,
- * all 18 consonants — ABC of Tamil, Lessons One and Two), plus a first small
- * set of real words and one sentence, extended 2026-08-09/10. See
- * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is a tranche of — mirrors the Sanskrit
- * manifest's own tranche-2 alphabet completion, same day, same rigor.
+ * As of 2026-08-12: the complete Tamil alphabet (all 12 vowels, the āytham,
+ * all 18 consonants — ABC of Tamil, Lessons One and Two), the full vowel-sign
+ * table on க specifically (ABC of Tamil, Lessons Three-Fifteen — tranche 3),
+ * plus a first small set of real words and one sentence, extended
+ * 2026-08-09/10. See `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`
+ * for the full beginner-to-advanced plan this is a tranche of — mirrors the
+ * Sanskrit manifest's own tranche-2 alphabet completion and tranche-3
+ * vowel-sign/conjunct batch, same rigor. The other 17 consonants' vowel-sign
+ * forms are deliberately deferred, same reasoning as Sanskrit's own
+ * single-consonant vowel-sign tranche — see that block's own comment.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -237,6 +241,76 @@ export const tamilManifest: Manifest = {
       // -na's existing comment already relies on.
       text: 'ன',
       gloss: "ṉa — alveolar n, as in 'nun'",
+      composedOf: [],
+    },
+
+    // --- Vowel signs on க (ka), ABC of Tamil Lessons Three-Fifteen ---
+    // Extension, 2026-08-12 (tranche 3), mirroring Sanskrit's own single-
+    // consonant vowel-sign tranche: rather than all 18 consonants across all
+    // 11 signs (198 entries), this teaches the full sign set on the one
+    // consonant the primer itself always lists first (க), leaving the other
+    // 17 consonants' sign forms for a later tranche if a real word needs
+    // one, the same rule skt-letter-ti/tam-letter-naa were added under.
+    //
+    // Each lesson gives its vowel-sign table as two columns of consonant
+    // rows in the primer's own fixed order (க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள
+    // ற ன — already taught above); க's row is always the first row of the
+    // left column. The Tamil glyphs in the cached extraction are unreadable
+    // (1968 font, non-Unicode — see the header comment on this file's
+    // pre-existing entries), so identification rests on that fixed row
+    // position plus the plain-ASCII transliteration syllable each row gives
+    // in parentheses, both of which the extraction preserves legibly — the
+    // same method already used for this file's own tam-letter-naa/-yaa.
+    //
+    // Short i (Lesson Four) and long ī (Lesson Five) both print the same
+    // transliteration, "(ki)" — the OCR lost the macron for this one pair
+    // only. Lesson One's own explicit numbered vowel list (Ü1 Ý2 Þ3 ß4 à5
+    // á6 â7 ã8 ä9 å10 æ11 å÷12) settles it directly: Þ (i) is item 3, ß (ī)
+    // is item 4, immediately after — not just the same short-before-long
+    // pattern every other pair here follows (confirmed independently for
+    // u/ū at Lessons Six/Seven, and stated outright in the prose for e/ē at
+    // Lessons Nine/Ten: "the vowel 'â' (short)" vs "the vowel 'ã' (long)").
+    { id: 'tam-letter-kaa', stage: 'letters', level: 1, text: 'கா', gloss: 'kā', composedOf: [] },
+    { id: 'tam-letter-ki', stage: 'letters', level: 1, text: 'கி', gloss: 'ki', composedOf: [] },
+    { id: 'tam-letter-kii', stage: 'letters', level: 1, text: 'கீ', gloss: 'kī', composedOf: [] },
+    { id: 'tam-letter-ku', stage: 'letters', level: 1, text: 'கு', gloss: 'ku', composedOf: [] },
+    { id: 'tam-letter-kuu', stage: 'letters', level: 1, text: 'கூ', gloss: 'kū', composedOf: [] },
+    { id: 'tam-letter-ke', stage: 'letters', level: 1, text: 'கெ', gloss: 'ke', composedOf: [] },
+    { id: 'tam-letter-kee', stage: 'letters', level: 1, text: 'கே', gloss: 'kē', composedOf: [] },
+    { id: 'tam-letter-kai', stage: 'letters', level: 1, text: 'கை', gloss: 'kai', composedOf: [] },
+    {
+      id: 'tam-letter-ko',
+      stage: 'letters',
+      level: 1,
+      // Lesson Thirteen, explicit: short 'o' has no separate sign of its
+      // own — it is written as the short-e sign before the consonant AND
+      // the ā sign after it, both at once. கொ is exactly that: ெ + ா.
+      text: 'கொ',
+      gloss: 'ko',
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-koo',
+      stage: 'letters',
+      level: 1,
+      // Lesson Fourteen, explicit: long 'ō' is the same construction with
+      // the long-e sign instead. கோ is ே + ா.
+      text: 'கோ',
+      gloss: 'kō',
+      composedOf: [],
+    },
+    {
+      id: 'tam-letter-kau',
+      stage: 'letters',
+      level: 1,
+      // Lesson Fifteen: short-e sign before the consonant plus the au
+      // length mark after — Wikner's Tamil counterpart here notes there are
+      // "hardly half-a-dozen words" with this sound in the language at all.
+      // The primer's own house style transliterates this row "kow", not
+      // "kau" — kept as "kau" here to match this file's own pre-existing
+      // tam-letter-au (bare ஔ), which already glosses it that way.
+      text: 'கௌ',
+      gloss: 'kau',
       composedOf: [],
     },
 
