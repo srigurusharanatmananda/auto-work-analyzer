@@ -699,7 +699,12 @@ export const tamilManifest: Manifest = {
       // கு (e.g. line 1843-1844: "ò£ó¢+°=...=ò£¼è¢°" — yār + ku = yār + u
       // + k + ku = yārukku).
       text: 'க்',
-      gloss: 'k — dead consonant (no vowel), used at the end of a word',
+      // Not "used at the end of a word" — every other pulli letter in this
+      // file uses that phrase, but it isn't accurate here: this one sits
+      // medially in its own first use (யாருக்கு, between ரு and கு), not
+      // word-finally. Described more generally instead of repeating a
+      // claim this specific letter doesn't fit.
+      gloss: 'k — dead consonant (no vowel)',
       composedOf: [],
     },
 
