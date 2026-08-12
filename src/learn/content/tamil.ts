@@ -1,14 +1,22 @@
 /**
  * As of 2026-08-12: the complete Tamil alphabet (all 12 vowels, the āytham,
- * all 18 consonants — ABC of Tamil, Lessons One and Two), the full vowel-sign
- * table on க specifically (ABC of Tamil, Lessons Three-Fifteen — tranche 3),
- * plus a first small set of real words and one sentence, extended
+ * all 18 consonants — ABC of Tamil, Lessons One and Two), and the full
+ * vowel-sign table (ABC of Tamil, Lessons Three-Fifteen) on every consonant
+ * the primer itself actually teaches it for — 17 of 18 (க shipped in
+ * tranche 3, the other 16 in tranche 5); ங alone is excluded, by the
+ * primer's own explicit statement. Of those 17, only 10 (க plus 9 of the 16
+ * added by tranche 5) get the rare au sign, again per the primer's own
+ * account of which words actually use it — see the tranche-5 block's own
+ * comment in this file for the citations.
+ * Plus a first small set of real words and one sentence, extended
  * 2026-08-09/10. See `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`
  * for the full beginner-to-advanced plan this is a tranche of — mirrors the
  * Sanskrit manifest's own tranche-2 alphabet completion and tranche-3
- * vowel-sign/conjunct batch, same rigor. The other 17 consonants' vowel-sign
- * forms are deliberately deferred, same reasoning as Sanskrit's own
- * single-consonant vowel-sign tranche — see that block's own comment.
+ * vowel-sign/conjunct batch, same rigor. Tranche 3 shipped the table for க
+ * only, deliberately deferring the other 17 consonants (the same reasoning
+ * Sanskrit's own single-consonant vowel-sign tranche used); tranche 5
+ * completes that backlog item for all but ங (see that tranche's own block
+ * comment for why ங stays excluded).
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -248,9 +256,12 @@ export const tamilManifest: Manifest = {
     // Extension, 2026-08-12 (tranche 3), mirroring Sanskrit's own single-
     // consonant vowel-sign tranche: rather than all 18 consonants across all
     // 11 signs (198 entries), this teaches the full sign set on the one
-    // consonant the primer itself always lists first (க), leaving the other
-    // 17 consonants' sign forms for a later tranche if a real word needs
-    // one, the same rule skt-letter-ti/tam-letter-naa were added under.
+    // consonant the primer itself always lists first (க) first, leaving the
+    // other 17 consonants for a later tranche. That later tranche is
+    // tranche 5 below, which completes 16 of those 17 unconditionally
+    // (ங being the one the primer itself excludes) — not word-driven the
+    // way this sentence originally framed it; see tranche 5's own block
+    // comment.
     //
     // Each lesson gives its vowel-sign table as two columns of consonant
     // rows in the primer's own fixed order (க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள
@@ -313,6 +324,265 @@ export const tamilManifest: Manifest = {
       gloss: 'kau',
       composedOf: [],
     },
+
+    // --- Vowel signs on the other 16 consonants, ABC of Tamil Lessons
+    // Three-Fifteen (tranche 5) ---
+    // Extension, 2026-08-12 (tranche 5): completes what tranche 3 deliberately
+    // left partial — the same 11-sign table already taught on க, now for
+    // every other consonant the primer actually teaches it for. Each lesson's
+    // table (Lessons Three/Four/Five/Six/Seven/Nine/Ten/Eleven/Thirteen/
+    // Fourteen for ā/i/ī/u/ū/e/ē/ai/o/ō, Lesson Fifteen for au) lists all 18
+    // consonants in the primer's own fixed order in two columns of nine —
+    // க's row (already taught) is always first; this tranche reads the
+    // other 17 rows of each of those same 11 tables, identified the same way
+    // க's row was: fixed row position plus the plain-ASCII transliteration
+    // syllable each row gives in parentheses (the Tamil glyphs themselves
+    // are unreadable in the cached 1968-font extraction — see this file's
+    // header comment). Romanization below normalizes the primer's own
+    // inconsistent bracket transliteration — which drops diacritics/macrons
+    // in more places than just "chā"/"ţā"/"ņā"/"ļā"/bare-"lā"-for-ழ (that
+    // same flattening recurs on ற (prints identically to ர's own bracket
+    // text throughout, not just once), on ட/ண's ū-row ("tū"/"nū", no
+    // cedilla), and on ன+ஆ specifically (Lesson Three's own bracket prints
+    // bare "na", not "ṉā") — to this file's own established diacritic set
+    // (cā, ṭā, ṇā, ḷā, ḻā, ṟā, ṉā), already used on every bare consonant's
+    // gloss above and not a new convention. None of this is guesswork: every
+    // row's IDENTITY is resolved from its fixed position in the primer's own
+    // fixed 18-consonant order (see Lesson Two, cited in this file's header),
+    // never from the bracket text alone, which is exactly what makes the
+    // normalization safe even where the bracket itself is ambiguous or
+    // flattened — confirmed by two independent adversarial verifiers
+    // re-deriving all 167 entries below from the primer directly, not from
+    // this comment. Short i/long ī (Lessons Four/Five) print the same
+    // bracketed transliteration for every consonant, the identical
+    // macron-loss already documented and resolved via lesson order for
+    // க's own கி/கீ pair; the same resolution applies here, and recurs (same
+    // resolution, same safety) in every other lesson in this range too.
+    //
+    // 17 consonants remained after க; only 16 of them get any of this table.
+    // ங (ṅa) is explicitly excluded by the primer itself. Lesson Three's own
+    // note, already quoted in this file's header for a different reason:
+    // "the combination of ங் with other vowels need not be learnt" — ங
+    // combines with a vowel-length sign so rarely that the primer says
+    // not to bother teaching it. (Its dead/pulli form, ங், is not itself
+    // taught in this file either — only the bare form, tam-letter-nga,
+    // above; that is a separate, pre-existing gap, not something this
+    // sentence should be read as claiming is already closed.) That ங's
+    // exclusion here is not inference from the note alone:
+    // ங's row is the ONLY one missing from every single one of Lessons
+    // Four/Five/Six/Seven/Nine/Ten/Eleven/Thirteen/Fourteen — it appears
+    // once, in Lesson Three's table, for structural completeness, not
+    // because the form is real.
+    //
+    // Of the 16 consonants that do get a table, only 9 — ச/த/ந/ப/ம/ய/ர/ல/வ —
+    // get the 11th (au) sign. Lesson Fifteen is explicit about why: "There
+    // are hardly half-a-dozen words with 'ஔ' sound in Tamil. So there is no
+    // necessity to study all the consonants with 'ஔ' combination" — and its
+    // own table lists only those 9, not all 16 or 18. ஞ/ட/ண/ழ/ள/ற/ன's
+    // au-forms are excluded for the same reason the primer excludes them:
+    // they are not real Tamil.
+    //
+    // நா and யா (ந/ய + the ā sign) are not repeated here — already taught,
+    // 2026-08-10, as tam-letter-naa/tam-letter-yaa below.
+
+    // --- ச (ca) ---
+    { id: 'tam-letter-caa', stage: 'letters', level: 1, text: 'சா', gloss: 'cā', composedOf: [] },
+    { id: 'tam-letter-ci', stage: 'letters', level: 1, text: 'சி', gloss: 'ci', composedOf: [] },
+    { id: 'tam-letter-cii', stage: 'letters', level: 1, text: 'சீ', gloss: 'cī', composedOf: [] },
+    { id: 'tam-letter-cu', stage: 'letters', level: 1, text: 'சு', gloss: 'cu', composedOf: [] },
+    { id: 'tam-letter-cuu', stage: 'letters', level: 1, text: 'சூ', gloss: 'cū', composedOf: [] },
+    { id: 'tam-letter-ce', stage: 'letters', level: 1, text: 'செ', gloss: 'ce', composedOf: [] },
+    { id: 'tam-letter-cee', stage: 'letters', level: 1, text: 'சே', gloss: 'cē', composedOf: [] },
+    { id: 'tam-letter-cai', stage: 'letters', level: 1, text: 'சை', gloss: 'cai', composedOf: [] },
+    { id: 'tam-letter-co', stage: 'letters', level: 1, text: 'சொ', gloss: 'co', composedOf: [] },
+    { id: 'tam-letter-coo', stage: 'letters', level: 1, text: 'சோ', gloss: 'cō', composedOf: [] },
+    { id: 'tam-letter-cau', stage: 'letters', level: 1, text: 'சௌ', gloss: 'cau', composedOf: [] },
+
+    // --- ஞ (ña) — no au form, see block comment above ---
+    { id: 'tam-letter-nyaa', stage: 'letters', level: 1, text: 'ஞா', gloss: 'ñā', composedOf: [] },
+    { id: 'tam-letter-nyi', stage: 'letters', level: 1, text: 'ஞி', gloss: 'ñi', composedOf: [] },
+    { id: 'tam-letter-nyii', stage: 'letters', level: 1, text: 'ஞீ', gloss: 'ñī', composedOf: [] },
+    { id: 'tam-letter-nyu', stage: 'letters', level: 1, text: 'ஞு', gloss: 'ñu', composedOf: [] },
+    { id: 'tam-letter-nyuu', stage: 'letters', level: 1, text: 'ஞூ', gloss: 'ñū', composedOf: [] },
+    { id: 'tam-letter-nye', stage: 'letters', level: 1, text: 'ஞெ', gloss: 'ñe', composedOf: [] },
+    { id: 'tam-letter-nyee', stage: 'letters', level: 1, text: 'ஞே', gloss: 'ñē', composedOf: [] },
+    { id: 'tam-letter-nyai', stage: 'letters', level: 1, text: 'ஞை', gloss: 'ñai', composedOf: [] },
+    { id: 'tam-letter-nyo', stage: 'letters', level: 1, text: 'ஞொ', gloss: 'ño', composedOf: [] },
+    { id: 'tam-letter-nyoo', stage: 'letters', level: 1, text: 'ஞோ', gloss: 'ñō', composedOf: [] },
+
+    // --- ட (ṭa) — no au form, see block comment above ---
+    { id: 'tam-letter-ttaa', stage: 'letters', level: 1, text: 'டா', gloss: 'ṭā', composedOf: [] },
+    { id: 'tam-letter-tti', stage: 'letters', level: 1, text: 'டி', gloss: 'ṭi', composedOf: [] },
+    { id: 'tam-letter-ttii', stage: 'letters', level: 1, text: 'டீ', gloss: 'ṭī', composedOf: [] },
+    { id: 'tam-letter-ttu', stage: 'letters', level: 1, text: 'டு', gloss: 'ṭu', composedOf: [] },
+    { id: 'tam-letter-ttuu', stage: 'letters', level: 1, text: 'டூ', gloss: 'ṭū', composedOf: [] },
+    { id: 'tam-letter-tte', stage: 'letters', level: 1, text: 'டெ', gloss: 'ṭe', composedOf: [] },
+    { id: 'tam-letter-ttee', stage: 'letters', level: 1, text: 'டே', gloss: 'ṭē', composedOf: [] },
+    { id: 'tam-letter-ttai', stage: 'letters', level: 1, text: 'டை', gloss: 'ṭai', composedOf: [] },
+    { id: 'tam-letter-tto', stage: 'letters', level: 1, text: 'டொ', gloss: 'ṭo', composedOf: [] },
+    { id: 'tam-letter-ttoo', stage: 'letters', level: 1, text: 'டோ', gloss: 'ṭō', composedOf: [] },
+
+    // --- ண (ṇa) — no au form, see block comment above ---
+    { id: 'tam-letter-nnaa', stage: 'letters', level: 1, text: 'ணா', gloss: 'ṇā', composedOf: [] },
+    { id: 'tam-letter-nni', stage: 'letters', level: 1, text: 'ணி', gloss: 'ṇi', composedOf: [] },
+    { id: 'tam-letter-nnii', stage: 'letters', level: 1, text: 'ணீ', gloss: 'ṇī', composedOf: [] },
+    { id: 'tam-letter-nnu', stage: 'letters', level: 1, text: 'ணு', gloss: 'ṇu', composedOf: [] },
+    { id: 'tam-letter-nnuu', stage: 'letters', level: 1, text: 'ணூ', gloss: 'ṇū', composedOf: [] },
+    { id: 'tam-letter-nne', stage: 'letters', level: 1, text: 'ணெ', gloss: 'ṇe', composedOf: [] },
+    { id: 'tam-letter-nnee', stage: 'letters', level: 1, text: 'ணே', gloss: 'ṇē', composedOf: [] },
+    { id: 'tam-letter-nnai', stage: 'letters', level: 1, text: 'ணை', gloss: 'ṇai', composedOf: [] },
+    { id: 'tam-letter-nno', stage: 'letters', level: 1, text: 'ணொ', gloss: 'ṇo', composedOf: [] },
+    { id: 'tam-letter-nnoo', stage: 'letters', level: 1, text: 'ணோ', gloss: 'ṇō', composedOf: [] },
+
+    // --- த (ta) ---
+    { id: 'tam-letter-taa', stage: 'letters', level: 1, text: 'தா', gloss: 'tā', composedOf: [] },
+    { id: 'tam-letter-ti', stage: 'letters', level: 1, text: 'தி', gloss: 'ti', composedOf: [] },
+    { id: 'tam-letter-tii', stage: 'letters', level: 1, text: 'தீ', gloss: 'tī', composedOf: [] },
+    { id: 'tam-letter-tu', stage: 'letters', level: 1, text: 'து', gloss: 'tu', composedOf: [] },
+    { id: 'tam-letter-tuu', stage: 'letters', level: 1, text: 'தூ', gloss: 'tū', composedOf: [] },
+    { id: 'tam-letter-te', stage: 'letters', level: 1, text: 'தெ', gloss: 'te', composedOf: [] },
+    { id: 'tam-letter-tee', stage: 'letters', level: 1, text: 'தே', gloss: 'tē', composedOf: [] },
+    { id: 'tam-letter-tai', stage: 'letters', level: 1, text: 'தை', gloss: 'tai', composedOf: [] },
+    { id: 'tam-letter-to', stage: 'letters', level: 1, text: 'தொ', gloss: 'to', composedOf: [] },
+    { id: 'tam-letter-too', stage: 'letters', level: 1, text: 'தோ', gloss: 'tō', composedOf: [] },
+    { id: 'tam-letter-tau', stage: 'letters', level: 1, text: 'தௌ', gloss: 'tau', composedOf: [] },
+
+    // --- ந (na) — ā-form already taught as tam-letter-naa ---
+    { id: 'tam-letter-ni', stage: 'letters', level: 1, text: 'நி', gloss: 'ni', composedOf: [] },
+    { id: 'tam-letter-nii', stage: 'letters', level: 1, text: 'நீ', gloss: 'nī', composedOf: [] },
+    { id: 'tam-letter-nu', stage: 'letters', level: 1, text: 'நு', gloss: 'nu', composedOf: [] },
+    { id: 'tam-letter-nuu', stage: 'letters', level: 1, text: 'நூ', gloss: 'nū', composedOf: [] },
+    { id: 'tam-letter-ne', stage: 'letters', level: 1, text: 'நெ', gloss: 'ne', composedOf: [] },
+    { id: 'tam-letter-nee', stage: 'letters', level: 1, text: 'நே', gloss: 'nē', composedOf: [] },
+    { id: 'tam-letter-nai', stage: 'letters', level: 1, text: 'நை', gloss: 'nai', composedOf: [] },
+    { id: 'tam-letter-no', stage: 'letters', level: 1, text: 'நொ', gloss: 'no', composedOf: [] },
+    { id: 'tam-letter-noo', stage: 'letters', level: 1, text: 'நோ', gloss: 'nō', composedOf: [] },
+    { id: 'tam-letter-nau', stage: 'letters', level: 1, text: 'நௌ', gloss: 'nau', composedOf: [] },
+
+    // --- ப (pa) ---
+    { id: 'tam-letter-paa', stage: 'letters', level: 1, text: 'பா', gloss: 'pā', composedOf: [] },
+    { id: 'tam-letter-pi', stage: 'letters', level: 1, text: 'பி', gloss: 'pi', composedOf: [] },
+    { id: 'tam-letter-pii', stage: 'letters', level: 1, text: 'பீ', gloss: 'pī', composedOf: [] },
+    { id: 'tam-letter-pu', stage: 'letters', level: 1, text: 'பு', gloss: 'pu', composedOf: [] },
+    { id: 'tam-letter-puu', stage: 'letters', level: 1, text: 'பூ', gloss: 'pū', composedOf: [] },
+    { id: 'tam-letter-pe', stage: 'letters', level: 1, text: 'பெ', gloss: 'pe', composedOf: [] },
+    { id: 'tam-letter-pee', stage: 'letters', level: 1, text: 'பே', gloss: 'pē', composedOf: [] },
+    { id: 'tam-letter-pai', stage: 'letters', level: 1, text: 'பை', gloss: 'pai', composedOf: [] },
+    { id: 'tam-letter-po', stage: 'letters', level: 1, text: 'பொ', gloss: 'po', composedOf: [] },
+    { id: 'tam-letter-poo', stage: 'letters', level: 1, text: 'போ', gloss: 'pō', composedOf: [] },
+    { id: 'tam-letter-pau', stage: 'letters', level: 1, text: 'பௌ', gloss: 'pau', composedOf: [] },
+
+    // --- ம (ma) ---
+    { id: 'tam-letter-maa', stage: 'letters', level: 1, text: 'மா', gloss: 'mā', composedOf: [] },
+    { id: 'tam-letter-mi', stage: 'letters', level: 1, text: 'மி', gloss: 'mi', composedOf: [] },
+    { id: 'tam-letter-mii', stage: 'letters', level: 1, text: 'மீ', gloss: 'mī', composedOf: [] },
+    { id: 'tam-letter-mu', stage: 'letters', level: 1, text: 'மு', gloss: 'mu', composedOf: [] },
+    { id: 'tam-letter-muu', stage: 'letters', level: 1, text: 'மூ', gloss: 'mū', composedOf: [] },
+    { id: 'tam-letter-me', stage: 'letters', level: 1, text: 'மெ', gloss: 'me', composedOf: [] },
+    { id: 'tam-letter-mee', stage: 'letters', level: 1, text: 'மே', gloss: 'mē', composedOf: [] },
+    { id: 'tam-letter-mai', stage: 'letters', level: 1, text: 'மை', gloss: 'mai', composedOf: [] },
+    { id: 'tam-letter-mo', stage: 'letters', level: 1, text: 'மொ', gloss: 'mo', composedOf: [] },
+    { id: 'tam-letter-moo', stage: 'letters', level: 1, text: 'மோ', gloss: 'mō', composedOf: [] },
+    { id: 'tam-letter-mau', stage: 'letters', level: 1, text: 'மௌ', gloss: 'mau', composedOf: [] },
+
+    // --- ய (ya) — ā-form already taught as tam-letter-yaa ---
+    { id: 'tam-letter-yi', stage: 'letters', level: 1, text: 'யி', gloss: 'yi', composedOf: [] },
+    { id: 'tam-letter-yii', stage: 'letters', level: 1, text: 'யீ', gloss: 'yī', composedOf: [] },
+    { id: 'tam-letter-yu', stage: 'letters', level: 1, text: 'யு', gloss: 'yu', composedOf: [] },
+    { id: 'tam-letter-yuu', stage: 'letters', level: 1, text: 'யூ', gloss: 'yū', composedOf: [] },
+    { id: 'tam-letter-ye', stage: 'letters', level: 1, text: 'யெ', gloss: 'ye', composedOf: [] },
+    { id: 'tam-letter-yee', stage: 'letters', level: 1, text: 'யே', gloss: 'yē', composedOf: [] },
+    { id: 'tam-letter-yai', stage: 'letters', level: 1, text: 'யை', gloss: 'yai', composedOf: [] },
+    { id: 'tam-letter-yo', stage: 'letters', level: 1, text: 'யொ', gloss: 'yo', composedOf: [] },
+    { id: 'tam-letter-yoo', stage: 'letters', level: 1, text: 'யோ', gloss: 'yō', composedOf: [] },
+    { id: 'tam-letter-yau', stage: 'letters', level: 1, text: 'யௌ', gloss: 'yau', composedOf: [] },
+
+    // --- ர (ra) ---
+    { id: 'tam-letter-raa', stage: 'letters', level: 1, text: 'ரா', gloss: 'rā', composedOf: [] },
+    { id: 'tam-letter-ri', stage: 'letters', level: 1, text: 'ரி', gloss: 'ri', composedOf: [] },
+    { id: 'tam-letter-rii', stage: 'letters', level: 1, text: 'ரீ', gloss: 'rī', composedOf: [] },
+    { id: 'tam-letter-ru', stage: 'letters', level: 1, text: 'ரு', gloss: 'ru', composedOf: [] },
+    { id: 'tam-letter-ruu', stage: 'letters', level: 1, text: 'ரூ', gloss: 'rū', composedOf: [] },
+    { id: 'tam-letter-re', stage: 'letters', level: 1, text: 'ரெ', gloss: 're', composedOf: [] },
+    { id: 'tam-letter-ree', stage: 'letters', level: 1, text: 'ரே', gloss: 'rē', composedOf: [] },
+    { id: 'tam-letter-rai', stage: 'letters', level: 1, text: 'ரை', gloss: 'rai', composedOf: [] },
+    { id: 'tam-letter-ro', stage: 'letters', level: 1, text: 'ரொ', gloss: 'ro', composedOf: [] },
+    { id: 'tam-letter-roo', stage: 'letters', level: 1, text: 'ரோ', gloss: 'rō', composedOf: [] },
+    { id: 'tam-letter-rau', stage: 'letters', level: 1, text: 'ரௌ', gloss: 'rau', composedOf: [] },
+
+    // --- ல (la) ---
+    { id: 'tam-letter-laa', stage: 'letters', level: 1, text: 'லா', gloss: 'lā', composedOf: [] },
+    { id: 'tam-letter-li', stage: 'letters', level: 1, text: 'லி', gloss: 'li', composedOf: [] },
+    { id: 'tam-letter-lii', stage: 'letters', level: 1, text: 'லீ', gloss: 'lī', composedOf: [] },
+    { id: 'tam-letter-lu', stage: 'letters', level: 1, text: 'லு', gloss: 'lu', composedOf: [] },
+    { id: 'tam-letter-luu', stage: 'letters', level: 1, text: 'லூ', gloss: 'lū', composedOf: [] },
+    { id: 'tam-letter-le', stage: 'letters', level: 1, text: 'லெ', gloss: 'le', composedOf: [] },
+    { id: 'tam-letter-lee', stage: 'letters', level: 1, text: 'லே', gloss: 'lē', composedOf: [] },
+    { id: 'tam-letter-lai', stage: 'letters', level: 1, text: 'லை', gloss: 'lai', composedOf: [] },
+    { id: 'tam-letter-lo', stage: 'letters', level: 1, text: 'லொ', gloss: 'lo', composedOf: [] },
+    { id: 'tam-letter-loo', stage: 'letters', level: 1, text: 'லோ', gloss: 'lō', composedOf: [] },
+    { id: 'tam-letter-lau', stage: 'letters', level: 1, text: 'லௌ', gloss: 'lau', composedOf: [] },
+
+    // --- வ (va) ---
+    { id: 'tam-letter-vaa', stage: 'letters', level: 1, text: 'வா', gloss: 'vā', composedOf: [] },
+    { id: 'tam-letter-vi', stage: 'letters', level: 1, text: 'வி', gloss: 'vi', composedOf: [] },
+    { id: 'tam-letter-vii', stage: 'letters', level: 1, text: 'வீ', gloss: 'vī', composedOf: [] },
+    { id: 'tam-letter-vu', stage: 'letters', level: 1, text: 'வு', gloss: 'vu', composedOf: [] },
+    { id: 'tam-letter-vuu', stage: 'letters', level: 1, text: 'வூ', gloss: 'vū', composedOf: [] },
+    { id: 'tam-letter-ve', stage: 'letters', level: 1, text: 'வெ', gloss: 've', composedOf: [] },
+    { id: 'tam-letter-vee', stage: 'letters', level: 1, text: 'வே', gloss: 'vē', composedOf: [] },
+    { id: 'tam-letter-vai', stage: 'letters', level: 1, text: 'வை', gloss: 'vai', composedOf: [] },
+    { id: 'tam-letter-vo', stage: 'letters', level: 1, text: 'வொ', gloss: 'vo', composedOf: [] },
+    { id: 'tam-letter-voo', stage: 'letters', level: 1, text: 'வோ', gloss: 'vō', composedOf: [] },
+    { id: 'tam-letter-vau', stage: 'letters', level: 1, text: 'வௌ', gloss: 'vau', composedOf: [] },
+
+    // --- ழ (ḻa) — no au form, see block comment above ---
+    { id: 'tam-letter-zhaa', stage: 'letters', level: 1, text: 'ழா', gloss: 'ḻā', composedOf: [] },
+    { id: 'tam-letter-zhi', stage: 'letters', level: 1, text: 'ழி', gloss: 'ḻi', composedOf: [] },
+    { id: 'tam-letter-zhii', stage: 'letters', level: 1, text: 'ழீ', gloss: 'ḻī', composedOf: [] },
+    { id: 'tam-letter-zhu', stage: 'letters', level: 1, text: 'ழு', gloss: 'ḻu', composedOf: [] },
+    { id: 'tam-letter-zhuu', stage: 'letters', level: 1, text: 'ழூ', gloss: 'ḻū', composedOf: [] },
+    { id: 'tam-letter-zhe', stage: 'letters', level: 1, text: 'ழெ', gloss: 'ḻe', composedOf: [] },
+    { id: 'tam-letter-zhee', stage: 'letters', level: 1, text: 'ழே', gloss: 'ḻē', composedOf: [] },
+    { id: 'tam-letter-zhai', stage: 'letters', level: 1, text: 'ழை', gloss: 'ḻai', composedOf: [] },
+    { id: 'tam-letter-zho', stage: 'letters', level: 1, text: 'ழொ', gloss: 'ḻo', composedOf: [] },
+    { id: 'tam-letter-zhoo', stage: 'letters', level: 1, text: 'ழோ', gloss: 'ḻō', composedOf: [] },
+
+    // --- ள (ḷa) — no au form, see block comment above ---
+    { id: 'tam-letter-llaa', stage: 'letters', level: 1, text: 'ளா', gloss: 'ḷā', composedOf: [] },
+    { id: 'tam-letter-lli', stage: 'letters', level: 1, text: 'ளி', gloss: 'ḷi', composedOf: [] },
+    { id: 'tam-letter-llii', stage: 'letters', level: 1, text: 'ளீ', gloss: 'ḷī', composedOf: [] },
+    { id: 'tam-letter-llu', stage: 'letters', level: 1, text: 'ளு', gloss: 'ḷu', composedOf: [] },
+    { id: 'tam-letter-lluu', stage: 'letters', level: 1, text: 'ளூ', gloss: 'ḷū', composedOf: [] },
+    { id: 'tam-letter-lle', stage: 'letters', level: 1, text: 'ளெ', gloss: 'ḷe', composedOf: [] },
+    { id: 'tam-letter-llee', stage: 'letters', level: 1, text: 'ளே', gloss: 'ḷē', composedOf: [] },
+    { id: 'tam-letter-llai', stage: 'letters', level: 1, text: 'ளை', gloss: 'ḷai', composedOf: [] },
+    { id: 'tam-letter-llo', stage: 'letters', level: 1, text: 'ளொ', gloss: 'ḷo', composedOf: [] },
+    { id: 'tam-letter-lloo', stage: 'letters', level: 1, text: 'ளோ', gloss: 'ḷō', composedOf: [] },
+
+    // --- ற (ṟa) — no au form, see block comment above ---
+    { id: 'tam-letter-rraa', stage: 'letters', level: 1, text: 'றா', gloss: 'ṟā', composedOf: [] },
+    { id: 'tam-letter-rri', stage: 'letters', level: 1, text: 'றி', gloss: 'ṟi', composedOf: [] },
+    { id: 'tam-letter-rrii', stage: 'letters', level: 1, text: 'றீ', gloss: 'ṟī', composedOf: [] },
+    { id: 'tam-letter-rru', stage: 'letters', level: 1, text: 'று', gloss: 'ṟu', composedOf: [] },
+    { id: 'tam-letter-rruu', stage: 'letters', level: 1, text: 'றூ', gloss: 'ṟū', composedOf: [] },
+    { id: 'tam-letter-rre', stage: 'letters', level: 1, text: 'றெ', gloss: 'ṟe', composedOf: [] },
+    { id: 'tam-letter-rree', stage: 'letters', level: 1, text: 'றே', gloss: 'ṟē', composedOf: [] },
+    { id: 'tam-letter-rrai', stage: 'letters', level: 1, text: 'றை', gloss: 'ṟai', composedOf: [] },
+    { id: 'tam-letter-rro', stage: 'letters', level: 1, text: 'றொ', gloss: 'ṟo', composedOf: [] },
+    { id: 'tam-letter-rroo', stage: 'letters', level: 1, text: 'றோ', gloss: 'ṟō', composedOf: [] },
+
+    // --- ன (ṉa) — no au form, see block comment above ---
+    { id: 'tam-letter-alveolar-naa', stage: 'letters', level: 1, text: 'னா', gloss: 'ṉā', composedOf: [] },
+    { id: 'tam-letter-alveolar-ni', stage: 'letters', level: 1, text: 'னி', gloss: 'ṉi', composedOf: [] },
+    { id: 'tam-letter-alveolar-nii', stage: 'letters', level: 1, text: 'னீ', gloss: 'ṉī', composedOf: [] },
+    { id: 'tam-letter-alveolar-nu', stage: 'letters', level: 1, text: 'னு', gloss: 'ṉu', composedOf: [] },
+    { id: 'tam-letter-alveolar-nuu', stage: 'letters', level: 1, text: 'னூ', gloss: 'ṉū', composedOf: [] },
+    { id: 'tam-letter-alveolar-ne', stage: 'letters', level: 1, text: 'னெ', gloss: 'ṉe', composedOf: [] },
+    { id: 'tam-letter-alveolar-nee', stage: 'letters', level: 1, text: 'னே', gloss: 'ṉē', composedOf: [] },
+    { id: 'tam-letter-alveolar-nai', stage: 'letters', level: 1, text: 'னை', gloss: 'ṉai', composedOf: [] },
+    { id: 'tam-letter-alveolar-no', stage: 'letters', level: 1, text: 'னொ', gloss: 'ṉo', composedOf: [] },
+    { id: 'tam-letter-alveolar-noo', stage: 'letters', level: 1, text: 'னோ', gloss: 'ṉō', composedOf: [] },
 
     // --- Pre-existing dead (pulli) and bound-vowel-sign forms, unchanged ---
     {
