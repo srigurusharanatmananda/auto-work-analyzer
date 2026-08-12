@@ -130,11 +130,17 @@ real engine capability — `Lesson.sandhiRule`, letting a lesson's `text`
 legitimately diverge from simple `composedOf` concatenation when a real
 sandhi/junction sound change is what's being taught — plus the first
 sandhi content it unblocks (one Sanskrit visarga-sandhi sentence, five
-Tamil conjunction-rule words/sentence). Sanskrit: 76 lessons total. Tamil:
-229. The remaining gap is content, not an engine limitation — per the
-design doc's own risk note, needs the one human quality gate this module
-can't automate: a beginner cannot detect a bad teacher. The plan's "What's
-next, in order" section is the actual backlog here.
+Tamil conjunction-rule words/sentence). Tranche 7 shipped the first slice
+of real grammar beyond nominative-only: Sanskrit's accusative (dvitīyā)
+case plus its first ātmanepada verb, unblocking अश्व ("horse") — the word
+every prior tranche's own comments named as still-blocked — in Wikner's
+own worked sentence (नरः अश्वम् वृक्षम् नयते); and Tamil's first verb
+conjugation, present tense (நான் செய்கிறேன், "I do"), needing zero new
+letters since everything it uses was already taught. Sanskrit: 85 lessons
+total. Tamil: 232. The remaining gap is content, not an engine limitation —
+per the design doc's own risk note, needs the one human quality gate this
+module can't automate: a beginner cannot detect a bad teacher. The plan's
+"What's next, in order" section is the actual backlog here.
 
 ### Still to do
 
@@ -178,18 +184,23 @@ the decision is cheap to reverse on evidence.
 க vowel-sign table shipped in tranche 3; vṛkṣa (the word kṣa specifically
 unblocks) shipped in tranche 4; the other 16 consonants' Tamil vowel-sign
 tables shipped in tranche 5; sandhi/conjunction rules (both languages)
-shipped in tranche 6, via a new `Lesson.sandhiRule` engine field. aśva's
-śva and tiṣṭhati's ṣṭha are different Sanskrit conjuncts, still not taught,
-so those two stay blocked. Next — expert-tier reading — is now
-**concretely blocked on noun case morphology and verb conjugation**, not a
-vague "more grammar" note: tranche 6 fetched and word-by-word checked two
-real short public-domain verses (Bhagavad Gītā 2.47, Thirukkural 1)
-against the actual taught content and found every non-nominative,
-non-bare-stem word unreachable in both languages. See
+shipped in tranche 6, via a new `Lesson.sandhiRule` engine field; tranche 7
+shipped the first real grammar beyond nominative-only — Sanskrit's
+accusative case plus its first ātmanepada verb (unblocking aśva, "horse",
+the word every prior tranche's own comments named as still-blocked), and
+Tamil's first verb conjugation (present tense). tiṣṭhati's ṣṭha is the one
+remaining named-blocked Sanskrit conjunct. Next — expert-tier reading — is
+still **blocked on more case morphology and verb conjugation than one
+tranche ships**: tranche 6's own research (Bhagavad Gītā 2.47, Thirukkural
+1, checked word-by-word) found every non-nominative, non-bare-stem word
+unreachable; tranche 7 closes one case and one verb pada per language, not
+the whole gap. See
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
-"What's next, in order" for the specifics. Content work, and needs the
-human quality gate the design doc itself calls for before it ships to the
-one real learner.
+"What's next, in order" for the specifics, including its own suggestion to
+re-test against a real verse after each further slice rather than
+assuming a fixed number of tranches will get there. Content work, and
+needs the human quality gate the design doc itself calls for before it
+ships to the one real learner.
 
 **The `ui/` upgrade still has not been looked at by a human eye**, for the
 whole app, not just `/learn`. It was verified by diffing the class tokens

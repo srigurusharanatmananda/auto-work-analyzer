@@ -338,20 +338,47 @@ reading) — not more content, but the actual research the previous pass's
 
 Sanskrit: 75 → 76 lessons. Tamil: 222 → 229 lessons.
 
+**Eighth pass — tranche 7**: the first real slice of item 1 above — one
+case, one verb pada per language, not the whole grammar system at once.
+
+- **Sanskrit — dvitīyā (accusative) and one ātmanepada verb**: नरम्/वृक्षम्
+  (accusative singular of the already-taught नर/वृक्ष, Wikner 5.B.1's own
+  declension table), नयते (leads, ātmanepada 3rd singular of √nī, Wikner
+  3.B.1's paradigm — this file's first non-parasmaipada verb), and अश्व
+  ("horse") — the specific word every prior tranche's own comments named as
+  blocked on a conjunct it didn't teach, unblocked here by श्व. All four
+  ship together in Wikner's own worked sentence (3.B.2, line 987): नरः
+  अश्वम् वृक्षम् नयते ("the man leads the horse to the tree") — not
+  assembled for this app, quoted whole, word order included. Needed two new
+  atomic letters beyond श्व: म् (word-final halanta, Wikner 7.A.1 — not
+  taught until now, the Sanskrit equivalent of Tamil's pulli mark) and ते
+  (reusing the े vowel sign already proven on ब/ण). Two independent
+  verifiers signed off with no issues.
+- **Tamil — present tense**: செய்கிறேன் ("I do", ABC of Tamil Lesson
+  Seventeen's own worked derivation, root + tense symbol கிறு + personal
+  suffix ஏன், line 1388) and the sentence நான் செய்கிறேன், the primer's own
+  example sentence for this exact derivation. Needed zero new letters —
+  செ, ய், கி, றே, ன் were all already taught by earlier tranches, which is
+  itself a small piece of evidence the alphabet/vowel-sign work already
+  done was not wasted effort. Two independent verifiers signed off with no
+  issues.
+
+Sanskrit: 76 → 85 lessons. Tamil: 229 → 232 lessons.
+
 ## What's next, in order
 
-1. **Noun case morphology and verb conjugation**, both languages — the real
-   prerequisite for expert-tier reading, confirmed this pass by testing two
-   actual short public-domain verses (Bhagavad Gītā 2.47, Thirukkural 1)
-   against this file's real content and finding every non-nominative,
-   non-bare-stem word blocked. Sanskrit needs at least one more case
-   (Wikner's declension tables, 3.B onward, already cover several) and at
-   least one more verb form/mood beyond 3rd-singular-present-parasmaipada.
-   Tamil needs its first case suffix(es) and its first verb conjugation
-   (ABC of Tamil Lessons 17-21 already cover present tense and the
-   accusative/dative/genitive cases — see the table above, "Not started"
-   since the original survey). This is a genuinely large tranche, on the
-   scale of the original alphabet-completion passes, not a small follow-up.
+1. **More case morphology and verb conjugation**, both languages — tranche
+   7 shipped one case and one verb pada each; expert-tier reading needs
+   more before a real verse is fully decomposable. Sanskrit: at least one
+   more case (instrumental or genitive — Wikner's 5.B.1 table, already read
+   in full for tranche 7, has all seven) and ideally the parasmaipada verb
+   this file is still missing a second example of. Tamil: ABC of Tamil
+   Lessons 18-21 (present tense continued, then dative/genitive cases) are
+   the next primer sections in order, not yet read for their own content.
+   Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or a freshly-chosen
+   short verse) after each slice to check whether expert-tier reading has
+   actually become reachable yet, rather than assuming a fixed number of
+   tranches will get there.
 2. **Expert-tier reading** for both languages, once (1) makes at least one
    real short verse fully decomposable into taught vocabulary and taught
    grammar — at that point, source and read the actual verse in full

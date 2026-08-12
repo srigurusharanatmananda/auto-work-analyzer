@@ -20,7 +20,10 @@
  * plan doc's "conjunction rules" item — the உம் ("and"/"too") suffix, ABC of
  * Tamil Lesson Twelve — unblocked by `Curriculum.ts`'s new `sandhiRule`
  * field; see that tranche's own block comment below for why an engine
- * change was needed before this was possible at all.
+ * change was needed before this was possible at all. Tranche 7 adds this
+ * language's first verb conjugation — present tense, ABC of Tamil Lesson
+ * Seventeen — needing zero new letters, every one already taught by an
+ * earlier tranche.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -870,6 +873,62 @@ export const tamilManifest: Manifest = {
       text: 'நீயும் நானும்',
       gloss: 'nīyum nāṉum — you and I (lit. "you too, I too")',
       composedOf: ['tam-word-niiyum', 'tam-word-naanum'],
+    },
+
+    // ================= Present tense (level 3) =================
+    // Extension, 2026-08-12 (tranche 7): the plan doc's next backlog item
+    // after conjunction rules — the real prerequisite for expert-tier
+    // reading, per that plan's own research (Thirukkural 1, checked
+    // word-by-word, failed entirely on missing verb conjugation, not
+    // vocabulary). ABC of Tamil, Lesson Seventeen ("Tenses - Present"),
+    // lines 1324-1465: a finite verb has three parts — root, tense symbol
+    // (இக்கிறு/கின்று, either may be used), and personal suffix.
+    //
+    // Every letter this needs — செ, ய், கி, றே, ன் — is already taught
+    // (செ/கி from tranche 5's vowel-sign tables, ய்/ன் from earlier
+    // tranches), so this ships with zero new letters, unlike Sanskrit's
+    // own half of this pass.
+    {
+      id: 'tam-word-sey',
+      stage: 'words',
+      level: 2,
+      // Lesson Nine's own vocabulary (already cited elsewhere in this
+      // file): "ªêò¢ - chey - to do." The bare root, not yet conjugated.
+      text: 'செய்',
+      gloss: 'sey — to do (verb root)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya'],
+    },
+    {
+      id: 'tam-word-seykirren',
+      stage: 'words',
+      level: 3,
+      // Lesson Seventeen's own worked example, line 1388: "ªêò¢ = to do;
+      // ï£ù¢ ªêò¢+ è¤Á+ ãù¢= ï£ù¢ ªêò¢è¤«øù¢= I do" — root செய் + tense symbol
+      // கிறு + 1st-person-singular personal suffix ஏன், the primer's own
+      // worked fusion (line 1383-1385) collapsing கிறு's short உ into the
+      // personal suffix's long ஏ: செய் + கிறு + ஏன் → செய்கிறேன்.
+      //
+      // No sandhiRule needed: கி (already an atomic letter) + றே (already
+      // an atomic letter, ற + the ே sign) + ன் (already atomic) concatenate
+      // to exactly கிறேன் — the fusion Lesson Seventeen describes already
+      // happened when this file's own vowel-sign tranche taught றே as one
+      // unit, not two.
+      text: 'செய்கிறேன்',
+      gloss: 'seykiṟēṉ — I do (1st person singular, present)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rree', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-naan-seykirren',
+      stage: 'sentences',
+      level: 3,
+      // Lesson Seventeen's own worked sentence (line 1388), with நான்
+      // (already taught) as the explicit subject the primer's own example
+      // uses ("I do" — the pronoun is also spelled out, not implied, since
+      // Lesson Seventeen introduces it that way before the personal-suffix
+      // system alone would let a learner drop it).
+      text: 'நான் செய்கிறேன்',
+      gloss: 'nāṉ seykiṟēṉ — I do',
+      composedOf: ['tam-word-naan', 'tam-word-seykirren'],
     },
   ],
 };
