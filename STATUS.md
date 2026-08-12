@@ -178,7 +178,11 @@ Lesson Seventeen). Tranche 16 added Tamil's first negative indicative
 imperative செய்யாதே) and a second dative sub-rule (கண்ணுக்கு "to the
 eye", பல்லுக்கு "to the tooth" — short nouns doubling their final
 consonant), Tamil-only since this tranche's research found no unspent
-Sanskrit lead. Sanskrit: 113 lessons total.
+Sanskrit lead. Tranche 17 added Sanskrit's second particle, एव ("indeed,
+verily" — found in the same back-matter passage as अहम्, Wikner §15.8,
+line 3876), Sanskrit-only this time since Tamil's own next candidate
+(pronoun genitives) needs a new letter not yet scoped. Sanskrit: 114
+lessons total.
 Tamil: 252. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
