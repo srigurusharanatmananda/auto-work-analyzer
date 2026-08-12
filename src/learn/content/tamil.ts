@@ -16,7 +16,11 @@
  * only, deliberately deferring the other 17 consonants (the same reasoning
  * Sanskrit's own single-consonant vowel-sign tranche used); tranche 5
  * completes that backlog item for all but ங (see that tranche's own block
- * comment for why ங stays excluded).
+ * comment for why ங stays excluded). Tranche 6 adds the Tamil half of the
+ * plan doc's "conjunction rules" item — the உம் ("and"/"too") suffix, ABC of
+ * Tamil Lesson Twelve — unblocked by `Curriculum.ts`'s new `sandhiRule`
+ * field; see that tranche's own block comment below for why an engine
+ * change was needed before this was possible at all.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -653,6 +657,32 @@ export const tamilManifest: Manifest = {
       gloss: 'r — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
     },
+    {
+      id: 'tam-pulli-ma',
+      stage: 'letters',
+      level: 1,
+      // Not part of the original pulli set — added later (tranche 6), the
+      // same rule tam-letter-naa/skt-letter-vri were added under: ம் is
+      // needed only because உம் (tam-word-um, below) needs it. ABC of Tamil
+      // Lesson Twelve's own examples spell it exactly this way, e.g.
+      // "èí¢ + í¢ + àñ¢ = èí¢µñ¢" (kaṇ + ṇ + um = kaṇṇum), where உம் itself
+      // is written உ + ம் (bare u vowel, then dead ma).
+      text: 'ம்',
+      gloss: 'm — dead consonant (no vowel), used at the end of a word',
+      composedOf: [],
+    },
+    {
+      id: 'tam-pulli-ya',
+      stage: 'letters',
+      level: 1,
+      // Also new (tranche 6), same reasoning as tam-pulli-ma above: needed
+      // because நீயும் (tam-word-niiyum, below) needs it. ABC of Tamil
+      // Lesson Twelve names this exact medial consonant by name (line 1028:
+      // "ï¦ + ò¢ + àñ¢ = ï¦»ñ¢" — nī + y + um = nīyum).
+      text: 'ய்',
+      gloss: 'y — dead consonant (no vowel), used at the end of a word',
+      composedOf: [],
+    },
 
     {
       id: 'tam-word-kan',
@@ -719,6 +749,127 @@ export const tamilManifest: Manifest = {
       text: 'நான் யார்',
       gloss: 'nān yār — who am I? (lit. "I who?")',
       composedOf: ['tam-word-naan', 'tam-word-yaar'],
+    },
+
+    // ================= Conjunction rules (level 3) =================
+    // Extension, 2026-08-12 (tranche 6): the Tamil half of the plan doc's
+    // "what's next" item 2, unblocked by Curriculum.ts's new `sandhiRule`
+    // field — see that field's own comment, and skt-sentence-naro-vadati's
+    // comment in sanskrit.ts, for why an engine change was needed first.
+    // All of this is ABC of Tamil, Lesson Twelve ("Conjunction"), lines
+    // 950-1064 of the cached extraction: the enclitic உம் ("and"/"too"),
+    // added to every word in a list rather than placed once between two
+    // words the way English "and" is.
+    //
+    // உம் itself is not in the primer's own list of words that already need
+    // it — it's the suffix Lesson Twelve's whole rule set is about — so it
+    // is taught here as its own atomic word (உ + ம், both already-taught
+    // atomic sounds), then reused, unlike every previous tranche's new
+    // vocabulary. Its own text reconstructs by plain concatenation, no
+    // sandhiRule needed.
+    {
+      id: 'tam-word-um',
+      stage: 'words',
+      level: 3,
+      text: 'உம்',
+      gloss: 'um — "and" / "too", attached to every word in a list (never a standalone word)',
+      composedOf: ['tam-letter-u', 'tam-pulli-ma'],
+    },
+    // Lesson Twelve's Rule I: a two-letter word with a short vowel first and
+    // a single final consonant doubles that consonant before உம். The
+    // primer's own worked example (line 985): "èí¢ (eye) + àñ¢= èí¢ + (í¢)
+    // àñ¢ = èí¢µñ¢" — kaṇ + um = kaṇ + ṇ + um = kaṇṇum. கண் is already
+    // taught (tam-word-kan, spelled the same two letters below); the
+    // doubled ண் is the SAME already-taught dead-consonant letter
+    // (tam-pulli-nna) reused twice, not a new one. `composedOf` must be the
+    // letters this word is built from (words compose only from `letters` —
+    // see `Curriculum.ts`'s `prerequisiteStage`), so it repeats
+    // tam-word-kan's own two letters rather than referencing that word
+    // directly.
+    //
+    // sandhiRule is still required, though: the doubled ண், a dead
+    // consonant, is immediately followed by உ (உம்'s own leading vowel), so
+    // it fuses into ணு the same way ய் does in நீயும் below — plain
+    // concatenation of the five letters gives கண்ண்உம், not the real
+    // கண்ணும்.
+    {
+      id: 'tam-word-kannum',
+      stage: 'words',
+      level: 3,
+      text: 'கண்ணும்',
+      gloss: 'kaṇṇum — and (the) eye(s) too',
+      composedOf: ['tam-letter-ka', 'tam-pulli-nna', 'tam-pulli-nna', 'tam-letter-u', 'tam-pulli-ma'],
+      sandhiRule:
+        'The doubled ண் (Lesson Twelve, Rule I) is a dead consonant immediately followed by a vowel-initial suffix (உம்), so it fuses into ணு instead of staying separate — கண் + ண் + உம் surfaces as கண்ணும், not கண்ண்உம்.',
+    },
+    // Lesson Twelve's Rule III (lines 1022-1042): a word ending in a vowel
+    // takes a medial consonant (ய் or வ்) before உம். The primer's own
+    // worked example (line 1028): "ï¦ (you-singular) + àñ¢ > ï¦ + ò¢ + àñ¢
+    // = ï¦»ñ¢" — nī + um = nī + y + um = nīyum. நீ is already taught
+    // (tam-letter-nii, from tranche 5's vowel-sign table — and Lesson
+    // Five's own vocabulary independently confirms நீ as the real word
+    // "you", singular, line 538: "ï¦ - (ni) - you (singular)").
+    //
+    // sandhiRule is required here, not optional: ய் (the medial consonant)
+    // immediately followed by உ (உம்'s own first letter) does not stay two
+    // separate glyphs — ய dead-marked (ய்) plus a following vowel takes
+    // that vowel's sign instead, the same mechanism that makes vowel-sign
+    // letters (கா, கி, ...) exist at all. நீ + உம், even with the medial ய்
+    // Lesson Twelve names, does not concatenate to "நீய்உம்" — it surfaces
+    // as நீயும் (ய + the ு vowel sign, not ய் + உ as separate letters).
+    {
+      id: 'tam-word-niiyum',
+      stage: 'words',
+      level: 3,
+      text: 'நீயும்',
+      gloss: 'nīyum — you too / and you',
+      // Letters, not words (same reason as tam-word-kannum above): நீ plus
+      // உம்'s own two letters, plus the medial ய் Rule III names — even
+      // though sandhiRule below exempts this lesson from needing the exact
+      // reconstruction those letters would otherwise have to produce.
+      composedOf: ['tam-letter-nii', 'tam-pulli-ya', 'tam-letter-u', 'tam-pulli-ma'],
+      sandhiRule:
+        'Lesson Twelve, Rule III: a vowel-final word takes a medial consonant (here ய்) before உம். That medial consonant then combines with உம்\'s own leading vowel the same way any dead consonant does — நீ + ய் + உம் surfaces as நீயும் (ய + the ு vowel sign), not as the separate letters ய் and உ side by side.',
+    },
+    // நான் already ends in a dead consonant (ன், not a vowel), so Rule III
+    // above does not literally apply — no medial letter is inserted, and no
+    // Rule IV is ever named for this case. But the same general fact still
+    // holds: a dead consonant immediately followed by a vowel-initial
+    // suffix takes that vowel's sign rather than staying dead, so நான் +
+    // உம் still does not concatenate to "நான்உம்". This is not inferred:
+    // the primer's own translation exercise (line 1061, "Translate into
+    // English: 1. ï¦»ñ¢ ï£Âñ¢") uses நீயும் நானும் as the Tamil PROMPT to be
+    // translated (not a shown answer — the primer never prints the English
+    // side of this one) — but the Tamil string itself is real, printed
+    // text, which is what confirms நானும் as the actual correct surface
+    // form, one inferential step more indirect than tam-word-kannum/
+    // tam-word-niiyum's own named-rule citations above, and flagged as such.
+    {
+      id: 'tam-word-naanum',
+      stage: 'words',
+      level: 3,
+      text: 'நானும்',
+      gloss: 'nāṉum — I too / and I',
+      // Letters, not words — நான்'s own two letters (the same ones
+      // tam-word-naan is built from) plus உம்'s own two letters.
+      composedOf: ['tam-letter-naa', 'tam-pulli-alveolar-na', 'tam-letter-u', 'tam-pulli-ma'],
+      sandhiRule:
+        'A dead consonant (ன், already dead in நான்) immediately followed by a vowel-initial suffix takes that vowel\'s sign instead of staying dead — நான் + உம் surfaces as நானும் (ன + the ு vowel sign), not as the separate letters ன் and உ side by side. Confirmed directly by the primer\'s own printed exercise answer, not inferred from the rule alone.',
+    },
+    {
+      id: 'tam-sentence-niiyum-naanum',
+      stage: 'sentences',
+      level: 3,
+      // ABC of Tamil, Lesson Twelve, line 1061 — the primer's own printed
+      // answer to "Translate into English: 1. ï¦»ñ¢ ï£Âñ¢", not a sentence
+      // assembled here from separately-sourced words. Both words above are
+      // already fully-formed surface strings (their own sandhiRule already
+      // accounts for the suffix fusion), so joining them with a single
+      // space needs no further sandhi — ordinary reconstruction applies,
+      // same as every other sentence in this file.
+      text: 'நீயும் நானும்',
+      gloss: 'nīyum nāṉum — you and I (lit. "you too, I too")',
+      composedOf: ['tam-word-niiyum', 'tam-word-naanum'],
     },
   ],
 };

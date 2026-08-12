@@ -194,6 +194,54 @@ describe.each([
     });
   });
 
+  test('a sandhiRule lesson is exempt from exact-reconstruction, but only that check', () => {
+    const sentenceLesson = manifest.lessons.find((lesson) => lesson.stage === 'sentences')!;
+    const withSandhi: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === sentenceLesson.id
+          ? { ...lesson, text: 'not-what-composedOf-spells', sandhiRule: 'illustrative rule for this test' }
+          : lesson
+      ),
+    };
+
+    expect(validateManifest(withSandhi)).toEqual([]);
+  });
+
+  test('a sandhiRule lesson still gets every other check — an unknown dependency is still rejected', () => {
+    const sentenceLesson = manifest.lessons.find((lesson) => lesson.stage === 'sentences')!;
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === sentenceLesson.id
+          ? { ...lesson, composedOf: ['does-not-exist'], sandhiRule: 'illustrative rule for this test' }
+          : lesson
+      ),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: sentenceLesson.id,
+      reason: expect.stringContaining("unknown lesson 'does-not-exist'"),
+    });
+  });
+
+  test('an empty sandhiRule is rejected — it must name the rule, not just opt out', () => {
+    const sentenceLesson = manifest.lessons.find((lesson) => lesson.stage === 'sentences')!;
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === sentenceLesson.id ? { ...lesson, sandhiRule: '   ' } : lesson
+      ),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: sentenceLesson.id,
+      reason: expect.stringContaining('sandhiRule is set but empty'),
+    });
+  });
+
   test('a duplicate lesson id is rejected', () => {
     const broken: Manifest = {
       ...manifest,

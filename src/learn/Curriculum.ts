@@ -86,6 +86,27 @@ export interface Lesson {
    * answer is unrecoverable.
    */
   readonly composedOf: readonly string[];
+  /**
+   * Set ONLY when `text` legitimately does not reconstruct from
+   * `composedOf`'s own `text`, joined per `JOINER` — a real sandhi
+   * (Sanskrit) or letter-junction (Tamil) sound change at the boundary
+   * between two already-taught words, not a typo. When present,
+   * `validateManifest` skips the exact-reconstruction check for this one
+   * lesson; every other check (dependencies exist, are the right stage, are
+   * already taught, and are not a higher level) still applies in full.
+   *
+   * The value is the rule itself, in the same plain-prose register as
+   * `gloss` — what changed and why — because this field IS the lesson
+   * content for level 3 ("Grammar & Sentences" exists specifically to teach
+   * this; see `LEVELS`). A sentence that merely juxtaposes two words with no
+   * sound change does not need this field at all — leave it unset and let
+   * the ordinary exact-match check keep proving `composedOf` hasn't drifted
+   * out of sync with `text`. Only reach for this when the primer's own
+   * source explicitly states the rule being demonstrated; this field is not
+   * a way to bypass verification, it is where verification's conclusion is
+   * recorded.
+   */
+  readonly sandhiRule?: string;
 }
 
 /**
@@ -211,13 +232,22 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
       }
     }
 
+    if (lesson.sandhiRule !== undefined && lesson.sandhiRule.trim() === '') {
+      errors.push({
+        lessonId: lesson.id,
+        reason: 'sandhiRule is set but empty — it must name the actual rule, not just opt out of the reconstruction check',
+      });
+    }
+
     // Only checked once every dependency actually resolved — an unknown-id
     // error above already explains why reconstruction can't be checked, and
     // piling a second, derived error on top of it would just be noise.
     // `lesson.stage`, not `wantStage`: the joiner is a property of what this
     // lesson IS (a word or a sentence), not of the prerequisite stage it
-    // draws on.
-    if (everyDepResolved) {
+    // draws on. Skipped entirely when `sandhiRule` is set (see that field's
+    // own comment on `Lesson`) — a real sound change at the join means exact
+    // concatenation is not what `text` should be, by design, not by error.
+    if (everyDepResolved && lesson.sandhiRule === undefined) {
       const joiner = JOINER[lesson.stage as 'words' | 'sentences'];
       const reconstructed = lesson.composedOf.map((depId) => metaById.get(depId)?.text).join(joiner);
       if (reconstructed !== lesson.text) {
