@@ -4,16 +4,19 @@
  * (mātrā, Wikner 6.A.1 — tranche 2), the two special conjunct consonants
  * kṣa and jña (Wikner 7.A.3-7.A.5 — tranche 3), one more word, vṛkṣa
  * ("tree", Wikner 3.B.2 — tranche 4, the first word kṣa unblocks), the
- * original seven words plus one new word and one sentence, and — tranche 6
- * — the first sandhi lesson: नरो वदति, the exact same words as नरः वदति
+ * original seven words plus one new word and one sentence, — tranche 6 —
+ * the first sandhi lesson: नरो वदति, the exact same words as नरः वदति
  * above, showing the visarga sandhi (Wikner 11.A.1) that actually applies
- * when they meet in real speech. See
+ * when they meet in real speech, and — tranche 7 — the accusative
+ * (dvitīyā) case, one ātmanepada verb (नयते), aśva (unblocked — the śva
+ * conjunct named as missing since tranche 4 is taught now), and Wikner's
+ * own worked sentence नरः अश्वम् वृक्षम् नयते ("the man leads the horse to
+ * the tree", 3.B.2). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is a tranche of — more words (aśva and
- * tiṣṭhati are next in line, but still blocked on conjuncts śva/ṣṭha this
- * file doesn't teach yet) are still not written. The vowel-sign batch is
- * deliberately partial (one consonant's full table, plus two more worked
- * examples) rather than exhaustive across
+ * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
+ * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
+ * batch is deliberately partial (one consonant's full table, plus a few
+ * more worked examples) rather than exhaustive across
  * all 33 consonants, and the conjunct batch is deliberately just the two
  * Wikner himself singles out as special rather than his own ~150-entry
  * reference table — see each block's own comment for why.
@@ -481,6 +484,65 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
 
+    // --- Halanta consonants (word-final, no vowel) and one more conjunct,
+    // Wikner 7.A.1-7.A.2 — tranche 7 ---
+    // Not taught until now: every word/sentence shipped so far either ends
+    // in a vowel or a visarga-marked vowel (नरः), never a bare consonant.
+    // Wikner 7.A.1 is explicit that Sanskrit has this exact category —
+    // "halanta means 'ending in a consonant'... this is the form used when
+    // a word ends in a consonant" — written with a virama stroke, the same
+    // role Tamil's pulli mark plays, added here the same way every pulli
+    // letter in tamil.ts was: one atomic letter per consonant, only once a
+    // real word needs it.
+    {
+      id: 'skt-letter-ma-halanta',
+      stage: 'letters',
+      level: 1,
+      // Needed for skt-word-naram/skt-word-ashvam/skt-word-vrksam below —
+      // the accusative singular (dvitīyā eka-vacana) ending of every
+      // a-stem noun this file teaches is exactly "-am": the bare stem plus
+      // this one word-final letter, per Wikner's own declension table
+      // (5.B.1, line 978/1202): "dvitya naram narau naran".
+      text: 'म्',
+      gloss: 'm — word-final, no vowel',
+      composedOf: [],
+    },
+    // Not a halanta letter itself — Wikner 7.A.1's own distinction (lines
+    // 1538-1541): a halanta mark used WITHIN a word, not at its end, forms
+    // a conjunct consonant instead, "a different method." श in अश्व is
+    // followed by व within the same word, so this is 7.A.2's ordinary,
+    // non-special conjunct case (left-to-right stacking, dropping the
+    // vertical stroke from all but the last letter — Wikner's own examples
+    // at that section: "त्+म्=त्म=tma", "न्+त्+य्=न्त्य=ntya") — not one of
+    // the two conjuncts (kṣa, jña) Wikner singles out above as visually
+    // unrecognizable from their parts.
+    {
+      id: 'skt-letter-shva',
+      stage: 'letters',
+      level: 1,
+      // श (śa, already taught, skt-letter-sha) + व (va, already taught,
+      // skt-letter-va) — needed only because skt-word-ashva below needs it,
+      // the same rule skt-letter-ti/skt-letter-vri were added under. This
+      // is the specific conjunct earlier tranches' own comments named as
+      // still blocking aśva ("tiṣṭhati and aśva... still need conjuncts
+      // (śva, ṣṭha) this file does not teach yet" — vṛkṣa's own comment,
+      // tranche 4).
+      text: 'श्व',
+      gloss: 'śva',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-te',
+      stage: 'letters',
+      level: 1,
+      // Reuses the े sign already proven on ब (skt-letter-be) and given as
+      // a worked example on ण (skt-letter-nne) — the same sign, a different
+      // consonant, needed only because skt-word-nayate below needs it.
+      text: 'ते',
+      gloss: 'te',
+      composedOf: [],
+    },
+
     // ================= Words =================
     {
       id: 'skt-word-nara',
@@ -515,12 +577,15 @@ export const sanskritManifest: Manifest = {
       // pratipadika/dictionary form, the same convention skt-word-nara uses
       // (3.B.2's own explicit framing for nara at line 974). Declines
       // exactly like nara/asva (masculine a-stem) in every example sentence
-      // that uses it (3.B.3, e.g. "narah. asvam vr.ks.am nayate"). kṣa is
-      // this tranche's own newly-added conjunct (skt-letter-ksa); vṛ is a
-      // new enabling letter (skt-letter-vri, added above) needed only for
-      // this word. aśva (horse) and tiṣṭhati (stand), from the same
-      // passage, still need conjuncts (śva, ṣṭha) this file does not teach
-      // yet and remain future work.
+      // that uses it (3.B.2, e.g. "narah. asvam vr.ks.am nayate", line 987
+      // — the same section, not 3.B.3, whose own content is the lesson's
+      // exercises). kṣa is this tranche's own newly-added conjunct
+      // (skt-letter-ksa); vṛ is a new enabling letter (skt-letter-vri,
+      // added above) needed only for this word. aśva (horse), from the
+      // same passage, was still blocked on an untaught conjunct (śva) as of
+      // this tranche — tranche 7 later adds skt-letter-shva and unblocks it
+      // (see skt-word-ashva). tiṣṭhati (stand) needs a different conjunct
+      // (ṣṭha) this file still doesn't teach, and remains future work.
       text: 'वृक्ष',
       gloss: 'vṛkṣa — tree',
       composedOf: ['skt-letter-vri', 'skt-letter-ksa'],
@@ -646,6 +711,120 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-word-narah', 'skt-word-vadati'],
       sandhiRule:
         "Visarga sandhi (Wikner 11.A.1, rule 1): a final -aḥ becomes -o before a voiced (ghoṣa) consonant. नरः ends in visarga (from nara + -s); वदति begins with व, which is voiced — so नरः + वदति surfaces as नरो वदति, not नरः वदति.",
+    },
+
+    // ================= Noun case + verb pada (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 7): the plan doc's next backlog item
+    // after sandhi/conjunction — the real prerequisite for expert-tier
+    // reading, per that same plan's research (Bhagavad Gītā 2.47, checked
+    // word-by-word, failed entirely on missing case/verb morphology, not
+    // vocabulary). This tranche adds exactly one more case (dvitīyā,
+    // accusative) and one more verb pada (ātmanepada), both fully worked
+    // through Wikner's own tables rather than invented, and ships them in
+    // Wikner's own worked sentence — not an example built for this app.
+    //
+    // Wikner 5.B.1 (lines 1198-1207) gives the "strictly correct" full
+    // declension of नर; its dvitīyā (accusative) row: eka-vacana naram,
+    // dvi-vacana narau, bahu-vacana naran. Only the singular is taught here
+    // — dual/plural are a further, separate extension, not needed by the
+    // one sentence below.
+    {
+      id: 'skt-word-naram',
+      stage: 'words',
+      // Level 3, not 2: this is a case FORM, not new vocabulary — नर itself
+      // is already taught (level 2); what's new here is dvitīyā as a
+      // grammatical category, which is exactly what LEVELS (Curriculum.ts)
+      // names level 3 ("Grammar & Sentences": "noun cases, verb forms") for.
+      level: 3,
+      // नर (already taught, skt-word-nara) + the word-final म् (added
+      // above). Wikner 5.B.1's own table, dvitīyā eka-vacana: "naram".
+      text: 'नरम्',
+      gloss: 'naram — man (accusative singular, direct object)',
+      composedOf: ['skt-letter-na', 'skt-letter-ra', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-vrksam',
+      stage: 'words',
+      // Level 3 — same reasoning as skt-word-naram above: a case form, not
+      // new vocabulary (वृक्ष itself is already taught, level 2).
+      level: 3,
+      // वृक्ष (already taught, skt-word-vrksa) + the same word-final म् —
+      // 3.B.2 states directly that vṛkṣa declines exactly like nara (both
+      // masculine a-stem), so its accusative singular is formed the
+      // identical way.
+      text: 'वृक्षम्',
+      gloss: 'vṛkṣam — tree (accusative singular, here: destination)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-ashva',
+      stage: 'words',
+      level: 2,
+      // Wikner 3.B.2, line 979 — the same sentence already cited for
+      // vṛkṣa's own bare-stem entry: "Other nouns that take this form of
+      // declension are aśva 'horse', and vṛkṣa 'tree'." Named as blocked on
+      // the śva conjunct by every tranche since (tranche 4's own comment on
+      // skt-word-vrksa); unblocked here by skt-letter-shva above.
+      text: 'अश्व',
+      gloss: 'aśva — horse',
+      composedOf: ['skt-letter-a', 'skt-letter-shva'],
+    },
+    {
+      id: 'skt-word-ashvam',
+      stage: 'words',
+      // Level 3 — a case form (dvitīyā), unlike bare skt-word-ashva just
+      // above (level 2, plain vocabulary): same reasoning as
+      // skt-word-naram/skt-word-vrksam.
+      level: 3,
+      // अश्व + the same word-final म् — declines like nara/vṛkṣa (3.B.2
+      // names all three together as one declension class).
+      text: 'अश्वम्',
+      gloss: 'aśvam — horse (accusative singular, direct object)',
+      composedOf: ['skt-letter-a', 'skt-letter-shva', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-nayate',
+      stage: 'words',
+      // Level 3, not 2: a verb FORM (ātmanepada pada), the other half of
+      // "noun cases, verb forms" LEVELS names for level 3 — not new
+      // vocabulary the way skt-word-vadati's own level-2 placement was
+      // (vadati was this file's very first verb, taught before the
+      // parasmaipada/ātmanepada distinction existed to teach against).
+      level: 3,
+      // Wikner 3.B.1 (lines 928-955): the ātmanepada personal endings,
+      // introduced specifically because √nī ("lead") is conjugated in this
+      // pada, not parasmaipada — "in the case of dhātu nī for example, use
+      // the ātmanepada endings." The paradigm table (line 944) gives
+      // prathama-puruṣa eka-vacana as "nayate", exactly the form 3.B.2's
+      // own worked sentence below uses. skt-word-vadati (already taught)
+      // is parasmaipada — this is this file's first ātmanepada verb, a
+      // different personal-ending set for the same "3rd person singular
+      // present" meaning, not a variant spelling of the same word.
+      text: 'नयते',
+      gloss: 'nayate — leads (he/she/it, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ya', 'skt-letter-te'],
+    },
+    {
+      id: 'skt-sentence-narah-ashvam-vrksam-nayate',
+      stage: 'sentences',
+      level: 3,
+      // Wikner 3.B.2, line 987 — quoted verbatim, not assembled from
+      // separately-sourced words: "narah. asvam v.rks.am nayate / the man
+      // leads the horse to the tree." That same passage (line 984-986)
+      // explains why there are two accusatives: "there are some verbs
+      // (such as nī) which have both a direct object and a destination, in
+      // which case both are expressed in dvitīyā" — अश्वम् is the direct
+      // object, वृक्षम् the destination, both dvitīyā for that reason, not
+      // two nouns doing the same job.
+      //
+      // Each word here is independently taught above in its own citation
+      // form (pausa) — no sandhiRule: this is the four words' independent
+      // forms, the same relationship skt-sentence-narah-vadati has to its
+      // own sandhi'd counterpart, not yet carried through for this longer
+      // sentence. composedOf is four WORDS, joined with a single space.
+      text: 'नरः अश्वम् वृक्षम् नयते',
+      gloss: 'naraḥ aśvam vṛkṣam nayate — the man leads the horse to the tree',
+      composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-vrksam', 'skt-word-nayate'],
     },
   ],
 };
