@@ -154,8 +154,17 @@ found: Sanskrit's तिष्ठति ("stands") and तिष्ठामि 
 unblocking the ष्ठ conjunct every tranche since 4 named as missing; and
 Tamil's first tense beyond present, past (செய்தேன்/செய்தான்), from a new
 second source, M.S. Andronov's *A Grammar of Modern and Classical Tamil*
-(catalogued as `tam-andronov-grammar`). Sanskrit: 101 lessons total.
-Tamil: 244. The remaining gap is content, not
+(catalogued as `tam-andronov-grammar`). Tranche 13 added Sanskrit's three
+isolated pronoun/particle glossary words (अहम्/नौ/अस्तु — Wikner has no
+pronoun or mood lesson to draw a real one from) and Tamil's first
+negation (செய்யாதே, "don't do!"). Re-tested against both benchmark verses
+after: genuinely closer (अस्तु is a verbatim match in BG 2.47) but not
+close (11 of 12 words in that verse, and all 7 in Thirukkural 1, are
+still unreachable) — see the plan doc's own tranche-13 checkpoint for why
+continuing to chase these two specific verses is now a real multi-tranche
+commitment, not a "one more slice" one, and needs a scoping decision.
+Sanskrit: 107 lessons total.
+Tamil: 245. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's

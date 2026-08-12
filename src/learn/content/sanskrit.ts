@@ -23,7 +23,10 @@
  * lines 744-756) via the ṣṭha conjunct, adds a parasmaipada 1st-person
  * form (तिष्ठामि), and ships अश्वः तिष्ठति — the other half of the
  * sentence tranche 6/7 already quoted (Wikner 3.B.3, exercise 4) but
- * couldn't teach in full until now. See
+ * couldn't teach in full until now. Tranche 13 adds three isolated
+ * personal-pronoun/particle glossary words — अहम् ("I"), नौ ("of us
+ * two"), अस्तु ("let it be") — since Wikner has no pronoun declension
+ * table or imperative-mood lesson to draw a real one from. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -642,6 +645,39 @@ export const sanskritManifest: Manifest = {
       gloss: 'mi',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-nau',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ौ sign already proven on ब (skt-letter-bau, tranche 2)
+      // — the same sign, a different consonant, needed only because
+      // skt-word-nau below needs it.
+      text: 'नौ',
+      gloss: 'nau',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-sa-halanta',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.1, same category as skt-letter-ma-halanta: a
+      // word-final dead consonant, needed only because skt-word-astu
+      // below needs it.
+      text: 'स्',
+      gloss: 's — word-final, no vowel',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-tu',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ु sign already proven on ब (skt-letter-bu, tranche 2)
+      // — the same sign, a different consonant, needed only because
+      // skt-word-astu below needs it.
+      text: 'तु',
+      gloss: 'tu',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1090,6 +1126,63 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वः तिष्ठति',
       gloss: 'aśvaḥ tiṣṭhati — the horse stands',
       composedOf: ['skt-word-ashvah', 'skt-word-tishthati'],
+    },
+
+    // ================= Pronoun glossary words (level 2) =================
+    // Extension, 2026-08-12 (tranche 13): per the tranche-12 sourcing
+    // research, Wikner has no personal-pronoun declension table anywhere
+    // (the "Declension Paradigms" appendix, lines 1932-1967, tables only
+    // nouns) and no imperative-mood conjugation (the course explicitly
+    // limits itself to present indicative, lines 763-766). What it DOES
+    // have are three isolated glossary-style word-notes — each Wikner's
+    // own analysis of one word inside a real quoted verse, not a lesson.
+    // Operator decision: ship these three as bare vocabulary rather than
+    // wait for a lesson that doesn't exist in this source, being explicit
+    // in each one's own comment that this is what it is.
+    {
+      id: 'skt-word-aham',
+      stage: 'words',
+      level: 2,
+      // Wikner's back-matter Bhagavad Gītā study exercise (§15.8), line
+      // 3875: "Aham | prathama eka-vacana of personal pronoun 'I'" —
+      // nominative singular. अ (already taught) + ह (already taught,
+      // skt-letter-ha) + म् (already taught, skt-letter-ma-halanta).
+      text: 'अहम्',
+      gloss: 'aham — I (nominative singular personal pronoun)',
+      composedOf: ['skt-letter-a', 'skt-letter-ha', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-nau',
+      stage: 'words',
+      level: 2,
+      // Wikner's front-matter Invocation analysis, line 207: "nau |
+      // genitive dual of personal pronoun 'I', giving the meaning 'of us
+      // both (student and teacher)', or simply 'our'." Dual, not
+      // singular — "we two", the traditional teacher-student pair the
+      // Invocation itself addresses. composedOf is the one letter this
+      // word IS (Curriculum.ts's words JOINER is '', so a single-letter
+      // composedOf reconstructs exactly).
+      text: 'नौ',
+      gloss: 'nau — of us two, our (genitive dual personal pronoun)',
+      composedOf: ['skt-letter-nau'],
+    },
+    {
+      id: 'skt-word-astu',
+      stage: 'words',
+      level: 2,
+      // Wikner's front-matter Invocation analysis, line 226: "Astu | rst
+      // [first] person singular imperative of as (to be), i.e. 'let it
+      // be', 'may it be', or simply 'be!'" Quoted faithfully, but flagged:
+      // standard Sanskrit grammar gives अस्तु as 3rd person singular
+      // imperative (parasmaipada) of अस्, not 1st — "let it be"/"may it
+      // be" is a 3rd-person-subject meaning ("[it] be"), not "[I] be".
+      // Wikner's own label here looks like an error in his text, not a
+      // different tradition; glossed below per the linguistically correct
+      // analysis, not per his mislabel, so a learner isn't taught the
+      // error even though the word itself and its meaning are exactly his.
+      text: 'अस्तु',
+      gloss: 'astu — let it be, may it be, be! (3rd person singular imperative of √as, "to be")',
+      composedOf: ['skt-letter-a', 'skt-letter-sa-halanta', 'skt-letter-tu'],
     },
   ],
 };
