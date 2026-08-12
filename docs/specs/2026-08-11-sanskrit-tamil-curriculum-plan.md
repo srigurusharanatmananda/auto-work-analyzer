@@ -516,23 +516,90 @@ tightened to say so explicitly, not a data defect).
 
 Sanskrit: 94 → 101 lessons. Tamil: 240 → 244 lessons.
 
+**Operator decisions after tranche 12**: (1) ship Sanskrit's three isolated
+glossary words as bare vocabulary rather than wait for a lesson Wikner
+doesn't have; (2) keep both languages moving together rather than doing
+Tamil negation alone.
+
+**Fourteenth pass — tranche 13**: acts on both.
+
+- **Sanskrit — three pronoun/particle glossary words**: अहम् ("I",
+  nominative singular — Wikner's back-matter Bhagavad Gītā study exercise,
+  §15.8, line 3875), नौ ("of us two", genitive dual — Wikner's front-matter
+  Invocation analysis, line 207), and अस्तु ("let it be" — same Invocation
+  analysis, line 226). Each is Wikner's own word-by-word grammatical note
+  on a real quoted verse, not a lesson — shipped as such, explicitly
+  labeled in their own comments. One genuine correction made along the
+  way: Wikner's text glosses अस्तु as "first person singular imperative,"
+  but standard Sanskrit grammar is unambiguous that अस्तु is 3rd person
+  (the loṭ-lakāra paradigm for अस् is असानि/एधि/**अस्तु** — 1st/2nd/3rd).
+  Quoted faithfully in the comment for an honest sourcing trail; glossed
+  correctly for the learner, not per the mislabel. Needed two new atomic
+  letters: नौ (reusing the ौ sign already proven on ब), and स्तु (स + त, an
+  ordinary word-internal conjunct — स् sits mid-word in अस्तु, not
+  word-final, so this is the same category as श्व/स्य/ष्ठ, not a plain
+  halanta — combined with the ु sign already proven on ब).
+- **Tamil — first negation**: செய்யாதே ("don't do!", literary negative
+  imperative singular), Andronov §229. Negation turned out messier than
+  past tense — separate literary/colloquial registers and separate
+  indicative/imperative constructions, and no clean worked example for
+  செய் in the negative *indicative* specifically (its own worked examples
+  all use other verbs) — but the negative *imperative* gives one directly:
+  "ceytal 'to do' - ceyyaatee 'don't do'." Needed zero new letters.
+
+One verifier per language; both clean (one Sanskrit finding was actually a
+confirmation — independently re-derived that अस्तु really is 3rd person
+and the file's override of Wikner's own label is the correct call, not an
+overreach; one Tamil finding tightened a comment's morpheme boundaries —
+தே's own த is the negative suffix's tail, not part of the imperative
+morpheme -ee, though the grapheme-level composedOf was already exactly
+right).
+
+Sanskrit: 101 → 106 lessons. Tamil: 244 → 245 lessons.
+
+**Checkpoint, after tranche 13**: re-tested against both benchmarks — the
+last checkpoint was after tranche 10, and three tranches (11-13) had
+shipped since without re-checking, exactly the drift this discipline
+exists to catch.
+
+- **BG 2.47**: one word closer. अस्तु (tranche 13) is a verbatim match for
+  the verse's own अस्तु. Nothing else is: कर्मणि/फलेषु/अकर्मणि (locative,
+  no case this app teaches reaches yet), ते (genitive of "you" — this app
+  has अहम्/नौ, first person, but no second-person pronoun at all), एव/मा/
+  कदाचन (three different indeclinables this app doesn't teach), मा भूः
+  (a prohibitive construction, not just a word — this app has no mood
+  besides indicative/one imperative), कर्मफलहेतुः (a compound). Genuinely
+  closer, not closer-to-done: still 11 of 12 words away.
+- **Thirukkural 1**: unchanged, 0 of 7 words. Nothing shipped since the
+  tranche-10 checkpoint touches this verse's own vocabulary
+  (அகர/முதல/எழுத்து/ஆதி/பகவன்/முதற்றே/உலகு) or its verbal-noun-plus-clitic
+  construction.
+
+Neither verse is close to reachable. Continuing to chase these two
+specific verses one word at a time has a real cost the plan should name
+plainly: at this rate, closing BG 2.47 alone means finding and citing a
+second-person pronoun, at least one more particle, a full compound-
+formation rule, and a real prohibitive-mood construction — each its own
+research-and-source problem the way tranches 12-13 already were. That may
+still be the right path, but it is a multi-tranche commitment, not a
+"one more slice" one, and worth naming as such rather than discovering it
+tranche by tranche.
+
 ## What's next, in order
 
-1. **Sanskrit pronouns/mood**: since Wikner has none to teach from cleanly,
-   either (a) accept thinner sourcing and add the three isolated glossary
-   words already found (अहम्, नौ, अस्तु) as bare vocabulary, being explicit
-   in their own comments that they're word-notes, not a lesson; or (b) find
-   a second Sanskrit source the way tranche 12 did for Tamil, if a
-   real, citable one exists. Needs a decision before more Sanskrit content
-   ships in this direction.
-2. **Tamil negation**: not yet researched — Andronov's grammar likely
-   covers it (his own negative-form section was seen in passing while
-   researching past tense); worth a dedicated read before the next Tamil
-   tranche.
-3. **Re-test against Bhagavad Gītā 2.47 / Thirukkural 1** (or freshly-chosen
-   short verses) after each further slice, same discipline as the
-   tranche-10 checkpoint.
-4. **Expert-tier reading** for both languages, once a real short verse is
+1. **A scoping decision**: keep chasing BG 2.47/Thirukkural 1 specifically
+   (accepting the multi-tranche cost above), or treat them as *calibration*
+   verses that did their job — they found real gaps (cases, tenses,
+   persons, now pronouns/particles/mood) — and let the NEXT few tranches
+   target grammar completeness for its own sake (a second-person pronoun,
+   more particles, Tamil future tense) rather than continuing to gate every
+   tranche on whether it moves these two specific verses. Either is
+   defensible; this plan shouldn't decide it unilaterally.
+2. **Whichever that resolves to**: Sanskrit second-person pronoun, more
+   particles, mood coverage; Tamil future tense, more negation forms,
+   dative/genitive for more nouns — scoped from real primer/source content
+   the way every tranche so far has been, not assumed.
+3. **Expert-tier reading** for both languages, once a real short verse is
    fully decomposable into taught vocabulary and taught grammar — at that
    point, source and read the actual verse in full (public-domain, per this
    plan's own quality bar) before any of it becomes lesson content.

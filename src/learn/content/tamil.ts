@@ -40,6 +40,9 @@
  * first tranche in either language to use a source beyond the original
  * two. See the tranche-12 block's own comment below, and this file's
  * `resources.ts` entry `tam-andronov-grammar`, for the full citation.
+ * Tranche 13 adds this file's first negation, செய்யாதே ("don't do!",
+ * literary negative imperative singular, Andronov §229) — zero new
+ * letters, same source.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1165,6 +1168,40 @@ export const tamilManifest: Manifest = {
       text: 'அவன் செய்தான்',
       gloss: 'avan seytāṉ — he did',
       composedOf: ['tam-word-avan', 'tam-word-seythaan'],
+    },
+
+    // ================= Negative imperative (level 3) =================
+    // Extension, 2026-08-12 (tranche 13): Tamil negation turned out to be
+    // genuinely more complex than past tense was — Andronov describes
+    // separate literary/colloquial registers and separate
+    // indicative/imperative constructions, and the clearest, most
+    // directly-citable worked example for the already-taught செய் turned
+    // out to be the negative imperative, not the negative indicative
+    // (whose own worked examples all use different verbs).
+    //
+    // Andronov §229 (archive.org text line ~15340-15344): "In Literary
+    // Tamil the negative imperative singular is denoted by the suffixes
+    // -ee... joined to the negative suffix -aat-; e.g., ceytal 'to do' -
+    // ceyyaatee 'don't do'." Morpheme boundaries don't line up with
+    // syllable/grapheme boundaries here (Tamil orthography doesn't mark
+    // them): செய் (already taught) + ய (the glide increment vowel-final
+    // stems take before a vowel-initial suffix, per Andronov §223,
+    // doubling the stem's own final ய்) + ஆ (the negative suffix itself)
+    // + த (the negative suffix's own tail consonant, -aat-, not part of
+    // the imperative morpheme) + ே (the actual imperative morpheme, -ee).
+    // தே (already an atomic letter, reused from this file's own
+    // past-tense work) happens to span that last boundary in one grapheme.
+    {
+      id: 'tam-word-ceyyaathee',
+      stage: 'words',
+      level: 3,
+      // யா (already an atomic letter, ய + the ā vowel sign, reused from
+      // யார்/யாருக்கு) plays the glide-plus-negative-suffix role in one
+      // step — plain concatenation of already-taught letters reaches the
+      // real spelling directly, no sandhiRule needed.
+      text: 'செய்யாதே',
+      gloss: 'ceyyātē — don\'t do! (literary negative imperative, singular)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tee'],
     },
   ],
 };
