@@ -119,12 +119,14 @@ What's still thin overall is scoped in
 whose tranches so far: the complete alphabets for both languages (Sanskrit
 62 letters, Tamil 37 letters total — 33 live forms plus 4 dead/pulli forms
 — up from 9 and 6+2 respectively), a first batch of Sanskrit vowel signs
-(Wikner 6.A.1) plus the full vowel-sign table on Tamil's க, the two special
-Sanskrit conjuncts kṣa/jña (Wikner 7.A.3-7.A.5), and two
-new Sanskrit words — one dropped after two adversarial verifiers flagged it,
-one added later (vṛkṣa, "tree", the specific word kṣa unblocks) — see the
-plan doc's own account of both. Sanskrit: 75 lessons total. Tamil: 55. Not an
-engine limitation —
+(Wikner 6.A.1), the two special Sanskrit conjuncts kṣa/jña
+(Wikner 7.A.3-7.A.5), two new Sanskrit words — one dropped after two
+adversarial verifiers flagged it, one added later (vṛkṣa, "tree", the
+specific word kṣa unblocks) — and the full Tamil vowel-sign table (ABC of
+Tamil, Lessons Three-Fifteen) on 16 of 18 consonants (ங is excluded, and only
+9 of the 16 get the rare au sign, both per the primer's own explicit account
+— see the plan doc's tranche-5 entry). Sanskrit: 75 lessons total. Tamil:
+222. Not an engine limitation —
 `Curriculum.ts` already supports arbitrarily more content in all three
 stages — a content one, and per the design doc's own risk note, needs the
 one human quality gate this module can't automate: a beginner cannot detect
@@ -171,14 +173,17 @@ the decision is cheap to reverse on evidence.
 
 **Phase 7 content depth, per the new curriculum plan.** kṣa/jña and Tamil's
 க vowel-sign table shipped in tranche 3; vṛkṣa (the word kṣa specifically
-unblocks) shipped in tranche 4. aśva's śva and tiṣṭhati's ṣṭha are different
-conjuncts, still not taught, so those two stay blocked. Next: the remaining
-17 consonants' Tamil vowel-sign forms, as real words call for them; then
-sandhi (Sanskrit) / conjunction rules (Tamil) — see
+unblocks) shipped in tranche 4; the other 16 consonants' Tamil vowel-sign
+tables shipped in tranche 5. aśva's śva and tiṣṭhati's ṣṭha are different
+Sanskrit conjuncts, still not taught, so those two stay blocked. Next —
+sandhi (Sanskrit) / conjunction rules (Tamil) — is **blocked on a real
+engine decision**, not a content-research gap: see
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
-"What's next, in order". Content work, not an engine change, and needs the
-human quality gate the design doc itself calls for before it ships to the
-one real learner.
+"What's next, in order" for why `validateManifest`'s exact-reconstruction
+check currently makes it impossible to represent a real sandhi-changed
+surface form, and what a human needs to decide before that content can
+ship. Content work otherwise, and needs the human quality gate the design
+doc itself calls for before it ships to the one real learner.
 
 **The `ui/` upgrade still has not been looked at by a human eye**, for the
 whole app, not just `/learn`. It was verified by diffing the class tokens

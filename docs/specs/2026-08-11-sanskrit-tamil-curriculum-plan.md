@@ -257,17 +257,52 @@ Sanskrit: 71 → 73 lessons. Tamil: 44 → 55 lessons.
 
 Sanskrit: 73 → 75 lessons. Tamil: unchanged at 55.
 
+**Sixth pass — tranche 5**, same two-independent-verifier discipline:
+
+- Tamil vowel signs on the other 16 consonants (ABC of Tamil, Lessons
+  Three-Fifteen): 167 new letters — the same 11-sign table already taught
+  on க (tranche 3), completed for every other consonant the primer actually
+  teaches it for. Two things stopped this from being a mechanical
+  17-consonants-×-11-signs=187 fill-in: ங (ṅa) is missing from every one of
+  these tables after Lesson Three, and Lesson Three's own note explains why
+  — "the combination of ங் with other vowels need not be learnt", ங being
+  used only bare or dead in real Tamil — so it is excluded entirely, leaving
+  16 consonants. And Lesson Fifteen's own au-sign table lists only 9 of
+  those 16 (ச/த/ந/ப/ம/ய/ர/ல/வ), with its own explanation: "there are hardly
+  half-a-dozen words with 'ஔ' sound in Tamil... no necessity to study all
+  the consonants with [it]." 16 consonants × 10 signs, plus 9 of them × 1
+  more (au), minus the 2 ā-forms (நா/யா) already taught since 2026-08-10 =
+  167. See `tamil.ts`'s own tranche-5 block comment for the full citation
+  and romanization-normalization method. Both verifiers signed off with no
+  issues.
+
+Sanskrit: unchanged at 75. Tamil: 55 → 222 lessons.
+
 ## What's next, in order
 
-1. **The remaining 17 consonants' Tamil vowel-sign forms** (ABC of Tamil,
-   Lessons Three onward) — கா/கி/etc. above cover க only; the other
-   consonants' sign forms are deferred until a real word calls for one.
-2. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
+1. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
    sentences that read like real text rather than two words placed side by
-   side.
-3. **Expert-tier reading** for both languages, once the above make it
-   possible to verify a real sentence the same rigorous way the existing
-   one was.
+   side. **Blocked on an engine decision, not on content research**: a real
+   sandhi/conjunction example needs its `sentences`-stage `text` to be the
+   phonetically-changed surface form (e.g. Sanskrit external sandhi actually
+   changing a word boundary's sound), but `Curriculum.ts`'s
+   `validateManifest` requires a lesson's `text` to reconstruct *exactly*
+   from its `composedOf` dependencies' own `text`, joined verbatim (see
+   `JOINER`). That check is deliberate — it is what stops a typo or a stale
+   copy-paste from silently drifting `composedOf` out of sync with `text` —
+   but it also means the engine, as it stands, cannot represent the one
+   thing this item needs to teach. Content that only shows sandhi cases
+   where nothing actually changes would misrepresent the rule, not teach
+   it. This needs a human call on how to extend the model (e.g. an explicit
+   override field for a lesson whose surface form legitimately diverges
+   from simple concatenation) before any sandhi content ships — not
+   something to decide unilaterally under "nothing here proposes touching
+   `Curriculum.ts`" from this same plan's opening paragraph.
+2. **Expert-tier reading** for both languages, once (1) is resolved and
+   case morphology is solid enough to verify a real sentence the same
+   rigorous way the existing one was. Also needs real, sourced verse text
+   (public-domain, per this plan's own quality bar) identified and read in
+   full before any of it becomes lesson content — not yet done this pass.
 
 Each step gets the same treatment this one did: read the actual primer
 section (not recalled from training data), cite it per item, run
