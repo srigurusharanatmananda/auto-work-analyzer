@@ -142,8 +142,13 @@ accusative (கண்ணை, பல்லை), both reusing already-proven lette
 Tranche 9 added a third/second case each: Sanskrit's instrumental (नरेण,
 "by/with the man") and Tamil's dative (யாருக்கு, "to whom"). Tranche 10
 added a fourth/third case each: Sanskrit's dative (नराय, "to/for the
-man") and Tamil's genitive (யாருடைய, "whose"). Sanskrit: 91 lessons
-total. Tamil: 237. The remaining gap is content, not
+man") and Tamil's genitive (யாருடைய, "whose"). Re-testing against the
+plan doc's own reading benchmarks after that showed three more cases
+hadn't moved either language closer — real blockers are pronouns, verb
+moods, and particles, not case coverage — so tranche 11 pivoted: a
+particle (इति) and a second verb person (नये) for Sanskrit, a second verb
+person (அவன் செய்கிறான்) for Tamil. Sanskrit: 94 lessons total. Tamil:
+240. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
