@@ -165,8 +165,14 @@ calibration, not a checklist, and target grammar completeness on its own
 merits going forward. Tranche 14 acted on that: Sanskrit's second
 particle (हे, "O!", vocative — the sentence हे नर means "O man!") and
 Tamil's future tense
-(செய்வேன், "I shall do"). Sanskrit: 109 lessons total.
-Tamil: 246. The remaining gap is content, not
+(செய்வேன், "I shall do"). Tranche 15 added Sanskrit's first participle
+and adjective (अधीतम्, "studied"; तेजस्वि, "brilliant" — both from
+Wikner's Invocation verse, the same passage that sourced अहम्/नौ/अस्तु;
+a second, thorough re-check confirmed Wikner has no 2nd-person pronoun
+anywhere in the text, so that gap stays open) and Tamil's second
+grammatical person, present tense (நீ, "you"; செய்கிறாய், "you do" —
+Lesson Seventeen). Sanskrit: 113 lessons total.
+Tamil: 249. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's

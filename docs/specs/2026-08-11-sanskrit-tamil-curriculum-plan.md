@@ -625,14 +625,51 @@ above — a real finding, addressed before merge, not after).
 
 Sanskrit: 106 → 109 lessons. Tamil: 245 → 246 lessons.
 
+**Sixteenth pass — tranche 15**: continues grammar completeness on its
+own merits, drafted via a single `Workflow` sweep of 5 parallel research
+agents (in response to an explicit "finish this today" instruction) that
+covered both languages' remaining grammar gaps at once.
+
+- **Sanskrit — a participle and an adjective**: अधीतम् ("studied,
+  learned" — past passive participle, neuter nominative singular) and
+  तेजस्वि ("brilliant, splendid, bright, energetic"), both drawn from
+  Wikner's own Invocation verse analysis (lines 190-233), the same
+  passage that already sourced अहम्/नौ/अस्तु in tranche 13. Two new
+  atomic letters: धी (reusing the ी sign already proven on other
+  consonants) and स्वि (an ordinary conjunct स्व + ि sign — no new
+  mechanism). The same sweep re-confirmed, via a second and more
+  thorough grep-based check of the full text, that Wikner's *A Practical
+  Sanskrit Introductory* has no 2nd-person pronoun (tvam/te/tubhyam/
+  yuṣmabhyam/yuṣmad/yuṣman/yuyam/tvayā/tava) anywhere — 2nd person is
+  only ever expressed through verb endings there. That gap stays open;
+  closing it needs a second source, same as the 12th-tranche's-era
+  imperative-mood gap did before Andronov.
+- **Tamil — the second grammatical person, present tense**: நீ ("you",
+  singular) and செய்கிறாய் ("you do"), both from ABC of Tamil Lesson
+  Seventeen's own line 1432. நீ itself is real taught vocabulary since
+  Lesson Five (lines 538/543/549/554/560-562) — not a repurposed
+  vowel-sign letter reused for a new job. Zero new letters: செய்கிறாய்
+  reuses ce/pulli-ya/ki/rraa/pulli-ya, all already taught (pulli-ya
+  appears twice — once for செய்'s own dead-ய், once for the -ாய் ending's
+  — matching the multi-occurrence precedent already set by கண்ணும்'s
+  doubled pulli-nna).
+
+One verifier per language; both clean.
+
+Sanskrit: 109 → 113 lessons. Tamil: 246 → 249 lessons.
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
-   Sanskrit second-person pronoun (still not found in Wikner — may need a
-   second source, or may simply not be available this way), more particles
-   and mood coverage; Tamil more negation forms (indicative, plural,
-   colloquial), dative/genitive for more nouns, more tenses/persons. Each
-   still needs its own citation the way every tranche so far has had.
+   Sanskrit second-person pronoun (confirmed absent from Wikner by two
+   separate full-text checks now — needs a second source, or may simply
+   not be available this way), more particles and mood coverage; Tamil
+   negative indicative (செய்யாது, already sourced from Andronov line
+   21686 for tranche 16) and a dative extension (கண்ணுக்கு/பல்லுக்கு,
+   already sourced from ABC of Tamil lines 1961-1973), plus more
+   negation forms (plural, colloquial), genitive for more nouns, more
+   tenses/persons. Each still needs its own citation the way every
+   tranche so far has had.
 2. **Expert-tier reading** for both languages, once a real short verse —
    freshly chosen for what it needs, not assumed to be one of the two
    calibration verses above — is fully decomposable into taught vocabulary
