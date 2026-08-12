@@ -26,7 +26,11 @@
  * couldn't teach in full until now. Tranche 13 adds three isolated
  * personal-pronoun/particle glossary words — अहम् ("I"), नौ ("of us
  * two"), अस्तु ("let it be") — since Wikner has no pronoun declension
- * table or imperative-mood lesson to draw a real one from. See
+ * table or imperative-mood lesson to draw a real one from. Tranche 14
+ * adds a second particle, हे (vocative, "O!" — Wikner 9.B.1, already this
+ * file's own citation for इति's classification) and the sentence हे नर
+ * ("O man!" — Wikner 5.B.1's own declension table for नर, already this
+ * file's own citation for every case built on नर since tranche 7). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -673,6 +677,18 @@ export const sanskritManifest: Manifest = {
       gloss: 'stu',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-he',
+      stage: 'letters',
+      level: 1,
+      // Reuses the े sign already proven on ब/ण/त/र/य (skt-letter-be,
+      // skt-letter-nne, skt-letter-te, skt-letter-re, skt-letter-ye) —
+      // the same sign, a different consonant, needed only because
+      // skt-word-he below needs it.
+      text: 'हे',
+      gloss: 'he',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1192,6 +1208,44 @@ export const sanskritManifest: Manifest = {
       text: 'अस्तु',
       gloss: 'astu — let it be, may it be, be! (3rd person singular imperative of √as, "to be")',
       composedOf: ['skt-letter-a', 'skt-letter-stu'],
+    },
+
+    // ================= A second particle (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 14): per the tranche-13 operator
+    // decision — treat the benchmark verses as calibration, not a
+    // checklist, and target grammar completeness on its own merits —
+    // this file's second indeclinable particle, हे (vocative). Wikner
+    // 9.B.1, line 2263 (already this file's citation for इति's own avyaya
+    // classification): "words of this class are ca (and) and he (vocative
+    // particle)." Not a new source or a new section — both this word and
+    // the sentence below come from tables this file has already read and
+    // cited (5.B.1 for cases, 9.B.1 for इति), just not fully mined yet.
+    {
+      id: 'skt-word-he',
+      stage: 'words',
+      level: 2,
+      text: 'हे',
+      gloss: 'he — O! (vocative particle, addresses someone directly)',
+      composedOf: ['skt-letter-he'],
+    },
+    {
+      id: 'skt-sentence-he-nara',
+      stage: 'sentences',
+      // Level 2, matching skt-sentence-narah-vadati/skt-sentence-ashvah-
+      // tishthati's own precedent: two level-2 words placed side by side,
+      // no sandhi, no grammar novelty beyond what they already carry.
+      level: 2,
+      // Wikner 5.B.1, line 1201 (already this file's own citation for
+      // तिष्ठति as नर's own dvitīyā row, and for every case built on नर
+      // since tranche 7) — the sambodhana (vocative) prathama row of नर's
+      // own "strictly correct" declension table: "sambodhana prathama he
+      // nara he narau he narah." Only the singular is quoted here, same
+      // scoping as every other row already taken from this table. The
+      // vocative particle's own comment there: "traditionally sounded in
+      // the paradigm[,] it is optional in a sentence."
+      text: 'हे नर',
+      gloss: 'he nara — O man!',
+      composedOf: ['skt-word-he', 'skt-word-nara'],
     },
   ],
 };

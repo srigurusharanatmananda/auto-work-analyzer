@@ -160,11 +160,12 @@ pronoun or mood lesson to draw a real one from) and Tamil's first
 negation (செய்யாதே, "don't do!"). Re-tested against both benchmark verses
 after: genuinely closer (अस्तु is a verbatim match in BG 2.47) but not
 close (11 of 12 words in that verse, and all 7 in Thirukkural 1, are
-still unreachable) — see the plan doc's own tranche-13 checkpoint for why
-continuing to chase these two specific verses is now a real multi-tranche
-commitment, not a "one more slice" one, and needs a scoping decision.
-Sanskrit: 106 lessons total.
-Tamil: 245. The remaining gap is content, not
+still unreachable). Operator decision: treat those two verses as
+calibration, not a checklist, and target grammar completeness on its own
+merits going forward. Tranche 14 acted on that: Sanskrit's second
+particle (हे, vocative — "O man!" in हे नर) and Tamil's future tense
+(செய்வேன், "I shall do"). Sanskrit: 109 lessons total.
+Tamil: 246. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
