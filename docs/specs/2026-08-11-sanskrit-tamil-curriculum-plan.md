@@ -685,7 +685,7 @@ Sanskrit: 113 lessons (unchanged). Tamil: 249 → 252 lessons.
 
 **Eighteenth pass — tranche 17**: Sanskrit-only — Tamil's own next
 candidate (pronoun genitives, ABC of Tamil Lesson Twenty-One) needs a
-new alveolar-நு-shaped letter not yet cleanly scoped, so it waits for
+new alveolar-னு-shaped letter not yet cleanly scoped, so it waits for
 its own tranche rather than being rushed in here.
 
 - **Sanskrit — a second particle**: एव ("indeed, verily", an emphatic

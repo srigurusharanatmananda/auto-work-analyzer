@@ -2,10 +2,12 @@
  * Reading resources for the operator to work through outside the curriculum
  * itself — data, not code, the same reasoning as `sanskrit.ts`/`tamil.ts`.
  *
- * Every URL below was actually fetched and confirmed live on 2026-08-10, not
- * assumed — several plausible candidates were rejected during that pass for
- * failing a live check (dead audio links, 404s, a Cloudflare bot wall that
- * blocked verification entirely) rather than included on faith. `howToRead`
+ * Every URL below was actually fetched and confirmed live, not assumed —
+ * most on 2026-08-10, with later additions (e.g. `skt-whitney-grammar`,
+ * added 2026-08-12) fetched and confirmed live on their own tranche's date
+ * instead. Several plausible candidates were rejected during these passes
+ * for failing a live check (dead audio links, 404s, a Cloudflare bot wall
+ * that blocked verification entirely) rather than included on faith. `howToRead`
  * is deliberately concrete (what to read/skip/skim, in what order) rather
  * than generic, and `license` records what each source states about itself,
  * not a legal opinion.
