@@ -473,6 +473,20 @@ attribution and the CC BY-SA 4.0 license.`,
     inAppNotes:
       "A full Tamil chart shows more than the 30 core letters, and the extras are where Tamil handles words it borrowed. Classical Tamil's sound inventory is small and self-consistent — 12 vowels, 18 consonants, no written voicing contrast, no aspirates, no sibilant beyond what ச can supply — which works for native vocabulary and not at all for Sanskrit, Persian, Portuguese or English loanwords. The fix was borrowing letters from Grantha, the script Tamil speakers already used for Sanskrit: ஜ ja, ஷ sha, ஸ sa, ஹ ha, sometimes ஶ sha, plus two composites printed as units of their own, க்ஷ ksha and ஸ்ரீ shri. These are taught in Tamil schools and are standard, but they never appear in a native Tamil word — meeting one is itself information: the word was borrowed. The other extra is ஃ, aytam, which Tamil grammar treats as neither vowel nor consonant. Historically it wrote an archaic Proto-Dravidian sound between a short vowel and a hard consonant (அஃது, எஃகு); in modern use it has been repurposed as a diacritic for foreign sounds, similar to a nuqta in Devanagari — ஃப் for [f], ஃஜ for [z], ஃக for [x] — turning up in transliterated names and religious texts. One general warning: charts that gloss pronunciation with an English keyword (\"as in cut\") are rough approximations, not a specification — they can't show the retroflex positions of ட ண ள ழ, the two-to-one length ratio between short and long vowels, or that க changes sound depending on where it sits in a word. Use a chart for the shapes; get the sounds from audio.",
   },
+  {
+    id: 'tam-andronov-grammar',
+    language: 'tamil',
+    title: 'A Grammar of Modern and Classical Tamil',
+    author: 'M.S. Andronov',
+    sourceUrl: 'https://archive.org/details/in.ernet.dli.2015.201870',
+    type: 'book',
+    howToRead:
+      "Adopted as this app's second Tamil source (tranche 12) specifically because ABC of Tamil, Book One ends at Lesson Twenty-One (genitive case) and never reaches past or future tense, negation, or imperative mood — confirmed by reading its remaining pages, not assumed. This is a reference grammar, not a graded course: don't read front-to-back. The verb chapter (roughly pages 138-171 of the scan) is the relevant section for this app's own past-tense content — its personal-suffix table (shared across tenses; only the tense marker before it changes) is the fastest way to see why செய்கிறேன்/செய்தேன் share the same -ேன் ending. Past tense specifically is covered around pages 146-148, with the tense marker described as an underlying -த்- that surfaces as -த்த்-/-ன்ற்-/-இன்- depending on the verb's stem class — a genuine Tamil verb-class split, not a simplification this app is skipping.",
+    license:
+      'Unresolved / likely still under copyright (1989). Digital Library of India scan hosted on archive.org — free-to-read access, not evidence of an open license, the same caveat this app\'s ABC of Tamil entry already states for the same reasoning. Do not treat as safe to redistribute or quote at length.',
+    inAppNotes:
+      "Tamil marks tense with an inserted \"tense marker\" between the verb root and a personal-suffix set that stays largely the same across tenses — the same -ேன் that means \"I\" in செய்கிறேன் (\"I do\") also means \"I\" in செய்தேன் (\"I did\"); only the piece before it (-கிற்- for present, -த்- for past) changes. This is a cleaner, more regular system than English's own mix of suffixes and irregular stem changes (walk/walked vs. go/went) — Tamil's past-tense marker does have its own irregularity (which allomorph a given verb takes depends on its stem's final sound), but the personal-suffix half of the system, once learned for one tense, is already known for the rest.",
+  },
 ];
 
 export function resourcesFor(language: ResourceLanguage): readonly Resource[] {

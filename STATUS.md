@@ -147,8 +147,15 @@ plan doc's own reading benchmarks after that showed three more cases
 hadn't moved either language closer — real blockers are pronouns, verb
 moods, and particles, not case coverage — so tranche 11 pivoted: a
 particle (इति) and a second verb person (नये) for Sanskrit, a second verb
-person (அவன் செய்கிறான்) for Tamil. Sanskrit: 94 lessons total. Tamil:
-240. The remaining gap is content, not
+person (அவன் செய்கிறான்) for Tamil. Tranche 12 researched sourcing first
+(confirmed Wikner has no pronoun table or imperative mood; confirmed ABC
+of Tamil is exhausted at Lesson 21), then shipped what that research
+found: Sanskrit's तिष्ठति ("stands") and तिष्ठामि ("I stand"), finally
+unblocking the ष्ठ conjunct every tranche since 4 named as missing; and
+Tamil's first tense beyond present, past (செய்தேன்/செய்தான்), from a new
+second source, M.S. Andronov's *A Grammar of Modern and Classical Tamil*
+(catalogued as `tam-andronov-grammar`). Sanskrit: 101 lessons total.
+Tamil: 244. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's

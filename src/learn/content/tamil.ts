@@ -32,7 +32,14 @@
  * actual target verse after tranches 8-10 showed no real progress) toward
  * this file's first person other than 1st: அவன் ("he") and செய்கிறான்
  * ("he does", ABC of Tamil Lesson Seventeen's own person table) — zero new
- * letters yet again.
+ * letters yet again. Tranche 12 adds this file's first tense other than
+ * present: past (செய்தேன்/செய்தான்), sourced from M.S. Andronov's *A
+ * Grammar of Modern and Classical Tamil* (1989) — ABC of Tamil, Book One
+ * genuinely ends at Lesson Twenty-One and never reaches past/future tense
+ * (confirmed by reading its remaining pages, not assumed), so this is the
+ * first tranche in either language to use a source beyond the original
+ * two. See the tranche-12 block's own comment below, and this file's
+ * `resources.ts` entry `tam-andronov-grammar`, for the full citation.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1090,6 +1097,74 @@ export const tamilManifest: Manifest = {
       text: 'அவன் செய்கிறான்',
       gloss: 'avan seykiṟāṉ — he does',
       composedOf: ['tam-word-avan', 'tam-word-seykirraan'],
+    },
+
+    // ================= Past tense (level 3) =================
+    // Extension, 2026-08-12 (tranche 12): ABC of Tamil, Book One (this
+    // file's only source through tranche 11) ends at Lesson Twenty-One
+    // (genitive case) and never reaches past or future tense — confirmed
+    // by reading the primer's own remaining pages, not assumed. This
+    // tranche's past-tense content is sourced instead from M.S. Andronov,
+    // *A Grammar of Modern and Classical Tamil* (1989) — see this file's
+    // header and `resources.ts`'s new `tam-andronov-grammar` entry for the
+    // citation and why it's the right next source (checked, not just
+    // convenient: Wikibooks Tamil's own "Grammar" and "Advanced topics"
+    // pages are unwritten redlinks, already noted in this app's own
+    // resources catalogue).
+    //
+    // Andronov, p.147 (archive.org text line ~12013-12023): "In the past
+    // tense the suffix -een is used in forms derived by the suffixes
+    // [-t(t)-/-nt-/-in-, per the OCR-legible parallel passage for -aan
+    // below, line ~12723 — the extraction is garbled at this exact spot,
+    // legible only as "-i-"]... e.g., ceytal 'to do' - ceyteen 'I did'."
+    // செய் (already taught, tam-word-sey) + the past-tense -த- marker +
+    // the same -ேன் (1st person singular) personal suffix already
+    // established for present tense (செய்கிறேன்) — Tamil's personal
+    // endings are shared across tenses; only the tense marker before them
+    // changes.
+    {
+      id: 'tam-word-seytheen',
+      stage: 'words',
+      level: 3,
+      // தே (already an atomic letter, த + the ē vowel sign, tranche 5)
+      // plays the same role it always does — plain concatenation of
+      // already-taught letters reaches the real spelling directly, no
+      // sandhiRule needed.
+      text: 'செய்தேன்',
+      gloss: 'seytēṉ — I did (1st person singular, past)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-tee', 'tam-pulli-alveolar-na'],
+    },
+    // Andronov, p.148 (archive.org text line ~12723-12731): "In the past
+    // tense the suffix -aan is used in forms derived by the tense
+    // suffixes -t(t)-, -nt-, -i-... e.g., ceytal 'to do' - ceytaan 'he
+    // did'." Same -த- marker as above, this file's already-established
+    // 3rd-person-singular-masculine suffix -ஆன் (already used for
+    // செய்கிறான்).
+    {
+      id: 'tam-word-seythaan',
+      stage: 'words',
+      level: 3,
+      text: 'செய்தான்',
+      gloss: 'seytāṉ — he did (3rd person singular masculine, past)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-taa', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-naan-seytheen',
+      stage: 'sentences',
+      level: 3,
+      // The past-tense counterpart to tam-sentence-naan-seykirren.
+      text: 'நான் செய்தேன்',
+      gloss: 'nāṉ seytēṉ — I did',
+      composedOf: ['tam-word-naan', 'tam-word-seytheen'],
+    },
+    {
+      id: 'tam-sentence-avan-seythaan',
+      stage: 'sentences',
+      level: 3,
+      // The past-tense counterpart to tam-sentence-avan-seykirraan.
+      text: 'அவன் செய்தான்',
+      gloss: 'avan seytāṉ — he did',
+      composedOf: ['tam-word-avan', 'tam-word-seythaan'],
     },
   ],
 };
