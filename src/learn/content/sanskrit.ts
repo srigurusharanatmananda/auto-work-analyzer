@@ -12,7 +12,9 @@
  * conjunct named as missing since tranche 4 is taught now), and Wikner's
  * own worked sentence नरः अश्वम् वृक्षम् नयते ("the man leads the horse to
  * the tree", 3.B.2), and — tranche 8 — a second case, ṣaṣṭhī (genitive):
- * नरस्य ("of the man"), Wikner 5.B.1's own declension table. See
+ * नरस्य ("of the man"), and — tranche 9 — a third, tṛtīyā (instrumental):
+ * नरेण ("by/with the man"), both from Wikner 5.B.1's own declension table.
+ * See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
  * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
@@ -556,6 +558,17 @@ export const sanskritManifest: Manifest = {
       gloss: 'sya',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-re',
+      stage: 'letters',
+      level: 1,
+      // Reuses the े sign already proven on ब/ण/त (skt-letter-be,
+      // skt-letter-nne, skt-letter-te) — the same sign, a different
+      // consonant, needed only because skt-word-narena below needs it.
+      text: 'रे',
+      gloss: 're',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -858,6 +871,25 @@ export const sanskritManifest: Manifest = {
       text: 'नरस्य',
       gloss: 'narasya — of the man, the man\'s',
       composedOf: ['skt-letter-na', 'skt-letter-ra', 'skt-letter-sya'],
+    },
+
+    // ================= A third case: tṛtīyā (level 3) =================
+    // Extension, 2026-08-12 (tranche 9): a third case for नर — tṛtīyā
+    // (instrumental), Wikner 5.B.1's own declension table (line 1203,
+    // already cited for tranche 7's/8's dvitīyā/ṣaṣṭhī rows): "tr. tya
+    // naren.a narabhyam naraih." — eka-vacana narena. Only the singular is
+    // taught here, same scoping as the previous two cases.
+    {
+      id: 'skt-word-narena',
+      stage: 'words',
+      // Level 3, same reasoning as narasya/naram above.
+      level: 3,
+      // नर (already taught) + रे (added above) + ण (already taught,
+      // skt-letter-nna, retroflex ṇa — not the dental न this word starts
+      // with).
+      text: 'नरेण',
+      gloss: 'narena — by/with the man (instrumental)',
+      composedOf: ['skt-letter-na', 'skt-letter-re', 'skt-letter-nna'],
     },
   ],
 };

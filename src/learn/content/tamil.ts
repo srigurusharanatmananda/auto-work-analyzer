@@ -24,7 +24,9 @@
  * language's first verb conjugation — present tense, ABC of Tamil Lesson
  * Seventeen — needing zero new letters, every one already taught by an
  * earlier tranche. Tranche 8 adds this language's first case, accusative
- * (ஐ), ABC of Tamil Lesson Nineteen — again zero new letters.
+ * (ஐ), ABC of Tamil Lesson Nineteen — again zero new letters. Tranche 9
+ * adds a second case, dative (கு/க்கு), ABC of Tamil Lesson Twenty —
+ * needing one new letter (a dead க், this file's first).
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -687,6 +689,24 @@ export const tamilManifest: Manifest = {
       gloss: 'y — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
     },
+    {
+      id: 'tam-pulli-ka',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 9): needed because யாருக்கு (tam-word-yaarukku, below)
+      // needs it. ABC of Tamil Lesson Twenty's own dative examples spell
+      // the "kku" suffix exactly this way — a doubled dead-க் followed by
+      // கு (e.g. line 1843-1844: "ò£ó¢+°=...=ò£¼è¢°" — yār + ku = yār + u
+      // + k + ku = yārukku).
+      text: 'க்',
+      // Not "used at the end of a word" — every other pulli letter in this
+      // file uses that phrase, but it isn't accurate here: this one sits
+      // medially in its own first use (யாருக்கு, between ரு and கு), not
+      // word-finally. Described more generally instead of repeating a
+      // claim this specific letter doesn't fit.
+      gloss: 'k — dead consonant (no vowel)',
+      composedOf: [],
+    },
 
     {
       id: 'tam-word-kan',
@@ -967,6 +987,30 @@ export const tamilManifest: Manifest = {
       text: 'பல்லை',
       gloss: 'pallai — tooth (accusative, direct object)',
       composedOf: ['tam-letter-pa', 'tam-pulli-la', 'tam-letter-lai'],
+    },
+
+    // ================= A second case: dative (level 3) =================
+    // Extension, 2026-08-12 (tranche 9): Tamil's second case, dative (the
+    // "fourth case", symbol கு/க்கு), ABC of Tamil Lesson Twenty, lines
+    // 1822-1941.
+    //
+    // Lesson Twenty's own worked example for யார் specifically (line
+    // 1843-1844): "ò£ó¢ +°= ò£ó¢ +à(è¢)+°= ò£¼è¢°= to whom" — yār + ku =
+    // yār + u + k + ku = yārukku. யார் is already taught (tam-word-yaar).
+    // ரு (ra + the u vowel sign) is already an atomic letter, from tranche
+    // 5's ர vowel-sign table — using it directly (rather than decomposing
+    // to the dead ர் + bare உ) is what lets plain concatenation reach the
+    // real spelling: a dead consonant immediately followed by a vowel
+    // always fuses into consonant+vowel-sign (the same fact tranche 6's
+    // sandhiRule comments on நீயும்/நானும் explain), so decomposing to
+    // ர்+உ would need a sandhiRule this way round doesn't.
+    {
+      id: 'tam-word-yaarukku',
+      stage: 'words',
+      level: 3,
+      text: 'யாருக்கு',
+      gloss: 'yārukku — to whom',
+      composedOf: ['tam-letter-yaa', 'tam-letter-ru', 'tam-pulli-ka', 'tam-letter-ku'],
     },
   ],
 };

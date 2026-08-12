@@ -139,7 +139,9 @@ conjugation, present tense (நான் செய்கிறேன், "I do")
 letters since everything it uses was already taught. Tranche 8 added one
 more case each: Sanskrit's genitive (नरस्य, "of the man") and Tamil's
 accusative (கண்ணை, பல்லை), both reusing already-proven letters/patterns.
-Sanskrit: 87 lessons total. Tamil: 234. The remaining gap is content, not
+Tranche 9 added a third/second case each: Sanskrit's instrumental (नरेण,
+"by/with the man") and Tamil's dative (யாருக்கு, "to whom"). Sanskrit: 89
+lessons total. Tamil: 236. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
