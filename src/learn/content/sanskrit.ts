@@ -11,7 +11,8 @@
  * (dvitīyā) case, one ātmanepada verb (नयते), aśva (unblocked — the śva
  * conjunct named as missing since tranche 4 is taught now), and Wikner's
  * own worked sentence नरः अश्वम् वृक्षम् नयते ("the man leads the horse to
- * the tree", 3.B.2). See
+ * the tree", 3.B.2), and — tranche 8 — a second case, ṣaṣṭhī (genitive):
+ * नरस्य ("of the man"), Wikner 5.B.1's own declension table. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
  * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
@@ -542,6 +543,19 @@ export const sanskritManifest: Manifest = {
       gloss: 'te',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-sya',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.1-7.A.2, same reasoning as skt-letter-shva above: स
+      // (already taught, skt-letter-sa) followed by य (already taught,
+      // skt-letter-ya) within one word is a word-internal cluster, not a
+      // word-final halanta — an ordinary conjunct. Needed only because
+      // skt-word-narasya below needs it.
+      text: 'स्य',
+      gloss: 'sya',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -825,6 +839,25 @@ export const sanskritManifest: Manifest = {
       text: 'नरः अश्वम् वृक्षम् नयते',
       gloss: 'naraḥ aśvam vṛkṣam nayate — the man leads the horse to the tree',
       composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-vrksam', 'skt-word-nayate'],
+    },
+
+    // ================= A second case: ṣaṣṭhī (level 3) =================
+    // Extension, 2026-08-12 (tranche 8): one more slice of the plan doc's
+    // "more case morphology" item — ṣaṣṭhī (genitive), Wikner 5.B.1's own
+    // full declension table for नर (line 1206, already cited for tranche
+    // 7's accusative row): "s.as.t.h narasya narayoh. naran.am" — only the
+    // singular (eka-vacana) is taught here, same scoping as tranche 7's
+    // accusative singular.
+    {
+      id: 'skt-word-narasya',
+      stage: 'words',
+      // Level 3, same reasoning as tranche 7's case-form words: this is a
+      // grammatical category (possession/relation, "of the man"), not new
+      // vocabulary — नर itself is already taught at level 2.
+      level: 3,
+      text: 'नरस्य',
+      gloss: 'narasya — of the man, the man\'s',
+      composedOf: ['skt-letter-na', 'skt-letter-ra', 'skt-letter-sya'],
     },
   ],
 };
