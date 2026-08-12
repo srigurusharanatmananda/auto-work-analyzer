@@ -884,16 +884,17 @@ export const tamilManifest: Manifest = {
     // lines 1324-1465: a finite verb has three parts — root, tense symbol
     // (இக்கிறு/கின்று, either may be used), and personal suffix.
     //
-    // Every letter this needs — செ, ய், கி, றே, ன் — is already taught
-    // (செ/கி from tranche 5's vowel-sign tables, ய்/ன் from earlier
-    // tranches), so this ships with zero new letters, unlike Sanskrit's
-    // own half of this pass.
+    // Every letter this needs — செ, ய், கி, றே, ன் — is already taught:
+    // கி from tranche 3's க vowel-sign table, செ and றே from tranche 5's
+    // completion of the other consonants' tables (ச and ற respectively),
+    // ய்/ன் from tranche 6. Zero new letters, unlike Sanskrit's own half of
+    // this pass.
     {
       id: 'tam-word-sey',
       stage: 'words',
       level: 2,
       // Lesson Nine's own vocabulary (already cited elsewhere in this
-      // file): "ªêò¢ - chey - to do." The bare root, not yet conjugated.
+      // file): செய் - chey - "to do". The bare root, not yet conjugated.
       text: 'செய்',
       gloss: 'sey — to do (verb root)',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya'],
@@ -902,8 +903,8 @@ export const tamilManifest: Manifest = {
       id: 'tam-word-seykirren',
       stage: 'words',
       level: 3,
-      // Lesson Seventeen's own worked example, line 1388: "ªêò¢ = to do;
-      // ï£ù¢ ªêò¢+ è¤Á+ ãù¢= ï£ù¢ ªêò¢è¤«øù¢= I do" — root செய் + tense symbol
+      // Lesson Seventeen's own worked example, line 1388: செய் = to do;
+      // நான் செய்+கிறு+ஏன்=நான் செய்கிறேன்=I do — root செய் + tense symbol
       // கிறு + 1st-person-singular personal suffix ஏன், the primer's own
       // worked fusion (line 1383-1385) collapsing கிறு's short உ into the
       // personal suffix's long ஏ: செய் + கிறு + ஏன் → செய்கிறேன்.

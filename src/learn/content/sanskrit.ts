@@ -577,12 +577,15 @@ export const sanskritManifest: Manifest = {
       // pratipadika/dictionary form, the same convention skt-word-nara uses
       // (3.B.2's own explicit framing for nara at line 974). Declines
       // exactly like nara/asva (masculine a-stem) in every example sentence
-      // that uses it (3.B.3, e.g. "narah. asvam vr.ks.am nayate"). kṣa is
-      // this tranche's own newly-added conjunct (skt-letter-ksa); vṛ is a
-      // new enabling letter (skt-letter-vri, added above) needed only for
-      // this word. aśva (horse) and tiṣṭhati (stand), from the same
-      // passage, still need conjuncts (śva, ṣṭha) this file does not teach
-      // yet and remain future work.
+      // that uses it (3.B.2, e.g. "narah. asvam vr.ks.am nayate", line 987
+      // — the same section, not 3.B.3, whose own content is the lesson's
+      // exercises). kṣa is this tranche's own newly-added conjunct
+      // (skt-letter-ksa); vṛ is a new enabling letter (skt-letter-vri,
+      // added above) needed only for this word. aśva (horse), from the
+      // same passage, was still blocked on an untaught conjunct (śva) as of
+      // this tranche — tranche 7 later adds skt-letter-shva and unblocks it
+      // (see skt-word-ashva). tiṣṭhati (stand) needs a different conjunct
+      // (ṣṭha) this file still doesn't teach, and remains future work.
       text: 'वृक्ष',
       gloss: 'vṛkṣa — tree',
       composedOf: ['skt-letter-vri', 'skt-letter-ksa'],
@@ -728,7 +731,11 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-naram',
       stage: 'words',
-      level: 2,
+      // Level 3, not 2: this is a case FORM, not new vocabulary — नर itself
+      // is already taught (level 2); what's new here is dvitīyā as a
+      // grammatical category, which is exactly what LEVELS (Curriculum.ts)
+      // names level 3 ("Grammar & Sentences": "noun cases, verb forms") for.
+      level: 3,
       // नर (already taught, skt-word-nara) + the word-final म् (added
       // above). Wikner 5.B.1's own table, dvitīyā eka-vacana: "naram".
       text: 'नरम्',
@@ -738,7 +745,9 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-vrksam',
       stage: 'words',
-      level: 2,
+      // Level 3 — same reasoning as skt-word-naram above: a case form, not
+      // new vocabulary (वृक्ष itself is already taught, level 2).
+      level: 3,
       // वृक्ष (already taught, skt-word-vrksa) + the same word-final म् —
       // 3.B.2 states directly that vṛkṣa declines exactly like nara (both
       // masculine a-stem), so its accusative singular is formed the
@@ -763,7 +772,10 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-ashvam',
       stage: 'words',
-      level: 2,
+      // Level 3 — a case form (dvitīyā), unlike bare skt-word-ashva just
+      // above (level 2, plain vocabulary): same reasoning as
+      // skt-word-naram/skt-word-vrksam.
+      level: 3,
       // अश्व + the same word-final म् — declines like nara/vṛkṣa (3.B.2
       // names all three together as one declension class).
       text: 'अश्वम्',
@@ -773,7 +785,12 @@ export const sanskritManifest: Manifest = {
     {
       id: 'skt-word-nayate',
       stage: 'words',
-      level: 2,
+      // Level 3, not 2: a verb FORM (ātmanepada pada), the other half of
+      // "noun cases, verb forms" LEVELS names for level 3 — not new
+      // vocabulary the way skt-word-vadati's own level-2 placement was
+      // (vadati was this file's very first verb, taught before the
+      // parasmaipada/ātmanepada distinction existed to teach against).
+      level: 3,
       // Wikner 3.B.1 (lines 928-955): the ātmanepada personal endings,
       // introduced specifically because √nī ("lead") is conjugated in this
       // pada, not parasmaipada — "in the case of dhātu nī for example, use
