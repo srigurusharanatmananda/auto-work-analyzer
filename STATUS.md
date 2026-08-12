@@ -136,9 +136,12 @@ case plus its first ātmanepada verb, unblocking अश्व ("horse") — the 
 every prior tranche's own comments named as still-blocked — in Wikner's
 own worked sentence (नरः अश्वम् वृक्षम् नयते); and Tamil's first verb
 conjugation, present tense (நான் செய்கிறேன், "I do"), needing zero new
-letters since everything it uses was already taught. Sanskrit: 85 lessons
-total. Tamil: 232. The remaining gap is content, not an engine limitation —
-per the design doc's own risk note, needs the one human quality gate this
+letters since everything it uses was already taught. Tranche 8 added one
+more case each: Sanskrit's genitive (नरस्य, "of the man") and Tamil's
+accusative (கண்ணை, பல்லை), both reusing already-proven letters/patterns.
+Sanskrit: 87 lessons total. Tamil: 234. The remaining gap is content, not
+an engine limitation — per the design doc's own risk note, needs the one
+human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
 "What's next, in order" section is the actual backlog here.
 

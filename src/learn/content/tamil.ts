@@ -23,7 +23,8 @@
  * change was needed before this was possible at all. Tranche 7 adds this
  * language's first verb conjugation — present tense, ABC of Tamil Lesson
  * Seventeen — needing zero new letters, every one already taught by an
- * earlier tranche.
+ * earlier tranche. Tranche 8 adds this language's first case, accusative
+ * (ஐ), ABC of Tamil Lesson Nineteen — again zero new letters.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -930,6 +931,42 @@ export const tamilManifest: Manifest = {
       text: 'நான் செய்கிறேன்',
       gloss: 'nāṉ seykiṟēṉ — I do',
       composedOf: ['tam-word-naan', 'tam-word-seykirren'],
+    },
+
+    // ================= A first case: accusative (level 3) =================
+    // Extension, 2026-08-12 (tranche 8): one more slice of the plan doc's
+    // "more case morphology" item — Tamil's own first case suffix, ஐ
+    // (accusative), ABC of Tamil Lesson Nineteen, lines 1578-1821.
+    //
+    // Lesson Nineteen's own worked examples (line 1748, its consonant-
+    // doubling sub-rule, the same rule already proven for உம் in tranche
+    // 6's கண்ணும்): "èí¢ = an eye èí¢ + ä = èí¢ + (í¢)ä = èí¢¬í" — kaṇ + ai
+    // = kaṇ + ṇ + ai = kaṇṇai. கண் is already taught (tam-word-kan). ணை
+    // (ṇa + the ai vowel sign) is already an atomic letter, from tranche
+    // 5's ண vowel-sign table — so, like tranche 7's Tamil half, this ships
+    // with zero new letters.
+    {
+      id: 'tam-word-kannai',
+      stage: 'words',
+      // Level 3, same reasoning as the Sanskrit case-form words above: a
+      // grammatical category (direct object marking), not new vocabulary —
+      // கண் itself is already taught at level 2.
+      level: 3,
+      text: 'கண்ணை',
+      gloss: 'kaṇṇai — eye (accusative, direct object)',
+      composedOf: ['tam-letter-ka', 'tam-pulli-nna', 'tam-letter-nnai'],
+    },
+    {
+      id: 'tam-word-pallai',
+      stage: 'words',
+      level: 3,
+      // Line 1752, the same consonant-doubling sub-rule: "ðô¢ = a tooth
+      // ðô¢ + ä = ðô¢ + (í¢)ä = ðô¢¬ô" — pal + ai = pal + l + ai = pallai.
+      // பல் is already taught (tam-word-pal). லை (la + the ai vowel sign)
+      // is already an atomic letter, from tranche 5's ல vowel-sign table.
+      text: 'பல்லை',
+      gloss: 'pallai — tooth (accusative, direct object)',
+      composedOf: ['tam-letter-pa', 'tam-pulli-la', 'tam-letter-lai'],
     },
   ],
 };

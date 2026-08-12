@@ -365,20 +365,42 @@ case, one verb pada per language, not the whole grammar system at once.
 
 Sanskrit: 76 → 85 lessons. Tamil: 229 → 232 lessons.
 
+**Ninth pass — tranche 8**: one more case per language, lighter than
+tranche 7 — no new sentence forced this time, just the case-marked forms
+themselves, each still real and cited.
+
+- **Sanskrit — ṣaṣṭhī (genitive)**: नरस्य ("of the man"/"the man's"),
+  Wikner 5.B.1's own declension table (line 1206). Needed one new atomic
+  letter, स्य (an ordinary word-internal conjunct, स + य, same 7.A.1-7.A.2
+  reasoning already established for श्व in tranche 7).
+- **Tamil — accusative (ஐ)**: கண்ணை and பல்லை, the accusative forms of the
+  already-taught கண் ("eye") and பல் ("tooth"), ABC of Tamil Lesson
+  Nineteen's own consonant-doubling sub-rule (lines 1744-1758, e.g. line
+  1748: "kaṇ + ai = kaṇ + ṇ + ai = kaṇṇai") — the same doubling mechanism
+  already proven for உம் in tranche 6's கண்ணும். Needed zero new letters —
+  ணை and லை were already atomic letters from tranche 5's vowel-sign
+  tables.
+
+One verifier per language this pass (not two) — the content is smaller
+and lower-risk than tranche 7's (reusing an already-twice-proven
+consonant-doubling pattern, no new sentence assembly), and both signed
+off clean.
+
+Sanskrit: 85 → 87 lessons. Tamil: 232 → 234 lessons.
+
 ## What's next, in order
 
-1. **More case morphology and verb conjugation**, both languages — tranche
-   7 shipped one case and one verb pada each; expert-tier reading needs
-   more before a real verse is fully decomposable. Sanskrit: at least one
-   more case (instrumental or genitive — Wikner's 5.B.1 table, already read
-   in full for tranche 7, has all seven) and ideally the parasmaipada verb
-   this file is still missing a second example of. Tamil: ABC of Tamil
-   Lessons 18-21 (present tense continued, then dative/genitive cases) are
-   the next primer sections in order, not yet read for their own content.
-   Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or a freshly-chosen
-   short verse) after each slice to check whether expert-tier reading has
-   actually become reachable yet, rather than assuming a fixed number of
-   tranches will get there.
+1. **More case morphology and verb conjugation**, both languages — still
+   short of what expert-tier reading needs. Sanskrit has nominative,
+   accusative, and genitive singular for नर (and nominative/accusative for
+   वृक्ष/अश्व); instrumental, dative, ablative, and locative remain, plus
+   dual/plural for any case, plus a second verb root beyond नी/वद्. Tamil
+   has nominative and accusative for two nouns and present tense for one
+   verb; dative and genitive (ABC of Tamil Lessons 20-21) and past/future
+   tense remain. Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or a
+   freshly-chosen short verse) after each slice to check whether
+   expert-tier reading has actually become reachable yet, rather than
+   assuming a fixed number of tranches will get there.
 2. **Expert-tier reading** for both languages, once (1) makes at least one
    real short verse fully decomposable into taught vocabulary and taught
    grammar — at that point, source and read the actual verse in full
