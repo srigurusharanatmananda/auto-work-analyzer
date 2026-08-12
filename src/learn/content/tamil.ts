@@ -2,10 +2,12 @@
  * As of 2026-08-12: the complete Tamil alphabet (all 12 vowels, the āytham,
  * all 18 consonants — ABC of Tamil, Lessons One and Two), and the full
  * vowel-sign table (ABC of Tamil, Lessons Three-Fifteen) on every consonant
- * the primer itself actually teaches it for — 16 of 18; ங is excluded by the
- * primer's own explicit statement, and only 9 of those 16 get the rare au
- * sign, again per the primer's own account of which words actually use it —
- * see the tranche-5 block's own comment in this file for the citations.
+ * the primer itself actually teaches it for — 17 of 18 (க shipped in
+ * tranche 3, the other 16 in tranche 5); ங alone is excluded, by the
+ * primer's own explicit statement. Of those 17, only 10 (க plus 9 of the 16
+ * added by tranche 5) get the rare au sign, again per the primer's own
+ * account of which words actually use it — see the tranche-5 block's own
+ * comment in this file for the citations.
  * Plus a first small set of real words and one sentence, extended
  * 2026-08-09/10. See `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`
  * for the full beginner-to-advanced plan this is a tranche of — mirrors the
@@ -13,7 +15,8 @@
  * vowel-sign/conjunct batch, same rigor. Tranche 3 shipped the table for க
  * only, deliberately deferring the other 17 consonants (the same reasoning
  * Sanskrit's own single-consonant vowel-sign tranche used); tranche 5
- * completes that backlog item.
+ * completes that backlog item for all but ங (see that tranche's own block
+ * comment for why ங stays excluded).
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -253,9 +256,12 @@ export const tamilManifest: Manifest = {
     // Extension, 2026-08-12 (tranche 3), mirroring Sanskrit's own single-
     // consonant vowel-sign tranche: rather than all 18 consonants across all
     // 11 signs (198 entries), this teaches the full sign set on the one
-    // consonant the primer itself always lists first (க), leaving the other
-    // 17 consonants' sign forms for a later tranche if a real word needs
-    // one, the same rule skt-letter-ti/tam-letter-naa were added under.
+    // consonant the primer itself always lists first (க) first, leaving the
+    // other 17 consonants for a later tranche. That later tranche is
+    // tranche 5 below, which completes 16 of those 17 unconditionally
+    // (ங being the one the primer itself excludes) — not word-driven the
+    // way this sentence originally framed it; see tranche 5's own block
+    // comment.
     //
     // Each lesson gives its vowel-sign table as two columns of consonant
     // rows in the primer's own fixed order (க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள
@@ -356,9 +362,13 @@ export const tamilManifest: Manifest = {
     // 17 consonants remained after க; only 16 of them get any of this table.
     // ங (ṅa) is explicitly excluded by the primer itself. Lesson Three's own
     // note, already quoted in this file's header for a different reason:
-    // "the combination of ங் with other vowels need not be learnt" — ங is
-    // used only bare (ங) or dead (ங், already taught) in real Tamil, never
-    // with a vowel-length sign. That is not inference from the note alone:
+    // "the combination of ங் with other vowels need not be learnt" — ங
+    // combines with a vowel-length sign so rarely that the primer says
+    // not to bother teaching it. (Its dead/pulli form, ங், is not itself
+    // taught in this file either — only the bare form, tam-letter-nga,
+    // above; that is a separate, pre-existing gap, not something this
+    // sentence should be read as claiming is already closed.) That ங's
+    // exclusion here is not inference from the note alone:
     // ங's row is the ONLY one missing from every single one of Lessons
     // Four/Five/Six/Seven/Nine/Ten/Eleven/Thirteen/Fourteen — it appears
     // once, in Lesson Three's table, for structural completeness, not
@@ -388,7 +398,7 @@ export const tamilManifest: Manifest = {
     { id: 'tam-letter-coo', stage: 'letters', level: 1, text: 'சோ', gloss: 'cō', composedOf: [] },
     { id: 'tam-letter-cau', stage: 'letters', level: 1, text: 'சௌ', gloss: 'cau', composedOf: [] },
 
-    // --- ஞ (ña) ---
+    // --- ஞ (ña) — no au form, see block comment above ---
     { id: 'tam-letter-nyaa', stage: 'letters', level: 1, text: 'ஞா', gloss: 'ñā', composedOf: [] },
     { id: 'tam-letter-nyi', stage: 'letters', level: 1, text: 'ஞி', gloss: 'ñi', composedOf: [] },
     { id: 'tam-letter-nyii', stage: 'letters', level: 1, text: 'ஞீ', gloss: 'ñī', composedOf: [] },
@@ -400,7 +410,7 @@ export const tamilManifest: Manifest = {
     { id: 'tam-letter-nyo', stage: 'letters', level: 1, text: 'ஞொ', gloss: 'ño', composedOf: [] },
     { id: 'tam-letter-nyoo', stage: 'letters', level: 1, text: 'ஞோ', gloss: 'ñō', composedOf: [] },
 
-    // --- ட (ṭa) ---
+    // --- ட (ṭa) — no au form, see block comment above ---
     { id: 'tam-letter-ttaa', stage: 'letters', level: 1, text: 'டா', gloss: 'ṭā', composedOf: [] },
     { id: 'tam-letter-tti', stage: 'letters', level: 1, text: 'டி', gloss: 'ṭi', composedOf: [] },
     { id: 'tam-letter-ttii', stage: 'letters', level: 1, text: 'டீ', gloss: 'ṭī', composedOf: [] },
@@ -412,7 +422,7 @@ export const tamilManifest: Manifest = {
     { id: 'tam-letter-tto', stage: 'letters', level: 1, text: 'டொ', gloss: 'ṭo', composedOf: [] },
     { id: 'tam-letter-ttoo', stage: 'letters', level: 1, text: 'டோ', gloss: 'ṭō', composedOf: [] },
 
-    // --- ண (ṇa) ---
+    // --- ண (ṇa) — no au form, see block comment above ---
     { id: 'tam-letter-nnaa', stage: 'letters', level: 1, text: 'ணா', gloss: 'ṇā', composedOf: [] },
     { id: 'tam-letter-nni', stage: 'letters', level: 1, text: 'ணி', gloss: 'ṇi', composedOf: [] },
     { id: 'tam-letter-nnii', stage: 'letters', level: 1, text: 'ணீ', gloss: 'ṇī', composedOf: [] },

@@ -123,9 +123,10 @@ whose tranches so far: the complete alphabets for both languages (Sanskrit
 (Wikner 7.A.3-7.A.5), two new Sanskrit words — one dropped after two
 adversarial verifiers flagged it, one added later (vṛkṣa, "tree", the
 specific word kṣa unblocks) — and the full Tamil vowel-sign table (ABC of
-Tamil, Lessons Three-Fifteen) on 16 of 18 consonants (ங is excluded, and only
-9 of the 16 get the rare au sign, both per the primer's own explicit account
-— see the plan doc's tranche-5 entry). Sanskrit: 75 lessons total. Tamil:
+Tamil, Lessons Three-Fifteen) on 17 of 18 consonants (ங alone is excluded,
+and only 10 of the 17 get the rare au sign, both per the primer's own
+explicit account — see the plan doc's tranche-5 entry). Sanskrit: 75 lessons
+total. Tamil:
 222. Not an engine limitation —
 `Curriculum.ts` already supports arbitrarily more content in all three
 stages — a content one, and per the design doc's own risk note, needs the
