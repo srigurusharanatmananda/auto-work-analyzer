@@ -1,14 +1,17 @@
 /**
- * As of 2026-08-11: the complete Sanskrit alphabet (all 14 vowels, all 33
+ * As of 2026-08-12: the complete Sanskrit alphabet (all 14 vowels, all 33
  * consonants — Wikner's own Lessons 1-3), a first batch of vowel signs
- * (mātrā, Wikner 6.A.1 — tranche 2, same day), and the original seven words
+ * (mātrā, Wikner 6.A.1 — tranche 2), the two special conjunct consonants
+ * kṣa and jña (Wikner 7.A.3-7.A.5 — tranche 3), and the original seven words
  * plus one new word and one sentence. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is a tranche of — conjuncts (Lesson 7) and
- * sandhi (Lessons 10-11) are the next ones, not yet written. The vowel-sign
- * batch is deliberately partial (one consonant's full table, plus two more
- * worked examples) rather than exhaustive across all 33 consonants — see
- * that block's own comment for why.
+ * beginner-to-advanced plan this is a tranche of — more words (once conjuncts
+ * unlock them) and sandhi (Lessons 10-11) are next, not yet written. The
+ * vowel-sign batch is deliberately partial (one consonant's full table, plus
+ * two more worked examples) rather than exhaustive across all 33 consonants,
+ * and the conjunct batch is deliberately just the two Wikner himself singles
+ * out as special rather than his own ~150-entry reference table — see each
+ * block's own comment for why.
  *
  * The paragraphs below describe the ORIGINAL seed (six consonants, five
  * words) and its first, 2026-08-10 extension (one sentence) — kept as the
@@ -420,6 +423,43 @@ export const sanskritManifest: Manifest = {
       // skt-letter-nna's own disambiguation.
       text: 'णे',
       gloss: 'ṇe',
+      composedOf: [],
+    },
+
+    // --- Conjunct consonants (saṁyoga), Wikner 7.A.3-7.A.5 ---
+    // Extension, 2026-08-12 (tranche 3). A conjunct joins two or more
+    // consonants with no vowel between them — Wikner's own 7.A.6 gives a
+    // ~150-entry reference table of them, but that table's actual glyphs are
+    // almost entirely lost to the same OCR/font-extraction corruption this
+    // file has flagged before (only the plain-ASCII transliteration next to
+    // each cell survives), so it is deliberately NOT taught here wholesale.
+    // The two exceptions below are singled out by Wikner HIMSELF as a
+    // special pair (7.A.3: "there are two which are quite different from
+    // their component parts") and get their own extensive pronunciation
+    // sections (7.A.4, 7.A.5) — legible prose, not a table cell. Their
+    // Devanagari is standard, well-attested composition from consonants
+    // already taught bare in this file (कष, जञ), not a read of the
+    // corrupted glyph. Further ordinary conjuncts are deferred until an
+    // actual word needs one — the same rule skt-letter-ti was added under.
+    {
+      id: 'skt-letter-ksa',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.3-7.A.4: one of exactly two conjuncts whose written form
+      // "reflects sounds somewhat different from their components," formed
+      // from क् (ka, already taught) + ष (ṣa, already taught, skt-letter-ssa).
+      text: 'क्ष',
+      gloss: 'kṣa',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-jna',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.3/7.A.5: the other of the two special conjuncts, formed
+      // from ज् (ja, already taught) + ञ (ña, already taught, skt-letter-nya).
+      text: 'ज्ञ',
+      gloss: 'jña',
       composedOf: [],
     },
 

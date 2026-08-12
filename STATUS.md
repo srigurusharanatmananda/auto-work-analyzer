@@ -119,10 +119,11 @@ What's still thin overall is scoped in
 whose tranches so far: the complete alphabets for both languages (Sanskrit
 62 letters, Tamil 37 letters total — 33 live forms plus 4 dead/pulli forms
 — up from 9 and 6+2 respectively), a first batch of Sanskrit vowel signs
-(Wikner 6.A.1), and one
+(Wikner 6.A.1) plus the full vowel-sign table on Tamil's க, the two special
+Sanskrit conjuncts kṣa/jña (Wikner 7.A.3-7.A.5), and one
 new Sanskrit word (a second candidate, proposed then independently flagged
 by two adversarial verifiers and dropped — see the plan doc's own account of
-why). Sanskrit: 71 lessons total. Tamil: 44. Not an engine limitation —
+why). Sanskrit: 73 lessons total. Tamil: 55. Not an engine limitation —
 `Curriculum.ts` already supports arbitrarily more content in all three
 stages — a content one, and per the design doc's own risk note, needs the
 one human quality gate this module can't automate: a beginner cannot detect
@@ -167,11 +168,14 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
-**Phase 7 content depth, per the new curriculum plan.** Next tranche: Sanskrit
-conjuncts (Wikner Lesson 7 — halanta, kṣa, jña), which unblocks the many
-Wikner B-section verbs/nouns already identified as needing them; then Tamil's
-vowel-sign combinations (ABC of Tamil, Lessons Three onward); then sandhi
-(Sanskrit) / conjunction rules (Tamil) — see
+**Phase 7 content depth, per the new curriculum plan.** kṣa/jña and Tamil's
+க vowel-sign table shipped in tranche 3. Next: more Sanskrit words — kṣa
+unblocks vṛkṣa specifically, but most other previously-flagged
+blocked-on-conjuncts words (e.g. tiṣṭhati's ṣṭha, aśva's śva) need conjuncts
+tranche 3 did not add, since it only covered the two Wikner names as special,
+not a general table; then the remaining 17 consonants' Tamil vowel-sign forms
+as real words call for them; then sandhi (Sanskrit) / conjunction rules
+(Tamil) — see
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
 "What's next, in order". Content work, not an engine change, and needs the
 human quality gate the design doc itself calls for before it ships to the

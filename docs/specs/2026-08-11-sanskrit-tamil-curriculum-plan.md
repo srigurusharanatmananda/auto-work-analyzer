@@ -221,21 +221,45 @@ source directly rather than trusting the drafting agent's own summary):
 
 Sanskrit: 58 → 71 lessons. Tamil: 19 → 44 lessons.
 
+**Fourth pass — tranche 3**, same adversarial-verification discipline (two
+independent verifiers per content batch, re-deriving from the primary source
+rather than trusting the proposer's summary):
+
+- Sanskrit conjuncts (Wikner 7.A.3-7.A.5): 2 new letters, kṣa (क्ष) and jña
+  (ज्ञ) — the two conjuncts Wikner himself singles out by name as a special
+  pair, each with its own dedicated pronunciation section, rather than a read
+  off his ~150-entry reference table (7.A.6), whose actual glyphs are almost
+  entirely lost to the same cached-extraction corruption already flagged for
+  earlier tranches. The general table stays deferred to whenever an actual
+  word needs a specific conjunct from it — see `sanskrit.ts`'s own comment.
+  Both verifiers signed off with no issues.
+- Tamil vowel signs on க (ABC of Tamil, Lessons Three-Fifteen): 11 new
+  letters — the full vowel-sign table for the one consonant the primer
+  itself always lists first, mirroring Sanskrit tranche 2's own single-
+  consonant approach rather than all 18 consonants at once (198 entries).
+  Both verifiers signed off with no issues; one flagged (non-blocking) that
+  the primer's own transliteration house-style spells the au-diphthong row
+  "kow" rather than "kau" — kept as "kau" to match this file's own
+  pre-existing bare-vowel gloss for ஔ.
+
+Sanskrit: 71 → 73 lessons. Tamil: 44 → 55 lessons.
+
 ## What's next, in order
 
-1. **Sanskrit conjuncts** (Wikner 7.A) — halanta and the special conjuncts
-   (kṣa, jña, etc.), the remaining letters-stage gap before real
-   multi-syllable words become constructible.
-2. **More Sanskrit words**, once conjuncts unlock the many B-section verbs
-   that need them (tiṣṭhati's ṣṭha, aśva's śva, vṛkṣa's kṣa — all flagged
-   as blocked-on-conjuncts by tranche 2's own research).
-3. **Tamil vowel-sign combinations** (ABC of Tamil, Lessons Three onward) —
-   the consonantal-vowel matrix beyond the two combinations (நா, யா)
-   already taught.
-4. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
+1. **More Sanskrit words.** kṣa unblocks vṛkṣa specifically; tiṣṭhati's ṣṭha
+   and aśva's śva are different conjuncts, still not taught, so those two
+   remain blocked until a future tranche adds them (all three were flagged
+   as blocked-on-conjuncts by tranche 2's own research — tranche 3 only
+   added the two conjuncts Wikner himself singles out as special, not a
+   general table, so most ordinary conjuncts, including these two, are
+   still gaps).
+2. **The remaining 17 consonants' Tamil vowel-sign forms** (ABC of Tamil,
+   Lessons Three onward) — கா/கி/etc. above cover க only; the other
+   consonants' sign forms are deferred until a real word calls for one.
+3. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
    sentences that read like real text rather than two words placed side by
    side.
-5. **Expert-tier reading** for both languages, once the above make it
+4. **Expert-tier reading** for both languages, once the above make it
    possible to verify a real sentence the same rigorous way the existing
    one was.
 
