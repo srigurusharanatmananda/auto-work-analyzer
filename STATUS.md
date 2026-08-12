@@ -167,12 +167,19 @@ particle (हे, "O!", vocative — the sentence हे नर means "O man!") 
 Tamil's future tense
 (செய்வேன், "I shall do"). Tranche 15 added Sanskrit's first participle
 and adjective (अधीतम्, "studied"; तेजस्वि, "brilliant" — both from
-Wikner's Invocation verse, the same passage that sourced अहम्/नौ/अस्तु;
-a second, thorough re-check confirmed Wikner has no 2nd-person pronoun
-anywhere in the text, so that gap stays open) and Tamil's second
+Wikner's Invocation verse, the same passage that sourced नौ/अस्तु; अहम्
+is a separate back-matter citation, not this same passage — a real
+citation bug this tranche's own verifier caught and fixed before merge.
+A second, thorough re-check also confirmed Wikner has no 2nd-person
+pronoun anywhere in the text, so that gap stays open) and Tamil's second
 grammatical person, present tense (நீ, "you"; செய்கிறாய், "you do" —
-Lesson Seventeen). Sanskrit: 113 lessons total.
-Tamil: 249. The remaining gap is content, not
+Lesson Seventeen). Tranche 16 added Tamil's first negative indicative
+(செய்யாது, "does not do" — distinct from tranche 13's negative
+imperative செய்யாதே) and a second dative sub-rule (கண்ணுக்கு "to the
+eye", பல்லுக்கு "to the tooth" — short nouns doubling their final
+consonant), Tamil-only since this tranche's research found no unspent
+Sanskrit lead. Sanskrit: 113 lessons total.
+Tamil: 252. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
