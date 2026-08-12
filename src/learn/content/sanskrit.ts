@@ -2,16 +2,18 @@
  * As of 2026-08-12: the complete Sanskrit alphabet (all 14 vowels, all 33
  * consonants — Wikner's own Lessons 1-3), a first batch of vowel signs
  * (mātrā, Wikner 6.A.1 — tranche 2), the two special conjunct consonants
- * kṣa and jña (Wikner 7.A.3-7.A.5 — tranche 3), and the original seven words
- * plus one new word and one sentence. See
+ * kṣa and jña (Wikner 7.A.3-7.A.5 — tranche 3), one more word, vṛkṣa
+ * ("tree", Wikner 3.B.2 — tranche 4, the first word kṣa unblocks), and the
+ * original seven words plus one new word and one sentence. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is a tranche of — more words (once conjuncts
- * unlock them) and sandhi (Lessons 10-11) are next, not yet written. The
- * vowel-sign batch is deliberately partial (one consonant's full table, plus
- * two more worked examples) rather than exhaustive across all 33 consonants,
- * and the conjunct batch is deliberately just the two Wikner himself singles
- * out as special rather than his own ~150-entry reference table — see each
- * block's own comment for why.
+ * beginner-to-advanced plan this is a tranche of — more words (aśva and
+ * tiṣṭhati are next in line, but still blocked on conjuncts śva/ṣṭha this
+ * file doesn't teach yet) and sandhi (Lessons 10-11) are next, not yet
+ * written. The vowel-sign batch is deliberately partial (one consonant's
+ * full table, plus two more worked examples) rather than exhaustive across
+ * all 33 consonants, and the conjunct batch is deliberately just the two
+ * Wikner himself singles out as special rather than his own ~150-entry
+ * reference table — see each block's own comment for why.
  *
  * The paragraphs below describe the ORIGINAL seed (six consonants, five
  * words) and its first, 2026-08-10 extension (one sentence) — kept as the
@@ -379,6 +381,19 @@ export const sanskritManifest: Manifest = {
       gloss: 'bṛ',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-vri',
+      stage: 'letters',
+      level: 1,
+      // Not part of the ब-table above — added later (tranche 4), the same
+      // rule skt-letter-ti/skt-letter-ca were added under: व (already
+      // taught) plus the vocalic-r̥ sign, purely because skt-word-vrksa
+      // below needs it. Wikner never works through व+ऋ as its own example;
+      // the sign itself is the identical one already proven on ब above.
+      text: 'वृ',
+      gloss: 'vṛ',
+      composedOf: [],
+    },
     { id: 'skt-letter-be', stage: 'letters', level: 1, text: 'बे', gloss: 'be', composedOf: [] },
     { id: 'skt-letter-bai', stage: 'letters', level: 1, text: 'बै', gloss: 'bai', composedOf: [] },
     { id: 'skt-letter-bo', stage: 'letters', level: 1, text: 'बो', gloss: 'bo', composedOf: [] },
@@ -487,6 +502,25 @@ export const sanskritManifest: Manifest = {
       text: 'वन',
       gloss: 'vana — forest',
       composedOf: ['skt-letter-va', 'skt-letter-na'],
+    },
+    {
+      id: 'skt-word-vrksa',
+      stage: 'words',
+      level: 2,
+      // Wikner 3.B.2, line 979: "Other nouns that take this form of
+      // declension are asva `horse', and vr. ks.a `tree'" — cited bare, the
+      // pratipadika/dictionary form, the same convention skt-word-nara uses
+      // (3.B.2's own explicit framing for nara at line 974). Declines
+      // exactly like nara/asva (masculine a-stem) in every example sentence
+      // that uses it (3.B.3, e.g. "narah. asvam vr.ks.am nayate"). kṣa is
+      // this tranche's own newly-added conjunct (skt-letter-ksa); vṛ is a
+      // new enabling letter (skt-letter-vri, added above) needed only for
+      // this word. aśva (horse) and tiṣṭhati (stand), from the same
+      // passage, still need conjuncts (śva, ṣṭha) this file does not teach
+      // yet and remain future work.
+      text: 'वृक्ष',
+      gloss: 'vṛkṣa — tree',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa'],
     },
     {
       id: 'skt-word-dhana',

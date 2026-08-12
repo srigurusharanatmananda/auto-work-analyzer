@@ -244,22 +244,28 @@ rather than trusting the proposer's summary):
 
 Sanskrit: 71 → 73 lessons. Tamil: 44 → 55 lessons.
 
+**Fifth pass — tranche 4**, same two-independent-verifier discipline:
+
+- Sanskrit word (Wikner 3.B.2, line 979): 1 new word, vṛkṣa ("tree", वृक्ष) —
+  the pratipadika/dictionary form, same citation convention as the existing
+  `skt-word-nara`. Needed 1 new enabling letter, वृ (vṛ, va + the vocalic-r̥
+  sign already proven on ब), added purely because this word needs it, the
+  same rule skt-letter-ti was added under. This is the specific word kṣa
+  (tranche 3) unblocks; the same passage's aśva and tiṣṭhati still need
+  different conjuncts (śva, ṣṭha) this file doesn't teach yet, and remain
+  future work. Both verifiers signed off with no issues.
+
+Sanskrit: 73 → 74 lessons. Tamil: unchanged at 55.
+
 ## What's next, in order
 
-1. **More Sanskrit words.** kṣa unblocks vṛkṣa specifically; tiṣṭhati's ṣṭha
-   and aśva's śva are different conjuncts, still not taught, so those two
-   remain blocked until a future tranche adds them (all three were flagged
-   as blocked-on-conjuncts by tranche 2's own research — tranche 3 only
-   added the two conjuncts Wikner himself singles out as special, not a
-   general table, so most ordinary conjuncts, including these two, are
-   still gaps).
-2. **The remaining 17 consonants' Tamil vowel-sign forms** (ABC of Tamil,
+1. **The remaining 17 consonants' Tamil vowel-sign forms** (ABC of Tamil,
    Lessons Three onward) — கா/கி/etc. above cover க only; the other
    consonants' sign forms are deferred until a real word calls for one.
-3. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
+2. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
    sentences that read like real text rather than two words placed side by
    side.
-4. **Expert-tier reading** for both languages, once the above make it
+3. **Expert-tier reading** for both languages, once the above make it
    possible to verify a real sentence the same rigorous way the existing
    one was.
 
