@@ -27,8 +27,9 @@
  * personal-pronoun/particle glossary words — अहम् ("I"), नौ ("of us
  * two"), अस्तु ("let it be") — since Wikner has no pronoun declension
  * table or imperative-mood lesson to draw a real one from. Tranche 14
- * adds a second particle, हे (vocative, "O!" — Wikner 9.B.1, already this
- * file's own citation for इति's classification) and the sentence हे नर
+ * adds a second particle, हे (vocative, "O!" — Wikner 9.B.1, the same
+ * lesson's own classification section इति's citation, 9.B.2, is part of)
+ * and the sentence हे नर
  * ("O man!" — Wikner 5.B.1's own declension table for नर, already this
  * file's own citation for every case built on नर since tranche 7). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
@@ -1215,15 +1216,19 @@ export const sanskritManifest: Manifest = {
     // decision — treat the benchmark verses as calibration, not a
     // checklist, and target grammar completeness on its own merits —
     // this file's second indeclinable particle, हे (vocative). Wikner
-    // 9.B.1, line 2263 (already this file's citation for इति's own avyaya
-    // classification): "words of this class are ca (and) and he (vocative
-    // particle)." Not a new source or a new section — both this word and
-    // the sentence below come from tables this file has already read and
-    // cited (5.B.1 for cases, 9.B.1 for इति), just not fully mined yet.
+    // 9.B.1, line 2263: "words of this class are ca (and) and he (vocative
+    // particle)." Not इति's own citation (9.B.2, cited above) — a
+    // different subsection of the same lesson, read at the same time but
+    // not previously mined for this word. Not a new source either way:
+    // both this word and the sentence below come from tables this file
+    // has already read (5.B.1 for cases, 9.B.1/9.B.2 for both particles),
+    // just not fully mined until now.
     {
       id: 'skt-word-he',
       stage: 'words',
       level: 2,
+      // An indeclinable (avyaya), like च and इति above — never takes
+      // case/verb endings.
       text: 'हे',
       gloss: 'he — O! (vocative particle, addresses someone directly)',
       composedOf: ['skt-letter-he'],

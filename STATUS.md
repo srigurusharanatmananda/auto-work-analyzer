@@ -163,7 +163,8 @@ close (11 of 12 words in that verse, and all 7 in Thirukkural 1, are
 still unreachable). Operator decision: treat those two verses as
 calibration, not a checklist, and target grammar completeness on its own
 merits going forward. Tranche 14 acted on that: Sanskrit's second
-particle (हे, vocative — "O man!" in हे नर) and Tamil's future tense
+particle (हे, "O!", vocative — the sentence हे नर means "O man!") and
+Tamil's future tense
 (செய்வேன், "I shall do"). Sanskrit: 109 lessons total.
 Tamil: 246. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
