@@ -685,7 +685,7 @@ Sanskrit: 113 lessons (unchanged). Tamil: 249 → 252 lessons.
 
 **Eighteenth pass — tranche 17**: Sanskrit-only — Tamil's own next
 candidate (pronoun genitives, ABC of Tamil Lesson Twenty-One) needs a
-new alveolar-नு-shaped letter not yet cleanly scoped, so it waits for
+new alveolar-னு-shaped letter not yet cleanly scoped, so it waits for
 its own tranche rather than being rushed in here.
 
 - **Sanskrit — a second particle**: एव ("indeed, verily", an emphatic
@@ -704,15 +704,59 @@ translation, not just accepting the OCR line at face value).
 
 Sanskrit: 113 → 114 lessons. Tamil: 252 lessons (unchanged).
 
+**Nineteenth pass — tranche 18**: closes both of the two items the
+previous "what's next" list had actually blocked on missing research —
+run via a `Workflow` research sweep (2 parallel agents) prompted by an
+explicit "tackle all" instruction.
+
+- **Sanskrit — the second-person pronoun, finally**: Wikner has none
+  (confirmed by two independent full-text greps across this whole
+  session), so this required a genuinely new source. William Dwight
+  Whitney's *Sanskrit Grammar* (1889, public domain) has it — Chapter
+  VII, §491 — but Perry's *Sanskrit Primer* (already catalogued as
+  `skt-primer-perry`, tried first) turned out unusable for this specific
+  table: its cached OCR text renders the actual Devanagari as
+  unreadable symbol soup, even though the surrounding English section
+  headers came through cleanly. Whitney's own Wikisource transcription
+  is proofread against the page scans, not a raw OCR dump, and renders
+  clean Devanagari + IAST — independently re-verified twice: once via
+  the research agent's saved audit files, and again via a completely
+  fresh live fetch of the Wikisource page during adversarial
+  verification, not just the cached copy. Catalogued as
+  `skt-whitney-grammar` (new resources.ts entry, same "adopt a second
+  source" pattern as Andronov on the Tamil side). Ships त्वम् ("you",
+  nominative singular) and यूयम् ("you all", nominative plural) — two
+  new letters, the conjunct त्व and यू, both following this file's
+  already-established "add only what's needed" and
+  conjunct-vs-halanta conventions.
+- **Tamil — a pronoun genitive**: அவனுடைய ("his"), the genitive of
+  already-taught அவன் ("he"), ABC of Tamil Lesson Twenty-One, line
+  2046. Turned out to need **zero** new letters, not the one the
+  previous "what's next" entry expected — the alveolar னு grapheme this
+  word needs (distinct from the already-taught dental நு) was already
+  in the file from an earlier, unrelated tranche; the research agent
+  caught this, and adversarial verification independently confirmed it
+  by codepoint (U+0BA9 alveolar ன vs U+0BA8 dental ந).
+
+Two verifiers (one per language); both clean. One real-but-cosmetic
+finding: the new word's gloss used a voiced "ḍ" (avaṉuḍaiya) where the
+file's own sibling entry (yāruṭaiya) uses voiceless "ṭ" for the same
+டை letter — fixed for internal consistency before merge.
+
+Sanskrit: 114 → 118 lessons. Tamil: 252 → 253 lessons.
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
-   Sanskrit second-person pronoun (confirmed absent from Wikner by two
-   separate full-text checks now — needs a second source, or may simply
-   not be available this way), more mood coverage; Tamil pronoun
-   genitives (அவனுடைய "his", etc., ABC of Tamil Lesson Twenty-One —
-   needs one new letter, an alveolar நு-shaped grapheme, not yet
-   scoped), more negation forms (plural, colloquial — tranche 16 shipped
+   more of Sanskrit's 2nd-person pronoun (tranche 18 shipped only the
+   two nominatives; the fuller Whitney §491 table has accusative,
+   instrumental, dative, ablative, genitive, locative, and the dual too
+   — all already transcribed in this tranche's research, unused so
+   far), more mood coverage; Tamil's other pronoun genitives from the
+   same Lesson Twenty-One passage (அவளுடைய "her", அவருடைய "his,
+   honorific", அவர்களுடைய "their", என்னுடைய "my", etc. — all already
+   scoped by tranche 18's own research as needing zero new letters
+   too), more negation forms (plural, colloquial — tranche 16 shipped
    only the 3rd-singular-neuter negative indicative), genitive for more
    nouns, more tenses/persons. Each still needs its own citation the way
    every tranche so far has had.

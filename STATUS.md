@@ -182,8 +182,16 @@ Sanskrit lead. Tranche 17 added Sanskrit's second particle, एव ("indeed,
 verily", Wikner §15.8 line 3876 — the line right after line 3875's
 अहम्, in that same back-matter passage), Sanskrit-only this time since
 Tamil's own next candidate (pronoun genitives) needs a new letter not
-yet scoped. Sanskrit: 114 lessons total.
-Tamil: 252. The remaining gap is content, not
+yet scoped. Tranche 18 finally closed Sanskrit's 2nd-person-pronoun gap
+via a genuinely new source — Wikner has none, and Perry's primer's own
+cached OCR is unreadable for this exact table, but William Dwight
+Whitney's Sanskrit Grammar (1889, public domain, `skt-whitney-grammar`,
+§491) has it in clean Devanagari + IAST: त्वम् ("you") and यूयम् ("you
+all"). Same tranche shipped Tamil's அவனுடைய ("his"), which turned out
+to need zero new letters (the alveolar னு grapheme it needs was
+already in the file from an earlier tranche). Sanskrit: 118 lessons
+total.
+Tamil: 253. The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's

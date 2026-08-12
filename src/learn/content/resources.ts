@@ -2,10 +2,12 @@
  * Reading resources for the operator to work through outside the curriculum
  * itself — data, not code, the same reasoning as `sanskrit.ts`/`tamil.ts`.
  *
- * Every URL below was actually fetched and confirmed live on 2026-08-10, not
- * assumed — several plausible candidates were rejected during that pass for
- * failing a live check (dead audio links, 404s, a Cloudflare bot wall that
- * blocked verification entirely) rather than included on faith. `howToRead`
+ * Every URL below was actually fetched and confirmed live, not assumed —
+ * most on 2026-08-10, with later additions (e.g. `skt-whitney-grammar`,
+ * added 2026-08-12) fetched and confirmed live on their own tranche's date
+ * instead. Several plausible candidates were rejected during these passes
+ * for failing a live check (dead audio links, 404s, a Cloudflare bot wall
+ * that blocked verification entirely) rather than included on faith. `howToRead`
  * is deliberately concrete (what to read/skip/skim, in what order) rather
  * than generic, and `license` records what each source states about itself,
  * not a legal opinion.
@@ -290,6 +292,20 @@ romanization reproduced as printed (Perry's diacritics simplified here).`,
     howToRead:
       "Not for early stages — this is a specialist study platform for Panini's Ashtadhyayi itself (Sutrapatha, Dhatupatha, multiple traditional commentaries, a prakriya/derivation generator that shows the sutra-by-sutra derivation of any word form, offline mode, bookmarks). Come back once sandhi and noun/verb morphology are solid (the same gating this catalogue already applies to Ambuda) — its actual audience is someone already reading Sanskrit who wants to see WHY a form is what it is, rule by rule, not someone learning what the forms are in the first place.",
     license: 'No explicit license or copyright statement found on the site.',
+  },
+  {
+    id: 'skt-whitney-grammar',
+    language: 'sanskrit',
+    title: 'Sanskrit Grammar',
+    author: 'William Dwight Whitney',
+    sourceUrl: 'https://en.wikisource.org/wiki/Sanskrit_Grammar_(Whitney)',
+    type: 'book',
+    howToRead:
+      "Adopted as this app's second Sanskrit source (tranche 18) specifically because Wikner's Practical Sanskrit Introductory has no 2nd-person-pronoun lesson anywhere in its text — confirmed by two separate full-text greps, not assumed. This is a comprehensive reference grammar, not a graded course: don't read front-to-back. Chapter VII (\"Pronouns\") §491 has the personal-pronoun declension table this app draws from; the Wikisource transcription (proofread against the original page scans, not a raw OCR dump) renders it in clean Devanagari plus IAST side by side, unlike the same-era Perry primer's own cached OCR text of the equivalent table, which came through unreadable.",
+    license:
+      'Public domain (Whitney died 1894; 1st ed. 1879, 2nd ed. 1889 — both pre-1929 works with no copyright renewal on record). The Wikisource transcription/markup layer is separately offered under CC BY-SA 3.0/GFDL, but that only covers the wiki formatting, not the underlying 19th-century text.',
+    inAppNotes:
+      "Sanskrit's 1st/2nd person pronouns share no root with the noun declensions taught so far (नर, अश्व) — §491 calls them out as \"the most irregular and peculiar of all, being made up of fragments coming from various roots.\" Unlike 3rd person (expressed only through verb endings in this app's other source), 2nd person has its own dedicated word forms: त्वम् (tvam, singular) and यूयम् (yūyam, plural) both come directly from this table.",
   },
 
   {

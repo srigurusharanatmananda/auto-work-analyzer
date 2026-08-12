@@ -57,6 +57,9 @@
  * 15 already consumed the sweep's Sanskrit findings), and the
  * tranche-13 operator decision — grammar completeness on its own merits
  * — no longer requires lockstep parity between the two languages.
+ * Tranche 18 adds a pronoun genitive, அவனுடைய ("his", the genitive of
+ * அவன், ABC of Tamil Lesson Twenty-One, line 2046) — zero new letters,
+ * every grapheme (அ, வ, னு, டை, ய) already taught by an earlier tranche.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1357,6 +1360,28 @@ export const tamilManifest: Manifest = {
       text: 'பல்லுக்கு',
       gloss: 'pallukku — to the tooth (dative)',
       composedOf: ['tam-letter-pa', 'tam-pulli-la', 'tam-letter-lu', 'tam-pulli-ka', 'tam-letter-ku'],
+    },
+
+    // ================= Pronoun genitive (level 3) =================
+    // Extension, 2026-08-12 (tranche 18): tranche 10 shipped the genitive
+    // only for யார் ("who"); ABC of Tamil Lesson Twenty-One's own further
+    // examples (lines 2039-2050) give the pronoun genitives, starting with
+    // "அவன் + உடைய = அவனுடைய = his" (line 2046) — the genitive of
+    // தம்-word-avan ("he"), already taught.
+    {
+      id: 'tam-word-avanudaiya',
+      stage: 'words',
+      level: 3,
+      // அ + வ (both already taught) + னு (already an atomic letter,
+      // tam-letter-alveolar-nu — the alveolar ன fused with the u vowel
+      // sign, distinct from dental நு) + டை + ய (both already taught,
+      // reused from யாருடைய, tranche 10) — zero new letters, the dead ன்
+      // of அவன் fusing directly into னு the same way a dead consonant
+      // immediately followed by a vowel always does elsewhere in this
+      // file (யாருடைய's own ரு, கண்ணுக்கு's own ணு).
+      text: 'அவனுடைய',
+      gloss: 'avaṉuṭaiya — his',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-alveolar-nu', 'tam-letter-ttai', 'tam-letter-ya'],
     },
   ],
 };

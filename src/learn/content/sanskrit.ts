@@ -43,7 +43,10 @@
  * second particle, एव ("indeed, verily" — Wikner's own back-matter §15.8,
  * line 3876, the same passage अहम् came from) — zero new letters,
  * Sanskrit-only (Tamil's own next candidate needs a new letter not yet
- * cleanly scoped). See
+ * cleanly scoped). Tranche 18 finally closes the 2nd-person-pronoun gap,
+ * via a second source — William Dwight Whitney's Sanskrit Grammar (1889,
+ * public domain, `skt-whitney-grammar`), §491: त्वम् ("you", singular)
+ * and यूयम् ("you all", plural) — two new letters (त्व, यू). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -727,6 +730,31 @@ export const sanskritManifest: Manifest = {
       gloss: 'svi',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-tva',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 18): a conjunct, त् (dead त) immediately followed by
+      // व — needed only because skt-word-tvam needs it. Modeled as one
+      // atomic letter, the same conjunct-not-halanta rule this file
+      // already enforces for श्व/स्य/ष्ठ/स्तु/स्वि (a virama immediately
+      // followed by another consonant within the same word is a
+      // conjunct, not a word-final halanta).
+      text: 'त्व',
+      gloss: 'tva — conjunct (त् + व)',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-yuu',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 18): य + the ū vowel sign — needed only because
+      // skt-word-yuyam needs it, the same "add only what's needed"
+      // reasoning every other new letter in this file already follows.
+      text: 'यू',
+      gloss: 'yū',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1353,6 +1381,42 @@ export const sanskritManifest: Manifest = {
       text: 'एव',
       gloss: 'eva — indeed, verily (emphatic particle)',
       composedOf: ['skt-letter-e', 'skt-letter-va'],
+    },
+
+    // ================= Second-person pronoun (level 2) =================
+    // Extension, 2026-08-12 (tranche 18): Wikner has been confirmed (two
+    // separate full-text checks) to have no 2nd-person pronoun anywhere in
+    // his text — 2nd person there is only ever expressed through verb
+    // endings. This tranche closes that gap with a second source: William
+    // Dwight Whitney's Sanskrit Grammar (1889, public domain), Chapter VII
+    // ("Pronouns"), §491 — read via its Wikisource proofread transcription
+    // (clean Devanagari + IAST, not a raw OCR dump — catalogued as
+    // `skt-whitney-grammar`, the same "adopt a second source" pattern
+    // already used for Andronov on the Tamil side, tranche 12).
+    //
+    // §491's own table, "2d pers." column: nominative singular त्वम् tvám,
+    // nominative plural यूयम् yūyám (quoted verbatim from the table's own
+    // cells). New letters (त्व, यू) live up in this file's letters block,
+    // right after skt-letter-svi.
+    {
+      id: 'skt-word-tvam',
+      stage: 'words',
+      level: 2,
+      // त्व (new, above) + म् (already taught, skt-letter-ma-halanta).
+      text: 'त्वम्',
+      gloss: 'tvam — you (nominative singular personal pronoun)',
+      composedOf: ['skt-letter-tva', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-yuyam',
+      stage: 'words',
+      level: 2,
+      // यू (new, above) + य (already taught, skt-letter-ya, bare — its own
+      // inherent 'a' gives the "ya" syllable) + म् (already taught,
+      // skt-letter-ma-halanta).
+      text: 'यूयम्',
+      gloss: 'yūyam — you all, you (plural) (nominative plural personal pronoun)',
+      composedOf: ['skt-letter-yuu', 'skt-letter-ya', 'skt-letter-ma-halanta'],
     },
   ],
 };
