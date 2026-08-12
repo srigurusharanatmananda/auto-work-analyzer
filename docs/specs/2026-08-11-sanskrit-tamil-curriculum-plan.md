@@ -689,11 +689,11 @@ new alveolar-नு-shaped letter not yet cleanly scoped, so it waits for
 its own tranche rather than being rushed in here.
 
 - **Sanskrit — a second particle**: एव ("indeed, verily", an emphatic
-  avyaya), found right next to अहम् in the same back-matter passage
-  (Wikner §15.8, line 3876) already cited for it — Wikner's own
-  sandhi-free breakdown of Bhagavad Gītā 10.33 ("aham eva akṣayaḥ
-  kālaḥ...", "I am verily inexhaustible Time..."), glossed directly,
-  dictionary-style. Zero new letters: ए is the independent vowel letter
+  avyaya), Wikner §15.8, line 3876 — the very next line after line
+  3875's अहम् in the same back-matter passage tranche 13 already cited.
+  Wikner's own sandhi-free breakdown of Bhagavad Gītā 10.33 ("aham eva
+  akṣayaḥ kālaḥ...", "I am verily inexhaustible Time..."), glossed
+  directly, dictionary-style. Zero new letters: ए is the independent vowel letter
   (already taught, not the dependent vowel sign — एव opens with a bare
   vowel sound) and व is the bare consonant with its own inherent 'a'
   (already taught, no virama needed since the word ends in "va").
