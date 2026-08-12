@@ -1,11 +1,14 @@
 /**
  * As of 2026-08-11: the complete Sanskrit alphabet (all 14 vowels, all 33
- * consonants — Wikner's own Lessons 1-3), plus the original seven words and
- * one sentence a much smaller seed reached first. See
+ * consonants — Wikner's own Lessons 1-3), a first batch of vowel signs
+ * (mātrā, Wikner 6.A.1 — tranche 2, same day), and the original seven words
+ * plus one new word and one sentence. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is the first tranche of — vowel signs
- * (Lesson 6), conjuncts (Lesson 7) and sandhi (Lessons 10-11) are the next
- * ones, not yet written.
+ * beginner-to-advanced plan this is a tranche of — conjuncts (Lesson 7) and
+ * sandhi (Lessons 10-11) are the next ones, not yet written. The vowel-sign
+ * batch is deliberately partial (one consonant's full table, plus two more
+ * worked examples) rather than exhaustive across all 33 consonants — see
+ * that block's own comment for why.
  *
  * The paragraphs below describe the ORIGINAL seed (six consonants, five
  * words) and its first, 2026-08-10 extension (one sentence) — kept as the
@@ -296,10 +299,127 @@ export const sanskritManifest: Manifest = {
       // (Wikner's own worked example: ब + the same vowel sign = बि, "bi") —
       // त + the same vowel sign = ति, "ti", by the identical rule. Left
       // where it already was, ahead of the words that depend on it, rather
-      // than moved next to the real Lesson 6 vowel-signs tranche that has
-      // not been written yet.
+      // than moved next to the rest of the real Lesson 6 vowel-signs tranche
+      // below (added later, tranche 2) — nothing requires moving it.
       text: 'ति',
       gloss: 'ti',
+      composedOf: [],
+    },
+
+    // --- Vowel signs (mātrā), Wikner 6.A.1 "Vowels after Consonants" ---
+    // Extension, 2026-08-11 (tranche 2): the first real content past the bare
+    // alphabet. A vowel sign has nothing to visually attach to as its own
+    // bare glyph, so — same reasoning as skt-letter-ti above — each of these
+    // fuses an already-taught consonant with a vowel sign into one atomic
+    // letter, rather than teaching the sign alone.
+    //
+    // Sourced from Wikner 6.A.1's own worked table for ब (already taught,
+    // skt-letter-ba), which walks through all fourteen vowels. The table
+    // survives OCR extraction with several transliterations intact (bi, bu,
+    // bū's row-partner, be, bai, bo, bau) and several lost to corruption
+    // (bā, bī specifically) — for those two, the Devanagari is still exactly
+    // right (a consonant + a vowel sign is unambiguous, standard composition,
+    // not a guess), it is only WHICH garbled table cell corresponds to which
+    // that rests on the table's own stated a/ā, i/ī, u/ū... vowel-pair
+    // ordering rather than on a directly-legible transliteration for those
+    // two specific cells.
+    //
+    // Deliberately not extended to बॄ/बॢ/बॣ (long-r̥/l̥/long-l̥), even though
+    // Wikner's table includes them. For बॄ/बॣ specifically: this file's own
+    // existing bare-vowel entries already call ṝ/ḹ "theoretical — not used
+    // in standard grammar" (skt-letter-rii/-lii), so sign-forms of them
+    // would be extending coverage of letters already flagged as not worth
+    // teaching. बॢ (short l̥) is a separate case — its bare counterpart
+    // skt-letter-li is only "rare" (occurs in forms of one root, √kḷp), not
+    // theoretical — but that root's own inflected forms are well beyond
+    // this file's current word list, so its sign form isn't needed yet
+    // either; it can be added once a word actually calls for it. Also not
+    // extended to र/ह + any vowel sign: Wikner 6.A.1 names रु/हृ as explicit
+    // EXCEPTIONS to "these vowel signs are used with all consonants," but the
+    // sentence explaining what the exception actually is does not survive in
+    // this extraction — proposing a form for an explicitly-flagged exception
+    // whose rule cannot be read would be exactly the kind of guess this file
+    // does not make.
+    {
+      id: 'skt-letter-baa',
+      stage: 'letters',
+      level: 1,
+      // Table row 1 (a/ā) — transliteration lost to OCR corruption on this
+      // cell specifically, position inferred from the table's own stated
+      // vowel-pair order (see block comment above). Placed here, ahead of
+      // skt-letter-bi, to match that same a/ā-before-i/ī row order.
+      text: 'बा',
+      gloss: 'bā',
+      composedOf: [],
+    },
+    { id: 'skt-letter-bi', stage: 'letters', level: 1, text: 'बि', gloss: 'bi', composedOf: [] },
+    {
+      id: 'skt-letter-bii',
+      stage: 'letters',
+      level: 1,
+      // Table row 2 (i/ī), second cell — same OCR-loss/position-inference
+      // situation as skt-letter-baa above.
+      text: 'बी',
+      gloss: 'bī',
+      composedOf: [],
+    },
+    { id: 'skt-letter-bu', stage: 'letters', level: 1, text: 'बु', gloss: 'bu', composedOf: [] },
+    { id: 'skt-letter-buu', stage: 'letters', level: 1, text: 'बू', gloss: 'bū', composedOf: [] },
+    {
+      id: 'skt-letter-bri',
+      stage: 'letters',
+      level: 1,
+      // The vocalic-r. sign — the one member of its table row (r./r..)
+      // extended here, since bare ऋ (skt-letter-ri) is this file's own
+      // "common today" vowel; its long partner ॠ is not (see block comment).
+      text: 'बृ',
+      gloss: 'bṛ',
+      composedOf: [],
+    },
+    { id: 'skt-letter-be', stage: 'letters', level: 1, text: 'बे', gloss: 'be', composedOf: [] },
+    { id: 'skt-letter-bai', stage: 'letters', level: 1, text: 'बै', gloss: 'bai', composedOf: [] },
+    { id: 'skt-letter-bo', stage: 'letters', level: 1, text: 'बो', gloss: 'bo', composedOf: [] },
+    {
+      id: 'skt-letter-bau',
+      stage: 'letters',
+      level: 1,
+      // Completes Wikner's own full worked table for ब across every vowel
+      // this file teaches bare.
+      text: 'बौ',
+      gloss: 'bau',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-ki',
+      stage: 'letters',
+      level: 1,
+      // Wikner 6.A.1's own second worked example, for the same short-i sign
+      // as skt-letter-ti's बि, on a different consonant: क is already taught
+      // (skt-letter-ka). 6.A.1 groups i/e/o/ai/au together as embellishments
+      // written above the letter, linking to the consonant's top horizontal
+      // bar (at its rightmost junction if the consonant meets the bar more
+      // than once) — this is about where the sign's connecting stroke
+      // attaches, not a claim that the whole glyph sits to the consonant's
+      // right. For i specifically, 6.A.2 goes on to note the sign is still
+      // written "back to front," i.e. to the consonant's visual left (the
+      // same fact skt-letter-ti's comment states) — the two descriptions
+      // are Wikner's own two different lenses on the same sign, not a
+      // contradiction.
+      text: 'कि',
+      gloss: 'ki',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-nne',
+      stage: 'letters',
+      level: 1,
+      // The second half of the same worked-example pair as skt-letter-ki
+      // (Wikner gives both together to illustrate the top-bar-linking rule).
+      // ण is already taught (skt-letter-nna, retroflex ṇa) — named "nne",
+      // not "ne", to stay distinct from the dental-na family, mirroring
+      // skt-letter-nna's own disambiguation.
+      text: 'णे',
+      gloss: 'ṇe',
       composedOf: [],
     },
 
@@ -340,11 +460,12 @@ export const sanskritManifest: Manifest = {
       id: 'skt-word-raja',
       stage: 'words',
       level: 2,
-      // Unmarked "raja" (dust, pollen) — not rājā "king", which needs the ā
-      // vowel sign this seed does not teach. Worth a comment precisely
-      // because the two are one macron apart and that macron is meaning-bearing,
-      // the same class of silent error the vowel-length tests guard against
-      // in Transliterator.test.ts.
+      // Unmarked "raja" (dust, pollen) — not rājā "king", which needs रा
+      // (ra + the ā vowel sign) specifically, not taught even now that बा
+      // exists (tranche 2 added ā only fused to ब, not to र). Worth a
+      // comment precisely because the two are one macron apart and that
+      // macron is meaning-bearing, the same class of silent error the
+      // vowel-length tests guard against in Transliterator.test.ts.
       text: 'रज',
       gloss: 'raja — dust, pollen',
       composedOf: ['skt-letter-ra', 'skt-letter-ja'],
@@ -375,6 +496,22 @@ export const sanskritManifest: Manifest = {
       text: 'वदति',
       gloss: 'vadati — speaks (he/she/it)',
       composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-ti'],
+    },
+    {
+      id: 'skt-word-ca',
+      stage: 'words',
+      level: 2,
+      // Wikner, Lesson 1.B.2: "Some words, such as adverbs and conjunctions,
+      // do not have endings — these are called indeclinables (avyaya). An
+      // example of this is ca ('and') which is placed after the last word of
+      // the series it links (or after each word in the series)." An
+      // indeclinable, not a noun or verb — it never takes the case/verb
+      // endings every other word in this file so far does, worth flagging so
+      // a learner meeting it right after नरः/वदति doesn't expect it to
+      // inflect the same way.
+      text: 'च',
+      gloss: 'ca — and (placed after the word or series it links, never inflected)',
+      composedOf: ['skt-letter-ca'],
     },
 
     {

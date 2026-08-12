@@ -193,16 +193,45 @@ in both manifests, plus a levels-overview strip and per-lesson level badge in
 `skt-ashtadhyayi`) and one existing entry's `howToRead` updated per the
 Round 2 table above.
 
+**Third pass — tranche 2, run as an orchestrated multi-agent workflow**
+(research → draft → independent adversarial verification, each of the three
+content batches checked by two separate verifiers re-reading the primary
+source directly rather than trusting the drafting agent's own summary):
+
+- Sanskrit vowel signs (Wikner 6.A.1): 12 new letters — a full worked table
+  for ब across all fourteen vowels it teaches bare, plus both of Wikner's
+  own worked examples for the separate above-attaching rule (कि, णे).
+  Deliberately partial, not exhaustive across all 33 consonants — see the
+  block's own comment in `sanskrit.ts` for what was excluded and why
+  (theoretical-vowel signs, and two named exceptions whose rule doesn't
+  survive the cached extraction).
+- Sanskrit words (Wikner 1.B-3.B): only 1 of 2 drafted proposals survived
+  verification. `skt-word-ca` ("and") shipped clean. `skt-word-nayati` was
+  independently flagged by BOTH verifiers and dropped entirely: Wikner's own
+  course explicitly instructs students to use the ātmanepada (nayate-family)
+  forms for this root, not the parasmaipada form actually proposed, and
+  nayati never appears in any example sentence in the primer — exactly the
+  kind of error adversarial verification exists to catch before it reaches
+  the one real learner.
+- Tamil alphabet completion (ABC of Tamil, Lessons One/Two): 25 new
+  letters — all 12 vowels, the āytham, 8 consonants not yet taught in any
+  form, and the bare inherent-vowel form of the 4 consonants previously
+  taught only as their dead (pulli) form. Both verifiers signed off with no
+  issues.
+
+Sanskrit: 58 → 71 lessons. Tamil: 19 → 44 lessons.
+
 ## What's next, in order
 
-1. **Sanskrit vowel signs** (Wikner 6.A) — attach each already-taught vowel
-   to each already-taught consonant. Mechanical in the same way this
-   tranche was (a real, complete table to transcribe, not a judgment call),
-   but larger: up to 14 vowels x 33 consonants, in practice far fewer since
-   only combinations Wikner's own vocabulary actually uses need teaching.
-2. **Sanskrit words** drawing on the now-complete alphabet, following
-   Wikner's own B-section vocabulary and noun/verb paradigms (Lessons 1.B-9.B).
-3. **Tamil alphabet completion**, mirroring tranche 1's shape.
+1. **Sanskrit conjuncts** (Wikner 7.A) — halanta and the special conjuncts
+   (kṣa, jña, etc.), the remaining letters-stage gap before real
+   multi-syllable words become constructible.
+2. **More Sanskrit words**, once conjuncts unlock the many B-section verbs
+   that need them (tiṣṭhati's ṣṭha, aśva's śva, vṛkṣa's kṣa — all flagged
+   as blocked-on-conjuncts by tranche 2's own research).
+3. **Tamil vowel-sign combinations** (ABC of Tamil, Lessons Three onward) —
+   the consonantal-vowel matrix beyond the two combinations (நா, யா)
+   already taught.
 4. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
    sentences that read like real text rather than two words placed side by
    side.
