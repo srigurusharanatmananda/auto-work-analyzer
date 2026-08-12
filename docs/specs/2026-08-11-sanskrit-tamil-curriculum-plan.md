@@ -683,16 +683,39 @@ One verifier; clean.
 
 Sanskrit: 113 lessons (unchanged). Tamil: 249 → 252 lessons.
 
+**Eighteenth pass — tranche 17**: Sanskrit-only — Tamil's own next
+candidate (pronoun genitives, ABC of Tamil Lesson Twenty-One) needs a
+new alveolar-नு-shaped letter not yet cleanly scoped, so it waits for
+its own tranche rather than being rushed in here.
+
+- **Sanskrit — a second particle**: एव ("indeed, verily", an emphatic
+  avyaya), Wikner §15.8, line 3876 — the very next line after line
+  3875's अहम् in the same back-matter passage tranche 13 already cited.
+  Wikner's own sandhi-free breakdown of Bhagavad Gītā 10.33 ("aham eva
+  akṣayaḥ kālaḥ...", "I am verily inexhaustible Time..."), glossed
+  directly, dictionary-style. Zero new letters: ए is the independent vowel letter
+  (already taught, not the dependent vowel sign — एव opens with a bare
+  vowel sound) and व is the bare consonant with its own inherent 'a'
+  (already taught, no virama needed since the word ends in "va").
+
+One verifier; clean (independently cross-confirmed the underlying verse
+as BG 10.33 by matching Wikner's own English gloss to the standard
+translation, not just accepting the OCR line at face value).
+
+Sanskrit: 113 → 114 lessons. Tamil: 252 lessons (unchanged).
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
    Sanskrit second-person pronoun (confirmed absent from Wikner by two
    separate full-text checks now — needs a second source, or may simply
-   not be available this way), more particles and mood coverage; Tamil
-   more negation forms (plural, colloquial — tranche 16 shipped only the
-   3rd-singular-neuter negative indicative), genitive for more nouns,
-   more tenses/persons. Each still needs its own citation the way every
-   tranche so far has had.
+   not be available this way), more mood coverage; Tamil pronoun
+   genitives (அவனுடைய "his", etc., ABC of Tamil Lesson Twenty-One —
+   needs one new letter, an alveolar நு-shaped grapheme, not yet
+   scoped), more negation forms (plural, colloquial — tranche 16 shipped
+   only the 3rd-singular-neuter negative indicative), genitive for more
+   nouns, more tenses/persons. Each still needs its own citation the way
+   every tranche so far has had.
 2. **Expert-tier reading** for both languages, once a real short verse —
    freshly chosen for what it needs, not assumed to be one of the two
    calibration verses above — is fully decomposable into taught vocabulary

@@ -39,7 +39,11 @@
  * which is a separate back-matter passage): तेजस्वि ("brilliant", an
  * adjective) and अधीतम् ("studied", a past passive participle) — both
  * taught as flat vocabulary, the same convention already used for every
- * other morphologically complex word in this file. See
+ * other morphologically complex word in this file. Tranche 17 adds a
+ * second particle, एव ("indeed, verily" — Wikner's own back-matter §15.8,
+ * line 3876, the same passage अहम् came from) — zero new letters,
+ * Sanskrit-only (Tamil's own next candidate needs a new letter not yet
+ * cleanly scoped). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -1326,6 +1330,29 @@ export const sanskritManifest: Manifest = {
       text: 'तेजस्वि',
       gloss: 'tejasvi — brilliant, splendid, bright, energetic',
       composedOf: ['skt-letter-te', 'skt-letter-ja', 'skt-letter-svi'],
+    },
+
+    // ================= A second particle-glossary word (level 2) =================
+    // Extension, 2026-08-12 (tranche 17): grammar completeness on its own
+    // merits — a second indeclinable particle beyond च/इति/हे, found in
+    // the very same back-matter passage that already sourced अहम्
+    // (Wikner §15.8, line 3875). Right next to it, line 3876: "Ov | avyaya
+    // = verily, indeed" — Wikner's own sandhi-free breakdown of the
+    // Bhagavad Gītā verse "अहम् एव अक्षयः कालः..." ("I am verily
+    // inexhaustible Time..."), glossed directly, dictionary-style, exactly
+    // like every other word already taken from this passage.
+    {
+      id: 'skt-word-eva',
+      stage: 'words',
+      level: 2,
+      // ए (already taught, the independent vowel letter — this word
+      // starts with the vowel sound itself, not a consonant, so it's not
+      // built from a vowel SIGN) + व (already taught, bare consonant with
+      // its own inherent 'a' — this word ends in the syllable "va", no
+      // virama needed). Zero new letters.
+      text: 'एव',
+      gloss: 'eva — indeed, verily (emphatic particle)',
+      composedOf: ['skt-letter-e', 'skt-letter-va'],
     },
   ],
 };
