@@ -246,10 +246,13 @@ Sanskrit: 71 → 73 lessons. Tamil: 44 → 55 lessons.
 
 ## What's next, in order
 
-1. **More Sanskrit words**, now that kṣa/jña (plus the rest of the alphabet)
-   unblock the many B-section verbs that need them (tiṣṭhati's ṣṭha, aśva's
-   śva, vṛkṣa's kṣa — all flagged as blocked-on-conjuncts by tranche 2's own
-   research).
+1. **More Sanskrit words.** kṣa unblocks vṛkṣa specifically; tiṣṭhati's ṣṭha
+   and aśva's śva are different conjuncts, still not taught, so those two
+   remain blocked until a future tranche adds them (all three were flagged
+   as blocked-on-conjuncts by tranche 2's own research — tranche 3 only
+   added the two conjuncts Wikner himself singles out as special, not a
+   general table, so most ordinary conjuncts, including these two, are
+   still gaps).
 2. **The remaining 17 consonants' Tamil vowel-sign forms** (ABC of Tamil,
    Lessons Three onward) — கா/கி/etc. above cover க only; the other
    consonants' sign forms are deferred until a real word calls for one.

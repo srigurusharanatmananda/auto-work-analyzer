@@ -169,11 +169,13 @@ the decision is cheap to reverse on evidence.
 ## Next
 
 **Phase 7 content depth, per the new curriculum plan.** kṣa/jña and Tamil's
-க vowel-sign table shipped in tranche 3. Next: more Sanskrit words, now that
-those two conjuncts (plus the rest of the alphabet) unblock the Wikner
-B-section verbs/nouns already identified as needing them; then the remaining
-17 consonants' Tamil vowel-sign forms as real words call for them; then
-sandhi (Sanskrit) / conjunction rules (Tamil) — see
+க vowel-sign table shipped in tranche 3. Next: more Sanskrit words — kṣa
+unblocks vṛkṣa specifically, but most other previously-flagged
+blocked-on-conjuncts words (e.g. tiṣṭhati's ṣṭha, aśva's śva) need conjuncts
+tranche 3 did not add, since it only covered the two Wikner names as special,
+not a general table; then the remaining 17 consonants' Tamil vowel-sign forms
+as real words call for them; then sandhi (Sanskrit) / conjunction rules
+(Tamil) — see
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
 "What's next, in order". Content work, not an engine change, and needs the
 human quality gate the design doc itself calls for before it ships to the

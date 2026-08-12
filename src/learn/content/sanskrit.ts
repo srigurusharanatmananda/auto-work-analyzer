@@ -426,7 +426,7 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
 
-    // --- Conjunct consonants (saṁyoga), Wikner 7.A.2-7.A.6 ---
+    // --- Conjunct consonants (saṁyoga), Wikner 7.A.3-7.A.5 ---
     // Extension, 2026-08-12 (tranche 3). A conjunct joins two or more
     // consonants with no vowel between them — Wikner's own 7.A.6 gives a
     // ~150-entry reference table of them, but that table's actual glyphs are
