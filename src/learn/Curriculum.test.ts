@@ -242,6 +242,22 @@ describe.each([
     });
   });
 
+  test('an empty sandhiRule is rejected even on a letters lesson — the check must not depend on composedOf ever being non-empty', () => {
+    const letterLesson = manifest.lessons.find((lesson) => lesson.stage === 'letters')!;
+    const broken: Manifest = {
+      ...manifest,
+      lessons: manifest.lessons.map((lesson) =>
+        lesson.id === letterLesson.id ? { ...lesson, sandhiRule: '' } : lesson
+      ),
+    };
+
+    const errors = validateManifest(broken);
+    expect(errors).toContainEqual({
+      lessonId: letterLesson.id,
+      reason: expect.stringContaining('sandhiRule is set but empty'),
+    });
+  });
+
   test('a duplicate lesson id is rejected', () => {
     const broken: Manifest = {
       ...manifest,

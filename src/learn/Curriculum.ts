@@ -176,6 +176,22 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
   });
 
   manifest.lessons.forEach((lesson, index) => {
+    // Checked unconditionally, before any of the stage-specific early
+    // returns below — sandhiRule is a field on every Lesson regardless of
+    // stage, and the guarantee this check exists to make ("if set, it
+    // names something") has to hold for all of them, not just the
+    // words/sentences lessons that reach the reconstruction check further
+    // down. A 'letters' lesson setting sandhiRule is already nonsensical
+    // (letters are atomic and have no composedOf to diverge from), but
+    // nonsensical usage should still be caught, not silently allowed
+    // because it happened to hit a different return statement first.
+    if (lesson.sandhiRule !== undefined && lesson.sandhiRule.trim() === '') {
+      errors.push({
+        lessonId: lesson.id,
+        reason: 'sandhiRule is set but empty — it must name the actual rule, not just opt out of the reconstruction check',
+      });
+    }
+
     const wantStage = prerequisiteStage(lesson.stage);
 
     if (wantStage === null) {
@@ -230,13 +246,6 @@ export function validateManifest(manifest: Manifest): readonly ManifestError[] {
           reason: `is level ${lesson.level} but depends on '${depId}', which is level ${dep.level}`,
         });
       }
-    }
-
-    if (lesson.sandhiRule !== undefined && lesson.sandhiRule.trim() === '') {
-      errors.push({
-        lessonId: lesson.id,
-        reason: 'sandhiRule is set but empty — it must name the actual rule, not just opt out of the reconstruction check',
-      });
     }
 
     // Only checked once every dependency actually resolved — an unknown-id
