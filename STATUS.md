@@ -123,7 +123,7 @@ whose tranches so far: the complete alphabets for both languages (Sanskrit
 Sanskrit conjuncts kṣa/jña (Wikner 7.A.3-7.A.5), and two
 new Sanskrit words — one dropped after two adversarial verifiers flagged it,
 one added later (vṛkṣa, "tree", the specific word kṣa unblocks) — see the
-plan doc's own account of both. Sanskrit: 74 lessons total. Tamil: 55. Not an
+plan doc's own account of both. Sanskrit: 75 lessons total. Tamil: 55. Not an
 engine limitation —
 `Curriculum.ts` already supports arbitrarily more content in all three
 stages — a content one, and per the design doc's own risk note, needs the

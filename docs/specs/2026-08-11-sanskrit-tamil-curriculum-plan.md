@@ -255,7 +255,7 @@ Sanskrit: 71 → 73 lessons. Tamil: 44 → 55 lessons.
   different conjuncts (śva, ṣṭha) this file doesn't teach yet, and remain
   future work. Both verifiers signed off with no issues.
 
-Sanskrit: 73 → 74 lessons. Tamil: unchanged at 55.
+Sanskrit: 73 → 75 lessons. Tamil: unchanged at 55.
 
 ## What's next, in order
 
