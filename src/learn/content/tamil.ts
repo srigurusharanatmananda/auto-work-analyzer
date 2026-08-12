@@ -44,7 +44,10 @@
  * literary negative imperative singular, Andronov §229) — zero new
  * letters, same source. Tranche 14 adds this file's first tense beyond
  * present/past, future (செய்வேன், "I shall do", Andronov §110/§115) —
- * zero new letters again.
+ * zero new letters again. Tranche 15 adds a second person for செய்,
+ * present tense (நீ செய்கிறாய், "you do", ABC of Tamil Lesson Seventeen
+ * line 1432) — நீ itself is real taught vocabulary since Lesson Five, not
+ * a repurposed vowel-sign letter. Zero new letters yet again.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1237,6 +1240,53 @@ export const tamilManifest: Manifest = {
       text: 'செய்வேன்',
       gloss: 'seyvēṉ — I shall do, I will do (1st person singular, future)',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-vee', 'tam-pulli-alveolar-na'],
+    },
+
+    // ================= A second person, present tense (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 15): this file's second grammatical
+    // person for செய், 2nd person singular present.
+    //
+    // நீ ("you", singular) is real, pre-existing taught vocabulary in ABC
+    // of Tamil, not just this file's own already-taught vowel-sign LETTER
+    // of the same shape — Lesson Five's own vocabulary (line 538: "நீ -
+    // (ni) - you (singular)"), its own worked phrase (line 543: "நீ வா -
+    // you come"), and its own grammar note (lines 549, 554, 560-562,
+    // giving நீ's case-change rule) all introduce it as a real word, well
+    // before Lesson Seventeen reuses it in the செய் conjugation.
+    {
+      id: 'tam-word-nii',
+      stage: 'words',
+      level: 2,
+      // composedOf is the one letter this word IS (Curriculum.ts's words
+      // JOINER is '', so a single-letter composedOf reconstructs exactly)
+      // — same pattern already used for skt-word-nau.
+      text: 'நீ',
+      gloss: 'nī — you (singular)',
+      composedOf: ['tam-letter-nii'],
+    },
+    // Lesson Seventeen's own person-suffix table (line 1411: -ஆய், II
+    // person singular) applied to செய், worked example at line 1432:
+    // "நீ செய்கிறாய் - You do (singular)."
+    {
+      id: 'tam-word-seykiraay',
+      stage: 'words',
+      level: 3,
+      // றா (already an atomic letter, reused from tranche 14's
+      // செய்கிறான்) plays the same role here as it does there — plain
+      // concatenation of already-taught letters reaches the real
+      // spelling directly, no sandhiRule needed.
+      text: 'செய்கிறாய்',
+      gloss: 'seykiṟāy — you do (2nd person singular, present)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-ya'],
+    },
+    {
+      id: 'tam-sentence-nii-seykiraay',
+      stage: 'sentences',
+      level: 3,
+      // Lesson Seventeen's own worked sentence, line 1432.
+      text: 'நீ செய்கிறாய்',
+      gloss: 'nī seykiṟāy — you do',
+      composedOf: ['tam-word-nii', 'tam-word-seykiraay'],
     },
   ],
 };

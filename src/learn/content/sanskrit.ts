@@ -24,14 +24,22 @@
  * form (तिष्ठामि), and ships अश्वः तिष्ठति — the other half of the
  * sentence tranche 6/7 already quoted (Wikner 3.B.3, exercise 4) but
  * couldn't teach in full until now. Tranche 13 adds three isolated
- * personal-pronoun/particle glossary words — अहम् ("I"), नौ ("of us
- * two"), अस्तु ("let it be") — since Wikner has no pronoun declension
- * table or imperative-mood lesson to draw a real one from. Tranche 14
- * adds a second particle, हे (vocative, "O!" — Wikner 9.B.1, the same
- * lesson's own classification section इति's citation, 9.B.2, is part of)
- * and the sentence हे नर
+ * personal-pronoun/particle glossary words — अहम् ("I", Wikner's
+ * back-matter Bhagavad Gītā study exercise §15.8, line 3875), नौ ("of us
+ * two") and अस्तु ("let it be", both from Wikner's front-matter
+ * Invocation-verse analysis, lines 190-233) — since Wikner has no pronoun
+ * declension table or imperative-mood lesson to draw a real one from.
+ * Tranche 14 adds a second particle, हे (vocative, "O!" — Wikner 9.B.1, the
+ * same lesson's own classification section इति's citation, 9.B.2, is part
+ * of) and the sentence हे नर
  * ("O man!" — Wikner 5.B.1's own declension table for नर, already this
- * file's own citation for every case built on नर since tranche 7). See
+ * file's own citation for every case built on नर since tranche 7).
+ * Tranche 15 mines the last two words of that same front-matter Invocation
+ * verse (lines 190-233, the one नौ/अस्तु already came from — not अहम्,
+ * which is a separate back-matter passage): तेजस्वि ("brilliant", an
+ * adjective) and अधीतम् ("studied", a past passive participle) — both
+ * taught as flat vocabulary, the same convention already used for every
+ * other morphologically complex word in this file. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -690,6 +698,31 @@ export const sanskritManifest: Manifest = {
       gloss: 'he',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-dhii',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ी sign already proven on ब (skt-letter-bii, tranche 2)
+      // — the same sign, a different consonant, needed only because
+      // skt-word-adhitam below needs it.
+      text: 'धी',
+      gloss: 'dhī',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-svi',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.1-7.A.2, same reasoning as this file's other
+      // word-internal conjuncts (skt-letter-shva/sya/shtha/stu): स
+      // (already taught) followed by व (already taught) within one word
+      // is an ordinary conjunct, not a special one — combined with the
+      // ि sign already proven on क/त (skt-letter-ki, skt-letter-ti).
+      // Needed only because skt-word-tejasvi below needs it.
+      text: 'स्वि',
+      gloss: 'svi',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1251,6 +1284,48 @@ export const sanskritManifest: Manifest = {
       text: 'हे नर',
       gloss: 'he nara — O man!',
       composedOf: ['skt-word-he', 'skt-word-nara'],
+    },
+
+    // ================= Two more words from the Invocation (level 2) =================
+    // Extension, 2026-08-12 (tranche 15): the same front-matter Invocation
+    // verse already mined for नौ/अस्तु (lines 190-233) has two more words —
+    // तेजस्वि and अधीतम् — that weren't picked up yet. अहम् (tranche 13) is
+    // NOT from this verse — its own citation above is a separate back-matter
+    // passage (§15.8, line 3875) — so it's not relisted here. Neither तेजस्वि
+    // nor अधीतम् is a bare pronoun/particle the way नौ/अस्तु were: तेजस्वि is an
+    // adjective (a -vin possessive-suffix derivative) and अधीतम् is a
+    // past passive participle used as an abstract noun. This file already
+    // teaches morphologically complex forms as flat vocabulary — letters
+    // decomposed, not the derivation itself (नरस्य, तिष्ठति, नयते) — so
+    // both are taught the same way here, not as a new participle- or
+    // adjective-formation rule.
+    {
+      id: 'skt-word-adhitam',
+      stage: 'words',
+      level: 2,
+      // Wikner's front-matter Invocation analysis, lines 209-211:
+      // "Adhītam | neuter nominative singular of adhītam. (The past
+      // passive participle used in the sense of an abstract noun.)
+      // adhītaḥ | mw 22c mfn. attained, studied, read; well-read,
+      // learned." Glossed here per that participial sense ("studied"),
+      // not the unrelated "abstract noun" framing alone.
+      text: 'अधीतम्',
+      gloss: 'adhītam — studied, learned (past passive participle, neuter nominative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-dhii', 'skt-letter-ta', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-tejasvi',
+      stage: 'words',
+      level: 2,
+      // Wikner's front-matter Invocation analysis, lines 193-195: "...avi
+      // | neuter nominative singular of adjective tejasvin. tejasvin | mw
+      // 454c mfn. brilliant, splendid, bright, energetic." The verse's own
+      // form is तेजस्वि (neuter nominative singular), not the bare
+      // dictionary stem तेजस्विन् — same convention as skt-word-vrksa's
+      // own bare-pratipadika citation.
+      text: 'तेजस्वि',
+      gloss: 'tejasvi — brilliant, splendid, bright, energetic',
+      composedOf: ['skt-letter-te', 'skt-letter-ja', 'skt-letter-svi'],
     },
   ],
 };
