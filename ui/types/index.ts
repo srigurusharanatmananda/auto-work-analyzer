@@ -390,6 +390,8 @@ export interface LearnLesson {
   text: string;
   gloss: string;
   composedOf: string[];
+  /** Set only for a sandhi/letter-junction example — see `Lesson.sandhiRule` in `Curriculum.ts`. */
+  sandhiRule?: string;
 }
 
 /** The `data` payload of `GET /learn/next` and `POST /learn/seen`. */

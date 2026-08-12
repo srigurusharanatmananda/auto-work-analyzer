@@ -278,31 +278,85 @@ Sanskrit: 73 → 75 lessons. Tamil: unchanged at 55.
 
 Sanskrit: unchanged at 75. Tamil: 55 → 222 lessons.
 
+**Seventh pass — tranche 6**: the engine change item 1 (below, as it stood
+before this pass) was blocked on, plus the sandhi/conjunction content it
+unblocks, plus a real, evidence-based answer on item 2 (expert-tier
+reading) — not more content, but the actual research the previous pass's
+"once case morphology is solid" deferred.
+
+- **Engine change**: `Curriculum.ts`'s `Lesson` gained an optional
+  `sandhiRule?: string` field. When set, `validateManifest` skips the
+  exact-reconstruction check for that one lesson (every other check —
+  dependencies exist, right stage, already taught, level-monotonic — still
+  applies in full), and requires the field to be a non-empty string naming
+  the actual rule. This is the minimal version of the override the previous
+  pass called for: it doesn't weaken the check for any lesson that doesn't
+  opt in, and it forces the divergence to be documented rather than merely
+  permitted. New tests in `Curriculum.test.ts` cover both the exemption and
+  its limits (an unknown dependency is still rejected; an empty
+  `sandhiRule` is rejected). The UI (`ui/app/learn/page.tsx`) shows the rule
+  text under the lesson when present, since for a level-3 lesson the rule
+  *is* the content, not a footnote.
+- **Sanskrit sandhi** (Wikner 11.A.1): one lesson, `skt-sentence-naro-vadati`
+  (नरो वदति) — the exact same two words as the existing `naraḥ vadati`
+  (नरः वदति), showing the visarga sandhi (Wikner's own rule 1: "-as before a
+  ghoṣa consonant becomes -o") that actually applies when they're spoken
+  together. Wikner is explicit that the existing sentence is the
+  independent-word/pausa form and this is what a learner actually meets in
+  connected text. No new vocabulary — reusing already-taught words is what
+  makes the *sandhi*, not the words, the thing being taught. Both verifiers
+  signed off with no issues.
+- **Tamil conjunction rules** (ABC of Tamil, Lesson Twelve): the உம்
+  ("and"/"too") enclitic, plus three of its worked forms — கண்ணும்
+  (Rule I, consonant doubling), நீயும் (Rule III, medial-consonant fusion),
+  and நானும் (the same general fusion, confirmed by the primer's own
+  exercise text rather than a named rule — flagged as such in its own
+  comment). Plus the real two-word phrase the primer's own exercise uses
+  them in, நீயும் நானும் ("you and I"). Two new atomic letters
+  (tam-pulli-ma, tam-pulli-ya) were needed and added, the same
+  add-only-what-a-word-needs rule every previous tranche's enabling letters
+  followed. Both verifiers signed off with no issues beyond the one
+  citation-strength note above.
+- **Expert-tier reading — researched, not shipped, and now concretely
+  scoped**: fetched and word-by-word checked one short, famous,
+  unambiguously public-domain verse per language against this file's actual
+  taught content — Bhagavad Gītā 2.47 for Sanskrit, Thirukkural 1 for Tamil
+  (see the research task's own output for sources and full breakdowns).
+  Both fail completely, and not narrowly: Sanskrit's ceiling is exactly
+  nominative-subject + 3rd-singular-present-parasmaipada verb (नरः वदति/
+  नरो वदति), and real verse needs at minimum a second case (locative and/or
+  genitive), a pronoun paradigm, compound formation, and additional verb
+  moods; even the three-word माण्डूक्य maxim "सत्यमेव जयते" fails on an
+  unshipped case ending and an ātmanepada verb form. Tamil has zero
+  vocabulary overlap with Thirukkural 1, and its one unfamiliar word beyond
+  plain nouns (முதற்றே) is a verbal-noun-plus-clitic construction — genuine
+  verb-derived morphology, not addable as a vocabulary item. Both languages
+  are blocked on the same shape of gap: a second noun case and a working
+  verb-conjugation system, not on vocabulary breadth or on this pass's
+  sandhi work. That gap is now this plan's next item, not "researched
+  later."
+
+Sanskrit: 75 → 76 lessons. Tamil: 222 → 229 lessons.
+
 ## What's next, in order
 
-1. **Sandhi (Sanskrit) / conjunction rules (Tamil)** — the prerequisite for
-   sentences that read like real text rather than two words placed side by
-   side. **Blocked on an engine decision, not on content research**: a real
-   sandhi/conjunction example needs its `sentences`-stage `text` to be the
-   phonetically-changed surface form (e.g. Sanskrit external sandhi actually
-   changing a word boundary's sound), but `Curriculum.ts`'s
-   `validateManifest` requires a lesson's `text` to reconstruct *exactly*
-   from its `composedOf` dependencies' own `text`, joined verbatim (see
-   `JOINER`). That check is deliberate — it is what stops a typo or a stale
-   copy-paste from silently drifting `composedOf` out of sync with `text` —
-   but it also means the engine, as it stands, cannot represent the one
-   thing this item needs to teach. Content that only shows sandhi cases
-   where nothing actually changes would misrepresent the rule, not teach
-   it. This needs a human call on how to extend the model (e.g. an explicit
-   override field for a lesson whose surface form legitimately diverges
-   from simple concatenation) before any sandhi content ships — not
-   something to decide unilaterally under "nothing here proposes touching
-   `Curriculum.ts`" from this same plan's opening paragraph.
-2. **Expert-tier reading** for both languages, once (1) is resolved and
-   case morphology is solid enough to verify a real sentence the same
-   rigorous way the existing one was. Also needs real, sourced verse text
-   (public-domain, per this plan's own quality bar) identified and read in
-   full before any of it becomes lesson content — not yet done this pass.
+1. **Noun case morphology and verb conjugation**, both languages — the real
+   prerequisite for expert-tier reading, confirmed this pass by testing two
+   actual short public-domain verses (Bhagavad Gītā 2.47, Thirukkural 1)
+   against this file's real content and finding every non-nominative,
+   non-bare-stem word blocked. Sanskrit needs at least one more case
+   (Wikner's declension tables, 3.B onward, already cover several) and at
+   least one more verb form/mood beyond 3rd-singular-present-parasmaipada.
+   Tamil needs its first case suffix(es) and its first verb conjugation
+   (ABC of Tamil Lessons 17-21 already cover present tense and the
+   accusative/dative/genitive cases — see the table above, "Not started"
+   since the original survey). This is a genuinely large tranche, on the
+   scale of the original alphabet-completion passes, not a small follow-up.
+2. **Expert-tier reading** for both languages, once (1) makes at least one
+   real short verse fully decomposable into taught vocabulary and taught
+   grammar — at that point, source and read the actual verse in full
+   (public-domain, per this plan's own quality bar) before any of it
+   becomes lesson content.
 
 Each step gets the same treatment this one did: read the actual primer
 section (not recalled from training data), cite it per item, run

@@ -282,6 +282,12 @@ export default function LearnPage() {
             </div>
             <p className="text-5xl font-semibold text-foreground">{displayLesson.text}</p>
             <p className="text-sm text-foreground-secondary">{displayLesson.gloss}</p>
+            {displayLesson.sandhiRule && (
+              <p className="max-w-md text-xs text-foreground-tertiary">
+                <span className="font-semibold text-foreground-secondary">Sound change: </span>
+                {displayLesson.sandhiRule}
+              </p>
+            )}
           </Card>
         ) : (
           <Card className="py-12 text-center">

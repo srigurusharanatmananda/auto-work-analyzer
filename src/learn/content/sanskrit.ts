@@ -3,14 +3,17 @@
  * consonants — Wikner's own Lessons 1-3), a first batch of vowel signs
  * (mātrā, Wikner 6.A.1 — tranche 2), the two special conjunct consonants
  * kṣa and jña (Wikner 7.A.3-7.A.5 — tranche 3), one more word, vṛkṣa
- * ("tree", Wikner 3.B.2 — tranche 4, the first word kṣa unblocks), and the
- * original seven words plus one new word and one sentence. See
+ * ("tree", Wikner 3.B.2 — tranche 4, the first word kṣa unblocks), the
+ * original seven words plus one new word and one sentence, and — tranche 6
+ * — the first sandhi lesson: नरो वदति, the exact same words as नरः वदति
+ * above, showing the visarga sandhi (Wikner 11.A.1) that actually applies
+ * when they meet in real speech. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of — more words (aśva and
  * tiṣṭhati are next in line, but still blocked on conjuncts śva/ṣṭha this
- * file doesn't teach yet) and sandhi (Lessons 10-11) are next, not yet
- * written. The vowel-sign batch is deliberately partial (one consonant's
- * full table, plus two more worked examples) rather than exhaustive across
+ * file doesn't teach yet) are still not written. The vowel-sign batch is
+ * deliberately partial (one consonant's full table, plus two more worked
+ * examples) rather than exhaustive across
  * all 33 consonants, and the conjunct batch is deliberately just the two
  * Wikner himself singles out as special rather than his own ~150-entry
  * reference table — see each block's own comment for why.
@@ -606,6 +609,43 @@ export const sanskritManifest: Manifest = {
       text: 'नरः वदति',
       gloss: 'naraḥ vadati — the man speaks',
       composedOf: ['skt-word-narah', 'skt-word-vadati'],
+    },
+
+    // ================= Sandhi (level 3) =================
+    // Extension, 2026-08-12: the first item of the plan doc's "what's next"
+    // list, unblocked by Curriculum.ts's new `sandhiRule` field (see that
+    // field's own comment for why it had to exist before this was possible
+    // at all — validateManifest's exact-reconstruction check cannot
+    // represent a real external-sandhi sound change any other way).
+    //
+    // Not a new sentence: the SAME two words as skt-sentence-narah-vadati
+    // above, in the same order, differing only in the sandhi applied at
+    // their boundary. Wikner is explicit that this is the relationship
+    // between the two (11.A.1, lines 2633-2639): "the declension of nouns...
+    // is given in the form of independent words, which means that sandhi
+    // rules applicable to a following avasana [pause] have already been
+    // applied... when the word is used in a sentence, this sandhi must be
+    // removed." skt-sentence-narah-vadati is that independent-word/pausa
+    // form; this is what the same two words actually sound like spoken
+    // together, and is the form a learner will actually meet in real text.
+    //
+    // The rule itself (Wikner 11.A.1, visarga-sandhi table, rule 1, line
+    // 2619): "-as before a ghoṣa consonant becomes -o." नरः is nara + -s,
+    // realized as visarga (ः) in isolation; वदति begins with व, a ghoṣa
+    // (voiced) consonant. So the visarga is replaced by ओ: नरः + वदति →
+    // नरो वदति. This is exactly why simple concatenation of the two words'
+    // own `text` cannot produce this lesson's `text` — the sound change
+    // IS the content being taught, not a typo `sandhiRule` is required to
+    // name what changed, which is this lesson's whole point.
+    {
+      id: 'skt-sentence-naro-vadati',
+      stage: 'sentences',
+      level: 3,
+      text: 'नरो वदति',
+      gloss: 'naro vadati — the man speaks (spoken/connected form of naraḥ vadati)',
+      composedOf: ['skt-word-narah', 'skt-word-vadati'],
+      sandhiRule:
+        "Visarga sandhi (Wikner 11.A.1, rule 1): a final -aḥ becomes -o before a voiced (ghoṣa) consonant. नरः ends in visarga (from nara + -s); वदति begins with व, which is voiced — so नरः + वदति surfaces as नरो वदति, not नरः वदति.",
     },
   ],
 };
