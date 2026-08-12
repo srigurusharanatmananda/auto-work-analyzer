@@ -462,25 +462,77 @@ defect).
 
 Sanskrit: 91 → 94 lessons. Tamil: 237 → 240 lessons.
 
+**Sourcing research, before tranche 12**: rather than guess at what to draft
+next, this pass first asked whether Sanskrit's real blockers (a pronoun
+table, an imperative/prohibitive mood) and Tamil's (past/future tense,
+negation) are even *in* the two sources this plan has used exclusively so
+far. Answer for Sanskrit: no. Wikner explicitly limits the whole course to
+present indicative ("lakāra... the conjugations given here are all in the
+present indicative... called lat", lines 763-766) — no imperative
+conjugation table exists, and no personal-pronoun declension table exists
+either (the "Declension Paradigms" appendix, lines 1932-1967, tables only
+nouns). The only pronoun/mood forms anywhere are three isolated
+glossary-style word-notes on quoted verses (अहम् "I", नौ "of us two", अस्तु
+"let it be") — real and citable as bare vocabulary, but not a lesson. What
+Wikner DOES have cleanly: a full multi-person paradigm table for तिष्ठति
+("stand", 2.B.1, lines 744-756) — the exact word every tranche since 4 has
+named as blocked on an untaught conjunct (ṣṭha). Answer for Tamil: also no,
+and confirmed exhausted rather than assumed — ABC of Tamil, Book One
+genuinely ends at Lesson Twenty-One (read to the last page); Wikibooks
+Tamil's "Grammar"/"Advanced topics" pages are confirmed-live 404s (matching
+what `resources.ts`'s own `tam-wikibooks` entry already said). The one
+real find: M.S. Andronov's *A Grammar of Modern and Classical Tamil*
+(1989), verified by direct fetch to have real past-tense content,
+including the exact worked forms this app needed (ceyteen "I did", ceytaan
+"he did") — now catalogued as `tam-andronov-grammar`.
+
+**Thirteenth pass — tranche 12**: acts on that research rather than forcing
+a pronoun/mood lesson from source material that doesn't have one.
+
+- **Sanskrit — unblock तिष्ठति, add a parasmaipada 1st person**: तिष्ठति
+  ("stands") and तिष्ठामि ("I stand", 1st singular parasmaipada — the
+  parasmaipada counterpart to tranche 11's ātmanepada नये), both from
+  Wikner's own 2.B.1 paradigm table. Also अश्वः (nominative of the
+  already-taught अश्व) and the sentence अश्वः तिष्ठति ("the horse
+  stands") — the other half of the sentence tranches 6-7 already quoted
+  (Wikner 3.B.3, "aśvaḥ tiṣṭhati ca naraḥ vadati ca") but couldn't teach in
+  full until the ṣṭha conjunct existed. Needed three new atomic letters:
+  ष्ठ (the conjunct itself), ष्ठा (reusing the ा sign), मि (reusing the ि
+  sign).
+- **Tamil — first tense other than present**: செய்தேன் ("I did") and
+  செய்தான் ("he did"), past tense, sourced from Andronov (this app's first
+  source beyond Wikner/ABC of Tamil) — and the sentences நான் செய்தேன் /
+  அவன் செய்தான். Needed zero new letters — தே/தா were already atomic from
+  tranche 5's vowel-sign work, the same "the alphabet work wasn't wasted"
+  pattern tranche 7 first noticed.
+
+One verifier per language; both clean (one flagged a level-3-vs-2
+inconsistency on the अश्वः/तिष्ठति sentence — fixed to level 2, matching
+skt-sentence-narah-vadati's own precedent for a plain two-word sentence
+with no sandhi or new grammar; one flagged that the "ceyteen" citation's
+suffix list is OCR-garbled at its exact line and was reconstructed from
+the parallel "ceytaan" passage rather than quoted directly — comment
+tightened to say so explicitly, not a data defect).
+
+Sanskrit: 94 → 101 lessons. Tamil: 240 → 244 lessons.
+
 ## What's next, in order
 
-1. **Continue the pivot**: more pronouns, particles, and verb moods, not
-   more cases for the same noun. Sanskrit still has no way to say "you" or
-   "we" (only नये gives a 1st-person verb, with no matching pronoun — pace
-   Sanskrit's own pro-drop convention, which does not require one, but a
-   learner benefits from seeing it made explicit at least once), no
-   imperative/prohibitive mood, and only one other particle (च) besides
-   इति. Tamil still has no negation, and past/future tense have not been
-   located in ABC of Tamil's own lesson sequence (it may simply not cover
-   them — Book Two, mentioned in the primer's own title but never located
-   this session, may be where they live; `tam-wikibooks`, already
-   catalogued in this app's resources, is one already-verified alternative
-   source worth checking before assuming Tamil verb tense is a dead end).
-2. **Re-test against Bhagavad Gītā 2.47 / Thirukkural 1** (or freshly-chosen
-   short verses — repeating the same two forever risks fitting the plan to
-   the benchmark rather than the language) after each further slice, same
-   discipline as the tranche-10 checkpoint above.
-3. **Expert-tier reading** for both languages, once a real short verse is
+1. **Sanskrit pronouns/mood**: since Wikner has none to teach from cleanly,
+   either (a) accept thinner sourcing and add the three isolated glossary
+   words already found (अहम्, नौ, अस्तु) as bare vocabulary, being explicit
+   in their own comments that they're word-notes, not a lesson; or (b) find
+   a second Sanskrit source the way tranche 12 did for Tamil, if a
+   real, citable one exists. Needs a decision before more Sanskrit content
+   ships in this direction.
+2. **Tamil negation**: not yet researched — Andronov's grammar likely
+   covers it (his own negative-form section was seen in passing while
+   researching past tense); worth a dedicated read before the next Tamil
+   tranche.
+3. **Re-test against Bhagavad Gītā 2.47 / Thirukkural 1** (or freshly-chosen
+   short verses) after each further slice, same discipline as the
+   tranche-10 checkpoint.
+4. **Expert-tier reading** for both languages, once a real short verse is
    fully decomposable into taught vocabulary and taught grammar — at that
    point, source and read the actual verse in full (public-domain, per this
    plan's own quality bar) before any of it becomes lesson content.

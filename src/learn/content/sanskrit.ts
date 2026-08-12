@@ -18,10 +18,14 @@
  * table. Tranche 11 pivots away from cases (re-testing against the actual
  * target verse after tranches 8-10 showed no real progress) toward the
  * indeclinable particle इति (Wikner 9.B.2) and this file's first verb
- * person other than 3rd, नये ("I lead", 1st singular ātmanepada). See
+ * person other than 3rd, नये ("I lead", 1st singular ātmanepada). Tranche
+ * 12 finally unblocks tiṣṭhati (Wikner 2.B.1's own full person paradigm,
+ * lines 744-756) via the ṣṭha conjunct, adds a parasmaipada 1st-person
+ * form (तिष्ठामि), and ships अश्वः तिष्ठति — the other half of the
+ * sentence tranche 6/7 already quoted (Wikner 3.B.3, exercise 4) but
+ * couldn't teach in full until now. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
- * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
- * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
+ * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
  * more worked examples) rather than exhaustive across
  * all 33 consonants, and the conjunct batch is deliberately just the two
@@ -598,6 +602,46 @@ export const sanskritManifest: Manifest = {
       gloss: 'ye',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-shtha',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.1-7.A.2, same reasoning as skt-letter-shva/skt-letter-sya:
+      // ष (already taught, skt-letter-ssa) followed by ठ (already taught,
+      // skt-letter-ttha) within one word is a word-internal cluster, an
+      // ordinary conjunct — not one of the two Wikner singles out as
+      // visually irregular (kṣa, jña). Needed only because
+      // skt-word-tishthati below needs it — the specific conjunct every
+      // tranche since 4 has named as still blocking tiṣṭhati (see
+      // skt-word-vrksa's own comment: "tiṣṭhati (stand)... needs a
+      // different conjunct (ṣṭha) this file does not teach yet").
+      text: 'ष्ठ',
+      gloss: 'ṣṭha',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-shthaa',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ा sign already proven on ब/र (skt-letter-baa,
+      // skt-letter-raa) — the same sign, on the conjunct above instead of
+      // a single consonant, needed only because skt-word-tishthami below
+      // needs it.
+      text: 'ष्ठा',
+      gloss: 'ṣṭhā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-mi',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ि sign already proven on क/त (skt-letter-ki,
+      // skt-letter-ti) — the same sign, a different consonant, needed only
+      // because skt-word-tishthami below needs it.
+      text: 'मि',
+      gloss: 'mi',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -640,8 +684,9 @@ export const sanskritManifest: Manifest = {
       // added above) needed only for this word. aśva (horse), from the
       // same passage, was still blocked on an untaught conjunct (śva) as of
       // this tranche — tranche 7 later adds skt-letter-shva and unblocks it
-      // (see skt-word-ashva). tiṣṭhati (stand) needs a different conjunct
-      // (ṣṭha) this file still doesn't teach, and remains future work.
+      // (see skt-word-ashva). tiṣṭhati (stand) needed a different conjunct
+      // (ṣṭha) this file didn't teach yet either — tranche 12 adds
+      // skt-letter-shtha and unblocks it too (see skt-word-tishthati).
       text: 'वृक्ष',
       gloss: 'vṛkṣa — tree',
       composedOf: ['skt-letter-vri', 'skt-letter-ksa'],
@@ -980,6 +1025,71 @@ export const sanskritManifest: Manifest = {
       text: 'नये',
       gloss: 'naye — I lead (1st person singular, ātmanepada)',
       composedOf: ['skt-letter-na', 'skt-letter-ye'],
+    },
+
+    // ================= Unblocking tiṣṭhati (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 12): tiṣṭhati (root स्था, "stand") has
+    // been named as blocked on an untaught conjunct in every tranche's own
+    // comments since tranche 4 (skt-word-vrksa's comment: "aśva (horse)
+    // and tiṣṭhati (stand), from the same passage, still need conjuncts
+    // (śva, ṣṭha) this file does not teach yet and remain future work" —
+    // tranche 7 unblocked aśva via śva; this tranche closes the other half.
+    //
+    // Wikner 2.B.1 (lines 744-756) gives the FULL parasmaipada
+    // person/number paradigm for तिष्ठति as its own worked table — the
+    // same shape of table 3.B.1 later gives for नी (already cited for
+    // skt-word-nayate/skt-word-naye), but for a DIFFERENT pada
+    // (parasmaipada, not ātmanepada) and taught earlier in the book. Only
+    // two cells are taught here: prathama-puruṣa eka-vacana (तिष्ठति,
+    // "he/she/it stands" — line 750) and uttama-puruṣa eka-vacana
+    // (तिष्ठामि, "I stand" — line 754) — this file's first parasmaipada
+    // verb form in any person other than 3rd, the parasmaipada
+    // counterpart to skt-word-naye's ātmanepada.
+    {
+      id: 'skt-word-tishthati',
+      stage: 'words',
+      level: 2,
+      text: 'तिष्ठति',
+      gloss: 'tiṣṭhati — stands (he/she/it)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-ti'],
+    },
+    {
+      id: 'skt-word-tishthami',
+      stage: 'words',
+      // Level 3, same reasoning as skt-word-naye: a person-marking
+      // distinction on an already-taught root, not new vocabulary.
+      level: 3,
+      text: 'तिष्ठामि',
+      gloss: 'tiṣṭhāmi — I stand (1st person singular, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthaa', 'skt-letter-mi'],
+    },
+    // अश्वः, nominative singular of अश्व (already taught, bare stem) — the
+    // same visarga-suffixation already proven on नर (skt-word-narah).
+    // Needed for the sentence below.
+    {
+      id: 'skt-word-ashvah',
+      stage: 'words',
+      level: 2,
+      text: 'अश्वः',
+      gloss: 'aśvaḥ — horse (nominative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shva', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-sentence-ashvah-tishthati',
+      stage: 'sentences',
+      // Level 2, matching skt-sentence-narah-vadati's own precedent: two
+      // level-2 words placed side by side, no sandhi and no case/verb-form
+      // novelty beyond what those two words already carry — not the
+      // "grammar" LEVELS reserves level 3 for.
+      level: 2,
+      // Wikner 3.B.3, exercise 4, line 1004 — the OTHER half of the same
+      // sentence skt-sentence-narah-vadati already quotes: "aśvaḥ
+      // tiṣṭhati ca naraḥ vadati ca" ("the horse stands and the man
+      // speaks"). That earlier tranche stripped this clause off because
+      // tiṣṭhati wasn't teachable yet; it now is.
+      text: 'अश्वः तिष्ठति',
+      gloss: 'aśvaḥ tiṣṭhati — the horse stands',
+      composedOf: ['skt-word-ashvah', 'skt-word-tishthati'],
     },
   ],
 };
