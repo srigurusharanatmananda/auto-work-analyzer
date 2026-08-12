@@ -429,26 +429,61 @@ One verifier per language again, both clean.
 
 Sanskrit: 89 → 91 lessons. Tamil: 236 → 237 lessons.
 
+**Checkpoint, after tranche 10**: re-tested against Bhagavad Gītā 2.47 and
+Thirukkural 1 again, per this plan's own stated discipline — three more
+cases each did not move either language closer. BG 2.47's real blockers
+are a pronoun system, a prohibitive/imperative mood, and indeclinable
+particles, categorically different from "one more case for नर." Thirukkural
+1's real blocker is vocabulary breadth (0% overlap) plus one verbal-noun
+construction — also not a case gap. Operator decision: pivot away from
+cases toward the actual blockers (pronouns, verb moods, particles) rather
+than continuing the same shape of tranche on the theory that eventually it
+adds up.
+
+**Twelfth pass — tranche 11**: the first pivot tranche, one particle/person
+addition per language.
+
+- **Sanskrit — a particle and a second person**: इति (Wikner 9.B.2, "the
+  Sanskrit equivalent of inverted commas" — marks the end of a quoted
+  statement), the same avyaya category as the already-taught च; and नये
+  ("I lead", Wikner 3.B.1's own paradigm table) — this file's first verb
+  form in any person other than 3rd (prathama-puruṣa), same root as the
+  already-taught नयते. Needed one new atomic letter, ये (reusing the े
+  sign already proven on four other consonants).
+- **Tamil — a second person**: அவன் ("he") and செய்கிறான் ("he does", 3rd
+  person singular masculine present, ABC of Tamil Lesson Seventeen's own
+  person table) — this file's first verb form in any person other than
+  1st. Needed zero new letters — the same fusion pattern already proven
+  for செய்கிறேன், with றா (already atomic) standing in for றே.
+
+One verifier per language; both clean (one caught a citation typo in a
+Sanskrit code comment — "navavahe" for "nayavahe" — fixed, not a data
+defect).
+
+Sanskrit: 91 → 94 lessons. Tamil: 237 → 240 lessons.
+
 ## What's next, in order
 
-1. **More case morphology and verb conjugation**, both languages — still
-   short of what expert-tier reading needs. Sanskrit now has all five
-   non-oblique-plural cases (nominative, accusative, genitive,
-   instrumental, dative) singular for नर (fewer for वृक्ष/अश्व); ablative and
-   locative remain, plus dual/plural for any case, plus a second verb root
-   beyond नी/वद्. Tamil now has nominative, accusative, dative, and
-   genitive for one or two nouns and present tense for one verb; past and
-   future tense (not yet located in the primer's own lesson sequence — ABC
-   of Tamil's own table of contents should be re-checked for where they're
-   covered) remain. Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or
-   a freshly-chosen short verse) after each slice to check whether
-   expert-tier reading has actually become reachable yet, rather than
-   assuming a fixed number of tranches will get there.
-2. **Expert-tier reading** for both languages, once (1) makes at least one
-   real short verse fully decomposable into taught vocabulary and taught
-   grammar — at that point, source and read the actual verse in full
-   (public-domain, per this plan's own quality bar) before any of it
-   becomes lesson content.
+1. **Continue the pivot**: more pronouns, particles, and verb moods, not
+   more cases for the same noun. Sanskrit still has no way to say "you" or
+   "we" (only नये gives a 1st-person verb, with no matching pronoun — pace
+   Sanskrit's own pro-drop convention, which does not require one, but a
+   learner benefits from seeing it made explicit at least once), no
+   imperative/prohibitive mood, and only one other particle (च) besides
+   इति. Tamil still has no negation, and past/future tense have not been
+   located in ABC of Tamil's own lesson sequence (it may simply not cover
+   them — Book Two, mentioned in the primer's own title but never located
+   this session, may be where they live; `tam-wikibooks`, already
+   catalogued in this app's resources, is one already-verified alternative
+   source worth checking before assuming Tamil verb tense is a dead end).
+2. **Re-test against Bhagavad Gītā 2.47 / Thirukkural 1** (or freshly-chosen
+   short verses — repeating the same two forever risks fitting the plan to
+   the benchmark rather than the language) after each further slice, same
+   discipline as the tranche-10 checkpoint above.
+3. **Expert-tier reading** for both languages, once a real short verse is
+   fully decomposable into taught vocabulary and taught grammar — at that
+   point, source and read the actual verse in full (public-domain, per this
+   plan's own quality bar) before any of it becomes lesson content.
 
 Each step gets the same treatment this one did: read the actual primer
 section (not recalled from training data), cite it per item, run

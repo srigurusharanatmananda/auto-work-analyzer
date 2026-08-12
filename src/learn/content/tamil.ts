@@ -28,7 +28,11 @@
  * adds a second case, dative (கு/க்கு), ABC of Tamil Lesson Twenty —
  * needing one new letter (a dead க், this file's first). Tranche 10 adds a
  * third case, genitive (உடைய), ABC of Tamil Lesson Twenty-One — zero new
- * letters again.
+ * letters again. Tranche 11 pivots away from cases (re-testing against the
+ * actual target verse after tranches 8-10 showed no real progress) toward
+ * this file's first person other than 1st: அவன் ("he") and செய்கிறான்
+ * ("he does", ABC of Tamil Lesson Seventeen's own person table) — zero new
+ * letters yet again.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1040,6 +1044,52 @@ export const tamilManifest: Manifest = {
       text: 'யாருடைய',
       gloss: 'yāruṭaiya — whose',
       composedOf: ['tam-letter-yaa', 'tam-letter-ru', 'tam-letter-ttai', 'tam-letter-ya'],
+    },
+
+    // ================= Pivot: a second person (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 11): tranches 8-10 added a case each,
+    // but re-testing against Thirukkural 1 after all three showed no real
+    // progress — that verse's actual blocker is verb-derived morphology
+    // and vocabulary breadth, not case coverage. This tranche pivots
+    // toward a second grammatical person for a verb already taught (this
+    // file's first person other than 1st), the same shift Sanskrit's own
+    // tranche-11 half makes.
+    //
+    // ABC of Tamil Lesson Seventeen's own person table (line 1440, the
+    // same lesson tam-word-seykirren already cites): "அவன் செய்கிறான் -
+    // He does (singular-masculine)". அவன் ("he") is not yet taught.
+    {
+      id: 'tam-word-avan',
+      stage: 'words',
+      level: 2,
+      text: 'அவன்',
+      gloss: 'avan — he',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-alveolar-na'],
+    },
+    // Same tense-symbol + personal-suffix fusion already established for
+    // செய்கிறேன் (tam-word-seykirren) — here with ஆன் (3rd person singular
+    // masculine) instead of ஏன் (1st person singular): செய் + கிறு + ஆன் →
+    // செய்கிறான். றா (already an atomic letter, ற + the ā vowel sign,
+    // tranche 5) plays the same role றே played for கிறேன் — plain
+    // concatenation of already-taught letters reaches the real spelling
+    // directly, no sandhiRule needed.
+    {
+      id: 'tam-word-seykirraan',
+      stage: 'words',
+      level: 3,
+      text: 'செய்கிறான்',
+      gloss: 'seykiṟāṉ — he does (3rd person singular masculine, present)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-avan-seykirraan',
+      stage: 'sentences',
+      level: 3,
+      // Lesson Seventeen's own worked sentence (line 1440), the 3rd-person
+      // masculine counterpart to tam-sentence-naan-seykirren above.
+      text: 'அவன் செய்கிறான்',
+      gloss: 'avan seykiṟāṉ — he does',
+      composedOf: ['tam-word-avan', 'tam-word-seykirraan'],
     },
   ],
 };

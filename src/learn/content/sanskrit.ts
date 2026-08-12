@@ -15,7 +15,10 @@
  * नरस्य ("of the man"), and — tranche 9 — a third, tṛtīyā (instrumental):
  * नरेण ("by/with the man"), and — tranche 10 — a fourth, caturthī (dative):
  * नराय ("to/for the man"), all three from Wikner 5.B.1's own declension
- * table. See
+ * table. Tranche 11 pivots away from cases (re-testing against the actual
+ * target verse after tranches 8-10 showed no real progress) toward the
+ * indeclinable particle इति (Wikner 9.B.2) and this file's first verb
+ * person other than 3rd, नये ("I lead", 1st singular ātmanepada). See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
  * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
@@ -583,6 +586,18 @@ export const sanskritManifest: Manifest = {
       gloss: 'rā',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-ye',
+      stage: 'letters',
+      level: 1,
+      // Reuses the े sign already proven on ब/ण/त/र (skt-letter-be,
+      // skt-letter-nne, skt-letter-te, skt-letter-re) — the same sign, a
+      // different consonant, needed only because skt-word-naye below needs
+      // it.
+      text: 'ये',
+      gloss: 'ye',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -925,6 +940,46 @@ export const sanskritManifest: Manifest = {
       text: 'नराय',
       gloss: 'narāya — to/for the man (dative)',
       composedOf: ['skt-letter-na', 'skt-letter-raa', 'skt-letter-ya'],
+    },
+
+    // ================= Pivot: particle and person (level 2-3) =================
+    // Extension, 2026-08-12 (tranche 11): tranches 8-10 added a case each,
+    // but re-testing against Bhagavad Gītā 2.47 after all three showed no
+    // real progress toward expert-tier reading — that verse's blockers
+    // (a pronoun system, a prohibitive/imperative mood, indeclinable
+    // particles) are categorically different from "one more case for नर."
+    // This tranche pivots toward two of those instead: an indeclinable
+    // particle, and a second grammatical person for a verb already taught
+    // (this file's first person other than 3rd).
+    //
+    // इति, Wikner 9.B.2 (lines 2265-2277): "the nipata iti means 'thus':
+    // it lays stress on what precedes it, typically referring to something
+    // that has been said — it is the Sanskrit equivalent of inverted
+    // commas." An indeclinable (avyaya), like च (skt-word-ca) — never
+    // takes case/verb endings.
+    {
+      id: 'skt-word-iti',
+      stage: 'words',
+      level: 2,
+      composedOf: ['skt-letter-i', 'skt-letter-ti'],
+      text: 'इति',
+      gloss: "iti — 'thus' (marks the end of a quoted statement, like closing quotation marks)",
+    },
+    // नये, Wikner 3.B.1's own paradigm table (line 948, already cited for
+    // skt-word-nayate's own 3rd-person row): "uttama-purusa naye nayavahe
+    // nayamahe" — eka-vacana uttama-puruṣa (1st person singular) ātmanepada
+    // of नी. Same root as skt-word-nayate, different person — this file's
+    // first verb form in any person other than 3rd (prathama-puruṣa).
+    {
+      id: 'skt-word-naye',
+      stage: 'words',
+      // Level 3, same reasoning as this file's other case/person-marked
+      // grammar forms: a person-marking distinction, not new vocabulary —
+      // the root नी itself is already taught (skt-word-nayate).
+      level: 3,
+      text: 'नये',
+      gloss: 'naye — I lead (1st person singular, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ye'],
     },
   ],
 };
