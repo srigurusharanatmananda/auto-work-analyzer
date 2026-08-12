@@ -634,7 +634,10 @@ covered both languages' remaining grammar gaps at once.
   learned" — past passive participle, neuter nominative singular) and
   तेजस्वि ("brilliant, splendid, bright, energetic"), both drawn from
   Wikner's own Invocation verse analysis (lines 190-233), the same
-  passage that already sourced अहम्/नौ/अस्तु in tranche 13. Two new
+  passage that already sourced नौ/अस्तु in tranche 13 (अहम् is a separate,
+  back-matter citation — §15.8, line 3875 — a genuine bug this tranche's
+  own verifier caught in the shipped comment's first draft, fixed before
+  merge). Two new
   atomic letters: धी (reusing the ी sign already proven on other
   consonants) and स्वि (an ordinary conjunct स्व + ि sign — no new
   mechanism). The same sweep re-confirmed, via a second and more
@@ -658,17 +661,37 @@ One verifier per language; both clean.
 
 Sanskrit: 109 → 113 lessons. Tamil: 246 → 249 lessons.
 
+**Seventeenth pass — tranche 16**: Tamil-only — this tranche's own
+research turned up no unspent Sanskrit lead (tranche 15 already consumed
+the 5-agent sweep's Sanskrit findings), and the tranche-13 operator
+decision no longer requires lockstep parity between the two languages.
+
+- **Tamil — negative indicative and a second dative sub-rule**: செய்யாது
+  ("[it/they] do(es) not do", 3rd person singular neuter negative
+  indicative) — this file's first negative INDICATIVE, distinct from
+  tranche 13's negative IMPERATIVE (செய்யாதே). Sourced from Andronov §223
+  (line 15185, giving செய் itself as the worked negative-stem example)
+  and §225 (line 15215, the -aatu 3rd-sg-neuter suffix), independently
+  attested in a real quoted sentence (NMY, 71; line 21686). Also
+  கண்ணுக்கு ("to the eye") and பல்லுக்கு ("to the tooth"), extending
+  tranche 9's own dative citation (ABC of Tamil Lesson Twenty) a few
+  lines further (1961-1973) into a second sub-rule: short two-letter
+  nouns double their final consonant before கு/க்கு. Zero new letters,
+  all three words.
+
+One verifier; clean.
+
+Sanskrit: 113 lessons (unchanged). Tamil: 249 → 252 lessons.
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
    Sanskrit second-person pronoun (confirmed absent from Wikner by two
    separate full-text checks now — needs a second source, or may simply
    not be available this way), more particles and mood coverage; Tamil
-   negative indicative (செய்யாது, already sourced from Andronov line
-   21686 for tranche 16) and a dative extension (கண்ணுக்கு/பல்லுக்கு,
-   already sourced from ABC of Tamil lines 1961-1973), plus more
-   negation forms (plural, colloquial), genitive for more nouns, more
-   tenses/persons. Each still needs its own citation the way every
+   more negation forms (plural, colloquial — tranche 16 shipped only the
+   3rd-singular-neuter negative indicative), genitive for more nouns,
+   more tenses/persons. Each still needs its own citation the way every
    tranche so far has had.
 2. **Expert-tier reading** for both languages, once a real short verse —
    freshly chosen for what it needs, not assumed to be one of the two

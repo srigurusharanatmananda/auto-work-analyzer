@@ -47,7 +47,16 @@
  * zero new letters again. Tranche 15 adds a second person for செய்,
  * present tense (நீ செய்கிறாய், "you do", ABC of Tamil Lesson Seventeen
  * line 1432) — நீ itself is real taught vocabulary since Lesson Five, not
- * a repurposed vowel-sign letter. Zero new letters yet again.
+ * a repurposed vowel-sign letter. Zero new letters yet again. Tranche 16
+ * adds this file's first negative INDICATIVE (செய்யாது, "does not do",
+ * Andronov §223/§225/line 21686 — tranche 13's செய்யாதே was the negative
+ * IMPERATIVE) and a second dative sub-rule for short, doubling nouns
+ * (கண்ணுக்கு "to the eye", பல்லுக்கு "to the tooth", ABC of Tamil Lesson
+ * Twenty, lines 1961-1973) — zero new letters both times. Tamil-only:
+ * this tranche's research turned up no unspent Sanskrit lead (tranche
+ * 15 already consumed the sweep's Sanskrit findings), and the
+ * tranche-13 operator decision — grammar completeness on its own merits
+ * — no longer requires lockstep parity between the two languages.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1287,6 +1296,67 @@ export const tamilManifest: Manifest = {
       text: 'நீ செய்கிறாய்',
       gloss: 'nī seykiṟāy — you do',
       composedOf: ['tam-word-nii', 'tam-word-seykiraay'],
+    },
+
+    // ================= Negative indicative (level 3) =================
+    // Extension, 2026-08-12 (tranche 16): grammar completeness on its own
+    // merits — Tamil's first negative INDICATIVE (tranche 13 shipped only
+    // the negative IMPERATIVE, செய்யாதே, "don't do!").
+    //
+    // Andronov §223 (archive.org text line 15185) gives செய் itself as
+    // the worked example for the negative stem: "ceyial 'to do' -
+    // ceyyaa(t)- / cey-". §225 (line 15215) lists the personal suffixes
+    // joined to that stem, including "-aatu (in the 3rd person singular
+    // neuter)" — the generic, tense-unmarked negative used, per §226
+    // (line 15232), for present, future, or past alike. The combination,
+    // ceyyaatu, is independently attested in a real quoted sentence (NMY,
+    // 71; line 21686): "...niRkakkuuTac ceyyaatu" — "[they] do not even
+    // stop [at the bus stand]".
+    {
+      id: 'tam-word-ceyyaathu',
+      stage: 'words',
+      level: 3,
+      // செ + ய் + யா, same three graphemes ceyyaathee (tranche 13) already
+      // uses for this same cey-y-aa- stem, followed by து (already an
+      // atomic letter, tranche 9) in the person-suffix's own role — plain
+      // concatenation of already-taught letters reaches the real spelling
+      // directly, no sandhiRule needed.
+      text: 'செய்யாது',
+      gloss: "ceyyātu — [it/they] do(es) not do (3rd person singular neuter negative indicative)",
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tu'],
+    },
+
+    // ================= Dative extension: short/doubling nouns (level 3) =================
+    // Extension, 2026-08-12 (tranche 16): tranche 9 shipped the dative
+    // (கு/க்கு) via யாருக்கு. ABC of Tamil Lesson Twenty's own further
+    // examples (lines 1961-1973, immediately after the range tranche 9
+    // already cited) give a second dative sub-rule: short, two-letter
+    // nouns ending in a consonant double that consonant before the case
+    // suffix — line 1961-1962: "கண் + கு = கண் + (ண்) + கு = கண்ணுக்கு = to
+    // the eye"; line 1970-1971: "பல் + கு = பல் + (ல்) + கு = பல்லுக்கு =
+    // to the tooth." கண் and பல் are already taught (tam-word-kan,
+    // tam-word-pal).
+    {
+      id: 'tam-word-kannukku',
+      stage: 'words',
+      level: 3,
+      // ணு (already an atomic letter, tranche 5's ண vowel-sign table) and
+      // க்/கு (already taught, tranche 9's own யாருக்கு) — zero new
+      // letters, same reuse pattern as கண்ணை/பல்லை (tranche 8) and
+      // யாருக்கு (tranche 9) before it.
+      text: 'கண்ணுக்கு',
+      gloss: 'kaṇṇukku — to the eye (dative)',
+      composedOf: ['tam-letter-ka', 'tam-pulli-nna', 'tam-letter-nnu', 'tam-pulli-ka', 'tam-letter-ku'],
+    },
+    {
+      id: 'tam-word-pallukku',
+      stage: 'words',
+      level: 3,
+      // லு (already an atomic letter, tranche 5's ல vowel-sign table) —
+      // same reuse pattern as கண்ணுக்கு directly above.
+      text: 'பல்லுக்கு',
+      gloss: 'pallukku — to the tooth (dative)',
+      composedOf: ['tam-letter-pa', 'tam-pulli-la', 'tam-letter-lu', 'tam-pulli-ka', 'tam-letter-ku'],
     },
   ],
 };
