@@ -33,6 +33,10 @@ ui/next-env.d.ts
 # created on demand by the upload route.
 storage/
 
+# Uploaded learn-resource books (PDFs). Same reasoning as storage/ above —
+# large, user-uploaded, created on demand by the resources upload route.
+storage-resources/
+
 # History data
 .history/
 

@@ -300,6 +300,15 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
     // API are different origins, and the URL's own token is what keeps this
     // private, not helmet's default same-origin CORP.
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    // This response's only consumer is `UploadReader`'s own `<iframe src=...>`
+    // — but both helmet's defaults and this app's own `securityHeaders`
+    // middleware (src/middleware/security.middleware.ts) set
+    // `X-Frame-Options: DENY` on every response, which tells the browser to
+    // refuse to render THIS ONE in any frame, including that same-app one.
+    // Clickjacking protection doesn't apply to a bare PDF stream the way it
+    // does to an authenticated page, and the token in the URL is already
+    // this route's real access control, so it's safe to undo it here.
+    res.removeHeader('X-Frame-Options');
 
     if (range.kind === 'unsatisfiable') {
       res.setHeader('Content-Range', `bytes */${size}`);

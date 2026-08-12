@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ResourceNotesStore, ResourceNote } from '../learn/ResourceNotes.js';
 import type { ResourceUploadsStore, ResourceUpload } from '../learn/ResourceUploads.js';
+import { securityHeaders } from '../middleware/security.middleware.js';
 
 const TEST_USER_ID = 'resources-test-user';
 
@@ -339,12 +340,25 @@ describe('uploads', () => {
     // notes tests' `notesFactory: () => notes` vs plain `fakeNotes`.
     const uploads = fakeUploads();
     const notes = fakeNotes();
-    const app = buildApp({
-      notesFactory: () => notes,
-      uploadsFactory: () => uploads,
-      storageRoot,
-      ...routerDeps,
-    });
+    // Not `buildApp`: that mounts the router immediately, and the file
+    // route's `X-Frame-Options` override only matters if something set it in
+    // the first place. `securityHeaders` has to run BEFORE the router — same
+    // order webhook-server.ts uses (`app.use(securityHeaders)` before any
+    // router) — or, as Express middleware, it would never run at all (the
+    // router already ends the response before an `app.use` added after it
+    // gets a turn).
+    const app = express();
+    app.use(express.json());
+    app.use(securityHeaders);
+    app.use(
+      '/api/resources',
+      createResourcesRouter({
+        notesFactory: () => notes,
+        uploadsFactory: () => uploads,
+        storageRoot,
+        ...routerDeps,
+      })
+    );
     const { server, baseUrl } = await listen(app);
     try {
       return await run(baseUrl);
@@ -430,6 +444,11 @@ describe('uploads', () => {
       expect(fileRes.headers.get('content-type')).toBe('application/pdf');
       const bytes = new Uint8Array(await fileRes.arrayBuffer());
       expect([...bytes]).toEqual([0x25, 0x50, 0x44, 0x46]);
+      // This response's only consumer is an `<iframe>` in the UI — helmet's
+      // default (and this app's own securityHeaders middleware) would
+      // otherwise send `X-Frame-Options: DENY` here, which makes every
+      // browser refuse to render it in that very iframe.
+      expect(fileRes.headers.get('x-frame-options')).toBeNull();
     });
   });
 
