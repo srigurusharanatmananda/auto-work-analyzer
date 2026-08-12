@@ -13,8 +13,9 @@
  * own worked sentence नरः अश्वम् वृक्षम् नयते ("the man leads the horse to
  * the tree", 3.B.2), and — tranche 8 — a second case, ṣaṣṭhī (genitive):
  * नरस्य ("of the man"), and — tranche 9 — a third, tṛtīyā (instrumental):
- * नरेण ("by/with the man"), both from Wikner 5.B.1's own declension table.
- * See
+ * नरेण ("by/with the man"), and — tranche 10 — a fourth, caturthī (dative):
+ * नराय ("to/for the man"), all three from Wikner 5.B.1's own declension
+ * table. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of — tiṣṭhati is still
  * blocked on the ṣṭha conjunct this file doesn't teach yet. The vowel-sign
@@ -569,6 +570,19 @@ export const sanskritManifest: Manifest = {
       gloss: 're',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-raa',
+      stage: 'letters',
+      level: 1,
+      // Reuses the ा sign already proven on ब (skt-letter-baa, tranche 2)
+      // — the same sign, a different consonant, needed only because
+      // skt-word-naraya below needs it. Already named as missing in an
+      // earlier tranche's own comment on skt-word-raja: "रा (ra + the ā
+      // vowel sign)... not taught even now that बा exists."
+      text: 'रा',
+      gloss: 'rā',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -890,6 +904,27 @@ export const sanskritManifest: Manifest = {
       text: 'नरेण',
       gloss: 'narena — by/with the man (instrumental)',
       composedOf: ['skt-letter-na', 'skt-letter-re', 'skt-letter-nna'],
+    },
+
+    // ================= A fourth case: caturthī (level 3) =================
+    // Extension, 2026-08-12 (tranche 10): a fourth case for नर — caturthī
+    // (dative), Wikner 5.B.1's own declension table (line 1204, already
+    // cited for the previous three cases' rows): "caturth naraya
+    // narabhyam narebhyah." — eka-vacana naraya (spelled नराय: the a-stem
+    // dative-singular ending is -āya, long, hence रा not bare र — the
+    // exact letter an earlier tranche's own comment on skt-word-raja
+    // already named as missing). Wikner's own 5.B.1 prose (line 1103)
+    // glosses this case directly: "indicates the indirect object, the
+    // recipient." Only the singular is taught here, same scoping as the
+    // previous three cases.
+    {
+      id: 'skt-word-naraya',
+      stage: 'words',
+      // Level 3, same reasoning as narasya/naram/narena above.
+      level: 3,
+      text: 'नराय',
+      gloss: 'narāya — to/for the man (dative)',
+      composedOf: ['skt-letter-na', 'skt-letter-raa', 'skt-letter-ya'],
     },
   ],
 };

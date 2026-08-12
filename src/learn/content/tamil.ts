@@ -26,7 +26,9 @@
  * earlier tranche. Tranche 8 adds this language's first case, accusative
  * (ஐ), ABC of Tamil Lesson Nineteen — again zero new letters. Tranche 9
  * adds a second case, dative (கு/க்கு), ABC of Tamil Lesson Twenty —
- * needing one new letter (a dead க், this file's first).
+ * needing one new letter (a dead க், this file's first). Tranche 10 adds a
+ * third case, genitive (உடைய), ABC of Tamil Lesson Twenty-One — zero new
+ * letters again.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -1011,6 +1013,33 @@ export const tamilManifest: Manifest = {
       text: 'யாருக்கு',
       gloss: 'yārukku — to whom',
       composedOf: ['tam-letter-yaa', 'tam-letter-ru', 'tam-pulli-ka', 'tam-letter-ku'],
+    },
+
+    // ================= A third case: genitive (level 3) =================
+    // Extension, 2026-08-12 (tranche 10): Tamil's third case, genitive (the
+    // "sixth case", symbol உடைய), ABC of Tamil Lesson Twenty-One, lines
+    // 2039-2138.
+    //
+    // Lesson Twenty-One's own opening line (2042-2043): "Genitive case...
+    // has two symbols, 'அது' and 'உடைய'. 'உடைய' is used more frequently."
+    // யார் (already taught, tam-word-yaar) is not a personal pronoun, so
+    // none of this lesson's pronoun-mutation sub-rules (நான்→என், etc.)
+    // apply — it takes உடைய directly, the same way this lesson's own
+    // -ம்-ending nouns (மரம், "of the tree") take it once their own
+    // insertion rule is done. Plain concatenation: யார் + உடைய = யாருடைய.
+    //
+    // ரு (already an atomic letter, reused from tranche 9's யாருக்கு for
+    // the same reason — a dead consonant immediately followed by a vowel
+    // fuses, so using the pre-fused letter directly avoids needing a
+    // sandhiRule here too) + டை (ட + the ai vowel sign, tranche 5) + ய
+    // (already taught, tam-letter-ya, bare ய).
+    {
+      id: 'tam-word-yaarudaiya',
+      stage: 'words',
+      level: 3,
+      text: 'யாருடைய',
+      gloss: 'yāruṭaiya — whose',
+      composedOf: ['tam-letter-yaa', 'tam-letter-ru', 'tam-letter-ttai', 'tam-letter-ya'],
     },
   ],
 };

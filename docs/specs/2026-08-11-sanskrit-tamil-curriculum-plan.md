@@ -410,17 +410,38 @@ One verifier per language again, both clean.
 
 Sanskrit: 87 → 89 lessons. Tamil: 234 → 236 lessons.
 
+**Eleventh pass — tranche 10**: a fourth/third case each, same lighter
+shape as tranches 8-9.
+
+- **Sanskrit — caturthī (dative)**: नराय ("to/for the man"), Wikner 5.B.1's
+  own declension table (line 1204) — नर's fourth case singular. Needed one
+  new atomic letter, रा (ra + the long-ā sign) — already named as missing
+  by an earlier tranche's own comment on skt-word-raja, now added.
+- **Tamil — genitive (உடைய)**: யாருடைய ("whose"), the already-taught
+  யார்'s genitive, ABC of Tamil Lesson Twenty-One (lines 2042-2043: the
+  case's two symbols, அது and உடைய, the latter "used more frequently") —
+  this file's third case. Needed zero new letters — யார் isn't one of the
+  lesson's mutating personal pronouns, so it takes உடைய by plain
+  concatenation, reusing the already-fused ரு letter the same way
+  tranche 9's dative did.
+
+One verifier per language again, both clean.
+
+Sanskrit: 89 → 91 lessons. Tamil: 236 → 237 lessons.
+
 ## What's next, in order
 
 1. **More case morphology and verb conjugation**, both languages — still
-   short of what expert-tier reading needs. Sanskrit now has nominative,
-   accusative, genitive, and instrumental singular for नर (fewer for
-   वृक्ष/अश्व); dative, ablative, and locative remain, plus dual/plural for
-   any case, plus a second verb root beyond नी/वद्. Tamil now has
-   nominative, accusative, and dative for one or two nouns and present
-   tense for one verb; genitive (ABC of Tamil Lesson 21) and past/future
-   tense remain. Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or a
-   freshly-chosen short verse) after each slice to check whether
+   short of what expert-tier reading needs. Sanskrit now has all five
+   non-oblique-plural cases (nominative, accusative, genitive,
+   instrumental, dative) singular for नर (fewer for वृक्ष/अश्व); ablative and
+   locative remain, plus dual/plural for any case, plus a second verb root
+   beyond नी/वद्. Tamil now has nominative, accusative, dative, and
+   genitive for one or two nouns and present tense for one verb; past and
+   future tense (not yet located in the primer's own lesson sequence — ABC
+   of Tamil's own table of contents should be re-checked for where they're
+   covered) remain. Re-test against Bhagavad Gītā 2.47 / Thirukkural 1 (or
+   a freshly-chosen short verse) after each slice to check whether
    expert-tier reading has actually become reachable yet, rather than
    assuming a fixed number of tranches will get there.
 2. **Expert-tier reading** for both languages, once (1) makes at least one
