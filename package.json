@@ -39,6 +39,7 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@vipran/aksharas": "^0.4.0",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.4.1",
     "commander": "^11.1.0",

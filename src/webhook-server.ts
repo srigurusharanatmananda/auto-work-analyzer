@@ -26,6 +26,7 @@ import { createReportsRouter } from "./routes/reports.routes.js";
 import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createLearnRouter } from "./routes/learn.routes.js";
 import { createResourcesRouter } from "./routes/resources.routes.js";
+import { createChantingRouter } from "./routes/chanting.routes.js";
 import { createTranslateRouter } from "./routes/translate.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
@@ -239,6 +240,12 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
         storageRoot: path.resolve(process.env.RESOURCE_UPLOADS_ROOT ?? "storage-resources"),
       })
     );
+
+    // Chanting-practice verses (syllable/metrical-weight breakdown, word
+    // glosses, meaning) — static content and a pure function, nothing to
+    // construct. Audio reuses POST /api/learn/speak directly (see
+    // chanting.routes.ts's own header for why).
+    app.use("/api/chanting", createChantingRouter());
 
     // Named ClickUp destinations, and the hierarchy browsing the picker needs.
     const destinationStore = new DestinationStore(cipher, pool);

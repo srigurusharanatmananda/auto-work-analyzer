@@ -197,6 +197,34 @@ human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
 "What's next, in order" section is the actual backlog here.
 
+**Chanting Practice, a new feature area (2026-08-13).** `/learn/chanting`
+teaches full verses (Guru Gita to start), separate from the letters-up
+curriculum above — pronunciation via a syllable/metrical-weight
+breakdown, then meaning, then the whole verse. Two research passes
+first: (1) the verse the operator's own source material presented as
+"Guru Gita verse 1" turned out to be a real verse, but from the wrong
+recension — the unrelated ~350-verse "long version," not the popular
+~182-verse Siddha Yoga version almost everyone means; shipped the
+correct one instead, independently re-sourced from two agreeing sources
+rather than copying either's own restrictively-licensed transcription.
+(2) The syllable-splitting/heavy-light (guru/laghu) rules were verified
+against Whitney, Macdonell, and Apte before being encoded — two real
+refinements survived that check (e/o are unconditionally long, not
+"usually"; a pāda's last syllable is metrically ambiguous by
+convention, not scored by the general rule). Segmentation itself uses
+`@vipran/aksharas` (MIT, npm), adopted after confirming it reproduces
+Whitney's own worked example, rather than hand-rolled from scratch.
+Chant-melody synthesis was researched and found not realistically
+available — the one real project for this (Vāgdhenu) needs GPU infra
+this app doesn't have and only approximates one recording artist's
+take — so audio practice uses the existing Sanskrit TTS pipeline
+(already built for the curriculum) and melody is left to curated real
+recordings, not yet added. New: `src/learn/Akshara.ts` (the engine,
+fully unit- and adversarially-tested), `src/learn/content/chanting.ts`
+(verse content), `src/routes/chanting.routes.ts`, `ui/app/learn/
+chanting/page.tsx`. One verse shipped; more need the same per-verse
+sourcing rigor as the curriculum tranches above, not a bulk import.
+
 ### Still to do
 
 | Phase | What | State |
