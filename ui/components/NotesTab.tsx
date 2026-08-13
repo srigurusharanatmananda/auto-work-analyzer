@@ -6,6 +6,7 @@ import { NotesResponse } from '@/types';
 import ResultsDisplay from './ResultsDisplay';
 import { Card, Button } from '@/lib/components/ui';
 import { api, messageFor } from '@/lib/api';
+import { downloadTextFile } from '@/lib/download';
 
 // Sample content for downloads
 const SAMPLE_UNSTRUCTURED = `# Tasks with Status Markers and Dates
@@ -138,19 +139,6 @@ Implement email and in-app notifications for users.
 # ### Task 1: Task Title
 # ## Task 2: Another Task
 # # Task 3: Yet Another Task`;
-
-// Helper function to download text as file
-const downloadTextFile = (content: string, filename: string) => {
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
 
 export default function NotesTab() {
   const [loading, setLoading] = useState(false);

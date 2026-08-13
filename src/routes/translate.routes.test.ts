@@ -821,12 +821,15 @@ describe('POST /translate/batch', () => {
   });
 
   test('422s a CSV with no usable text', async () => {
+    // Same-language (english -> english): deliberately not exercising the
+    // isConfigured gate below, since this test is about the empty-CSV
+    // check, not about AI setup.
     const app = buildApp(new AiClient([]));
     const { server, baseUrl } = await listen(app);
     try {
       const res = await fetch(`${baseUrl}/batch`, {
         method: 'POST',
-        body: csvFormData('\n\n,,\n', 'english', 'sanskrit'),
+        body: csvFormData('\n\n,,\n', 'english', 'english'),
       });
       expect(res.status).toBe(422);
     } finally {
@@ -835,14 +838,64 @@ describe('POST /translate/batch', () => {
   });
 
   test('rejects a CSV over the row cap, naming the cap', async () => {
+    // Same-language, for the same reason as the empty-CSV test above.
     const app = buildApp(new AiClient([]));
     const { server, baseUrl } = await listen(app);
     try {
       const rows = Array.from({ length: 21 }, (_, i) => `row ${i}`).join('\n');
-      const res = await fetch(`${baseUrl}/batch`, { method: 'POST', body: csvFormData(rows, 'english', 'sanskrit') });
+      const res = await fetch(`${baseUrl}/batch`, { method: 'POST', body: csvFormData(rows, 'english', 'english') });
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain('20');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('503s a cross-language batch when no AI provider is configured, before parsing the CSV', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('one\ntwo', 'english', 'sanskrit'),
+      });
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('strips a leading UTF-8 BOM instead of leaking it into the first row', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const csvWithBom = '﻿alpha\nbeta';
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData(csvWithBom, 'english', 'english'),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.rows[0].source).toBe('alpha');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects a renamed .txt file with no .csv extension, even if the browser labels it text/plain', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const form = new FormData();
+      form.append('csv', new Blob(['alpha\nbeta'], { type: 'text/plain' }), 'notes.txt');
+      form.append('from', 'english');
+      form.append('to', 'english');
+      const res = await fetch(`${baseUrl}/batch`, { method: 'POST', body: form });
+      expect(res.status).toBe(400);
     } finally {
       server.close();
     }

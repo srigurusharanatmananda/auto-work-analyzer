@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
+import { downloadTextFile } from '@/lib/download';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type {
@@ -166,6 +167,11 @@ export default function TranslatePage() {
     if (!file || batchLoading) return;
 
     setBatchLoading(true);
+    // Cleared up front, not just left stale on a failed re-upload — without
+    // this, a rejected second file (e.g. over the row cap) would leave the
+    // FIRST file's table and "Download results" button on screen looking
+    // current, with no indication they belong to a different upload.
+    setBatchRows(null);
     try {
       const body = new FormData();
       body.append('csv', file);
@@ -192,19 +198,20 @@ export default function TranslatePage() {
     ];
     // Standard CSV quoting: only quote a field that needs it, doubling any
     // embedded quote — anything simpler would break the moment a
-    // translation or meaning contains its own comma or newline.
-    const toCsvField = (value: string) => (/[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+    // translation or meaning contains its own comma or newline. A leading
+    // =/+/-/@ is ALSO neutralized (a leading tab/space before it too) —
+    // Excel/Sheets treat that as a formula on open, so an uploaded row like
+    // `=HYPERLINK(...)` echoed straight back into `source` would otherwise
+    // execute the moment this download is opened, not just display as text.
+    const toCsvField = (raw: string) => {
+      const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+      return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+    };
     const lines = [
       columns.join(','),
       ...batchRows.map((row) => columns.map((column) => toCsvField(row[column] ?? '')).join(',')),
     ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'translation-results.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(lines.join('\n'), 'translation-results.csv', 'text/csv');
   }
 
   return (
@@ -424,12 +431,24 @@ export default function TranslatePage() {
                 <tbody>
                   {batchRows.map((row, i) => (
                     <tr key={i} className="border-b border-border align-top last:border-0">
-                      <td className="py-2 pr-4 whitespace-pre-wrap text-foreground">{row.source}</td>
+                      <td className="py-2 pr-4 whitespace-pre-wrap text-foreground">
+                        {row.source}
+                        {row.sourceTransliteration && (
+                          <p className="mt-1 text-xs italic text-foreground-tertiary">{row.sourceTransliteration}</p>
+                        )}
+                      </td>
                       <td className="py-2 pr-4 whitespace-pre-wrap">
                         {row.error ? (
                           <span className="text-error">{row.error}</span>
                         ) : (
-                          <span className="text-foreground">{row.translation}</span>
+                          <>
+                            <span className="text-foreground">{row.translation}</span>
+                            {row.translationTransliteration && (
+                              <p className="mt-1 text-xs italic text-foreground-tertiary">
+                                {row.translationTransliteration}
+                              </p>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="py-2 whitespace-pre-wrap text-foreground-secondary">{row.meaning ?? ''}</td>

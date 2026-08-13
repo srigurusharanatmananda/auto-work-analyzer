@@ -338,15 +338,19 @@ export async function getTextWithTimeout(
   }
 }
 
-/** One row of a batch CSV upload's result. Mirrors `TranslateResult` plus the row's own source text and, on a per-row failure, an `error` instead. */
-export interface BatchTranslateRow {
+/**
+ * One row of a batch CSV upload's result — `Partial<TranslateResult>`, not
+ * a re-declared copy of its fields: a field added/renamed/removed on
+ * `TranslateResult` above now follows through here and in
+ * `ui/types/index.ts`'s mirror automatically instead of needing three
+ * separate edits kept in sync by hand. `Partial` because a wholly failed
+ * row (see `error` below) carries none of them.
+ */
+export type BatchTranslateRow = Partial<TranslateResult> & {
   source: string;
-  translation?: string;
-  meaning?: string;
-  translationTransliteration?: string;
-  sourceTransliteration?: string;
+  /** Set instead of `translation` when this row's own `translate()` call failed — the rest of the batch is unaffected. */
   error?: string;
-}
+};
 
 /** The `data` payload of `POST /translate/batch`. */
 export interface BatchTranslateResult {
@@ -357,9 +361,10 @@ export interface BatchTranslateResult {
  * Small on purpose: each row is a full `translate()` call — an LLM round
  * trip when `from !== to` — so a big batch means a long-held HTTP request
  * (this route responds once, with the whole table, like `/document` and
- * `/ocr` do) and a correspondingly large AI cost. 20 rows keeps a worst-
- * case batch (every row needing translation, every provider slow) inside
- * a couple of minutes rather than open-ended.
+ * `/ocr` do) and a correspondingly large AI cost. Genuine worst case (every
+ * row needing translation, every one of AiClient's configured providers
+ * slow before failing over) is minutes, not seconds — 20 rows keeps that
+ * bounded rather than open-ended, not fast.
  */
 const MAX_BATCH_ROWS = 20;
 
@@ -368,8 +373,18 @@ const BATCH_CONCURRENCY = 3;
 
 const MAX_CSV_BYTES = 256 * 1024;
 
-/** Real-world CSV uploads report a grab-bag of mimetypes across browsers/OSes/spreadsheet apps — matched by extension too, same reasoning as `documentUpload`'s own fileFilter. */
-const CSV_MIMETYPES = new Set(['text/csv', 'application/vnd.ms-excel', 'application/csv', 'text/plain']);
+/**
+ * `text/plain` is deliberately NOT in this set, unlike other uploads' own
+ * fileFilters — the fileFilter below still accepts EITHER a matching
+ * mimetype OR a `.csv` extension (same OR as `documentUpload`'s), so a
+ * `.csv` file some OS/browser mislabels as `text/plain` still gets in via
+ * its extension. Including `text/plain` here too would instead let ANY
+ * plain-text file through regardless of extension — csv-parse happily
+ * parses one phrase per line as a single-column CSV, so that would
+ * silently accept a renamed `.txt` file past a filter whose whole point is
+ * to reject one.
+ */
+const CSV_MIMETYPES = new Set(['text/csv', 'application/vnd.ms-excel', 'application/csv']);
 
 const csvUpload = multer({
   storage: multer.memoryStorage(),
@@ -599,17 +614,32 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
       });
       return;
     }
+    // Same reasoning as POST /'s own check: fail the whole request up
+    // front, not per row — without this, an unconfigured server would 200
+    // with every row's `error` set to the same internal setup message
+    // instead of one clear failure before any CSV parsing even happens.
+    if (from !== to && !deps.aiClient.isConfigured) {
+      res.status(503).json({
+        success: false,
+        error: 'Translation is not set up — no AI provider is configured.',
+      });
+      return;
+    }
 
     let records: string[][];
     try {
       // relax_column_count: real CSVs vary row-to-row (a stray comma in one
       // row, a shorter row at the end) — only the first column is ever
       // read, so a ragged row count elsewhere is not this route's business
-      // to reject.
+      // to reject. bom: true strips a UTF-8 byte-order mark some exporters
+      // (Excel's "CSV UTF-8") prepend — left in, it survives `trim` (a BOM
+      // is not whitespace) and silently corrupts row 1's text with a
+      // leading invisible character.
       records = parseCsv(file.buffer.toString('utf-8'), {
         skip_empty_lines: true,
         trim: true,
         relax_column_count: true,
+        bom: true,
       });
     } catch (error) {
       res.status(400).json({
@@ -639,7 +669,10 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
       return;
     }
 
-    const rows: BatchTranslateRow[] = new Array(texts.length);
+    // Chunks are awaited strictly in order, so pushing each chunk's results
+    // as it resolves already lands every row at its correct index — no
+    // separate index bookkeeping needed.
+    const rows: BatchTranslateRow[] = [];
     for (let i = 0; i < texts.length; i += BATCH_CONCURRENCY) {
       const chunk = texts.slice(i, i + BATCH_CONCURRENCY);
       const chunkResults = await Promise.all(
@@ -655,9 +688,7 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
           }
         })
       );
-      chunkResults.forEach((row, j) => {
-        rows[i + j] = row;
-      });
+      rows.push(...chunkResults);
     }
 
     const data: BatchTranslateResult = { rows };
