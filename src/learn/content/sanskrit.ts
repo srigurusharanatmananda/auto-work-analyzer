@@ -767,6 +767,16 @@ export const sanskritManifest: Manifest = {
       // the Wikisource transcription, cross-checked twice (once during
       // drafting, once independently during adversarial verification;
       // both fetches agreed character-for-character).
+      //
+      // Disclosed, not overlooked: this glyph is taught here purely as a
+      // phonetic unit, the same as every other 'letters'-stage entry in
+      // this file — but unlike most of them, त्वा ALSO happens to be a
+      // real, valid (if unaccented) standalone Sanskrit word: exactly the
+      // brief accusative alternate skt-word-tvaam's own comment says is
+      // deliberately not shipped as its own vocabulary item. That decision
+      // stands; this letter's gloss is intentionally left as the bare
+      // phonetic "tvā", matching every other letter's own convention, not
+      // a silent reintroduction of the word skt-word-tvaam avoids shipping.
       text: 'त्वा',
       gloss: 'tvā',
       composedOf: [],

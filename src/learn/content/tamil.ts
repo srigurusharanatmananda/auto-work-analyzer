@@ -1438,7 +1438,7 @@ export const tamilManifest: Manifest = {
     // The primer's own derivation inserts an extra dead ன் before the
     // fused னு (a genuine gemination the primer documents directly, not
     // inferred, unlike அவனுடைய's own single-னு fusion): என் + (ன்) +
-    // உடைய = என்னுடைய. Letters: எ + ன் (reused from தம்-word-en above) +
+    // உடைய = என்னுடைய. Letters: எ + ன் (reused from tam-word-en above) +
     // னு (the same fused letter அவனுடைய already uses) + டை + ய (both
     // already taught). Zero new letters.
     {
