@@ -307,7 +307,7 @@ export default function LearnPage() {
           )}
 
           <Button variant="ghost" onClick={playAudio} disabled={!displayLesson || audioLoading}>
-            {audioLoading ? 'Playing...' : 'Play audio'}
+            {audioLoading ? 'Synthesizing (can take minutes)...' : 'Play audio'}
           </Button>
         </div>
       </div>

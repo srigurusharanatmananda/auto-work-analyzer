@@ -197,7 +197,7 @@ export default function ChantingPage() {
                   onClick={() => playAudio(pada.text)}
                   disabled={audioLoading}
                 >
-                  {audioLoading ? 'Playing...' : 'Play audio'}
+                  {audioLoading ? 'Synthesizing (can take minutes)...' : 'Play audio'}
                 </Button>
               </Card>
             )}
@@ -231,7 +231,7 @@ export default function ChantingPage() {
                 onClick={() => playAudio(verse.padas.map((p) => p.text).join(' '))}
                 disabled={audioLoading}
               >
-                {audioLoading ? 'Playing...' : 'Play full verse'}
+                {audioLoading ? 'Synthesizing (can take minutes)...' : 'Play full verse'}
               </Button>
             </Card>
 

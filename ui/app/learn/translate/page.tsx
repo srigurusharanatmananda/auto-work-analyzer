@@ -4,9 +4,10 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
+import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
-import type { TranslateLanguage, TranslateResult } from '@/types';
+import type { LearnLanguage, TranslateLanguage, TranslateResult } from '@/types';
 
 const LANGUAGE_LABEL: Record<TranslateLanguage, string> = {
   english: 'English',
@@ -16,13 +17,33 @@ const LANGUAGE_LABEL: Record<TranslateLanguage, string> = {
 
 const LANGUAGES: TranslateLanguage[] = ['english', 'sanskrit', 'tamil'];
 
+function isSpeakable(language: TranslateLanguage): language is LearnLanguage {
+  return language === 'sanskrit' || language === 'tamil';
+}
+
 export default function TranslatePage() {
   const [from, setFrom] = useState<TranslateLanguage>('english');
   const [to, setTo] = useState<TranslateLanguage>('sanskrit');
   const [text, setText] = useState('');
   const [result, setResult] = useState<TranslateResult | null>(null);
   const [loading, setLoading] = useState(false);
+  // Which side is currently synthesizing — 'source' | 'result' | null,
+  // rather than a single shared boolean, so playing one side doesn't
+  // disable the other's button for no reason.
+  const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
+    if (!spokenText.trim()) return;
+    setSpeaking(side);
+    try {
+      await speakLearnText(language, spokenText);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Failed to play audio'));
+    } finally {
+      setSpeaking(null);
+    }
+  }
 
   function swap() {
     setFrom(to);
@@ -121,7 +142,16 @@ export default function TranslatePage() {
               rows={8}
               className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {isSpeakable(from) && (
+                <Button
+                  variant="ghost"
+                  onClick={() => playSide('source', from, text)}
+                  disabled={!text.trim() || speaking !== null}
+                >
+                  {speaking === 'source' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
+                </Button>
+              )}
               <Button variant="primary" onClick={translate} disabled={!text.trim() || loading}>
                 {loading ? 'Translating...' : 'Translate'}
               </Button>
@@ -144,16 +174,29 @@ export default function TranslatePage() {
                     {result.translationTransliteration}
                   </p>
                 )}
-                {result.sourceTransliteration && (
-                  <div className="mt-auto border-t border-border pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
-                      {LANGUAGE_LABEL[from]} romanized
-                    </p>
-                    <p className="mt-1 text-sm italic text-foreground-secondary">
-                      {result.sourceTransliteration}
-                    </p>
-                  </div>
-                )}
+                <div className="mt-auto flex flex-col gap-3">
+                  {result.sourceTransliteration && (
+                    <div className="border-t border-border pt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+                        {LANGUAGE_LABEL[from]} romanized
+                      </p>
+                      <p className="mt-1 text-sm italic text-foreground-secondary">
+                        {result.sourceTransliteration}
+                      </p>
+                    </div>
+                  )}
+                  {isSpeakable(to) && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        onClick={() => playSide('result', to, result.translation)}
+                        disabled={!result.translation.trim() || speaking !== null}
+                      >
+                        {speaking === 'result' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-1 items-center justify-center py-12 text-center text-sm text-foreground-tertiary">
