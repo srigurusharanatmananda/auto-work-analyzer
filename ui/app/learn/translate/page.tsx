@@ -73,7 +73,14 @@ export default function TranslatePage() {
     // as handleUpload's own clear, so re-picking the SAME file still fires
     // onChange.
     e.target.value = '';
-    if (!file) return;
+    // Guards against overlapping with a translate() already in flight, not
+    // just its own button's disabled state — the button is the normal way
+    // in, but disabled state alone doesn't stop a request already queued
+    // (e.g. a fast second click before React re-renders). Without this, a
+    // slower translate() resolving AFTER this OCR call finishes could
+    // still call setResult() with a translation of text that's no longer
+    // in the box.
+    if (!file || loading) return;
 
     setOcrLoading(true);
     try {
@@ -94,7 +101,10 @@ export default function TranslatePage() {
   }
 
   async function translate() {
-    if (!text.trim()) return;
+    // Same reasoning as handleImageUpload's own `loading` guard, the other
+    // direction: refuses to start while an OCR upload is still populating
+    // the very text box this is about to read from.
+    if (!text.trim() || ocrLoading) return;
 
     setLoading(true);
     try {
@@ -172,7 +182,7 @@ export default function TranslatePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => imageInputRef.current?.click()}
-                  disabled={ocrLoading}
+                  disabled={ocrLoading || loading}
                 >
                   {ocrLoading ? 'Reading image...' : 'Upload image'}
                 </Button>
@@ -183,7 +193,11 @@ export default function TranslatePage() {
               onChange={(e) => setText(e.target.value)}
               placeholder={`Paste or type ${LANGUAGE_LABEL[from]} text here...`}
               rows={8}
-              className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary"
+              // Disabled while OCR is filling this box in — without this,
+              // typing during that window is a real edit that setText(data.text)
+              // then silently overwrites the moment the OCR call resolves.
+              disabled={ocrLoading}
+              className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
             />
             <div className="flex justify-end gap-2">
               {isSpeakable(from) && (
@@ -195,7 +209,7 @@ export default function TranslatePage() {
                   {speaking === 'source' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
                 </Button>
               )}
-              <Button variant="primary" onClick={translate} disabled={!text.trim() || loading}>
+              <Button variant="primary" onClick={translate} disabled={!text.trim() || loading || ocrLoading}>
                 {loading ? 'Translating...' : 'Translate'}
               </Button>
             </div>

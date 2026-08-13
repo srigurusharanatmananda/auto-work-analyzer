@@ -18,6 +18,7 @@ import { toIAST } from '../learn/ScriptTransliterator.js';
 import type { Language } from '../learn/Transliterator.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
+import { uploadSingleOrReject } from '../middleware/upload.middleware.js';
 
 export type TranslateLanguage = 'english' | Language;
 
@@ -78,49 +79,70 @@ function stripCodeFence(text: string): string {
 /**
  * Splits a marker-delimited response into named sections, e.g.
  * `parseMarkerSections('===TEXT===\nfoo\n===LANG===\nbar', ['TEXT', 'LANG'])`
- * returns `{TEXT: 'foo', LANG: 'bar'}`. A marker missing from the response
- * (the model ignored the format), or found out of the given order, is
- * simply absent from the result rather than an error — every caller
- * already has to handle "the model didn't follow the format" as a real,
- * expected case, not an exceptional one.
+ * returns `{sections: {TEXT: 'foo', LANG: 'bar'}, leading: ''}`. A marker
+ * missing from the response (the model ignored the format), or found out
+ * of the given order, is simply absent from `sections` rather than an
+ * error — every caller already has to handle "the model didn't follow the
+ * format" as a real, expected case, not an exceptional one.
+ *
+ * Fence-stripped ONCE here, up front — not per-section, and not only in
+ * each caller's own no-markers-at-all fallback — so a model that wraps its
+ * WHOLE marked-up answer in a single code fence (marker syntax and all)
+ * doesn't leak a trailing ``` into whichever section happens to be last.
+ *
+ * `leading` is the text before the first marker found (or the whole
+ * fence-stripped response, if no marker was found at all) — callers whose
+ * OWN primary marker is missing use this rather than the full raw
+ * response, so a partially-formatted reply like "I couldn't translate
+ * this.\n===MEANING===\nLooks like a proverb." surfaces "I couldn't
+ * translate this." as the fallback content, not that entire string with
+ * the literal ===MEANING=== scaffolding embedded in it.
  */
-function parseMarkerSections(raw: string, markerNames: string[]): Partial<Record<string, string>> {
-  const text = raw.trim();
+function parseMarkerSections(
+  raw: string,
+  markerNames: string[]
+): { sections: Partial<Record<string, string>>; leading: string } {
+  const text = stripCodeFence(raw);
   const found = markerNames
     .map((name) => ({ name, marker: `===${name}===`, index: text.indexOf(`===${name}===`) }))
     .filter((entry) => entry.index !== -1)
     .sort((a, b) => a.index - b.index);
 
-  const result: Partial<Record<string, string>> = {};
+  const leading = found.length > 0 ? text.slice(0, found[0].index).trim() : text;
+
+  const sections: Partial<Record<string, string>> = {};
   for (let i = 0; i < found.length; i++) {
     const { name, marker, index } = found[i];
     const end = i + 1 < found.length ? found[i + 1].index : text.length;
-    result[name] = text.slice(index + marker.length, end).trim();
+    sections[name] = text.slice(index + marker.length, end).trim();
   }
-  return result;
+  return { sections, leading };
 }
 
 /**
- * If the model didn't follow the marker format at all (ignored the
- * instruction, or a smaller fallback model just answers plainly), the
- * whole response — fence-stripped, in case it wrapped a plain answer in a
- * code block anyway — is treated as the translation alone, with no
- * meaning: the same shape this route had before `meaning` existed, rather
- * than failing the request over one provider's formatting quirk.
+ * If the TRANSLATION marker itself is missing (the model ignored the
+ * format entirely, or answered with some other marker but not this one),
+ * `leading` — the text before whatever marker WAS found, or the whole
+ * fence-stripped response if none was — is used as the translation, with
+ * no meaning: the same shape this route had before `meaning` existed,
+ * rather than failing the request over one provider's formatting quirk,
+ * and never the marker-formatted tail (see `parseMarkerSections`'s own
+ * comment on why `leading`, not the raw response, is the right fallback).
  *
  * Checked as `!== undefined`, not truthiness: a model that correctly used
  * the marker but left the section EMPTY (a legitimate, if unusual, "I have
- * nothing to say here" from the model) must still report that as an empty
- * string, not be treated the same as "ignored the format entirely" and
- * fall back to dumping the raw ===TRANSLATION===/===MEANING=== scaffolding
- * itself into the translation field.
+ * nothing to say here" from the model) is reported as an empty string
+ * here — the ROUTE HANDLER decides what an empty translation means
+ * (currently: a clear error, not a silent 200), which is a policy call
+ * that belongs there, not something this parser should paper over by
+ * falling back to `leading` on its own.
  */
 function parseTranslationResponse(raw: string): { translation: string; meaning?: string } {
-  const sections = parseMarkerSections(raw, ['TRANSLATION', 'MEANING']);
+  const { sections, leading } = parseMarkerSections(raw, ['TRANSLATION', 'MEANING']);
   if (sections.TRANSLATION !== undefined) {
     return { translation: sections.TRANSLATION, meaning: sections.MEANING || undefined };
   }
-  return { translation: stripCodeFence(raw) };
+  return { translation: leading, meaning: sections.MEANING || undefined };
 }
 
 /**
@@ -181,17 +203,18 @@ export interface OcrResult {
  * Checked as `!== undefined`, not truthiness — see `parseTranslationResponse`'s
  * identical comment: a genuinely empty TEXT section (the model correctly
  * reporting "no text visible") must come back as an empty string the
- * caller can turn into a real "no text found" response, not get
- * conflated with "ignored the format" and fall back to dumping the raw
- * ===TEXT===/===LANGUAGE=== scaffolding itself into `text`.
+ * route's own 422 check turns into a real "no text found" response, not
+ * get conflated with "ignored the format" and fall back to `leading`
+ * (which, in THIS case — TEXT missing entirely — is the right fallback;
+ * only an EMPTY-but-present TEXT section stays as reported).
  */
 function parseOcrResponse(raw: string): OcrResult {
-  const sections = parseMarkerSections(raw, ['TEXT', 'LANGUAGE']);
+  const { sections, leading } = parseMarkerSections(raw, ['TEXT', 'LANGUAGE']);
   if (sections.TEXT !== undefined) {
     const language = sections.LANGUAGE?.trim().toLowerCase();
     return { text: sections.TEXT, detectedLanguage: isTranslateLanguage(language) ? language : null };
   }
-  return { text: stripCodeFence(raw), detectedLanguage: null };
+  return { text: leading, detectedLanguage: null };
 }
 
 function ocrPrompt(): string {
@@ -223,31 +246,7 @@ const ocrUpload = multer({
   },
 });
 
-/**
- * Multer signals a rejected upload (over the size limit, or a disallowed
- * mimetype) by calling back with an Error. Left alone that reaches
- * Express's global handler and answers 500 "Internal server error",
- * blaming the server for what is actually a bad request — the same
- * rejected-upload-to-400 shape `tasks.routes.ts`'s own `uploadNotes`
- * already uses for its own (different) upload.
- */
-function uploadOcrImage(req: Request, res: Response, next: NextFunction): void {
-  ocrUpload.single('image')(req, res, (error: unknown) => {
-    if (!error) {
-      next();
-      return;
-    }
-    const tooLarge = (error as { code?: string })?.code === 'LIMIT_FILE_SIZE';
-    res.status(400).json({
-      success: false,
-      error: tooLarge
-        ? `That image is larger than the ${MAX_OCR_IMAGE_BYTES / (1024 * 1024)}MB limit.`
-        : error instanceof Error
-          ? error.message
-          : 'Upload rejected',
-    });
-  });
-}
+const uploadOcrImage = uploadSingleOrReject(ocrUpload, 'image', `${MAX_OCR_IMAGE_BYTES / (1024 * 1024)}MB`);
 
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
   const router = Router();
@@ -277,6 +276,21 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
 
     try {
       const data = await translate(deps.aiClient, text.trim(), from, to);
+      // Reachable only via the `from !== to` path (the `from === to`
+      // no-AI-needed path always returns the input text itself, already
+      // validated non-empty above) — an AI call that succeeded but
+      // produced a blank TRANSLATION section, per `parseTranslationResponse`'s
+      // own `!== undefined` check. A 200 with an empty translation would
+      // read as a broken feature, not a clear failure — the same "AI
+      // technically responded but gave us nothing useful" case `/ocr`
+      // already 422s on for its own TEXT field.
+      if (!data.translation.trim()) {
+        res.status(502).json({
+          success: false,
+          error: 'The AI did not return a translation. Please try again.',
+        });
+        return;
+      }
       res.json({ success: true, data });
     } catch (error) {
       console.error('Translation failed:', error);
@@ -297,44 +311,58 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
    * text) is different enough that folding them together would need the
    * same body-parsing branch this file already avoids elsewhere.
    */
-  router.post('/ocr', authenticate, anyRole, uploadOcrImage, async (req: Request, res: Response) => {
-    const file = (req as Request & { file?: Express.Multer.File }).file;
-    if (!file) {
-      res.status(400).json({
-        success: false,
-        error: 'No image uploaded — send it as multipart/form-data under the "image" field.',
-      });
-      return;
-    }
-
-    if (!deps.aiClient.supportsVision) {
-      res.status(503).json({
-        success: false,
-        error: 'Image upload is not set up — it requires GOOGLE_API_KEY (Gemini) to be configured.',
-      });
-      return;
-    }
-
-    try {
-      const completion = await deps.aiClient.completeWithImage(ocrPrompt(), {
-        mimeType: file.mimetype,
-        data: file.buffer.toString('base64'),
-      });
-      const data = parseOcrResponse(completion.text);
-      if (!data.text) {
-        res.status(422).json({ success: false, error: 'No text was found in that image.' });
+  router.post(
+    '/ocr',
+    authenticate,
+    anyRole,
+    // Checked BEFORE `uploadOcrImage` runs, not after: `supportsVision` is a
+    // static, per-process condition (whether GOOGLE_API_KEY is configured),
+    // not something that depends on the upload at all — a server with no
+    // Gemini key would otherwise still pay the full cost of buffering up to
+    // 10MB into memory via multer on every single OCR request before ever
+    // reaching this check.
+    (req: Request, res: Response, next: NextFunction) => {
+      if (!deps.aiClient.supportsVision) {
+        res.status(503).json({
+          success: false,
+          error: 'Image upload is not set up — it requires GOOGLE_API_KEY (Gemini) to be configured.',
+        });
         return;
       }
-      res.json({ success: true, data });
-    } catch (error) {
-      console.error('OCR failed:', error);
-      res.status(500).json({
-        success: false,
-        error: 'OCR failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
+      next();
+    },
+    uploadOcrImage,
+    async (req: Request, res: Response) => {
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'No image uploaded — send it as multipart/form-data under the "image" field.',
+        });
+        return;
+      }
+
+      try {
+        const completion = await deps.aiClient.completeWithImage(ocrPrompt(), {
+          mimeType: file.mimetype,
+          data: file.buffer.toString('base64'),
+        });
+        const data = parseOcrResponse(completion.text);
+        if (!data.text) {
+          res.status(422).json({ success: false, error: 'No text was found in that image.' });
+          return;
+        }
+        res.json({ success: true, data });
+      } catch (error) {
+        console.error('OCR failed:', error);
+        res.status(500).json({
+          success: false,
+          error: 'OCR failed',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     }
-  });
+  );
 
   return router;
 }
