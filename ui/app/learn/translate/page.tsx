@@ -7,7 +7,7 @@ import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
-import type { LearnLanguage, TranslateLanguage, TranslateResult } from '@/types';
+import type { LearnLanguage, OcrResult, TranslateLanguage, TranslateResult } from '@/types';
 
 const LANGUAGE_LABEL: Record<TranslateLanguage, string> = {
   english: 'English',
@@ -31,7 +31,9 @@ export default function TranslatePage() {
   // rather than a single shared boolean, so playing one side doesn't
   // disable the other's button for no reason.
   const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
     if (!spokenText.trim()) return;
@@ -62,6 +64,32 @@ export default function TranslatePage() {
     } finally {
       // Cleared so choosing the SAME file again still fires onChange.
       e.target.value = '';
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Cleared up front, not just on every exit path below — same reasoning
+    // as handleUpload's own clear, so re-picking the SAME file still fires
+    // onChange.
+    e.target.value = '';
+    if (!file) return;
+
+    setOcrLoading(true);
+    try {
+      const body = new FormData();
+      body.append('image', file);
+      const data = await api.post<OcrResult>('/translate/ocr', body);
+      setText(data.text);
+      setResult(null);
+      // Only ever moves `from` TO a confidently-detected language, never
+      // clears it back to a guess — if the model couldn't tell,
+      // whatever the learner already had selected stays selected.
+      if (data.detectedLanguage) setFrom(data.detectedLanguage);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not extract text from that image'));
+    } finally {
+      setOcrLoading(false);
     }
   }
 
@@ -132,6 +160,21 @@ export default function TranslatePage() {
                 />
                 <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>
                   Upload .txt
+                </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={ocrLoading}
+                >
+                  {ocrLoading ? 'Reading image...' : 'Upload image'}
                 </Button>
               </div>
             </div>

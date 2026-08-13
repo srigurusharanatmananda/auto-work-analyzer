@@ -11,7 +11,8 @@
  * sentence gets you its English meaning AND its IAST romanization in one
  * request, not two.
  */
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import type { AiClient } from '../ai/AiClient.js';
 import { toIAST } from '../learn/ScriptTransliterator.js';
 import type { Language } from '../learn/Transliterator.js';
@@ -55,21 +56,17 @@ export interface TranslateResult {
 }
 
 /**
- * The model is asked for both fields in a single call, not two separate
- * prompts — half the latency/cost for the same result. Deliberately NOT
- * JSON: a JSON contract needs the model to correctly escape quotes and
- * newlines INSIDE the `meaning` field's own free-form prose, which none of
- * this app's four providers enforce (no JSON mode, no schema), and getting
- * that wrong breaks the whole parse — degrading a translation that used to
- * work reliably before `meaning` existed. Plain text markers have no
- * escaping requirement at all: a marker is only ever confused with content
- * if the model's own OUTPUT happens to contain that exact marker string
- * verbatim, astronomically less likely than an unescaped quote or newline
- * appearing in a multi-sentence explanation.
+ * Every multi-field AI response this route parses (translation+meaning,
+ * and the OCR endpoint's text+language below) asks for its fields in a
+ * single call via plain-text markers, not JSON: a JSON contract needs the
+ * model to correctly escape quotes and newlines INSIDE free-form prose
+ * fields, which none of this app's four providers enforce (no JSON mode,
+ * no schema) — getting that wrong breaks the whole parse. Plain text
+ * markers have no escaping requirement at all: a marker is only ever
+ * confused with content if the model's own OUTPUT happens to contain that
+ * exact marker string verbatim, astronomically less likely than an
+ * unescaped quote or newline appearing in a multi-sentence explanation.
  */
-const TRANSLATION_MARKER = '===TRANSLATION===';
-const MEANING_MARKER = '===MEANING===';
-
 function stripCodeFence(text: string): string {
   return text
     .trim()
@@ -79,27 +76,51 @@ function stripCodeFence(text: string): string {
 }
 
 /**
+ * Splits a marker-delimited response into named sections, e.g.
+ * `parseMarkerSections('===TEXT===\nfoo\n===LANG===\nbar', ['TEXT', 'LANG'])`
+ * returns `{TEXT: 'foo', LANG: 'bar'}`. A marker missing from the response
+ * (the model ignored the format), or found out of the given order, is
+ * simply absent from the result rather than an error — every caller
+ * already has to handle "the model didn't follow the format" as a real,
+ * expected case, not an exceptional one.
+ */
+function parseMarkerSections(raw: string, markerNames: string[]): Partial<Record<string, string>> {
+  const text = raw.trim();
+  const found = markerNames
+    .map((name) => ({ name, marker: `===${name}===`, index: text.indexOf(`===${name}===`) }))
+    .filter((entry) => entry.index !== -1)
+    .sort((a, b) => a.index - b.index);
+
+  const result: Partial<Record<string, string>> = {};
+  for (let i = 0; i < found.length; i++) {
+    const { name, marker, index } = found[i];
+    const end = i + 1 < found.length ? found[i + 1].index : text.length;
+    result[name] = text.slice(index + marker.length, end).trim();
+  }
+  return result;
+}
+
+/**
  * If the model didn't follow the marker format at all (ignored the
  * instruction, or a smaller fallback model just answers plainly), the
  * whole response — fence-stripped, in case it wrapped a plain answer in a
  * code block anyway — is treated as the translation alone, with no
  * meaning: the same shape this route had before `meaning` existed, rather
  * than failing the request over one provider's formatting quirk.
+ *
+ * Checked as `!== undefined`, not truthiness: a model that correctly used
+ * the marker but left the section EMPTY (a legitimate, if unusual, "I have
+ * nothing to say here" from the model) must still report that as an empty
+ * string, not be treated the same as "ignored the format entirely" and
+ * fall back to dumping the raw ===TRANSLATION===/===MEANING=== scaffolding
+ * itself into the translation field.
  */
 function parseTranslationResponse(raw: string): { translation: string; meaning?: string } {
-  const text = raw.trim();
-  const translationAt = text.indexOf(TRANSLATION_MARKER);
-  const meaningAt = text.indexOf(MEANING_MARKER);
-
-  if (translationAt !== -1 && meaningAt > translationAt) {
-    const translation = text.slice(translationAt + TRANSLATION_MARKER.length, meaningAt).trim();
-    const meaning = text.slice(meaningAt + MEANING_MARKER.length).trim();
-    if (translation) {
-      return { translation, meaning: meaning || undefined };
-    }
+  const sections = parseMarkerSections(raw, ['TRANSLATION', 'MEANING']);
+  if (sections.TRANSLATION !== undefined) {
+    return { translation: sections.TRANSLATION, meaning: sections.MEANING || undefined };
   }
-
-  return { translation: stripCodeFence(text) };
+  return { translation: stripCodeFence(raw) };
 }
 
 /**
@@ -122,11 +143,11 @@ async function translate(
   const prompt =
     `Translate the following ${LANGUAGE_LABEL[from]} text into ${LANGUAGE_LABEL[to]}, and explain what it means.\n\n` +
     `Respond in EXACTLY this format, with no other text before, between, or after the two sections:\n` +
-    `${TRANSLATION_MARKER}\n` +
+    `===TRANSLATION===\n` +
     `(the ${LANGUAGE_LABEL[to]} translation` +
     (isNative(to) ? ', in its native script' : '') +
     ` — no explanation, no transliteration, nothing else in this section)\n` +
-    `${MEANING_MARKER}\n` +
+    `===MEANING===\n` +
     `(a short (2-4 sentence) explanation, in English, of what this text means or refers to — context, ` +
     `significance, or a notable word/idiom a learner might not catch from the literal translation alone)\n\n` +
     `${LANGUAGE_LABEL[from]} text:\n${text}`;
@@ -140,6 +161,92 @@ async function translate(
     translationTransliteration: isNative(to) ? toIAST(translation, to) : undefined,
     sourceTransliteration: isNative(from) ? toIAST(text, from) : undefined,
   };
+}
+
+export interface OcrResult {
+  /** The transcribed text, exactly as it appeared in the image. */
+  text: string;
+  /** `null` when the model couldn't confidently pick one — the caller decides `from` itself in that case, same as it always could. */
+  detectedLanguage: TranslateLanguage | null;
+}
+
+/**
+ * Same "the whole response, fence-stripped, if the model ignored the
+ * format" fallback `parseTranslationResponse` uses, and for the same
+ * reason: a smaller fallback model (Gemini vision only exists on the
+ * Gemini path today, but this stays defensive regardless) answering
+ * plainly should still surface SOME text rather than a hard failure. A
+ * missing/unrecognized language marker becomes `null`, never a guess.
+ *
+ * Checked as `!== undefined`, not truthiness — see `parseTranslationResponse`'s
+ * identical comment: a genuinely empty TEXT section (the model correctly
+ * reporting "no text visible") must come back as an empty string the
+ * caller can turn into a real "no text found" response, not get
+ * conflated with "ignored the format" and fall back to dumping the raw
+ * ===TEXT===/===LANGUAGE=== scaffolding itself into `text`.
+ */
+function parseOcrResponse(raw: string): OcrResult {
+  const sections = parseMarkerSections(raw, ['TEXT', 'LANGUAGE']);
+  if (sections.TEXT !== undefined) {
+    const language = sections.LANGUAGE?.trim().toLowerCase();
+    return { text: sections.TEXT, detectedLanguage: isTranslateLanguage(language) ? language : null };
+  }
+  return { text: stripCodeFence(raw), detectedLanguage: null };
+}
+
+function ocrPrompt(): string {
+  return (
+    `Transcribe ALL text visible in this image exactly as written, preserving line breaks. ` +
+    `Then identify which ONE language the text is primarily in.\n\n` +
+    `Respond in EXACTLY this format, with no other text before, between, or after the two sections:\n` +
+    `===TEXT===\n` +
+    `(the transcribed text, exactly as it appears in the image, preserving line breaks — nothing else in this section)\n` +
+    `===LANGUAGE===\n` +
+    `(exactly one word: english, sanskrit, tamil, or unknown — unknown if the text is illegible, empty, ` +
+    `or you cannot confidently pick one of the other three)`
+  );
+}
+
+/** 10MB comfortably covers a phone photo of a page while staying well under Gemini's own inline-data payload ceiling once base64 inflates it by ~33%. */
+const MAX_OCR_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_MIMETYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+
+const ocrUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_OCR_IMAGE_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_IMAGE_MIMETYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, WebP, or HEIC/HEIF images are allowed'));
+    }
+  },
+});
+
+/**
+ * Multer signals a rejected upload (over the size limit, or a disallowed
+ * mimetype) by calling back with an Error. Left alone that reaches
+ * Express's global handler and answers 500 "Internal server error",
+ * blaming the server for what is actually a bad request — the same
+ * rejected-upload-to-400 shape `tasks.routes.ts`'s own `uploadNotes`
+ * already uses for its own (different) upload.
+ */
+function uploadOcrImage(req: Request, res: Response, next: NextFunction): void {
+  ocrUpload.single('image')(req, res, (error: unknown) => {
+    if (!error) {
+      next();
+      return;
+    }
+    const tooLarge = (error as { code?: string })?.code === 'LIMIT_FILE_SIZE';
+    res.status(400).json({
+      success: false,
+      error: tooLarge
+        ? `That image is larger than the ${MAX_OCR_IMAGE_BYTES / (1024 * 1024)}MB limit.`
+        : error instanceof Error
+          ? error.message
+          : 'Upload rejected',
+    });
+  });
 }
 
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
@@ -176,6 +283,54 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
       res.status(500).json({
         success: false,
         error: 'Translation failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * Extracts text from an uploaded image (a photo/screenshot of a page or
+   * verse) plus, best-effort, which language it's in — so the UI can
+   * populate `POST /` (above) with a from-language already filled in,
+   * rather than making the learner guess. Deliberately its own endpoint,
+   * not a mode of `POST /`: the request shape (multipart file vs. JSON
+   * text) is different enough that folding them together would need the
+   * same body-parsing branch this file already avoids elsewhere.
+   */
+  router.post('/ocr', authenticate, anyRole, uploadOcrImage, async (req: Request, res: Response) => {
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({
+        success: false,
+        error: 'No image uploaded — send it as multipart/form-data under the "image" field.',
+      });
+      return;
+    }
+
+    if (!deps.aiClient.supportsVision) {
+      res.status(503).json({
+        success: false,
+        error: 'Image upload is not set up — it requires GOOGLE_API_KEY (Gemini) to be configured.',
+      });
+      return;
+    }
+
+    try {
+      const completion = await deps.aiClient.completeWithImage(ocrPrompt(), {
+        mimeType: file.mimetype,
+        data: file.buffer.toString('base64'),
+      });
+      const data = parseOcrResponse(completion.text);
+      if (!data.text) {
+        res.status(422).json({ success: false, error: 'No text was found in that image.' });
+        return;
+      }
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('OCR failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'OCR failed',
         details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
