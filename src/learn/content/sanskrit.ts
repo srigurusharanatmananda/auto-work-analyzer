@@ -755,6 +755,35 @@ export const sanskritManifest: Manifest = {
       gloss: 'yū',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-tvaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 19): the already-taught conjunct त्व (skt-letter-tva,
+      // tranche 18) + the ा vowel sign already proven on ब/र/ष्ठ — needed
+      // only because skt-word-tvaam below needs it. Whitney §491(a)'s own
+      // 2nd-person-singular accusative row: "A. त्वाम्, त्वा tvā́m, tvā"
+      // (Sanskrit Grammar, 1889, Chapter VII) — quoted from a live fetch of
+      // the Wikisource transcription, cross-checked twice (once during
+      // drafting, once independently during adversarial verification;
+      // both fetches agreed character-for-character).
+      text: 'त्वा',
+      gloss: 'tvā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-yaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 19): य (already taught) + the ा vowel sign already
+      // proven on ब/र/ष्ठ/त्व — needed only because skt-word-tvaya below
+      // needs it. Whitney §491(a)'s own 2nd-person-singular instrumental
+      // row: "I. त्वया tváyā" — same double-fetch verification as
+      // skt-letter-tvaa above.
+      text: 'या',
+      gloss: 'yā',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1417,6 +1446,59 @@ export const sanskritManifest: Manifest = {
       text: 'यूयम्',
       gloss: 'yūyam — you all, you (plural) (nominative plural personal pronoun)',
       composedOf: ['skt-letter-yuu', 'skt-letter-ya', 'skt-letter-ma-halanta'],
+    },
+
+    // ============ 2nd-person pronoun, tranche 19: fuller case forms ============
+    // Tranche 18 shipped only the nominative (त्वम्/यूयम्, above). §491(a)'s
+    // own table has the rest — this tranche ships three more singular case
+    // forms, a small verified slice rather than the whole table at once,
+    // matching this file's own established tranche-7-14 preference. Every
+    // citation below double-checked against two independent live fetches
+    // of the same Wikisource transcription (once while drafting, once
+    // during adversarial verification) — not a cached/stale copy.
+    {
+      id: 'skt-word-tvaam',
+      stage: 'words',
+      level: 3,
+      // त्वा (new, above) + म् (already taught, skt-letter-ma-halanta).
+      // Ships the fuller/accented accusative त्वाम्, not the accentless
+      // brief alternate त्वा the same table row also gives (per §491(b):
+      // "the briefer second forms for accus., dat., and gen... are
+      // accentless") — left unshipped as its own word to avoid teaching a
+      // second, bare form of a letter this file otherwise only ever uses
+      // as part of त्वाम्. Level 3, matching this file's own precedent that
+      // a case-marked form (नरस्य/नरेण/नराय) is level 3, not level 2 like
+      // the bare nominative.
+      text: 'त्वाम्',
+      gloss: 'tvām — you (accusative singular personal pronoun, direct object)',
+      composedOf: ['skt-letter-tvaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-tava',
+      stage: 'words',
+      level: 3,
+      // त (already taught) + व (already taught) — zero new letters.
+      // §491(a)'s genitive row: "G. तव, ते táva, te". Ships the fuller
+      // तव, not the accentless brief alternate ते — which this table's
+      // own dative row ALSO gives as its own brief alternate ("D.
+      // तुभ्यम्, ते túbhyam, te"), a genuine same-syllable overlap between
+      // two different cases, so ते is deliberately not shipped as its own
+      // bare vocabulary item (it would conflate the two).
+      text: 'तव',
+      gloss: 'tava — of you, your (genitive singular personal pronoun)',
+      composedOf: ['skt-letter-ta', 'skt-letter-va'],
+    },
+    {
+      id: 'skt-word-tvaya',
+      stage: 'words',
+      level: 3,
+      // त्व (already taught, tranche 18) + या (new, above). §491(a)'s
+      // instrumental row: "I. त्वया tváyā" — a single, unambiguous form,
+      // no accentless alternate given for this case. Parallels the
+      // already-taught instrumental case for नर (नरेण).
+      text: 'त्वया',
+      gloss: 'tvayā — by/with you (instrumental singular personal pronoun)',
+      composedOf: ['skt-letter-tva', 'skt-letter-yaa'],
     },
   ],
 };

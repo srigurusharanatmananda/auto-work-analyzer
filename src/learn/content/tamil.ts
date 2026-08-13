@@ -1093,6 +1093,23 @@ export const tamilManifest: Manifest = {
       gloss: 'avan — he',
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-alveolar-na'],
     },
+    // Tranche 19: அவன்'s honorific counterpart, from the same lesson's own
+    // person table (line 1415-1416: "அவர் - ஆர் (III person, singular,
+    // honorific - masculine and feminine)"), independently reinforced by
+    // three further worked sentences (line 1442, "அவர் செய்கிறார்"; line
+    // 1782, Lesson Nineteen's accusative practice; lines 1847-1848, Lesson
+    // Twenty's dative example). ர் here is the dead consonant tam-pulli-ra
+    // (already taught, reused from யார் — NOT the same as the fused letter
+    // ரு that யாருடைய/யாருக்கு/அவருடைய below instead reuse). Zero new
+    // letters.
+    {
+      id: 'tam-word-avar',
+      stage: 'words',
+      level: 2,
+      text: 'அவர்',
+      gloss: 'avar — he/she (honorific)',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-ra'],
+    },
     // Same tense-symbol + personal-suffix fusion already established for
     // செய்கிறேன் (tam-word-seykirren) — here with ஆன் (3rd person singular
     // masculine) instead of ஏன் (1st person singular): செய் + கிறு + ஆன் →
@@ -1382,6 +1399,61 @@ export const tamilManifest: Manifest = {
       text: 'அவனுடைய',
       gloss: 'avaṉuṭaiya — his',
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-alveolar-nu', 'tam-letter-ttai', 'tam-letter-ya'],
+    },
+
+    // Tranche 19: the honorific counterpart, from the same Lesson
+    // Twenty-One passage, line 2048: "அவர் + உடைய = அவருடைய = his
+    // (honorific)". ரு here is the already-taught FUSED letter
+    // tam-letter-ru (from யாருக்கு/யாருடைய, tranche 9-10) — using it
+    // directly, rather than decomposing to dead ர் + உ, is what lets
+    // plain concatenation reach the real spelling without a sandhiRule,
+    // the same reasoning already documented on யாருடைய and அவனுடைய.
+    // Zero new letters.
+    {
+      id: 'tam-word-avarudaiya',
+      stage: 'words',
+      level: 3,
+      text: 'அவருடைய',
+      gloss: 'avaruṭaiya — his/her (honorific)',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-ru', 'tam-letter-ttai', 'tam-letter-ya'],
+    },
+
+    // Tranche 19: நான்'s genitive, "my" — the primer's own Lesson
+    // Twenty-One derivation (lines 2069-2071) explains நான் irregularly
+    // shortens to என் before the case-ending: "நான் + உடைய: நான் becomes
+    // என் before taking a case-ending... = என் + (ன்) + உடைய = என்னுடைய".
+    // என் itself is independently and separately taught vocabulary —
+    // Lesson Two's own two-lettered-words list (line 354: "என் (en) -
+    // my"), reinforced by Lesson Three's worked phrase "என் கால் - my
+    // leg" (line 440) — not invented for this genitive. Zero new letters
+    // (எ, ன் both already taught).
+    {
+      id: 'tam-word-en',
+      stage: 'words',
+      level: 3,
+      text: 'என்',
+      gloss: 'en — my',
+      composedOf: ['tam-letter-e', 'tam-pulli-alveolar-na'],
+    },
+    // The primer's own derivation inserts an extra dead ன் before the
+    // fused னு (a genuine gemination the primer documents directly, not
+    // inferred, unlike அவனுடைய's own single-னு fusion): என் + (ன்) +
+    // உடைய = என்னுடைய. Letters: எ + ன் (reused from தம்-word-en above) +
+    // னு (the same fused letter அவனுடைய already uses) + டை + ய (both
+    // already taught). Zero new letters.
+    {
+      id: 'tam-word-ennudaiya',
+      stage: 'words',
+      level: 3,
+      text: 'என்னுடைய',
+      gloss: 'eṉṉuṭaiya — my',
+      composedOf: [
+        'tam-letter-e',
+        'tam-pulli-alveolar-na',
+        'tam-letter-alveolar-nu',
+        'tam-letter-ttai',
+        'tam-letter-ya',
+      ],
     },
   ],
 };

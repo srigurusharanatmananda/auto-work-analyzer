@@ -745,18 +745,69 @@ file's own sibling entry (yāruṭaiya) uses voiceless "ṭ" for the same
 
 Sanskrit: 114 → 118 lessons. Tamil: 252 → 253 lessons.
 
+**Twentieth pass — tranche 19**: run as an orchestrated multi-agent `Workflow`
+(research+draft → adversarial verify per language) in response to a UI
+observation ("Level 4/5 are still coming soon") that surfaced this plan's own
+still-open item 1. Not an attempt at Level 4/5 itself — this is one more
+grammar-completeness slice, the same shape as tranches 7-18, toward the
+prerequisite item 1 names before item 2 (expert-tier reading) is reachable.
+
+- **Sanskrit — three more 2nd-person singular case forms**: त्वाम् (tvām,
+  accusative), तव (tava, genitive), त्वया (tvayā, instrumental) — Whitney
+  §491(a)'s own table, the same source tranche 18 used for the nominative
+  त्वम्/यूयम्. Two new atomic letters (त्वा, या), both the already-established
+  conjunct/consonant + ा-sign fusion. Deliberately not shipped: the
+  accentless brief alternates त्वा and ते the same table rows also give —
+  ते specifically overlaps in spelling between two different cases in
+  Whitney's own table (dative "तुभ्यम्, ते" vs genitive "तव, ते"), so
+  teaching it as its own bare vocabulary item would conflate two
+  grammatical meanings. One verifier, independently re-fetching the same
+  Wikisource transcription rather than trusting the drafter's quotes, and
+  additionally proving correctness by mechanically inserting all five
+  proposed lessons into a working copy of `sanskrit.ts` and running
+  `validateManifest` before signing off — found no issues.
+- **Tamil — two more pronoun genitives**: அவருடைய (avaruṭaiya, "his/her,
+  honorific" — genitive of the newly-added அவர்) and என்னுடைய (eṉṉuṭaiya,
+  "my" — genitive of already-taught நான், via the primer's own irregular
+  நான்→என் shortening rule, ABC of Tamil Lesson Twenty-One lines 2069-2071).
+  அவர் itself needed adding first (ABC of Tamil Lesson Seventeen's person
+  table, lines 1415-1416, plus three further sentence attestations) since
+  the plan's own prior forecast that these genitives need "zero new
+  letters" was about letters only — it did not account for a genitive
+  needing its own not-yet-taught base pronoun taught first. Similarly, என்
+  needed adding as its own word (Lesson Two's vocabulary, line 354) before
+  என்னுடைய could use it. Zero new LETTERS, as forecast — four new WORDS.
+  The verifier caught and fixed four real citation/reasoning errors in the
+  draft: a misattributed source for the already-existing அவன் entry, an
+  overstated letter-reuse claim (only யார் reuses the dead ர்; யாருடைய/
+  யாருக்கு reuse the distinct fused ரு instead), an off-by-one lesson
+  citation, and an incorrect claim about what `validateManifest` mechanically
+  enforces (a word's `composedOf` may only reference letters, never other
+  words, so base-pronoun-before-genitive ordering is convention, not a
+  checked rule) — all fixed before this pass's own review.
+- **Still genuinely blocked, confirmed rather than assumed**: அவளுடைய
+  ("her") and அவர்களுடைய ("their") — both real and doubly-attested in the
+  same Lesson Twenty-One passage — need a new atomic letter (dead ள்) this
+  file has never taught. The plan's own "zero new letters for all four"
+  forecast (tranche 18) does not hold for these two; corrected here rather
+  than left standing uncorrected.
+
+Sanskrit: 118 → 123 lessons. Tamil: 253 → 257 lessons.
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
-   more of Sanskrit's 2nd-person pronoun (tranche 18 shipped only the
-   two nominatives; the fuller Whitney §491 table has accusative,
-   instrumental, dative, ablative, genitive, locative, and the dual too
-   — all already transcribed in this tranche's research, unused so
-   far), more mood coverage; Tamil's other pronoun genitives from the
-   same Lesson Twenty-One passage (அவளுடைய "her", அவருடைய "his,
-   honorific", அவர்களுடைய "their", என்னுடைய "my", etc. — all already
-   scoped by tranche 18's own research as needing zero new letters
-   too), more negation forms (plural, colloquial — tranche 16 shipped
+   more of Sanskrit's 2nd-person pronoun (tranche 19 shipped the
+   accusative/genitive/instrumental singular; Whitney §491's table still
+   has dative, ablative, locative, and the dual left), more mood
+   coverage; Tamil's remaining pronoun genitives அவளுடைய ("her") and
+   அவர்களுடைய ("their") — tranche 19 shipped அவருடைய/என்னுடைய and, in the
+   process, corrected tranche 18's own forecast that all four need zero
+   new letters: these two specifically need a new atomic dead ள் this
+   file has never taught (their base pronouns அவள்/அவர்கள் are
+   themselves untaught too, same as அவர்/என் were before tranche 19), and
+   should ship as their own small tranche rather than being assumed
+   free; more negation forms (plural, colloquial — tranche 16 shipped
    only the 3rd-singular-neuter negative indicative), genitive for more
    nouns, more tenses/persons. Each still needs its own citation the way
    every tranche so far has had.
