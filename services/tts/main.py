@@ -40,6 +40,17 @@ model = None
 tokenizer = None
 description_tokenizer = None
 
+# Loaded once at import time, not re-opened on every `/synthesize` call —
+# the dynamic linker already caches a shared library's mapping process-wide,
+# but there is still no reason to repeat a symbol lookup on every request
+# for a handle that never changes. `None` on anything but glibc/Linux (e.g.
+# macOS during local iteration on this file outside its Docker image) — see
+# `_release_native_memory`'s own use of it.
+try:
+    _libc = ctypes.CDLL("libc.so.6")
+except OSError:
+    _libc = None
+
 logger.info(f"Loading {MODEL_NAME} on {DEVICE} — first run also downloads the model, which can take a while")
 
 try:
@@ -112,14 +123,27 @@ def _release_native_memory() -> None:
     hand unused arenas back to the OS; it is a no-op (returns 0) on
     non-glibc/non-Linux systems, so this stays harmless in dev tooling that
     might run this file outside the Linux container it actually ships in.
+
+    Called from a `finally` block in `_synthesize_sync` — an exception
+    escaping THIS function would override whatever that block was already
+    returning or propagating (Python's own `finally` semantics), turning a
+    successful synthesis into a spurious 500, or replacing the real error
+    from a failed one with an unrelated cleanup failure. Every exception
+    this function could plausibly raise is therefore caught and logged
+    here, never re-raised.
     """
     gc.collect()
+    if _libc is None:
+        return
     try:
-        ctypes.CDLL("libc.so.6").malloc_trim(0)
-    except OSError:
-        # Not running under glibc (e.g. macOS during local iteration on
-        # this file outside Docker) — nothing to trim, not an error.
-        pass
+        _libc.malloc_trim(0)
+    except Exception:
+        # Not just OSError: an alternate libc (musl, a stripped/minimal
+        # image) could expose the symbol lookup fine but still fail in a
+        # way ctypes surfaces as AttributeError or something else entirely
+        # — logged so a silently-reverted leak fix leaves a trace, but
+        # never allowed to affect the actual synthesis result either way.
+        logger.warning("malloc_trim(0) failed — native memory may not be released this call", exc_info=True)
 
 
 def _synthesize_sync(text: str, voice: str, prosody: str) -> bytes:
