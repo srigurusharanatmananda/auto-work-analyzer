@@ -477,6 +477,40 @@ export interface ChantVerse extends ChantVerseSummary {
   citation: string;
 }
 
+/** Mirrors `ChantBook` in `src/learn/ChantBooks.ts`. */
+export interface ChantBook {
+  id: string;
+  userId: string;
+  language: LearnLanguage;
+  title: string;
+  originalFilename: string;
+  storedFilename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+/** The `data` payload of `POST /chant-books`. */
+export interface ChantBookCreated extends ChantBook {
+  verseCount: number;
+}
+
+/** One entry of `GET /chant-books/:id/verses` — enough for a picker, without the (possibly uncomputed) breakdown. */
+export interface ChantBookVerseSummary {
+  verseNumber: number;
+  rawText: string;
+  hasBreakdown: boolean;
+}
+
+/** The `data` payload of `GET /chant-books/:id/verses/:verseNumber` — same pāda/word/syllable shape as the built-in `ChantVerse`, computed lazily and cached server-side. */
+export interface ChantBookVerseDetail {
+  bookId: string;
+  verseNumber: number;
+  rawText: string;
+  padas: ChantPada[];
+  meaning: string;
+  citation: string;
+}
+
 /** Mirrors `TranslateLanguage` in `src/routes/translate.routes.ts`. */
 export type TranslateLanguage = 'english' | LearnLanguage;
 

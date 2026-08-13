@@ -27,6 +27,7 @@ import { createTemplatesRouter } from "./routes/templates.routes.js";
 import { createLearnRouter } from "./routes/learn.routes.js";
 import { createResourcesRouter } from "./routes/resources.routes.js";
 import { createChantingRouter } from "./routes/chanting.routes.js";
+import { createChantBooksRouter } from "./routes/chantBooks.routes.js";
 import { createTranslateRouter } from "./routes/translate.routes.js";
 import { createTasksRouter } from "./routes/tasks.routes.js";
 import { TemplateStore } from "./services/TemplateStore.js";
@@ -291,6 +292,20 @@ export async function startWebhookServer(port: number = 3000): Promise<void> {
     // here specifically because aiClient does not exist any earlier in
     // startup (see the comment on its own construction above).
     app.use("/api/translate", createTranslateRouter({ aiClient }));
+
+    // A learner's own uploaded chant books — parsed into numbered verses at
+    // upload time, each broken down into pādas/words/gloss/meaning lazily
+    // by the same aiClient, the first time it's actually asked for (see
+    // chantBooks.routes.ts's own header and ChantBookBreakdown.ts). Kept in
+    // its own storage directory for the same isolation-from-Whisper reason
+    // /api/resources's own uploads are — see that mount's comment above.
+    app.use(
+      "/api/chant-books",
+      createChantBooksRouter({
+        aiClient,
+        storageRoot: path.resolve(process.env.CHANT_BOOK_UPLOADS_ROOT ?? "storage-chant-books"),
+      })
+    );
 
     app.use(
       "/api",

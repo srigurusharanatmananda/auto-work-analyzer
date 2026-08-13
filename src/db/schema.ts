@@ -647,6 +647,71 @@ export const learnResourceUploads = pgTable(
   ]
 );
 
+/**
+ * A learner's own uploaded book for chanting practice — the parent row.
+ * Mirrors `learnResourceUploads`'s shape (same on-disk file convention:
+ * `storedFilename` is server-generated, `originalFilename` is display-only
+ * and never trusted on the filesystem), but this is a genuinely different
+ * feature: a reading-resource upload is read as-is, while a chant book is
+ * PARSED into individually-numbered verses at upload time (see
+ * `BookVerseParser.ts`) and each verse gets its own row in
+ * `chant_book_verses` below.
+ */
+export const chantBooks = pgTable(
+  'chant_books',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    /** 'sanskrit' | 'tamil'. Text, not a Postgres enum — same reasoning as `learnProgress.language`. */
+    language: text('language').notNull(),
+    title: text('title').notNull(),
+    originalFilename: text('original_filename').notNull(),
+    storedFilename: text('stored_filename').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [
+    // "This user's uploaded books for this language" is the one listing
+    // query this table exists to answer — same shape as
+    // `idx_learn_resource_uploads_user_language`.
+    index('idx_chant_books_user_language').on(table.userId, table.language),
+  ]
+);
+
+/**
+ * One verse of an uploaded chant book. `rawText` is written once, at
+ * upload time, from `BookVerseParser.ts`'s deterministic split — never
+ * re-derived. `processedData` is the AI-computed pāda/word/gloss/meaning
+ * breakdown (JSON, same "`text` column holding JSON" convention this
+ * schema already uses for `task_templates.options` — see this file's own
+ * header for why that stays `text` rather than `jsonb`), and is
+ * deliberately NULL until a learner actually asks to chant this specific
+ * verse: computing it for every verse of an uploaded book upfront would
+ * mean one AI call per verse before the learner has picked any of
+ * them — exactly the "flexible, whichever verse I want" requirement this
+ * feature exists to serve, inverted. `processedAt` records when that
+ * lazy computation happened, `null` alongside `processedData` until then.
+ */
+export const chantBookVerses = pgTable(
+  'chant_book_verses',
+  {
+    id: text('id').primaryKey(),
+    bookId: text('book_id')
+      .notNull()
+      .references(() => chantBooks.id, { onDelete: 'cascade' }),
+    verseNumber: integer('verse_number').notNull(),
+    rawText: text('raw_text').notNull(),
+    processedData: text('processed_data'),
+    processedAt: text('processed_at'),
+  },
+  (table) => [
+    // A book's own verse numbers are unique by construction (the parser
+    // rejects a non-increasing sequence) — this index is both the lookup
+    // path ("verse N of book B") and a data-integrity backstop.
+    uniqueIndex('idx_chant_book_verses_identity').on(table.bookId, table.verseNumber),
+  ]
+);
+
 // ==================== Rate limiting ====================
 
 /**
