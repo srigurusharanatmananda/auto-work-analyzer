@@ -12,6 +12,31 @@ export interface AiProvider {
   generate(prompt: string): Promise<string>;
 }
 
+/**
+ * A single inline image, base64-encoded — the shape `@google/generative-ai`
+ * itself wants for `inlineData` (checked against the installed SDK's own
+ * `InlineDataPart`/`GenerativeContentBlob` types, not guessed).
+ */
+export interface AiImage {
+  mimeType: string;
+  data: string;
+}
+
+/**
+ * Deliberately NOT a method on `AiProvider`: image understanding is a real
+ * capability gap between providers, not something every `AiProvider` could
+ * plausibly implement behind one interface. Of `AiClient`'s four fallback
+ * providers, only Gemini's SDK accepts an image alongside a text prompt in
+ * one call — Groq/Hugging Face/OpenRouter are plain `chat/completions`-style
+ * REST calls with no image field in their request bodies at all, so there is
+ * no "fallback chain" to build here the way `complete()` has one: this is
+ * one provider or none, not several tried in sequence.
+ */
+export interface AiVisionProvider {
+  name: string;
+  generateFromImage(prompt: string, image: AiImage): Promise<string>;
+}
+
 export interface AiCompletion {
   text: string;
   provider: string;
@@ -25,7 +50,10 @@ export function isQuotaError(message: string): boolean {
 }
 
 export class AiClient {
-  constructor(private providers: AiProvider[] = []) {}
+  constructor(
+    private providers: AiProvider[] = [],
+    private visionProvider?: AiVisionProvider
+  ) {}
 
   get isConfigured(): boolean {
     return this.providers.length > 0;
@@ -33,6 +61,22 @@ export class AiClient {
 
   get providerNames(): string[] {
     return this.providers.map((provider) => provider.name);
+  }
+
+  /** Whether `completeWithImage` has a real provider to call — see `AiVisionProvider`'s own comment for why this is never true for a Groq/Hugging-Face/OpenRouter-only setup. */
+  get supportsVision(): boolean {
+    return this.visionProvider !== undefined;
+  }
+
+  async completeWithImage(prompt: string, image: AiImage): Promise<AiCompletion> {
+    if (!this.visionProvider) {
+      throw new Error(
+        "Image understanding requires GOOGLE_API_KEY (Gemini) to be configured — " +
+          "Groq, Hugging Face, and OpenRouter (this app's other providers) do not accept image input."
+      );
+    }
+    const text = await this.visionProvider.generateFromImage(prompt, image);
+    return { text, provider: this.visionProvider.name };
   }
 
   async complete(prompt: string): Promise<AiCompletion> {
@@ -145,6 +189,9 @@ export interface CreateAiClientOptions {
 export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiClient {
   const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
   const providers: AiProvider[] = [];
+  // Set below, only when GOOGLE_API_KEY is configured — see AiVisionProvider's
+  // own comment for why there is no equivalent for the other three providers.
+  let visionProvider: AiVisionProvider | undefined;
 
   // Provider 1: Google Gemini (multiple models)
   if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY !== "your_google_api_key_here") {
@@ -200,6 +247,36 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
     // feature working via Groq.
     providers.push(gemini("Google Gemini Flash", "gemini-flash-latest"));
     providers.push(gemini("Google Gemini Pro", "gemini-pro-latest"));
+
+    // Every current Gemini model (flash and pro alike) accepts image input
+    // natively — this is not a separate "vision model", just the same
+    // `generateContent` call with an extra `inlineData` part alongside the
+    // text prompt (verified against the installed SDK's own `Part`/
+    // `InlineDataPart` types — see AiImage's own comment). Reuses the flash
+    // model/label, matching the text chain's own preference for flash over
+    // pro (cheaper/faster, tried first there too).
+    visionProvider = {
+      name: "Google Gemini Flash (vision)",
+      generateFromImage: async (prompt: string, image: AiImage) => {
+        const { GoogleGenerativeAI, GoogleGenerativeAIAbortError } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+        const generativeModel = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const timeoutMs = getProviderTimeoutMs();
+
+        try {
+          const result = await generativeModel.generateContent(
+            [{ text: prompt }, { inlineData: { mimeType: image.mimeType, data: image.data } }],
+            { signal: AbortSignal.timeout(timeoutMs) }
+          );
+          return result.response.text();
+        } catch (error) {
+          if (error instanceof GoogleGenerativeAIAbortError) {
+            throw new Error(`Google Gemini Flash (vision) request timed out after ${timeoutMs}ms`);
+          }
+          throw error;
+        }
+      },
+    };
   }
 
   // Provider 2: Groq (Free, no credit card)
@@ -332,5 +409,5 @@ export function createAiClientFromEnv(options: CreateAiClientOptions = {}): AiCl
     });
   }
 
-  return new AiClient(providers);
+  return new AiClient(providers, visionProvider);
 }

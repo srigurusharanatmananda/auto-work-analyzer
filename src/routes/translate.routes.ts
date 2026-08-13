@@ -40,10 +40,48 @@ export interface TranslateRouterDeps {
 
 export interface TranslateResult {
   translation: string;
+  /**
+   * A short explanation of what the text means or refers to — context,
+   * significance, or a notable word/idiom a learner might not catch from
+   * the literal translation alone. Always in English, regardless of `to`.
+   * Only present when an AI call was actually made (`from !== to`) — a
+   * pure transliteration request (see below) has no AI involvement to ask.
+   */
+  meaning?: string;
   /** IAST romanization of `translation`, only when `to` is sanskrit/tamil. */
   translationTransliteration?: string;
   /** IAST romanization of the ORIGINAL input, only when `from` is sanskrit/tamil. */
   sourceTransliteration?: string;
+}
+
+/**
+ * The model is asked for one JSON object covering both fields in a single
+ * call, not two separate prompts — half the latency/cost for the same
+ * result. Models reliably wrap JSON in a ```json fence despite being told
+ * not to; stripped defensively rather than trusted to comply. If parsing
+ * still fails (a model that ignores the JSON instruction entirely), the
+ * raw response is treated as the translation on its own, with no meaning
+ * — the same shape this route had before `meaning` existed — rather than
+ * failing the whole request over one provider's formatting quirk.
+ */
+function parseTranslationResponse(raw: string): { translation: string; meaning?: string } {
+  const stripped = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/, '')
+    .trim();
+  try {
+    const parsed = JSON.parse(stripped);
+    if (typeof parsed?.translation === 'string') {
+      return {
+        translation: parsed.translation,
+        meaning: typeof parsed?.meaning === 'string' ? parsed.meaning : undefined,
+      };
+    }
+  } catch {
+    // Fall through to the raw-text fallback below.
+  }
+  return { translation: raw.trim() };
 }
 
 /**
@@ -64,17 +102,21 @@ async function translate(
   }
 
   const prompt =
-    `Translate the following ${LANGUAGE_LABEL[from]} text into ${LANGUAGE_LABEL[to]}. ` +
-    `Respond with ONLY the ${LANGUAGE_LABEL[to]} translation` +
+    `Translate the following ${LANGUAGE_LABEL[from]} text into ${LANGUAGE_LABEL[to]}, and explain what it means.\n\n` +
+    `Respond with ONLY a JSON object (no markdown code fence, no other text) with exactly two fields:\n` +
+    `{"translation": "the ${LANGUAGE_LABEL[to]} translation` +
     (isNative(to) ? ', in its native script' : '') +
-    ` — no explanation, no transliteration, no quotation marks, nothing else.\n\n` +
+    ` — no explanation, no transliteration, no quotation marks inside this field", ` +
+    `"meaning": "a short (2-4 sentence) explanation, in English, of what this text means or refers to — ` +
+    `context, significance, or a notable word/idiom a learner might not catch from the literal translation alone"}\n\n` +
     `${LANGUAGE_LABEL[from]} text:\n${text}`;
 
   const completion = await aiClient.complete(prompt);
-  const translation = completion.text.trim();
+  const { translation, meaning } = parseTranslationResponse(completion.text);
 
   return {
     translation,
+    meaning,
     translationTransliteration: isNative(to) ? toIAST(translation, to) : undefined,
     sourceTransliteration: isNative(from) ? toIAST(text, from) : undefined,
   };

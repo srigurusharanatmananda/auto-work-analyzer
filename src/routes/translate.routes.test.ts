@@ -222,6 +222,89 @@ describe('POST /translate', () => {
     }
   });
 
+  test('parses a JSON {translation, meaning} response into separate fields', async () => {
+    const app = buildApp(
+      new AiClient([fakeProvider(JSON.stringify({ translation: 'नमस्ते', meaning: 'A common Sanskrit greeting.' }))])
+    );
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'hello', from: 'english', to: 'sanskrit' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('नमस्ते');
+      expect(body.data.meaning).toBe('A common Sanskrit greeting.');
+      // translationTransliteration is derived from the PARSED translation
+      // field, not the raw JSON blob — proves the JSON was actually
+      // unwrapped before transliteration ran, not just left as one string.
+      expect(body.data.translationTransliteration).toBe('namaste');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('strips a markdown code fence around JSON before parsing (a common model deviation)', async () => {
+    const fenced = '```json\n' + JSON.stringify({ translation: 'Greetings', meaning: 'An informal hello.' }) + '\n```';
+    const app = buildApp(new AiClient([fakeProvider(fenced)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('Greetings');
+      expect(body.data.meaning).toBe('An informal hello.');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a non-JSON response (model ignored the format instruction) falls back to treating it as the translation, with no meaning', async () => {
+    const app = buildApp(new AiClient([fakeProvider('Greetings')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('Greetings');
+      expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('valid JSON missing the meaning field leaves meaning undefined, not a crash', async () => {
+    const app = buildApp(new AiClient([fakeProvider(JSON.stringify({ translation: 'Greetings' }))]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('Greetings');
+      expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
   test('every provider failing surfaces as a 500 with details', async () => {
     const app = buildApp(
       new AiClient([{ name: 'Failing', generate: async () => { throw new Error('boom'); } }])
