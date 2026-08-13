@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
+import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type { ChantSyllable, ChantVerse, ChantVerseSummary } from '@/types';
@@ -28,20 +29,35 @@ const WEIGHT_LABEL: Record<ChantSyllable['weight'], string> = {
 export default function ChantingPage() {
   const [verses, setVerses] = useState<ChantVerseSummary[]>([]);
   const [verse, setVerse] = useState<ChantVerse | null>(null);
+  // Distinguishes "haven't loaded a verse's detail yet" from "tried and it
+  // failed" — without this, a detail-fetch failure after a successful list
+  // fetch would fall into the same `!verse` branch as "no verses exist at
+  // all" and show the wrong empty-state message.
+  const [verseLoadFailed, setVerseLoadFailed] = useState(false);
   const [padaIndex, setPadaIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [audioLoading, setAudioLoading] = useState(false);
+  // Lets a stale selectVerse response discard itself if the user has since
+  // picked a different verse — same reasoning as `learn/page.tsx`'s own
+  // `languageRef`, needed once more than one verse exists for the picker to
+  // select between (a plain closure over `id` can't see a LATER selection).
+  const selectedIdRef = useRef<string | null>(null);
 
   async function selectVerse(id: string) {
+    selectedIdRef.current = id;
     setLoading(true);
+    setVerseLoadFailed(false);
     setPadaIndex(0);
     try {
       const detail = await api.get<ChantVerse>(`/chanting/verses/${id}`);
-      setVerse(detail);
+      if (selectedIdRef.current === id) setVerse(detail);
     } catch (caught) {
-      toast.error(messageFor(caught, 'Failed to load the verse'));
+      if (selectedIdRef.current === id) {
+        toast.error(messageFor(caught, 'Failed to load the verse'));
+        setVerseLoadFailed(true);
+      }
     } finally {
-      setLoading(false);
+      if (selectedIdRef.current === id) setLoading(false);
     }
   }
 
@@ -55,11 +71,15 @@ export default function ChantingPage() {
         if (ignore) return;
         setVerses(list);
         if (list.length > 0) {
+          selectedIdRef.current = list[0].id;
           const detail = await api.get<ChantVerse>(`/chanting/verses/${list[0].id}`);
           if (!ignore) setVerse(detail);
         }
       } catch (caught) {
-        if (!ignore) toast.error(messageFor(caught, 'Failed to load the verse'));
+        if (!ignore) {
+          toast.error(messageFor(caught, 'Failed to load the verse'));
+          setVerseLoadFailed(true);
+        }
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -74,35 +94,7 @@ export default function ChantingPage() {
   async function playAudio(text: string) {
     setAudioLoading(true);
     try {
-      // Same raw-bytes route the alphabet/vocabulary lessons use — see
-      // `learn/page.tsx`'s own `playAudio` for why `rawRequest`, not
-      // `api.post`, is the right call here.
-      const response = await api.rawRequest('/learn/speak', {
-        method: 'POST',
-        body: { language: 'sanskrit', text },
-      });
-
-      if (!response.ok) {
-        if (response.status === 503) {
-          toast.error("Text-to-speech isn't set up yet");
-          return;
-        }
-        let message = 'Failed to play audio';
-        try {
-          const body = await response.json();
-          if (typeof body?.error === 'string') message = body.error;
-        } catch {
-          // Not JSON — fall back to the generic message.
-        }
-        toast.error(message);
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
+      await speakLearnText('sanskrit', text);
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to play audio'));
     } finally {
@@ -151,7 +143,9 @@ export default function ChantingPage() {
           </div>
         ) : !verse ? (
           <Card className="py-12 text-center">
-            <p className="text-foreground-secondary">No verses yet.</p>
+            <p className="text-foreground-secondary">
+              {verseLoadFailed ? "Couldn't load this verse — try again." : 'No verses yet.'}
+            </p>
           </Card>
         ) : (
           <div className="flex flex-col gap-6">

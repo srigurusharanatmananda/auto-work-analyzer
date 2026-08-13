@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
+import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type { LearnLanguage, LearnLesson, LearnProgress } from '@/types';
@@ -103,37 +104,7 @@ export default function LearnPage() {
 
     setAudioLoading(true);
     try {
-      // Not `api.post` — that unwraps the `{success, data}` JSON envelope,
-      // and this route returns raw audio bytes. `rawRequest` gets the same
-      // Authorization header and 401-refresh-and-retry as every other call
-      // without reimplementing either.
-      const response = await api.rawRequest('/learn/speak', {
-        method: 'POST',
-        body: { language, text: displayLesson.text },
-      });
-
-      if (!response.ok) {
-        if (response.status === 503) {
-          toast.error("Text-to-speech isn't set up yet");
-          return;
-        }
-
-        let message = 'Failed to play audio';
-        try {
-          const body = await response.json();
-          if (typeof body?.error === 'string') message = body.error;
-        } catch {
-          // Not JSON — fall back to the generic message.
-        }
-        toast.error(message);
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
+      await speakLearnText(language, displayLesson.text);
     } catch (caught) {
       toast.error(messageFor(caught, 'Failed to play audio'));
     } finally {
