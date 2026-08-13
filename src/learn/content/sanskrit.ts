@@ -866,6 +866,96 @@ export const sanskritManifest: Manifest = {
       gloss: 'mū',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-bhya',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): भ + य, an ordinary word-internal conjunct
+      // (Wikner 7.A.1-7.A.2, the same category as this file's श्व/स्य/
+      // ष्ठ/स्तु/स्वि/त्व) — needed only because skt-word-tubhyam below
+      // needs it.
+      text: 'भ्य',
+      gloss: 'bhya',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-yu',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): य (already taught) + the ु vowel sign already
+      // proven on ब — shared initial syllable of all three 2nd-person
+      // dual forms below. Whitney §491(a), 2nd-person dual row.
+      text: 'यु',
+      gloss: 'yu',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-vaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): व (already taught) + the ा vowel sign already
+      // proven on ब/र/ष्ठ/त्व/य — needed for skt-word-yuvaam and
+      // skt-word-yuvaabhyaam below.
+      text: 'वा',
+      gloss: 'vā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-bhyaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): भ्य (an ordinary word-internal conjunct, same
+      // reasoning as skt-letter-bhya above) + the ा vowel sign — needed
+      // only for skt-word-yuvaabhyaam. Whitney §491(a) dual row,
+      // instrumental-dative-ablative cell: "I.D.Ab. युवाभ्याम्".
+      text: 'भ्या',
+      gloss: 'bhyā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-yo',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): य (already taught) + the ो vowel sign already
+      // proven on ब — needed only for skt-word-yuvayoh.
+      text: 'यो',
+      gloss: 'yo',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-shthe',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): the already-taught conjunct ष्ठ (tranche 12) +
+      // the े vowel sign already proven on ब/ण/त/र/य/ह — needed only
+      // because skt-word-tishthet/tishthes below need it. Whitney
+      // (1889), Chapter IX §738: bhū's optative paradigm is built on the
+      // guṇa-vowel stem bhave-; §671 already established तिष्ठ inflects
+      // like bhū, giving the identical guṇa-vowel optative stem तिष्ठे-.
+      text: 'ष्ठे',
+      gloss: 'ṣṭhe',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-su',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): स (already taught) + the ु vowel sign already
+      // proven on ब — needed only because skt-word-sukha below needs it.
+      text: 'सु',
+      gloss: 'su',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-du',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 21): द (already taught) + the same ु vowel sign —
+      // needed only because skt-word-duhkha/skt-word-duhkham below need it.
+      text: 'दु',
+      gloss: 'du',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -947,6 +1037,48 @@ export const sanskritManifest: Manifest = {
       text: 'मूलम्',
       gloss: 'mūlam — root (nominative/accusative singular, neuter)',
       composedOf: ['skt-letter-muu', 'skt-letter-la', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-sukha',
+      stage: 'words',
+      level: 2,
+      // Wikner 11.B.1 (Dvandva Samāsa), lines 2719-2722: "sukham ca
+      // duḥkham ca ⇒ sukhaduḥkham (note the singular) = pleasure and
+      // pain." सुख cited bare, the pratipadika/dictionary form of the
+      // compound's first member — same convention as skt-word-vrksa/
+      // skt-word-mula. सु is a new enabling letter (skt-letter-su, above).
+      text: 'सुख',
+      gloss: 'sukha — pleasure, happiness',
+      composedOf: ['skt-letter-su', 'skt-letter-kha'],
+    },
+    {
+      id: 'skt-word-duhkha',
+      stage: 'words',
+      level: 2,
+      // Same Wikner 11.B.1 passage as skt-word-sukha — the compound's
+      // second member's pratipadika/dictionary form. दु is a new
+      // enabling letter (skt-letter-du, above).
+      text: 'दुःख',
+      gloss: 'duḥkha — pain, suffering',
+      composedOf: ['skt-letter-du', 'skt-letter-visarga', 'skt-letter-kha'],
+    },
+    {
+      id: 'skt-word-duhkham',
+      stage: 'words',
+      // Level 3, not 2 — a case FORM, not new vocabulary, same reasoning
+      // skt-word-mulam established: दुःख itself is already taught bare
+      // at level 2 above; what's new is the case ending. Wikner 11.B.1's
+      // own "(note the singular)" flags that the compound's final member
+      // takes the neuter nominative/accusative singular -म् ending
+      // (already taught for नरम्/वृक्षम्/मूलम्), per 10.B.1's general
+      // rule that only the last member of a tatpuruṣa/dvandva compound
+      // declines. This is the specific form skt-sentence-sukhaduhkham
+      // below needs, so the compound's own final -म् is traceable
+      // through composedOf rather than left for sandhiRule to explain.
+      level: 3,
+      text: 'दुःखम्',
+      gloss: 'duḥkham — pain (nominative/accusative singular, neuter)',
+      composedOf: ['skt-letter-du', 'skt-letter-visarga', 'skt-letter-kha', 'skt-letter-ma-halanta'],
     },
     {
       id: 'skt-word-dhana',
@@ -1646,6 +1778,107 @@ export const sanskritManifest: Manifest = {
       gloss: 'tvayi — in/on you (locative singular personal pronoun)',
       composedOf: ['skt-letter-tva', 'skt-letter-yi'],
     },
+    {
+      id: 'skt-word-tubhyam',
+      stage: 'words',
+      level: 3,
+      // तु (already taught, tranche 20) + भ्य (new, above) + म् (already
+      // taught, tranche 18). §491(a)'s dative row: "D. तुभ्यम्, ते túbhyam,
+      // te" — ships the fuller/accented तुभ्यम्, not the accentless brief
+      // alternate ते, which is spelled identically to the genitive's own
+      // accentless alternate ते (see skt-word-tava's own comment) — this
+      // is the case deferred twice, in tranches 19 and 20, for exactly
+      // that collision. Completes the full 2nd-person singular paradigm
+      // (nominative through locative, all 7 cases).
+      text: 'तुभ्यम्',
+      gloss: 'tubhyam — to/for you (dative singular personal pronoun)',
+      composedOf: ['skt-letter-tu', 'skt-letter-bhya', 'skt-letter-ma-halanta'],
+    },
+
+    // ============ 2nd-person DUAL pronoun, tranche 21 ============
+    // Whitney §491(a): case syncretism reduces the whole dual paradigm,
+    // across all six grammatical cases, to exactly three distinct word
+    // forms — these three together are the complete dual, not a partial
+    // cut of a larger table.
+    {
+      id: 'skt-word-yuvaam',
+      stage: 'words',
+      level: 3,
+      // यु + वा (both new, above) + म् (already taught). §491(a)'s dual
+      // row: "N.A.V. युवाम्" — syncretizes nominative/accusative/vocative.
+      text: 'युवाम्',
+      gloss: 'yuvām — you two (nominative/accusative/vocative dual personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-vaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-yuvaabhyaam',
+      stage: 'words',
+      level: 3,
+      // यु + वा (both already taught by this point) + भ्या (new, above)
+      // + म् (already taught). §491(a)'s dual row: "I.D.Ab. युवाभ्याम्"
+      // — syncretizes instrumental/dative/ablative.
+      text: 'युवाभ्याम्',
+      gloss: 'yuvābhyām — by/to/from you two (instrumental/dative/ablative dual personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-vaa', 'skt-letter-bhyaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-yuvayoh',
+      stage: 'words',
+      level: 3,
+      // यु (already taught) + व (already taught) + यो (new, above) +
+      // ः (already taught, skt-letter-visarga). §491(a)'s dual row gives
+      // the underlying G.L. ending as -os, but word-final -s always
+      // surfaces as visarga in citation/pausa position — the same rule
+      // this file already applies for नरः/अश्वः (skt-letter-visarga) —
+      // so the real form is युवयोः (yuvayoḥ), not युवयोस्. (A prior
+      // version of this lesson shipped the phonotactically invalid स्
+      // ending directly; caught in code review and corrected here.)
+      text: 'युवयोः',
+      gloss: 'yuvayoḥ — of/in you two (genitive/locative dual personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-va', 'skt-letter-yo', 'skt-letter-visarga'],
+    },
+
+    // ============ Optative mood (vidhi-liṅ), tranche 21: √sthā, singular ============
+    // Whitney (1889), Chapter IX §738: bhū's own optative paradigm, built
+    // on the guṇa-vowel stem bhave- (1sg bháveyam, 2sg bháves, 3sg
+    // bhávet); §671 (already cited for the imperative, tranche 20)
+    // establishes तिष्ठ inflects exactly like bhū, giving the identical
+    // stem तिष्ठे-.
+    {
+      id: 'skt-word-tishthet',
+      stage: 'words',
+      level: 3,
+      // ति + ष्ठे (new, above) + त् (already taught). §738's 3rd-singular
+      // cell: "3 भवेत्" applied to तिष्ठ.
+      text: 'तिष्ठेत्',
+      gloss: 'tiṣṭhet — he/she/it may/should stand (3rd person singular optative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-ta-halanta'],
+    },
+    {
+      id: 'skt-word-tishtheyam',
+      stage: 'words',
+      level: 3,
+      // ति + ष्ठे (new, above) + य + म् (both already taught). §738's
+      // 1st-singular cell: "1 भवेयम्" applied to तिष्ठ.
+      text: 'तिष्ठेयम्',
+      gloss: 'tiṣṭheyam — I may/should stand (1st person singular optative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-ya', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-tishtheh',
+      stage: 'words',
+      level: 3,
+      // ति + ष्ठे (new, above) + ः (already taught, skt-letter-visarga).
+      // §738's 2nd-singular cell gives the underlying ending as -es, but
+      // word-final -s always surfaces as visarga in citation/pausa
+      // position — the same rule this file already applies for नरः/
+      // अश्वः — so the real form is तिष्ठेः (tiṣṭheḥ), not तिष्ठेस्. (A
+      // prior version of this lesson shipped the phonotactically invalid
+      // स् ending directly; caught in code review and corrected here.)
+      text: 'तिष्ठेः',
+      gloss: 'tiṣṭheḥ — you (singular) may/should stand (2nd person singular optative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-visarga'],
+    },
 
     // ============ Imperative mood, tranche 20: √sthā, singular ============
     // Whitney (1889), Chapter IX §671: तिष्ठ (this file's own already-taught
@@ -1724,6 +1957,29 @@ export const sanskritManifest: Manifest = {
       gloss:
         'vṛkṣamūlam — root of a tree, tree-root (a ṣaṣṭhī-tatpuruṣa compound: the same genitive relationship already taught as नरस्य, "of the man", now expressed by compounding instead of a case ending)',
       composedOf: ['skt-word-vrksa', 'skt-word-mulam'],
+    },
+
+    // ============ Dvandva (copulative) compounds, tranche 21 ============
+    // Wikner 11.B.1: the samāhāra ("collective") dvandva subtype — a pair
+    // of opposites compounded into ONE neuter-singular unit, distinct
+    // from the sentence above's ṣaṣṭhī-tatpuruṣa.
+    {
+      id: 'skt-sentence-sukhaduhkham',
+      stage: 'sentences',
+      level: 3,
+      // सुखदुःखम् does not reconstruct as सुख + दुःखम् (space-joined) —
+      // the same no-space samāsa convention as skt-sentence-vrksamulam
+      // above, the only divergence sandhiRule accounts for here. Every
+      // character is traceable through composedOf: सुख (bare
+      // pratipadika) and दुःखम् (the case-marked final member, already
+      // carrying its own -म् ending via its own composedOf) — the same
+      // discipline that lesson's own review established.
+      sandhiRule:
+        'Samāhāra dvandva compounding (Wikner 11.B.1, lines 2719-2722): "the members are taken collectively as a unit; it is always neuter singular... sukham ca duḥkham ca ⇒ sukhaduḥkham (note the singular)." The two members fuse with no space — sukha + duḥkham, not sukha + a space + duḥkham. The case ending itself is not part of this rule; it is already accounted for by duḥkham\'s own composedOf.',
+      text: 'सुखदुःखम्',
+      gloss:
+        'sukhaduḥkham — pleasure and pain (a samāhāra dvandva compound: a pair of opposites treated as one neuter-singular unit, per Wikner\'s own framing of this compound type)',
+      composedOf: ['skt-word-sukha', 'skt-word-duhkham'],
     },
   ],
 };

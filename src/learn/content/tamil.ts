@@ -1232,6 +1232,61 @@ export const tamilManifest: Manifest = {
       composedOf: ['tam-word-aval', 'tam-word-seykirraal'],
     },
 
+    // Tranche 21: present tense for அவர் (honorific) and அவர்கள்
+    // (plural, human) — ABC of Tamil Lesson Seventeen's own "III Person"
+    // table, p.41. Zero new letters (all reused from செய்கிறான்/
+    // செய்கிறாள் and அவர்/அவர்கள் themselves).
+    {
+      id: 'tam-word-seykirraar',
+      stage: 'words',
+      level: 3,
+      // Same root+tense-symbol fusion as செய்கிறான்/செய்கிறாள், here
+      // with the already-taught dead ர் (reused from அவர்) in the final
+      // slot. p.41, "III Person" table, row 3: "அவர் செய்கிறார் - He
+      // (she) does (singular-honorific, both masculine and feminine)".
+      text: 'செய்கிறார்',
+      gloss: 'seykiṟār — he/she does (3rd person singular honorific, present, both masculine and feminine)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-ra'],
+    },
+    {
+      id: 'tam-sentence-avar-seykirraar',
+      stage: 'sentences',
+      level: 3,
+      // p.41's own worked pronoun+verb pairing, row 3.
+      text: 'அவர் செய்கிறார்',
+      gloss: 'avar seykiṟār — he/she does (honorific)',
+      composedOf: ['tam-word-avar', 'tam-word-seykirraar'],
+    },
+    {
+      id: 'tam-word-seykirraargal',
+      stage: 'words',
+      level: 3,
+      // The honorific செய்கிறார் above + the same கள் plural suffix
+      // (dead ர் + க + dead ள்) already used on அவர்கள். p.41, "III
+      // Person" table, row 4: "அவர்கள் செய்கிறார்கள் - They do
+      // (plural-human beings-both masculine and feminine.)".
+      text: 'செய்கிறார்கள்',
+      gloss: 'seykiṟārkaḷ — they do (3rd person plural, human beings, present, both masculine and feminine)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-ki',
+        'tam-letter-rraa',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
+    },
+    {
+      id: 'tam-sentence-avargal-seykirraargal',
+      stage: 'sentences',
+      level: 3,
+      // p.41's own worked pronoun+verb pairing, row 4.
+      text: 'அவர்கள் செய்கிறார்கள்',
+      gloss: 'avarkaḷ seykiṟārkaḷ — they do',
+      composedOf: ['tam-word-avargal', 'tam-word-seykirraargal'],
+    },
+
     // ================= Past tense (level 3) =================
     // Extension, 2026-08-12 (tranche 12): ABC of Tamil, Book One (this
     // file's only source through tranche 11) ends at Lesson Twenty-One
@@ -1298,6 +1353,36 @@ export const tamilManifest: Manifest = {
       text: 'அவன் செய்தான்',
       gloss: 'avan seytāṉ — he did',
       composedOf: ['tam-word-avan', 'tam-word-seythaan'],
+    },
+    // Tranche 21: Andronov §138, p.163 — the feminine counterpart to
+    // ceytaan above, suffix -aaL. தா (already taught) + the already-taught
+    // dead ள் (tam-pulli-lla, reused from அவள்) — plain concatenation, no
+    // sandhiRule needed.
+    {
+      id: 'tam-word-seythaal',
+      stage: 'words',
+      level: 3,
+      text: 'செய்தாள்',
+      gloss: 'seytāḷ — she did (3rd person singular feminine, past)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-taa', 'tam-pulli-lla'],
+    },
+    // Tranche 21: Andronov §143, p.165 — the plural/human counterpart,
+    // suffix -aarkaL, matching this file's own already-taught pronoun
+    // அவர்கள். Plain concatenation, no sandhiRule needed.
+    {
+      id: 'tam-word-seythaarkal',
+      stage: 'words',
+      level: 3,
+      text: 'செய்தார்கள்',
+      gloss: 'seytārkaḷ — they did (3rd person plural, human beings, past)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-taa',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
     },
 
     // ================= Negative imperative (level 3) =================
@@ -1382,6 +1467,37 @@ export const tamilManifest: Manifest = {
       text: 'செய்வேன்',
       gloss: 'seyvēṉ — I shall do, I will do (1st person singular, future)',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-vee', 'tam-pulli-alveolar-na'],
+    },
+    // Tranche 21: Andronov §138, p.163 — the feminine future counterpart,
+    // suffix -aaL (same suffix family as ceythaal above, this file's own
+    // established modern-register choice: dropping the optional -ku-
+    // increment and keeping the optional -aa-, matching ceyveen not
+    // ceykeen). Plain concatenation, no sandhiRule needed.
+    {
+      id: 'tam-word-seyvaal',
+      stage: 'words',
+      level: 3,
+      text: 'செய்வாள்',
+      gloss: 'seyvāḷ — she will do (3rd person singular feminine, future)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-vaa', 'tam-pulli-lla'],
+    },
+    // Tranche 21: Andronov §143, p.165 — the plural/human future
+    // counterpart, suffix -aarkaL, matching அவர்கள். Plain concatenation,
+    // no sandhiRule needed.
+    {
+      id: 'tam-word-seyvaarkal',
+      stage: 'words',
+      level: 3,
+      text: 'செய்வார்கள்',
+      gloss: 'seyvārkaḷ — they will do (3rd person plural, human beings, future)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-vaa',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
     },
 
     // ================= A second person, present tense (level 2-3) =================
