@@ -55,33 +55,51 @@ export interface TranslateResult {
 }
 
 /**
- * The model is asked for one JSON object covering both fields in a single
- * call, not two separate prompts — half the latency/cost for the same
- * result. Models reliably wrap JSON in a ```json fence despite being told
- * not to; stripped defensively rather than trusted to comply. If parsing
- * still fails (a model that ignores the JSON instruction entirely), the
- * raw response is treated as the translation on its own, with no meaning
- * — the same shape this route had before `meaning` existed — rather than
- * failing the whole request over one provider's formatting quirk.
+ * The model is asked for both fields in a single call, not two separate
+ * prompts — half the latency/cost for the same result. Deliberately NOT
+ * JSON: a JSON contract needs the model to correctly escape quotes and
+ * newlines INSIDE the `meaning` field's own free-form prose, which none of
+ * this app's four providers enforce (no JSON mode, no schema), and getting
+ * that wrong breaks the whole parse — degrading a translation that used to
+ * work reliably before `meaning` existed. Plain text markers have no
+ * escaping requirement at all: a marker is only ever confused with content
+ * if the model's own OUTPUT happens to contain that exact marker string
+ * verbatim, astronomically less likely than an unescaped quote or newline
+ * appearing in a multi-sentence explanation.
  */
-function parseTranslationResponse(raw: string): { translation: string; meaning?: string } {
-  const stripped = raw
+const TRANSLATION_MARKER = '===TRANSLATION===';
+const MEANING_MARKER = '===MEANING===';
+
+function stripCodeFence(text: string): string {
+  return text
     .trim()
-    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/^```[a-z]*\s*/i, '')
     .replace(/```\s*$/, '')
     .trim();
-  try {
-    const parsed = JSON.parse(stripped);
-    if (typeof parsed?.translation === 'string') {
-      return {
-        translation: parsed.translation,
-        meaning: typeof parsed?.meaning === 'string' ? parsed.meaning : undefined,
-      };
+}
+
+/**
+ * If the model didn't follow the marker format at all (ignored the
+ * instruction, or a smaller fallback model just answers plainly), the
+ * whole response — fence-stripped, in case it wrapped a plain answer in a
+ * code block anyway — is treated as the translation alone, with no
+ * meaning: the same shape this route had before `meaning` existed, rather
+ * than failing the request over one provider's formatting quirk.
+ */
+function parseTranslationResponse(raw: string): { translation: string; meaning?: string } {
+  const text = raw.trim();
+  const translationAt = text.indexOf(TRANSLATION_MARKER);
+  const meaningAt = text.indexOf(MEANING_MARKER);
+
+  if (translationAt !== -1 && meaningAt > translationAt) {
+    const translation = text.slice(translationAt + TRANSLATION_MARKER.length, meaningAt).trim();
+    const meaning = text.slice(meaningAt + MEANING_MARKER.length).trim();
+    if (translation) {
+      return { translation, meaning: meaning || undefined };
     }
-  } catch {
-    // Fall through to the raw-text fallback below.
   }
-  return { translation: raw.trim() };
+
+  return { translation: stripCodeFence(text) };
 }
 
 /**
@@ -103,12 +121,14 @@ async function translate(
 
   const prompt =
     `Translate the following ${LANGUAGE_LABEL[from]} text into ${LANGUAGE_LABEL[to]}, and explain what it means.\n\n` +
-    `Respond with ONLY a JSON object (no markdown code fence, no other text) with exactly two fields:\n` +
-    `{"translation": "the ${LANGUAGE_LABEL[to]} translation` +
+    `Respond in EXACTLY this format, with no other text before, between, or after the two sections:\n` +
+    `${TRANSLATION_MARKER}\n` +
+    `(the ${LANGUAGE_LABEL[to]} translation` +
     (isNative(to) ? ', in its native script' : '') +
-    ` — no explanation, no transliteration, no quotation marks inside this field", ` +
-    `"meaning": "a short (2-4 sentence) explanation, in English, of what this text means or refers to — ` +
-    `context, significance, or a notable word/idiom a learner might not catch from the literal translation alone"}\n\n` +
+    ` — no explanation, no transliteration, nothing else in this section)\n` +
+    `${MEANING_MARKER}\n` +
+    `(a short (2-4 sentence) explanation, in English, of what this text means or refers to — context, ` +
+    `significance, or a notable word/idiom a learner might not catch from the literal translation alone)\n\n` +
     `${LANGUAGE_LABEL[from]} text:\n${text}`;
 
   const completion = await aiClient.complete(prompt);
