@@ -48,14 +48,19 @@ describe('GET /verses', () => {
       const body = await res.json();
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(body.data).toHaveLength(1);
-      expect(body.data[0]).toEqual({
+      // All 182 verses of the short recension — see content/chanting.ts's
+      // own file header for the sourcing/verification behind that count.
+      expect(body.data).toHaveLength(182);
+      const verse1 = body.data.find((v: { id: string }) => v.id === 'guru-gita-1');
+      expect(verse1).toEqual({
         id: 'guru-gita-1',
         source: expect.stringContaining('Guru Gita'),
         verseNumber: 1,
         meaning: expect.stringContaining('Kailāsa'),
       });
-      expect(body.data[0].padas).toBeUndefined();
+      for (const entry of body.data) {
+        expect(entry.padas).toBeUndefined();
+      }
     } finally {
       server.close();
     }
