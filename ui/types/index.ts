@@ -509,3 +509,18 @@ export interface DocumentExtractResult {
   text: string;
   detectedLanguage: TranslateLanguage | null;
 }
+
+/** One row of `POST /translate/batch` -> `data.rows`. Mirrors `TranslateResult` plus the row's own source text and, on a per-row failure, an `error` instead. */
+export interface BatchTranslateRow {
+  source: string;
+  translation?: string;
+  meaning?: string;
+  translationTransliteration?: string;
+  sourceTransliteration?: string;
+  error?: string;
+}
+
+/** The `data` payload of `POST /translate/batch`. */
+export interface BatchTranslateResult {
+  rows: BatchTranslateRow[];
+}

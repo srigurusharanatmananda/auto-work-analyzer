@@ -87,6 +87,25 @@ function pdfFormData(buffer: Buffer, filename = 'test.pdf'): FormData {
   return form;
 }
 
+function csvFormData(csvText: string, from: string, to: string, filename = 'test.csv'): FormData {
+  const form = new FormData();
+  form.append('csv', new Blob([csvText], { type: 'text/csv' }), filename);
+  form.append('from', from);
+  form.append('to', to);
+  return form;
+}
+
+/** An AiProvider whose response depends on which row's text is being translated — `translate()`'s own prompt embeds the source text verbatim, so matching on it lets a test fail exactly one row of a batch. */
+function flakyProvider(failOn: string, response: string): AiProvider {
+  return {
+    name: 'Flaky',
+    generate: async (prompt: string) => {
+      if (prompt.includes(failOn)) throw new Error('row boom');
+      return response;
+    },
+  };
+}
+
 function pngFormData(): FormData {
   const form = new FormData();
   // Content doesn't need to be a real PNG — fileFilter only checks the
@@ -766,6 +785,140 @@ describe('POST /translate/document', () => {
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body.success).toBe(false);
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('POST /translate/batch', () => {
+  test('rejects a request with no csv field', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const form = new FormData();
+      form.append('from', 'english');
+      form.append('to', 'sanskrit');
+      const res = await fetch(`${baseUrl}/batch`, { method: 'POST', body: form });
+      expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects missing/invalid from or to', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('hello\nworld', 'english', 'klingon'),
+      });
+      expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('422s a CSV with no usable text', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('\n\n,,\n', 'english', 'sanskrit'),
+      });
+      expect(res.status).toBe(422);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects a CSV over the row cap, naming the cap', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const rows = Array.from({ length: 21 }, (_, i) => `row ${i}`).join('\n');
+      const res = await fetch(`${baseUrl}/batch`, { method: 'POST', body: csvFormData(rows, 'english', 'sanskrit') });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain('20');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('same from/to language batch is transliteration-only, no AI call, first column only', async () => {
+    const app = buildApp(
+      new AiClient([
+        {
+          name: 'Should not be called',
+          generate: async () => {
+            throw new Error('AI must not be called for a same-language batch');
+          },
+        },
+      ])
+    );
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('नमस्ते,ignored second column\nॐ शान्तिः', 'sanskrit', 'sanskrit'),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.rows).toHaveLength(2);
+      expect(body.data.rows[0].source).toBe('नमस्ते');
+      expect(body.data.rows[0].translation).toBe('नमस्ते');
+      expect(body.data.rows[0].translationTransliteration).toBe('namaste');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('cross-language batch translates every row', async () => {
+    const app = buildApp(new AiClient([fakeProvider('===TRANSLATION===\nGreetings\n===MEANING===\nA salutation.')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('one\ntwo\nthree', 'english', 'sanskrit'),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.rows).toHaveLength(3);
+      for (const row of body.data.rows) {
+        expect(row.translation).toBe('Greetings');
+        expect(row.meaning).toBe('A salutation.');
+        expect(row.error).toBeUndefined();
+      }
+    } finally {
+      server.close();
+    }
+  });
+
+  test('one failing row is reported on that row alone — the rest of the batch still succeeds', async () => {
+    // 'beta', not 'two' — the prompt's own boilerplate ("...before, between,
+    // or after the two sections") contains "two", so a naive failOn of
+    // 'two' would (and, caught during development, did) match every row's
+    // prompt, not just the intended one.
+    const app = buildApp(new AiClient([flakyProvider('beta', '===TRANSLATION===\nGreetings\n===MEANING===\nHi.')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/batch`, {
+        method: 'POST',
+        body: csvFormData('alpha\nbeta\ngamma', 'english', 'sanskrit'),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.rows).toHaveLength(3);
+      expect(body.data.rows[0].translation).toBe('Greetings');
+      expect(body.data.rows[1].error).toBeTruthy();
+      expect(body.data.rows[1].translation).toBeUndefined();
+      expect(body.data.rows[2].translation).toBe('Greetings');
     } finally {
       server.close();
     }

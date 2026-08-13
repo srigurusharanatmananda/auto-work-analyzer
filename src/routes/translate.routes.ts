@@ -14,6 +14,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { PDFParse } from 'pdf-parse';
+import { parse as parseCsv } from 'csv-parse/sync';
 import type { AiClient } from '../ai/AiClient.js';
 import { toIAST } from '../learn/ScriptTransliterator.js';
 import type { Language } from '../learn/Transliterator.js';
@@ -337,6 +338,53 @@ export async function getTextWithTimeout(
   }
 }
 
+/** One row of a batch CSV upload's result. Mirrors `TranslateResult` plus the row's own source text and, on a per-row failure, an `error` instead. */
+export interface BatchTranslateRow {
+  source: string;
+  translation?: string;
+  meaning?: string;
+  translationTransliteration?: string;
+  sourceTransliteration?: string;
+  error?: string;
+}
+
+/** The `data` payload of `POST /translate/batch`. */
+export interface BatchTranslateResult {
+  rows: BatchTranslateRow[];
+}
+
+/**
+ * Small on purpose: each row is a full `translate()` call — an LLM round
+ * trip when `from !== to` — so a big batch means a long-held HTTP request
+ * (this route responds once, with the whole table, like `/document` and
+ * `/ocr` do) and a correspondingly large AI cost. 20 rows keeps a worst-
+ * case batch (every row needing translation, every provider slow) inside
+ * a couple of minutes rather than open-ended.
+ */
+const MAX_BATCH_ROWS = 20;
+
+/** How many rows this route translates at once — bounds wall-clock time without firing all rows at the AI provider(s) simultaneously. */
+const BATCH_CONCURRENCY = 3;
+
+const MAX_CSV_BYTES = 256 * 1024;
+
+/** Real-world CSV uploads report a grab-bag of mimetypes across browsers/OSes/spreadsheet apps — matched by extension too, same reasoning as `documentUpload`'s own fileFilter. */
+const CSV_MIMETYPES = new Set(['text/csv', 'application/vnd.ms-excel', 'application/csv', 'text/plain']);
+
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_CSV_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (CSV_MIMETYPES.has(file.mimetype) || file.originalname.toLowerCase().endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  },
+});
+
+const uploadCsv = uploadSingleOrReject(csvUpload, 'csv', `${MAX_CSV_BYTES / 1024}KB`);
+
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
   const router = Router();
 
@@ -518,6 +566,102 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
     } finally {
       await parser?.destroy();
     }
+  });
+
+  /**
+   * Batch translate/transliterate a whole CSV in one request — one phrase
+   * or verse per row, first column only (extra columns are ignored, no
+   * header row is assumed: a header cell just gets translated like any
+   * other row, which is the price of not guessing at a header/data split
+   * from content alone). Each row runs through the exact same `translate()`
+   * used by `POST /` above, so a same-language batch is transliteration-
+   * only (no AI, no per-row cost) and a cross-language one calls the AI
+   * per row — a FAILURE IN ONE ROW is recorded on that row (`error`) and
+   * does not fail the batch, since one bad AI response shouldn't discard
+   * every other row's already-successful result.
+   */
+  router.post('/batch', authenticate, anyRole, uploadCsv, async (req: Request, res: Response) => {
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({
+        success: false,
+        error: 'No CSV uploaded — send it as multipart/form-data under the "csv" field.',
+      });
+      return;
+    }
+
+    const from = req.body?.from;
+    const to = req.body?.to;
+    if (!isTranslateLanguage(from) || !isTranslateLanguage(to)) {
+      res.status(400).json({
+        success: false,
+        error: 'Send "from" and "to" fields alongside the file, each one of english, sanskrit, or tamil.',
+      });
+      return;
+    }
+
+    let records: string[][];
+    try {
+      // relax_column_count: real CSVs vary row-to-row (a stray comma in one
+      // row, a shorter row at the end) — only the first column is ever
+      // read, so a ragged row count elsewhere is not this route's business
+      // to reject.
+      records = parseCsv(file.buffer.toString('utf-8'), {
+        skip_empty_lines: true,
+        trim: true,
+        relax_column_count: true,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: 'Could not parse that file as CSV',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return;
+    }
+
+    const texts = records
+      .map((row) => row[0])
+      .filter((cell): cell is string => typeof cell === 'string' && cell.trim().length > 0);
+
+    if (texts.length === 0) {
+      res.status(422).json({
+        success: false,
+        error: 'No text found in that CSV — put one phrase or verse per row, in the first column.',
+      });
+      return;
+    }
+    if (texts.length > MAX_BATCH_ROWS) {
+      res.status(400).json({
+        success: false,
+        error: `That CSV has ${texts.length} rows — batches are capped at ${MAX_BATCH_ROWS} to keep translation time reasonable. Split it into smaller files.`,
+      });
+      return;
+    }
+
+    const rows: BatchTranslateRow[] = new Array(texts.length);
+    for (let i = 0; i < texts.length; i += BATCH_CONCURRENCY) {
+      const chunk = texts.slice(i, i + BATCH_CONCURRENCY);
+      const chunkResults = await Promise.all(
+        chunk.map(async (source): Promise<BatchTranslateRow> => {
+          try {
+            const result = await translate(deps.aiClient, source, from, to);
+            if (!result.translation.trim()) {
+              return { source, error: 'The AI did not return a translation for this row.' };
+            }
+            return { source, ...result };
+          } catch (error) {
+            return { source, error: error instanceof Error ? error.message : 'Translation failed' };
+          }
+        })
+      );
+      chunkResults.forEach((row, j) => {
+        rows[i + j] = row;
+      });
+    }
+
+    const data: BatchTranslateResult = { rows };
+    res.json({ success: true, data });
   });
 
   return router;

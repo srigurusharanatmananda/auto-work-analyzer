@@ -8,6 +8,8 @@ import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type {
+  BatchTranslateResult,
+  BatchTranslateRow,
   DocumentExtractResult,
   LearnLanguage,
   OcrResult,
@@ -39,9 +41,12 @@ export default function TranslatePage() {
   const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [docLoading, setDocLoading] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchRows, setBatchRows] = useState<BatchTranslateRow[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
     if (!spokenText.trim()) return;
@@ -149,6 +154,57 @@ export default function TranslatePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    // A batch is a separate results table, not a rewrite of the single-item
+    // text box above, so it only needs to guard against overlapping ITSELF —
+    // unlike the OCR/document uploads, there's nothing here for translate()
+    // or another upload to race with.
+    if (!file || batchLoading) return;
+
+    setBatchLoading(true);
+    try {
+      const body = new FormData();
+      body.append('csv', file);
+      body.append('from', from);
+      body.append('to', to);
+      const data = await api.post<BatchTranslateResult>('/translate/batch', body);
+      setBatchRows(data.rows);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not process that CSV'));
+    } finally {
+      setBatchLoading(false);
+    }
+  }
+
+  function downloadBatchResults() {
+    if (!batchRows || batchRows.length === 0) return;
+    const columns: Array<keyof BatchTranslateRow> = [
+      'source',
+      'translation',
+      'meaning',
+      'translationTransliteration',
+      'sourceTransliteration',
+      'error',
+    ];
+    // Standard CSV quoting: only quote a field that needs it, doubling any
+    // embedded quote — anything simpler would break the moment a
+    // translation or meaning contains its own comma or newline.
+    const toCsvField = (value: string) => (/[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+    const lines = [
+      columns.join(','),
+      ...batchRows.map((row) => columns.map((column) => toCsvField(row[column] ?? '')).join(',')),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'translation-results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -328,6 +384,62 @@ export default function TranslatePage() {
             )}
           </Card>
         </div>
+
+        <Card className="mt-6 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Batch translate a CSV</p>
+              <p className="text-xs text-foreground-tertiary">
+                One phrase or verse per row, first column only — uses the {LANGUAGE_LABEL[from]} →{' '}
+                {LANGUAGE_LABEL[to]} languages selected above.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvUpload} />
+              <Button variant="ghost" size="sm" onClick={() => csvInputRef.current?.click()} disabled={batchLoading}>
+                {batchLoading ? 'Translating batch...' : 'Upload CSV'}
+              </Button>
+              {batchRows && batchRows.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={downloadBatchResults}>
+                  Download results
+                </Button>
+              )}
+            </div>
+          </div>
+          {batchLoading && (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner size="lg" />
+            </div>
+          )}
+          {batchRows && !batchLoading && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+                    <th className="py-2 pr-4">{LANGUAGE_LABEL[from]}</th>
+                    <th className="py-2 pr-4">{LANGUAGE_LABEL[to]}</th>
+                    <th className="py-2">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchRows.map((row, i) => (
+                    <tr key={i} className="border-b border-border align-top last:border-0">
+                      <td className="py-2 pr-4 whitespace-pre-wrap text-foreground">{row.source}</td>
+                      <td className="py-2 pr-4 whitespace-pre-wrap">
+                        {row.error ? (
+                          <span className="text-error">{row.error}</span>
+                        ) : (
+                          <span className="text-foreground">{row.translation}</span>
+                        )}
+                      </td>
+                      <td className="py-2 whitespace-pre-wrap text-foreground-secondary">{row.meaning ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
     </ProtectedRoute>
   );
