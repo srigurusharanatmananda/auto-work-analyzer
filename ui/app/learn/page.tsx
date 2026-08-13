@@ -192,6 +192,9 @@ export default function LearnPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Link href="/learn/chanting">
+              <Button variant="ghost">Chanting →</Button>
+            </Link>
             <Link href="/learn/translate">
               <Button variant="ghost">Translate →</Button>
             </Link>

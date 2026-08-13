@@ -440,6 +440,43 @@ export interface LearnResourceUpload {
   createdAt: string;
 }
 
+/** Mirrors `Syllable` in `src/learn/Akshara.ts`. */
+export interface ChantSyllable {
+  text: string;
+  vowel: string;
+  weight: 'guru' | 'laghu' | 'anceps';
+}
+
+/** Mirrors `ChantWord` in `src/learn/content/chanting.ts`. */
+export interface ChantWord {
+  devanagari: string;
+  iast: string;
+  gloss: string;
+}
+
+/** Mirrors `ChantPada` in `src/learn/content/chanting.ts`, plus the syllable breakdown `chanting.routes.ts` computes server-side. */
+export interface ChantPada {
+  text: string;
+  iast: string;
+  words: ChantWord[];
+  syllables: ChantSyllable[];
+}
+
+/** The `data` payload of `GET /chanting/verses` — a verse without its own padas/citation, just enough for a picker. */
+export interface ChantVerseSummary {
+  id: string;
+  source: string;
+  verseNumber: number;
+  meaning: string;
+}
+
+/** The `data` payload of `GET /chanting/verses/:id`. */
+export interface ChantVerse extends ChantVerseSummary {
+  speakerTag: string | null;
+  padas: ChantPada[];
+  citation: string;
+}
+
 /** Mirrors `TranslateLanguage` in `src/routes/translate.routes.ts`. */
 export type TranslateLanguage = 'english' | LearnLanguage;
 
