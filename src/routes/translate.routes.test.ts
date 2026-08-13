@@ -222,6 +222,113 @@ describe('POST /translate', () => {
     }
   });
 
+  test('parses a marker-delimited {translation, meaning} response into separate fields', async () => {
+    const response = '===TRANSLATION===\nनमस्ते\n===MEANING===\nA common Sanskrit greeting.';
+    const app = buildApp(new AiClient([fakeProvider(response)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'hello', from: 'english', to: 'sanskrit' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('नमस्ते');
+      expect(body.data.meaning).toBe('A common Sanskrit greeting.');
+      // translationTransliteration is derived from the PARSED translation
+      // field, not the raw marker-delimited blob — proves the markers were
+      // actually stripped before transliteration ran, not just left in.
+      expect(body.data.translationTransliteration).toBe('namaste');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a translation or meaning containing quotes/newlines survives intact (the whole reason this is not JSON)', async () => {
+    const response =
+      '===TRANSLATION===\nHe said "hello"\nacross two lines\n===MEANING===\nA quoted greeting, spanning\nmultiple lines too.';
+    const app = buildApp(new AiClient([fakeProvider(response)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('He said "hello"\nacross two lines');
+      expect(body.data.meaning).toBe('A quoted greeting, spanning\nmultiple lines too.');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('strips a markdown code fence around a plain answer before falling back (a common model deviation)', async () => {
+    const fenced = '```\nGreetings\n```';
+    const app = buildApp(new AiClient([fakeProvider(fenced)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      // Must be the fence-STRIPPED text, not the raw fenced blob — a
+      // regression test for a real bug caught in review: the fallback
+      // path once returned the un-stripped `raw` here, leaking literal
+      // backtick markers into the translation.
+      expect(body.data.translation).toBe('Greetings');
+      expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a response with no markers at all falls back to treating it as the translation, with no meaning', async () => {
+    const app = buildApp(new AiClient([fakeProvider('Greetings')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('Greetings');
+      expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a translation marker with no meaning marker after it falls back to the whole response', async () => {
+    const app = buildApp(new AiClient([fakeProvider('===TRANSLATION===\nGreetings, no meaning section here')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('===TRANSLATION===\nGreetings, no meaning section here');
+      expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
   test('every provider failing surfaces as a 500 with details', async () => {
     const app = buildApp(
       new AiClient([{ name: 'Failing', generate: async () => { throw new Error('boom'); } }])

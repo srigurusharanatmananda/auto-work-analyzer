@@ -483,6 +483,8 @@ export type TranslateLanguage = 'english' | LearnLanguage;
 /** The `data` payload of `POST /translate`. */
 export interface TranslateResult {
   translation: string;
+  /** A short English explanation of what the text means/refers to — present only when an AI call was made (from !== to). */
+  meaning?: string;
   translationTransliteration?: string;
   sourceTransliteration?: string;
 }

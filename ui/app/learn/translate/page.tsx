@@ -174,6 +174,16 @@ export default function TranslatePage() {
                     {result.translationTransliteration}
                   </p>
                 )}
+                {result.meaning && (
+                  <div className="rounded-md bg-background-tertiary p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+                      Meaning
+                    </p>
+                    <p className="mt-1 text-sm text-foreground-secondary whitespace-pre-wrap">
+                      {result.meaning}
+                    </p>
+                  </div>
+                )}
                 <div className="mt-auto flex flex-col gap-3">
                   {result.sourceTransliteration && (
                     <div className="border-t border-border pt-3">
