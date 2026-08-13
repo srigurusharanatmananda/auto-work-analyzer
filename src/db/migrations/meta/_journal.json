@@ -71,6 +71,13 @@
       "when": 1786444151289,
       "tag": "0009_premium_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786639119190,
+      "tag": "0010_awesome_jack_flag",
+      "breakpoints": true
     }
   ]
 }

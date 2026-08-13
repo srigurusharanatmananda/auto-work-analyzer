@@ -114,9 +114,14 @@ export default function ChantingPage() {
               One verse at a time — pronunciation first, then meaning, then fluency.
             </p>
           </div>
-          <Link href="/learn">
-            <Button variant="ghost">← Back to Learn</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/learn/chanting/books">
+              <Button variant="ghost">My chant books →</Button>
+            </Link>
+            <Link href="/learn">
+              <Button variant="ghost">← Back to Learn</Button>
+            </Link>
+          </div>
         </div>
 
         {verses.length > 1 && (
