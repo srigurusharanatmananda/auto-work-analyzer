@@ -34,7 +34,9 @@ afterAll(() => {
   mock.module('../middleware/policy.js', () => realPolicy);
 });
 
-const { createTranslateRouter, detectScriptLanguage } = await import('./translate.routes.js');
+const { createTranslateRouter, detectScriptLanguage, getTextWithTimeout, DocumentParseTimeoutError } = await import(
+  './translate.routes.js'
+);
 
 function fakeProvider(response: string): AiProvider {
   return { name: 'Fake', generate: async () => response };
@@ -634,12 +636,15 @@ describe('POST /translate/ocr', () => {
 });
 
 describe('detectScriptLanguage', () => {
-  test('pure ASCII/Latin text is english', () => {
-    expect(detectScriptLanguage('Hello world, how are you?')).toBe('english');
+  test('pure ASCII/Latin text has no confident script signal (null, not a guessed english)', () => {
+    // Zero Devanagari/Tamil codepoints is not proof of English — a legacy
+    // pre-Unicode Tamil/Sanskrit font extracts as unrecognizable Latin-range
+    // text too, so this deliberately returns null rather than 'english'.
+    expect(detectScriptLanguage('Hello world, how are you?')).toBeNull();
   });
 
-  test('no script characters at all (empty string) is english, not a crash', () => {
-    expect(detectScriptLanguage('')).toBe('english');
+  test('no script characters at all (empty string) is null, not a crash', () => {
+    expect(detectScriptLanguage('')).toBeNull();
   });
 
   test('Devanagari-dominant text is sanskrit', () => {
@@ -652,6 +657,19 @@ describe('detectScriptLanguage', () => {
 
   test('a Devanagari/Tamil tie favors sanskrit (documented tie-break, not an accident)', () => {
     expect(detectScriptLanguage('न' + 'த')).toBe('sanskrit');
+  });
+});
+
+describe('getTextWithTimeout', () => {
+  test('resolves with the parser result when it finishes before the timeout', async () => {
+    const fakeParser = { getText: async () => ({ text: 'ok', pages: [], total: 0, getPageText: () => '' }) };
+    const result = await getTextWithTimeout(fakeParser, 1000);
+    expect(result.text).toBe('ok');
+  });
+
+  test('rejects with DocumentParseTimeoutError once the timeout elapses, without waiting on the slow call', async () => {
+    const neverResolves = { getText: () => new Promise<never>(() => {}) };
+    await expect(getTextWithTimeout(neverResolves, 25)).rejects.toBeInstanceOf(DocumentParseTimeoutError);
   });
 });
 
@@ -696,7 +714,10 @@ describe('POST /translate/document', () => {
 
       expect(res.status).toBe(200);
       expect(body.data.text).toContain('Hello world');
-      expect(body.data.detectedLanguage).toBe('english');
+      // Plain ASCII has no Devanagari/Tamil codepoints, so this is the null
+      // "no confident signal" case, not a positive 'english' detection —
+      // see detectScriptLanguage's own doc comment for why.
+      expect(body.data.detectedLanguage).toBeNull();
     } finally {
       server.close();
     }
@@ -727,8 +748,10 @@ describe('POST /translate/document', () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.data.text).not.toContain('--');
-      expect(body.data.text).not.toContain('of 1');
+      // Checks the SPECIFIC marker pattern, not a bare '--' substring — a
+      // bare check would false-positive on any legitimately extracted em
+      // dash or Markdown-style rule with no page-marker bug present at all.
+      expect(body.data.text).not.toMatch(/--\s*\d+\s*of\s*\d+\s*--/);
     } finally {
       server.close();
     }

@@ -123,7 +123,10 @@ export default function TranslatePage() {
       const data = await api.post<DocumentExtractResult>('/translate/document', body);
       setText(data.text);
       setResult(null);
-      setFrom(data.detectedLanguage);
+      // Same reasoning as handleImageUpload's own guard: only move `from`
+      // TO a confident detection, never overwrite the user's own selection
+      // with a `null` non-signal.
+      if (data.detectedLanguage) setFrom(data.detectedLanguage);
     } catch (caught) {
       toast.error(messageFor(caught, 'Could not extract text from that document'));
     } finally {

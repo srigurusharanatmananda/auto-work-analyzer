@@ -499,11 +499,13 @@ export interface OcrResult {
 /**
  * The `data` payload of `POST /translate/document`.
  *
- * `detectedLanguage` is non-nullable here unlike `OcrResult`'s — script
- * detection is a deterministic codepoint count, not a model guess, so it
- * always resolves to a language (defaulting to `'english'`).
+ * `detectedLanguage` is `null` in the same case `OcrResult`'s is: no
+ * confident signal. Here that means zero Devanagari/Tamil codepoints —
+ * which is NOT proof of English, since a legacy pre-Unicode Tamil/Sanskrit
+ * font extracts as unrecognizable text too. See `detectScriptLanguage` in
+ * `src/routes/translate.routes.ts`.
  */
 export interface DocumentExtractResult {
   text: string;
-  detectedLanguage: TranslateLanguage;
+  detectedLanguage: TranslateLanguage | null;
 }

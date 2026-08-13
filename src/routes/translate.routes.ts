@@ -251,7 +251,8 @@ const uploadOcrImage = uploadSingleOrReject(ocrUpload, 'image', `${MAX_OCR_IMAGE
 
 export interface DocumentExtractResult {
   text: string;
-  detectedLanguage: TranslateLanguage;
+  /** `null` when neither script was detected — see `detectScriptLanguage`'s own doc comment for why that is NOT the same as a confident 'english' reading. */
+  detectedLanguage: TranslateLanguage | null;
 }
 
 /**
@@ -260,13 +261,16 @@ export interface DocumentExtractResult {
  * needed, unlike the image-OCR path's own `detectedLanguage` (which has
  * to ask the model, since a photo has no Unicode text to inspect in the
  * first place; extracted PDF text already IS Unicode text). Whichever of
- * Devanagari/Tamil has more codepoints wins; no script characters at all
- * (or a tie, i.e. neither present) reports 'english'. A coarse per-
- * document signal for pre-filling the `from` dropdown, not a claim about
- * every word in a mixed document — the same caveat the OCR path's own
- * language field already carries.
+ * Devanagari/Tamil has more codepoints wins. Zero of either returns
+ * `null`, NOT 'english' — a legacy pre-Unicode Tamil/Sanskrit font
+ * extracts as non-Devanagari/non-Tamil mojibake too (confirmed against a
+ * real scanned book PDF during development), so absence of Indic
+ * codepoints is not evidence of English, just absence of evidence for
+ * Sanskrit/Tamil. Mirrors the OCR path's own null-means-unconfident
+ * contract for exactly that reason — callers should treat `null` as "leave
+ * the user's own selection alone," not "assume English."
  */
-export function detectScriptLanguage(text: string): TranslateLanguage {
+export function detectScriptLanguage(text: string): TranslateLanguage | null {
   let devanagari = 0;
   let tamil = 0;
   for (const ch of text) {
@@ -274,7 +278,7 @@ export function detectScriptLanguage(text: string): TranslateLanguage {
     if (cp >= 0x0900 && cp <= 0x097f) devanagari++;
     else if (cp >= 0x0b80 && cp <= 0x0bff) tamil++;
   }
-  if (devanagari === 0 && tamil === 0) return 'english';
+  if (devanagari === 0 && tamil === 0) return null;
   return devanagari >= tamil ? 'sanskrit' : 'tamil';
 }
 
@@ -299,6 +303,39 @@ const documentUpload = multer({
 });
 
 const uploadDocument = uploadSingleOrReject(documentUpload, 'document', `${MAX_DOCUMENT_BYTES / (1024 * 1024)}MB`);
+
+/**
+ * A small but pathologically-structured PDF (deeply nested objects,
+ * adversarial content streams) can make pdf-parse/pdfjs-dist run for a
+ * very long time on Node's single thread, starving every other request
+ * on this process — the 20MB size cap above bounds memory, not CPU time.
+ * This can't truly PREEMPT that work (no worker/subprocess isolation
+ * here), but it bounds how long a caller waits and, via `destroy()` in
+ * the route's `finally`, gives pdf.js a chance to stop at its own next
+ * yield point instead of running unbounded. Same timeout-then-bail
+ * pattern already used for every AI provider call in AiClient.ts.
+ */
+const DOCUMENT_PARSE_TIMEOUT_MS = 30_000;
+
+export class DocumentParseTimeoutError extends Error {}
+
+export async function getTextWithTimeout(
+  parser: Pick<PDFParse, 'getText'>,
+  timeoutMs: number
+): Promise<Awaited<ReturnType<PDFParse['getText']>>> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new DocumentParseTimeoutError(`PDF parsing timed out after ${timeoutMs}ms — the file may be malformed or unusually complex`)),
+      timeoutMs
+    );
+  });
+  try {
+    return await Promise.race([parser.getText(), timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
 
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
   const router = Router();
@@ -443,7 +480,7 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
     let parser: PDFParse | undefined;
     try {
       parser = new PDFParse({ data: file.buffer });
-      const result = await parser.getText();
+      const result = await getTextWithTimeout(parser, DOCUMENT_PARSE_TIMEOUT_MS);
       // Built from `result.pages`, NOT `result.text` — pdf-parse's own
       // concatenated `text` field always inserts a "-- N of M --" page
       // marker between pages (confirmed directly: even a single BLANK
@@ -468,6 +505,10 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
       const data: DocumentExtractResult = { text, detectedLanguage: detectScriptLanguage(text) };
       res.json({ success: true, data });
     } catch (error) {
+      if (error instanceof DocumentParseTimeoutError) {
+        res.status(504).json({ success: false, error: error.message });
+        return;
+      }
       console.error('Document extraction failed:', error);
       res.status(500).json({
         success: false,
