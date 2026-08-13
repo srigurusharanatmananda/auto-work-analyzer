@@ -225,6 +225,27 @@ fully unit- and adversarially-tested), `src/learn/content/chanting.ts`
 chanting/page.tsx`. One verse shipped; more need the same per-verse
 sourcing rigor as the curriculum tranches above, not a bulk import.
 
+**Fixed same day: `services/tts` had a real memory leak, not just
+slowness.** "Play audio" on the chanting page appeared permanently
+stuck; the actual cause was `docker stats`-reported RSS climbing every
+consecutive synthesis call (40% → 82%+ of the container's 4g limit
+after 3-4 requests) until requests started failing outright with no
+error from the model itself — a plain container restart, no code
+change, reset it every time. `model.generate()` was already correctly
+wrapped in `torch.no_grad()` (verified by reading the installed
+library's own source, not assumed), so this wasn't the usual
+gradient-graph-retention bug; the actual signature — Python objects
+freed, native RSS climbing anyway, clean reset on restart — is glibc/
+OpenMP/MKL not returning freed heap arenas and per-thread scratch
+buffers back to the OS after a large CPU tensor workload. Fixed in
+`services/tts/main.py` by calling `gc.collect()` plus
+`ctypes.CDLL("libc.so.6").malloc_trim(0)` after every synthesis call
+(success or failure, via `finally`). Verified with 5 consecutive real
+requests post-fix: all 5 succeeded (previously request 3+ failed),
+memory stayed in a flat 20-27% band instead of climbing — it dropped
+*below* its post-startup baseline after the first call, confirming the
+trim is doing real work, not just papering over the symptom.
+
 ### Still to do
 
 | Phase | What | State |
