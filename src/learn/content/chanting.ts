@@ -116,53 +116,78 @@ export interface ChantVerse {
 
 export const guruGitaVerses: readonly ChantVerse[] = [
   {
-    id: 'guru-gita-1',
-    source: 'Guru Gita (Siddha Yoga / Muktananda recension, ~182 verses)',
+    id: "guru-gita-1",
+    source: "Guru Gita (Siddha Yoga / Muktananda recension, ~182 verses)",
     verseNumber: 1,
-    speakerTag: 'सूत उवाच',
+    speakerTag: "सूत उवाच",
     padas: [
       {
-        text: 'कैलास शिखरे रम्ये',
-        iast: 'kailāsa śikhare ramye',
-        words: [
-          { devanagari: 'कैलास शिखरे', iast: 'kailāsa śikhare', gloss: 'on the peak of Kailāsa (locative)' },
-          { devanagari: 'रम्ये', iast: 'ramye', gloss: 'beautiful, lovely (locative adjective, describes śikhare)' },
-        ],
-      },
-      {
-        text: 'भक्तिसन्धाननायकम्',
-        iast: 'bhaktisandhānanāyakam',
+        text: "कैलास शिखरे रम्ये",
+        iast: "kailāsa śikhare ramye",
         words: [
           {
-            devanagari: 'भक्तिसन्धाननायकम्',
-            iast: 'bhaktisandhānanāyakam',
-            gloss:
-              'the leader/master of union-through-devotion (accusative, an epithet of Śaṅkara, three words ahead — literally bhakti "devotion" + sandhāna "joining, union" (the sense Monier-Williams/Apte actually support) + nāyaka "leader"; one published translation instead renders it "who knows the secret of devotion" — a real, independently-confirmed published choice, but a translator\'s interpretive gloss rather than a literal dictionary sense the way "union" is)',
+            devanagari: "कैलास शिखरे",
+            iast: "kailāsa śikhare",
+            gloss: "on the peak of Kailāsa (locative)"
           },
-        ],
+          {
+            devanagari: "रम्ये",
+            iast: "ramye",
+            gloss: "beautiful, lovely (locative adjective, describes śikhare)"
+          }
+        ]
       },
       {
-        text: 'प्रणम्य पार्वती भक्त्या',
-        iast: 'praṇamya pārvatī bhaktyā',
+        text: "भक्तिसन्धाननायकम्",
+        iast: "bhaktisandhānanāyakam",
         words: [
-          { devanagari: 'प्रणम्य', iast: 'praṇamya', gloss: 'having bowed (gerund)' },
-          { devanagari: 'पार्वती', iast: 'pārvatī', gloss: 'Pārvatī (nominative, subject of the sentence)' },
-          { devanagari: 'भक्त्या', iast: 'bhaktyā', gloss: 'with devotion (instrumental)' },
-        ],
+          {
+            devanagari: "भक्तिसन्धाननायकम्",
+            iast: "bhaktisandhānanāyakam",
+            gloss: "the leader/master of union-through-devotion (accusative, an epithet of Śaṅkara, three words ahead — literally bhakti \"devotion\" + sandhāna \"joining, union\" (the sense Monier-Williams/Apte actually support) + nāyaka \"leader\"; one published translation instead renders it \"who knows the secret of devotion\" — a real, independently-confirmed published choice, but a translator's interpretive gloss rather than a literal dictionary sense the way \"union\" is)"
+          }
+        ]
       },
       {
-        text: 'शङ्करं पर्यपृच्छत',
-        iast: 'śaṅkaraṃ paryapṛcchata',
+        text: "प्रणम्य पार्वती भक्त्या",
+        iast: "praṇamya pārvatī bhaktyā",
         words: [
-          { devanagari: 'शङ्करं', iast: 'śaṅkaraṃ', gloss: 'Śaṅkara, i.e. Śiva (accusative, object)' },
-          { devanagari: 'पर्यपृच्छत', iast: 'paryapṛcchata', gloss: 'asked, inquired of (imperfect verb)' },
-        ],
+          {
+            devanagari: "प्रणम्य",
+            iast: "praṇamya",
+            gloss: "having bowed (gerund)"
+          },
+          {
+            devanagari: "पार्वती",
+            iast: "pārvatī",
+            gloss: "Pārvatī (nominative, subject of the sentence)"
+          },
+          {
+            devanagari: "भक्त्या",
+            iast: "bhaktyā",
+            gloss: "with devotion (instrumental)"
+          }
+        ]
       },
+      {
+        text: "शङ्करं पर्यपृच्छत",
+        iast: "śaṅkaraṃ paryapṛcchata",
+        words: [
+          {
+            devanagari: "शङ्करं",
+            iast: "śaṅkaraṃ",
+            gloss: "Śaṅkara, i.e. Śiva (accusative, object)"
+          },
+          {
+            devanagari: "पर्यपृच्छत",
+            iast: "paryapṛcchata",
+            gloss: "asked, inquired of (imperfect verb)"
+          }
+        ]
+      }
     ],
-    meaning:
-      'Sūta said: On the lovely peak of Mount Kailāsa, Pārvatī, having bowed with devotion to Śaṅkara — the master who unites devotees through devotion — asked him her question.',
-    citation:
-      'Devanagari independently confirmed against two sources (sanskritdocuments.org\'s short-version HTML and a Harvard-Kyoto transliteration hosted at veda.harekrsna.cz), not verbatim-copied from either transcriber\'s own restrictively-licensed edition. Meaning: independent word-by-word grammatical parse, cross-checked against the harekrsna.cz published English translation — "sandhāna" is genuinely ambiguous between "union" (the sense Monier-Williams/Apte directly support) and "secret" (not a standard dictionary sense, but a real, independently-confirmed published translator\'s choice); both are disclosed above rather than silently picking one.',
+    meaning: "Sūta said: On the lovely peak of Mount Kailāsa, Pārvatī, having bowed with devotion to Śaṅkara — the master who unites devotees through devotion — asked him her question.",
+    citation: "Devanagari independently confirmed against two sources (sanskritdocuments.org's short-version HTML and a Harvard-Kyoto transliteration hosted at veda.harekrsna.cz), not verbatim-copied from either transcriber's own restrictively-licensed edition. Meaning: independent word-by-word grammatical parse, cross-checked against the harekrsna.cz published English translation — \"sandhāna\" is genuinely ambiguous between \"union\" (the sense Monier-Williams/Apte directly support) and \"secret\" (not a standard dictionary sense, but a real, independently-confirmed published translator's choice); both are disclosed above rather than silently picking one."
   },
   {
     id: "guru-gita-2",
@@ -917,14 +942,20 @@ export const guruGitaVerses: readonly ChantVerse[] = [
     speakerTag: null,
     padas: [
       {
-        text: "सर्वपापविशुद्धात्मा श्रीगुरोः पादसेवनात्",
-        iast: "sarvapāpaviśuddhātmā śrīguroḥ pādasevanāt",
+        text: "सर्वपापविशुद्धात्मा",
+        iast: "sarvapāpaviśuddhātmā",
         words: [
           {
             devanagari: "सर्वपापविशुद्धात्मा",
             iast: "sarvapāpaviśuddhātmā",
             gloss: "one whose self/soul is purified of all sins (nominative — sarva-pāpa-viśuddha-ātmā)"
-          },
+          }
+        ]
+      },
+      {
+        text: "श्रीगुरोः पादसेवनात्",
+        iast: "śrīguroḥ pādasevanāt",
+        words: [
           {
             devanagari: "श्रीगुरोः",
             iast: "śrīguroḥ",
@@ -938,8 +969,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "देही ब्रह्म भवेद्यस्मात्त्वत्कृपार्थं वदामि ते",
-        iast: "dehī brahma bhavedyasmāttvatkṛpārthaṃ vadāmi te",
+        text: "देही ब्रह्म भवेद्यस्मात्त्वत्कृपार्थं",
+        iast: "dehī brahma bhavedyasmāttvatkṛpārthaṃ",
         words: [
           {
             devanagari: "देही",
@@ -955,7 +986,13 @@ export const guruGitaVerses: readonly ChantVerse[] = [
             devanagari: "भवेद्यस्मात्त्वत्कृपार्थं",
             iast: "bhavedyasmāttvatkṛpārthaṃ",
             gloss: "since/because [it] may become [Brahman] — for the sake of grace toward you (bhavet + yasmāt + tvat-kṛpā-artham: optative verb + causal particle + accusative used adverbially)"
-          },
+          }
+        ]
+      },
+      {
+        text: "वदामि ते",
+        iast: "vadāmi te",
+        words: [
           {
             devanagari: "वदामि",
             iast: "vadāmi",
@@ -2549,14 +2586,20 @@ export const guruGitaVerses: readonly ChantVerse[] = [
     speakerTag: null,
     padas: [
       {
-        text: "गुरुर्ब्रह्मा गुरुर्विष्णुर्गुरुर्देवो महेश्वरः",
-        iast: "gururbrahmā gururviṣṇurgururdevo maheśvaraḥ",
+        text: "गुरुर्ब्रह्मा",
+        iast: "gururbrahmā",
         words: [
           {
             devanagari: "गुरुर्ब्रह्मा",
             iast: "gururbrahmā",
             gloss: "the Guru (is) Brahmā (nominative predicate; guru + brahmā, sandhi)"
-          },
+          }
+        ]
+      },
+      {
+        text: "गुरुर्विष्णुर्गुरुर्देवो महेश्वरः",
+        iast: "gururviṣṇurgururdevo maheśvaraḥ",
+        words: [
           {
             devanagari: "गुरुर्विष्णुर्गुरुर्देवो",
             iast: "gururviṣṇurgururdevo",
@@ -4643,14 +4686,20 @@ export const guruGitaVerses: readonly ChantVerse[] = [
     speakerTag: null,
     padas: [
       {
-        text: "पादाब्जं सर्वसंसारदावानलविनाशकम्",
-        iast: "pādābjaṃ sarvasaṃsāradāvānalavināśakam",
+        text: "पादाब्जं",
+        iast: "pādābjaṃ",
         words: [
           {
             devanagari: "पादाब्जं",
             iast: "pādābjaṃ",
             gloss: "the lotus-feet (of the Guru) (accusative, object of the meditation-instruction begun here and completed with स्मरेत् in the next verse)"
-          },
+          }
+        ]
+      },
+      {
+        text: "सर्वसंसारदावानलविनाशकम्",
+        iast: "sarvasaṃsāradāvānalavināśakam",
+        words: [
           {
             devanagari: "सर्वसंसारदावानलविनाशकम्",
             iast: "sarvasaṃsāradāvānalavināśakam",
@@ -4659,8 +4708,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "ब्रह्मरन्ध्रे सिताम्भोजमध्यस्थं चन्द्रमण्डले",
-        iast: "brahmarandhre sitāmbhojamadhyasthaṃ candramaṇḍale",
+        text: "ब्रह्मरन्ध्रे सिताम्भोजमध्यस्थं",
+        iast: "brahmarandhre sitāmbhojamadhyasthaṃ",
         words: [
           {
             devanagari: "ब्रह्मरन्ध्रे",
@@ -4671,7 +4720,13 @@ export const guruGitaVerses: readonly ChantVerse[] = [
             devanagari: "सिताम्भोजमध्यस्थं",
             iast: "sitāmbhojamadhyasthaṃ",
             gloss: "situated in the middle of the white lotus (accusative adjective, further describes पादाब्जं)"
-          },
+          }
+        ]
+      },
+      {
+        text: "चन्द्रमण्डले",
+        iast: "candramaṇḍale",
+        words: [
           {
             devanagari: "चन्द्रमण्डले",
             iast: "candramaṇḍale",
@@ -4855,8 +4910,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "सकलसमयसृष्टिः सच्चिदानन्ददृष्टिर्-",
-        iast: "sakalasamayasṛṣṭiḥ saccidānandadṛṣṭir-",
+        text: "सकलसमयसृष्टिः सच्चिदानन्ददृष्टिः",
+        iast: "sakalasamayasṛṣṭiḥ saccidānandadṛṣṭiḥ",
         words: [
           {
             devanagari: "सकलसमयसृष्टिः",
@@ -4864,9 +4919,17 @@ export const guruGitaVerses: readonly ChantVerse[] = [
             gloss: "the creator of all time (nominative — parallels सकलभुवनसृष्टिः 'creator of all worlds' in the preceding verse)"
           },
           {
-            devanagari: "सच्चिदानन्ददृष्टिर्-",
-            iast: "saccidānandadṛṣṭir-",
-            gloss: "whose nature is being-consciousness-bliss (nominative; the trailing sandhi-mark links to निवसतु at the line break)"
+            devanagari: "सच्चिदानन्ददृष्टिः",
+            iast: "saccidānandadṛṣṭiḥ",
+            // The primary source (sanskritdocuments.org) prints this word as
+            // "सच्चिदानन्ददृष्टिर्-", a literal trailing hyphen marking that
+            // it continues via visarga sandhi (-iḥ + n- → -ir) into निवसतु
+            // at the next printed line. Restored to its own plain nominative
+            // form here — every other cross-pāda sandhi in this file is
+            // explained in prose (as this gloss already does), never by
+            // embedding the source's own line-continuation punctuation into
+            // a field that feeds this app's syllable/weight display and TTS.
+            gloss: "whose nature is being-consciousness-bliss (nominative; the source's own visarga sandhi links this to निवसतु at the line break — see this word's own comment)"
           }
         ]
       },
@@ -4939,14 +5002,20 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "मन्त्रराजमिमं मन्येऽहर्निशं पातु मृत्युतः",
-        iast: "mantrarājamimaṃ manye'harniśaṃ pātu mṛtyutaḥ",
+        text: "मन्त्रराजमिमं",
+        iast: "mantrarājamimaṃ",
         words: [
           {
             devanagari: "मन्त्रराजमिमं",
             iast: "mantrarājamimaṃ",
             gloss: "this king of mantras (accusative)"
-          },
+          }
+        ]
+      },
+      {
+        text: "मन्येऽहर्निशं पातु मृत्युतः",
+        iast: "manye'harniśaṃ pātu mṛtyutaḥ",
+        words: [
           {
             devanagari: "मन्येऽहर्निशं",
             iast: "manye'harniśaṃ",
@@ -5829,13 +5898,24 @@ export const guruGitaVerses: readonly ChantVerse[] = [
     speakerTag: null,
     padas: [
       {
-        text: "अनेकजन्मसम्प्राप्तसर्वकर्मविदाहिने",
-        iast: "anekajanmasamprāptasarvakarmavidāhine",
+        text: "अनेकजन्मसम्प्राप्तसर्वकर्म",
+        iast: "anekajanmasamprāptasarvakarma",
         words: [
           {
-            devanagari: "अनेकजन्मसम्प्राप्तसर्वकर्मविदाहिने",
-            iast: "anekajanmasamprāptasarvakarmavidāhine",
-            gloss: "to [him who] burns up all the karma accumulated through many births (dative epithet of the Guru, sandhi-fused compound — aneka 'many' + janma 'births' + samprāpta 'obtained, accumulated' + sarva 'all' + karma 'action, karma' + vidāhine 'to the thorough burner/consumer', dative singular)"
+            devanagari: "अनेकजन्मसम्प्राप्तसर्वकर्म",
+            iast: "anekajanmasamprāptasarvakarma",
+            gloss: "all the karma accumulated through many births (compound modifying विदाहिने below — aneka 'many' + janma 'births' + samprāpta 'obtained, accumulated' + sarva 'all' + karma 'action, karma')"
+          }
+        ]
+      },
+      {
+        text: "विदाहिने",
+        iast: "vidāhine",
+        words: [
+          {
+            devanagari: "विदाहिने",
+            iast: "vidāhine",
+            gloss: "to [him who is] the thorough burner/consumer of — dative epithet of the Guru, completing the compound begun in the previous word (vi + dāh 'burn' + -ine dative)"
           }
         ]
       },
@@ -6388,7 +6468,7 @@ export const guruGitaVerses: readonly ChantVerse[] = [
           {
             devanagari: "ब्रह्मविष्णुशिवात्मकम्",
             iast: "brahmaviṣṇuśivātmakam",
-            gloss: "having the nature of Brahmā, Viṣṇु, and Śiva (nominative/accusative neuter compound describing jagat — brahma-viṣṇu-śiva-ātmakam)"
+            gloss: "having the nature of Brahmā, Viṣṇu, and Śiva (nominative/accusative neuter compound describing jagat — brahma-viṣṇu-śiva-ātmakam)"
           }
         ]
       },
@@ -6894,8 +6974,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
     speakerTag: null,
     padas: [
       {
-        text: "ध्यानं श‍ृणु महादेवि",
-        iast: "dhyānaṃ śa‍ṛṇu mahādevi",
+        text: "ध्यानं शृणु महादेवि",
+        iast: "dhyānaṃ śṛṇu mahādevi",
         words: [
           {
             devanagari: "ध्यानं",
@@ -6903,8 +6983,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
             gloss: "meditation (accusative, object of śṛṇu)"
           },
           {
-            devanagari: "श‍ृणु",
-            iast: "śa‍ṛṇu",
+            devanagari: "शृणु",
+            iast: "śṛṇu",
             gloss: "listen! (imperative verb, 2nd person singular)"
           },
           {
@@ -8651,7 +8731,7 @@ export const guruGitaVerses: readonly ChantVerse[] = [
           {
             devanagari: "गुरुरित्यक्षरद्वयम्",
             iast: "gururityakṣaradvayam",
-            gloss: "the pair of syllables [that make up the word] 'Guru' (गुरुः 'Guru' + इति 'thus, [called]' + अक्षर-द्वयम् 'the two syllables', in apposition to मन्त्रराजम्, all sandhि-fused)"
+            gloss: "the pair of syllables [that make up the word] 'Guru' (गुरुः 'Guru' + इति 'thus, [called]' + अक्षर-द्वयम् 'the two syllables', in apposition to मन्त्रराजम्, all sandhi-fused)"
           }
         ]
       },
@@ -9289,12 +9369,12 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "श‍ृणु तं कथयाम्यहम्",
-        iast: "śa‍ṛṇu taṃ kathayāmyaham",
+        text: "शृणु तं कथयाम्यहम्",
+        iast: "śṛṇu taṃ kathayāmyaham",
         words: [
           {
-            devanagari: "श‍ृणु",
-            iast: "śa‍ṛṇu",
+            devanagari: "शृणु",
+            iast: "śṛṇu",
             gloss: "listen! (2nd person imperative)"
           },
           {
@@ -10611,8 +10691,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
         ]
       },
       {
-        text: "पठते श‍ृणुते यदि",
-        iast: "paṭhate śa‍ṛṇute yadi",
+        text: "पठते शृणुते यदि",
+        iast: "paṭhate śṛṇute yadi",
         words: [
           {
             devanagari: "पठते",
@@ -10620,8 +10700,8 @@ export const guruGitaVerses: readonly ChantVerse[] = [
             gloss: "one recites/reads (3rd person singular present, ātmanepada)"
           },
           {
-            devanagari: "श‍ृणुते",
-            iast: "śa‍ṛṇute",
+            devanagari: "शृणुते",
+            iast: "śṛṇute",
             gloss: "one listens/hears (3rd person singular present, ātmanepada)"
           },
           {
