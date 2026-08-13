@@ -930,6 +930,25 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-muu', 'skt-letter-la'],
     },
     {
+      id: 'skt-word-mulam',
+      stage: 'words',
+      // Level 3 — a case form, not new vocabulary: same reasoning as
+      // skt-word-naram/skt-word-vrksam. मूल is neuter, so its nominative
+      // and accusative singular are identical (standard neuter a-stem
+      // declension) — both मूलम्, per Wikner 11.B.2's own worked example
+      // (line 2732: "vṛkṣamūlam ← vṛkṣasya mūlam"). This is the specific
+      // form skt-sentence-vrksamulam below needs: in a tatpuruṣa compound
+      // only the LAST member takes the case ending (Wikner 10.B.1, line
+      // 2538), so वृक्ष there stays bare (skt-word-vrksa) while मूल takes
+      // it — मूलम्, not मूल.
+      level: 3,
+      // मूल (already taught, skt-word-mula) + the same word-final म्
+      // already taught for नरम्/वृक्षम्/अश्वम्/अहम्.
+      text: 'मूलम्',
+      gloss: 'mūlam — root (nominative/accusative singular, neuter)',
+      composedOf: ['skt-letter-muu', 'skt-letter-la', 'skt-letter-ma-halanta'],
+    },
+    {
       id: 'skt-word-dhana',
       stage: 'words',
       level: 2,
@@ -1687,26 +1706,24 @@ export const sanskritManifest: Manifest = {
       id: 'skt-sentence-vrksamulam',
       stage: 'sentences',
       level: 3,
-      // वृक्षमूलम् does not reconstruct as वृक्ष + मूल (space-joined) — a
-      // samāsa fuses its members with no space AND drops the first
-      // member's own case ending, replacing it with a single vibhakti
-      // ending on the compound as a whole (Wikner 10.B.1, lines 2530-2541:
-      // "a compound word (samāsa) is always written without a break...
-      // the vibhakti ending is added to the end of the compound as a
-      // whole, i.e. only the last member appears to decline, while
-      // earlier members retain their pratipadika form"). Outside the
-      // compound this relationship would need वृक्षस्य ("of a tree", the
-      // already-taught ṣaṣṭhī case — same ending as skt-word-narasya's
-      // नरस्य) + मूलम्; compounding instead gives वृक्ष + मूल + the
-      // already-taught word-final म् (skt-letter-ma-halanta, the same
-      // grapheme used identically in नरम्/अश्वम्/अहम्) = वृक्षमूलम्,
-      // confirmed character-for-character.
+      // वृक्षमूलम् does not reconstruct as वृक्ष + मूलम् (space-joined,
+      // the ordinary sentence joiner) — a samāsa fuses its members with NO
+      // space (Wikner 10.B.1, line 2530: "a compound word (samāsa) is
+      // always written without a break"). That is the ONLY divergence
+      // sandhiRule accounts for here: composedOf itself already names
+      // both real dependencies, वृक्ष (bare pratipadika — 10.B.1, lines
+      // 2535-2541: "only the last member appears to decline, while
+      // earlier members retain their pratipadika form") and मूलम् (the
+      // case-marked last member, skt-word-mulam above) — so every
+      // character in वृक्षमूलम् is traceable through composedOf, unlike
+      // an earlier draft of this lesson that left the case ending
+      // undeclared and leaned on sandhiRule to paper over it.
       sandhiRule:
-        'Ṣaṣṭhī-tatpuruṣa compounding (Wikner 10.B.1, lines 2530-2541, and 11.B.2, lines 2724-2733): the two members fuse with no space and no internal case ending, and a single vibhakti ending attaches to the compound as a whole instead — vṛkṣa + mūla + word-final -m, not vṛkṣa + a space + mūlam.',
+        'Ṣaṣṭhī-tatpuruṣa compounding (Wikner 10.B.1, lines 2530-2541): the two members fuse with no space between them — vṛkṣa + mūlam, not vṛkṣa + a space + mūlam. The case ending itself is not part of this rule; it is already accounted for by mūlam\'s own composedOf.',
       text: 'वृक्षमूलम्',
       gloss:
         'vṛkṣamūlam — root of a tree, tree-root (a ṣaṣṭhī-tatpuruṣa compound: the same genitive relationship already taught as नरस्य, "of the man", now expressed by compounding instead of a case ending)',
-      composedOf: ['skt-word-vrksa', 'skt-word-mula'],
+      composedOf: ['skt-word-vrksa', 'skt-word-mulam'],
     },
   ],
 };

@@ -1483,8 +1483,14 @@ export const tamilManifest: Manifest = {
       level: 3,
       // Same stem + தவர் (த + வ + the already-taught dead ர், reused from
       // ceyyaathiir above) — the epicene-plural counterpart of ceyyaathavan.
+      // Andronov §240 itself labels this specific form "(pl. epic)", but
+      // the -அவர்/-ஆர் suffix family is standardly dual-purpose in Tamil
+      // (the same double duty this file's own bare pronoun அவர் already
+      // carries — "he/she, honorific" — see tam-word-avar) — disclosed in
+      // the gloss rather than presented as exclusively plural.
       text: 'செய்யாதவர்',
-      gloss: 'ceyyātavar — they who do/will/did not do (negative participial noun, epicene plural)',
+      gloss:
+        'ceyyātavar — they who do/will/did not do (negative participial noun; Andronov cites this specifically as epicene plural, but the -avar suffix, like this file\'s own அவர் pronoun, standardly doubles as honorific singular — "he/she who does/did not do")',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-ta', 'tam-letter-va', 'tam-pulli-ra'],
     },
     {

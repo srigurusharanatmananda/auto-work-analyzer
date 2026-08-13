@@ -856,7 +856,15 @@ rather than silently accepted as normal.
   either drafter's own "as of tranche 19" framing, and trimmed the
   proposal to just the one genuinely new word and sentence.
 
-Sanskrit: 123 → 135 lessons. Tamil: 257 → 269 lessons.
+Sanskrit: 123 → 136 lessons. Tamil: 257 → 269 lessons. (Code review on this
+pass's own PR caught two further real issues, fixed before merge: the
+samāsa lesson's `composedOf` didn't account for the compound's final case
+ending at all — fixed by adding a proper word-level lesson for मूलम्, the
+case-marked form, rather than leaning on `sandhiRule` to paper over an
+entirely undeclared morpheme; and செய்யாதவர்'s gloss presented itself as
+exclusively epicene-plural when the -அவர் suffix family, like this file's
+own அவர் pronoun, standardly doubles as honorific singular too — the gloss
+now discloses both readings instead of picking one silently.)
 
 **A note on process, not just content**: two of tranche 20's six items
 applied their own verified output directly to the repo's real files
