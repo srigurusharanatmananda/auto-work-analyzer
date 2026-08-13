@@ -794,6 +794,78 @@ export const sanskritManifest: Manifest = {
       gloss: 'yā',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-ta-halanta',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 20): word-final त्, no vowel — the same halanta
+      // category as the already-taught म् (skt-letter-ma-halanta), per
+      // Wikner 7.A.1's general halanta rule ("this is the form used when a
+      // word ends in a consonant"), a different consonant, needed only
+      // because skt-word-tvat below needs it. Whitney §491(a)'s own
+      // 2nd-person-singular ablative row: "Ab. त्वत् tvát" (Sanskrit
+      // Grammar, 1889, Chapter VII) — quoted from a live fetch of the
+      // Wikisource transcription, cross-checked against a second,
+      // independent live fetch during adversarial verification. §491(b)'s
+      // note on accentless "briefer" alternates ("for accus., dat., and
+      // gen., in all numbers") does not apply to this case — the ablative
+      // row gives only the one form, so there is no alternate to exclude
+      // here (unlike tranche 19's accusative/genitive).
+      text: 'त्',
+      gloss: 't — word-final, no vowel',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-yi',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 20): य (already taught) + the ि vowel sign already
+      // proven on क/त (skt-letter-ki, skt-letter-ti) — needed only because
+      // skt-word-tvayi below needs it. Whitney §491(a)'s own
+      // 2nd-person-singular locative row: "L. त्वयि tváyi" — same
+      // double-fetch verification as skt-letter-ta-halanta above, and
+      // likewise a single unambiguous form with no accentless alternate.
+      text: 'यि',
+      gloss: 'yi',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-tu',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 20): त (already taught) + the ु vowel sign already
+      // proven on ब — needed only because skt-word-tishthatu below needs
+      // it. Whitney (1889), Chapter VIII §553(d): the general parasmaipada
+      // imperative endings, 3rd person singular "tu"; Chapter IX §739
+      // confirms the concrete cell in bhū's own worked paradigm (bhávatu).
+      text: 'तु',
+      gloss: 'tu',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-ni',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 20): न (already taught) + the ि vowel sign already
+      // proven on क/त — needed only because skt-word-tishthani below needs
+      // it. Whitney (1889), Chapter VIII §553(d): the 1st person singular
+      // parasmaipada imperative ending "āni"; Chapter IX §739 confirms the
+      // concrete cell (bhávāni).
+      text: 'नि',
+      gloss: 'ni',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-muu',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 20): म (already taught) + the ू vowel sign already
+      // proven on ब (Wikner 6.A.1) — needed only because skt-word-mula
+      // below needs it.
+      text: 'मू',
+      gloss: 'mū',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -842,6 +914,39 @@ export const sanskritManifest: Manifest = {
       text: 'वृक्ष',
       gloss: 'vṛkṣa — tree',
       composedOf: ['skt-letter-vri', 'skt-letter-ksa'],
+    },
+    {
+      id: 'skt-word-mula',
+      stage: 'words',
+      level: 2,
+      // Wikner 11.B.2, lines 2732-2733: "vṛkṣamūlam ← vṛkṣasya mūlam
+      // (ṣaṣṭhī-tatpuruṣa) = root of a tree, tree-root." मूल itself is
+      // glossed directly by Wikner's own translation of the compound;
+      // cited bare, the pratipadika/dictionary form, the same convention
+      // skt-word-vrksa uses. मू is a new enabling letter (skt-letter-muu,
+      // above), needed only for this word.
+      text: 'मूल',
+      gloss: 'mūla — root, base, foundation',
+      composedOf: ['skt-letter-muu', 'skt-letter-la'],
+    },
+    {
+      id: 'skt-word-mulam',
+      stage: 'words',
+      // Level 3 — a case form, not new vocabulary: same reasoning as
+      // skt-word-naram/skt-word-vrksam. मूल is neuter, so its nominative
+      // and accusative singular are identical (standard neuter a-stem
+      // declension) — both मूलम्, per Wikner 11.B.2's own worked example
+      // (line 2732: "vṛkṣamūlam ← vṛkṣasya mūlam"). This is the specific
+      // form skt-sentence-vrksamulam below needs: in a tatpuruṣa compound
+      // only the LAST member takes the case ending (Wikner 10.B.1, line
+      // 2538), so वृक्ष there stays bare (skt-word-vrksa) while मूल takes
+      // it — मूलम्, not मूल.
+      level: 3,
+      // मूल (already taught, skt-word-mula) + the same word-final म्
+      // already taught for नरम्/वृक्षम्/अश्वम्/अहम्.
+      text: 'मूलम्',
+      gloss: 'mūlam — root (nominative/accusative singular, neuter)',
+      composedOf: ['skt-letter-muu', 'skt-letter-la', 'skt-letter-ma-halanta'],
     },
     {
       id: 'skt-word-dhana',
@@ -1509,6 +1614,116 @@ export const sanskritManifest: Manifest = {
       text: 'त्वया',
       gloss: 'tvayā — by/with you (instrumental singular personal pronoun)',
       composedOf: ['skt-letter-tva', 'skt-letter-yaa'],
+    },
+
+    // ============ 2nd-person pronoun, tranche 20: ablative and locative singular ============
+    // Whitney §491(a)'s own table, the same source tranches 18-19 used for
+    // the nominative/accusative/genitive/instrumental. These two forms were
+    // picked over the still-open dative (तुभ्यम्) specifically because they
+    // are each the table's ONLY form for that case — no accentless "briefer
+    // second form" to weigh excluding, unlike accusative/dative/genitive
+    // (see skt-word-tvaam's and skt-word-tava's own comments). Every
+    // citation below double-checked against two independent live fetches of
+    // the same Wikisource transcription (once while drafting, once during
+    // adversarial verification) — not a cached/stale copy.
+    {
+      id: 'skt-word-tvat',
+      stage: 'words',
+      level: 3,
+      // त्व (already taught, tranche 18) + त् (new, above). §491(a)'s
+      // ablative row: "Ab. त्वत् tvát" — a single, unambiguous form.
+      text: 'त्वत्',
+      gloss: 'tvat — from you (ablative singular personal pronoun)',
+      composedOf: ['skt-letter-tva', 'skt-letter-ta-halanta'],
+    },
+    {
+      id: 'skt-word-tvayi',
+      stage: 'words',
+      level: 3,
+      // त्व (already taught, tranche 18) + यि (new, above). §491(a)'s
+      // locative row: "L. त्वयि tváyi" — a single, unambiguous form.
+      text: 'त्वयि',
+      gloss: 'tvayi — in/on you (locative singular personal pronoun)',
+      composedOf: ['skt-letter-tva', 'skt-letter-yi'],
+    },
+
+    // ============ Imperative mood, tranche 20: √sthā, singular ============
+    // Whitney (1889), Chapter IX §671: तिष्ठ (this file's own already-taught
+    // present-stem, तिष्ठति/तिष्ठामि) "is inflected not like mímāmi, but
+    // like bhávāmi" — i.e. takes the same endings as the fully-tabulated
+    // thematic root bhū. Chapter VIII §553(d) gives the general
+    // parasmaipada imperative endings (1sg āni, 2sg dhí/hí/—, 3sg tu);
+    // Chapter IX §739 confirms the concrete cells in bhū's own worked
+    // paradigm (bhávāni/bháva/bhávatu). Independently corroborated within
+    // this file itself: अस् (root-class, athematic) instead takes the -hi
+    // ending (एधि, already shipped — see skt-word-astu's own comment,
+    // quoting Wikner's असानि/एधि/अस्तु), confirming the bare-stem 2nd-
+    // singular ending is specifically an a-class property, not universal.
+    {
+      id: 'skt-word-tishtha',
+      stage: 'words',
+      level: 3,
+      // ति + ष्ठ (both already taught) — the bare present-stem, no suffix,
+      // per §553(d)'s third listed 2nd-singular option (the one thematic
+      // a-class verbs like bhū/tiṣṭha take). Coincidence, not an error:
+      // this is visually identical to the mid-word तिष्ठ- syllable already
+      // taught inside तिष्ठति/तिष्ठामि — same "disclosed, not overlooked"
+      // treatment this file already gives त्वा (skt-letter-tvaa).
+      text: 'तिष्ठ',
+      gloss: 'tiṣṭha — stand! (2nd person singular imperative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha'],
+    },
+    {
+      id: 'skt-word-tishthatu',
+      stage: 'words',
+      level: 3,
+      // तिष्ठ + तु (new, above) — matches this file's own already-shipped
+      // अस्तु (astu = अस् + tu), the same 3rd-singular -tu ending on a
+      // different root/class.
+      text: 'तिष्ठतु',
+      gloss: 'tiṣṭhatu — let him/her/it stand! (3rd person singular imperative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-tu'],
+    },
+    {
+      id: 'skt-word-tishthani',
+      stage: 'words',
+      level: 3,
+      // तिष्ठ + आ-lengthening (ष्ठा, already taught from तिष्ठामि) + नि
+      // (new, above) — matches this file's own already-shipped असानि
+      // (1st singular of अस्), the same -āni ending shared across classes.
+      text: 'तिष्ठानि',
+      gloss: 'tiṣṭhāni — let me stand! (1st person singular imperative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthaa', 'skt-letter-ni'],
+    },
+
+    // ============ Compound words (samāsa), tranche 20 ============
+    // Wikner 10.B-11.B, flagged "not started" since this plan's very first
+    // pass — the first samāsa lesson in this file. Only the ṣaṣṭhī-
+    // tatpuruṣa subtype, using Wikner's own worked example (11.B.2, lines
+    // 2732-2733): "vṛkṣamūlam ← vṛkṣasya mūlam (ṣaṣṭhī-tatpuruṣa) = root of
+    // a tree, tree-root."
+    {
+      id: 'skt-sentence-vrksamulam',
+      stage: 'sentences',
+      level: 3,
+      // वृक्षमूलम् does not reconstruct as वृक्ष + मूलम् (space-joined,
+      // the ordinary sentence joiner) — a samāsa fuses its members with NO
+      // space (Wikner 10.B.1, line 2530: "a compound word (samāsa) is
+      // always written without a break"). That is the ONLY divergence
+      // sandhiRule accounts for here: composedOf itself already names
+      // both real dependencies, वृक्ष (bare pratipadika — 10.B.1, lines
+      // 2535-2541: "only the last member appears to decline, while
+      // earlier members retain their pratipadika form") and मूलम् (the
+      // case-marked last member, skt-word-mulam above) — so every
+      // character in वृक्षमूलम् is traceable through composedOf, unlike
+      // an earlier draft of this lesson that left the case ending
+      // undeclared and leaned on sandhiRule to paper over it.
+      sandhiRule:
+        'Ṣaṣṭhī-tatpuruṣa compounding (Wikner 10.B.1, lines 2530-2541): the two members fuse with no space between them — vṛkṣa + mūlam, not vṛkṣa + a space + mūlam. The case ending itself is not part of this rule; it is already accounted for by mūlam\'s own composedOf.',
+      text: 'वृक्षमूलम्',
+      gloss:
+        'vṛkṣamūlam — root of a tree, tree-root (a ṣaṣṭhī-tatpuruṣa compound: the same genitive relationship already taught as नरस्य, "of the man", now expressed by compounding instead of a case ending)',
+      composedOf: ['skt-word-vrksa', 'skt-word-mulam'],
     },
   ],
 };

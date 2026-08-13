@@ -794,23 +794,113 @@ prerequisite item 1 names before item 2 (expert-tier reading) is reachable.
 
 Sanskrit: 118 → 123 lessons. Tamil: 253 → 257 lessons.
 
+**Twenty-first pass — tranche 20**: a broader push in response to an
+explicit "complete the grammar work" request, run as an orchestrated
+multi-agent `Workflow` — 6 parallel research+draft areas (3 Sanskrit, 3
+Tamil), each independently adversarially verified before anything reached
+a file. Two verifiers, going beyond their own brief of returning a
+checked proposal, applied their corrected content directly to the working
+tree during "verification by insertion" — a real process deviation from
+the intended propose-then-apply flow, caught and accounted for (see below)
+rather than silently accepted as normal.
+
+- **Sanskrit — ablative and locative singular pronoun**: त्वत् (tvat,
+  ablative) and त्वयि (tvayi, locative), Whitney §491(a) — the two
+  remaining cases from that table with no accentless "briefer" alternate
+  to weigh (unlike tranches 19's accusative/genitive/dative wrinkle). Two
+  new letters.
+- **Sanskrit — imperative mood, first multi-person paradigm**: तिष्ठ
+  ("stand!"), तिष्ठतु ("let him/her/it stand!"), तिष्ठानि ("let me
+  stand!") — Whitney Chapter VIII §553(d) (general parasmaipada imperative
+  endings) + Chapter IX §671/§739 (this file's already-taught तिष्ठति
+  inflects exactly like the fully-tabulated model root bhū), independently
+  corroborated within this file itself by the already-shipped एधि/अस्तु/
+  असानि (tranche 13's अस् paradigm) confirming the ending pattern holds
+  across verb classes. Not the first Sanskrit mood shipped (अस्तु already
+  was, tranche 13) — the verifier caught and corrected that overclaim —
+  but the first full multi-person paradigm, and the first sourced from
+  Whitney's tables rather than an isolated Wikner glossary word.
+- **Sanskrit — compound words (samāsa), the first one**: वृक्षमूलम्
+  ("root of a tree"), Wikner 10.B.1/11.B.2 — flagged "not started" since
+  this plan's very first pass. The ṣaṣṭhī-tatpuruṣa type only, reusing
+  the already-taught वृक्ष. Genuinely extends `sandhiRule`'s use beyond a
+  pure sound-change explanation (a samāsa also drops the first member's
+  own case ending and adds a single vibhakti ending to the compound as a
+  whole) — the most faithful modeling available without an engine change,
+  grounded directly in Wikner's own description of what a samāsa does,
+  but flagged as setting precedent for future compound lessons.
+- **Tamil — negation, beyond what's shipped**: செய்யாதீர் (negative
+  imperative, plural/polite, Andronov §231) plus four negative
+  participial nouns (செய்யாதவன்/செய்யாதவர்/செய்யாதவை/செய்யாதது, Andronov
+  §240) — grammatically distinct nominals, not finite verbs, and
+  genuinely different from the already-shipped செய்யாது (a finite 3sg-
+  neuter negative indicative) despite similar glosses. Two of the five
+  rest on reconstructing a short OCR-garbled span from the same
+  paragraph's own explicit rule statement — independently re-verified by
+  the adversarial pass via a fresh re-fetch, same disclosed-reconstruction
+  standard tranche 12's "ceyteen" already established.
+- **Tamil — the other two pronoun genitives, finally**: அவளுடைய ("her")
+  and அவர்களுடைய ("their") — the two this plan's own tranche-19 writeup
+  flagged as blocked on a new dead ள் letter. Ships that letter
+  (tam-pulli-lla) plus the two base pronouns (அவள், அவர்கள் — neither
+  taught before) and both genitives. Applied directly to `tamil.ts` by
+  its own verifier during verification, not returned as a proposal first
+  — see this pass's own header note above.
+- **Tamil — third-person feminine present tense**: செய்கிறாள் ("she
+  does") and அவள் செய்கிறாள், ABC of Tamil Lesson Seventeen — zero new
+  letters, all reused from the already-shipped செய்கிறான். The
+  drafter for this item initially re-proposed தம்-pulli-lla/அவள் as if
+  new, unaware the OTHER Tamil item above had just added them to the
+  working tree (both ran in the same parallel batch) — the verifier
+  caught the collision by re-reading the actual file rather than trusting
+  either drafter's own "as of tranche 19" framing, and trimmed the
+  proposal to just the one genuinely new word and sentence.
+
+Sanskrit: 123 → 136 lessons. Tamil: 257 → 269 lessons. (Code review on this
+pass's own PR caught two further real issues, fixed before merge: the
+samāsa lesson's `composedOf` didn't account for the compound's final case
+ending at all — fixed by adding a proper word-level lesson for मूलम्, the
+case-marked form, rather than leaning on `sandhiRule` to paper over an
+entirely undeclared morpheme; and செய்யாதவர்'s gloss presented itself as
+exclusively epicene-plural when the -அவர் suffix family, like this file's
+own அவர் pronoun, standardly doubles as honorific singular too — the gloss
+now discloses both readings instead of picking one silently.)
+
+**A note on process, not just content**: two of tranche 20's six items
+applied their own verified output directly to the repo's real files
+during adversarial verification, rather than returning it as a checked
+JSON proposal the way this whole tranche-based plan (and the workflow
+script driving this pass) was actually designed for. The content itself
+held up under independent re-verification and mechanical `validateManifest`
+checks either way, but the WORKING TREE having uncommitted, unreviewed
+changes appear mid-session — discovered only because a later item's own
+verifier happened to re-read the file and notice — is a process risk this
+plan's own multi-agent tranches hadn't hit before at this scale. Worth
+naming for whoever runs the next large parallel push: a verify step's
+job is to check and return a corrected proposal, not to edit the tree
+itself, and a workflow spanning several concurrent drafters on the same
+file should assume a later drafter's "read the file first" step may see
+a different file than the one the first drafter saw.
+
 ## What's next, in order
 
 1. **Grammar completeness, scoped from real primer/source content**:
-   more of Sanskrit's 2nd-person pronoun (tranche 19 shipped the
-   accusative/genitive/instrumental singular; Whitney §491's table still
-   has dative, ablative, locative, and the dual left), more mood
-   coverage; Tamil's remaining pronoun genitives அவளுடைய ("her") and
-   அவர்களுடைய ("their") — tranche 19 shipped அவருடைய/என்னுடைய and, in the
-   process, corrected tranche 18's own forecast that all four need zero
-   new letters: these two specifically need a new atomic dead ள் this
-   file has never taught (their base pronouns அவள்/அவர்கள் are
-   themselves untaught too, same as அவர்/என் were before tranche 19), and
-   should ship as their own small tranche rather than being assumed
-   free; more negation forms (plural, colloquial — tranche 16 shipped
-   only the 3rd-singular-neuter negative indicative), genitive for more
-   nouns, more tenses/persons. Each still needs its own citation the way
-   every tranche so far has had.
+   Sanskrit's 2nd-person pronoun singular is now complete except the
+   dative (तुभ्यम् — deferred twice now, since its own accentless
+   alternate ते collides in spelling with the genitive's own ते); the
+   dual (युवाम्/युवाभ्याम्/युवयोस्) and the full plural beyond nominative
+   remain. More mood coverage (tranche 20 shipped only the singular
+   imperative of one root; the optative/vidhi-liṅ for the same root is
+   scoped and ready — see tranche 20's own openQuestions). More compound
+   types (dvandva, avyayībhāva, bahuvrīhi — tranche 20 shipped only
+   ṣaṣṭhī-tatpuruṣa, and named its own vocabulary gap for the other
+   three). Tamil's pronoun genitives are now fully shipped (all four);
+   its person-conjugation table still lacks அவர்/அவர்கள் present tense
+   (அவன் has it, அவள் as of tranche 20, but not the honorific/plural —
+   already scoped, zero new letters, per tranche 20's own openQuestions),
+   and past/future tense for anyone beyond 1st/3rd-masculine-singular.
+   Each still needs its own citation the way every tranche so far has
+   had.
 2. **Expert-tier reading** for both languages, once a real short verse —
    freshly chosen for what it needs, not assumed to be one of the two
    calibration verses above — is fully decomposable into taught vocabulary

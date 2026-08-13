@@ -60,6 +60,19 @@
  * Tranche 18 adds a pronoun genitive, அவனுடைய ("his", the genitive of
  * அவன், ABC of Tamil Lesson Twenty-One, line 2046) — zero new letters,
  * every grapheme (அ, வ, னு, டை, ய) already taught by an earlier tranche.
+ * Tranche 19 adds two more pronoun genitives, அவருடைய ("his/her,
+ * honorific", the genitive of the newly-added அவர்) and என்னுடைய ("my",
+ * the genitive of already-taught நான் via its own நான்→என் shortening
+ * rule) — plus the two base pronoun words (அவர், என்) each turned out to
+ * need first. Zero new letters, but four new words, not the "zero new
+ * letters for all four [genitives]" tranche 18 had forecast. Tranche 20
+ * ships the other two genitives that forecast turned out NOT to hold for
+ * — அவளுடைய ("her") and அவர்களுடைய ("their") — confirmed here, via a
+ * fresh live fetch of the same primer PDF, to need one new atomic letter
+ * (dead ள், tam-pulli-lla) for their base pronouns அவள்/அவர்கள் (neither
+ * previously taught as a word either), even though the genitives
+ * themselves reuse the already-taught fused ளு and need zero new letters,
+ * same split as tranche 19's own அவன்/அவனுடைய.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -696,6 +709,29 @@ export const tamilManifest: Manifest = {
       gloss: 'r — dead consonant (no vowel), used at the end of a word',
       composedOf: [],
     },
+    // New (tranche 20): tranche 19 forecast, then corrected, that this
+    // letter would eventually be needed for அவளுடைய ("her") and
+    // அவர்களுடைய ("their") — confirmed here by a fresh live fetch of ABC
+    // of Tamil, Book One (tamilvu.org/coresite/download/ABC_Tamil.pdf),
+    // not the earlier cached extraction. It is needed one step earlier
+    // than the genitives themselves, though: the BASE pronouns அவள்
+    // ("she") and அவர்கள் ("they") both end in this dead consonant and are
+    // not yet taught as words at all (p.13, Lesson Two's own
+    // "three-lettered words" list: "அவள்– (aval) – she"; p.40-41, Lesson
+    // Seventeen's person-suffix table lists both அவள்/ஆள் and
+    // அவர்கள்/ஆர்கள் directly). A different letter from the already-taught
+    // bare ள (tam-letter-lla, retroflex l with its inherent vowel) — this
+    // is its dead (pulli), vowel-less form, the same relationship every
+    // other tam-pulli-* letter in this file already has to its bare
+    // counterpart.
+    {
+      id: 'tam-pulli-lla',
+      stage: 'letters',
+      level: 1,
+      text: 'ள்',
+      gloss: 'ḷ — dead consonant (no vowel), used at the end of a word',
+      composedOf: [],
+    },
     {
       id: 'tam-pulli-ma',
       stage: 'letters',
@@ -1093,6 +1129,23 @@ export const tamilManifest: Manifest = {
       gloss: 'avan — he',
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-alveolar-na'],
     },
+    // Tranche 20: அவன்'s feminine counterpart, from the same person-suffix
+    // table (a fresh live fetch of ABC of Tamil, Book One confirms it on
+    // p.40: "அவள் - ஆள் (III person, singular, feminine)"), independently
+    // reinforced by p.13's own Lesson Two vocabulary list ("அவள்– (aval) –
+    // she") and p.41's worked sentence ("அவள் செய்கிறாள் - She does
+    // (singular-feminine)"). ள் here is the dead consonant tam-pulli-lla,
+    // added just above specifically because this word (and அவர்கள் below)
+    // need it — the same "add only what a word needs" rule every earlier
+    // tranche's enabling letters followed.
+    {
+      id: 'tam-word-aval',
+      stage: 'words',
+      level: 2,
+      text: 'அவள்',
+      gloss: 'avaḷ — she',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-lla'],
+    },
     // Tranche 19: அவன்'s honorific counterpart, from the same lesson's own
     // person table (line 1415-1416: "அவர் - ஆர் (III person, singular,
     // honorific - masculine and feminine)"), independently reinforced by
@@ -1109,6 +1162,23 @@ export const tamilManifest: Manifest = {
       text: 'அவர்',
       gloss: 'avar — he/she (honorific)',
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-ra'],
+    },
+    // Tranche 20: அவர்'s plural counterpart, same person-suffix table (p.40:
+    // "அவர்கள் - ஆர்கள் [(III person, plural (for human beings only)]"),
+    // independently reinforced by p.41's worked sentence ("அவர்கள்
+    // செய்கிறார்கள் - They do (plural-human beings- both masculine and
+    // feminine)") and by p.56's own genitive line (see
+    // tam-word-avargaludaiya below). ர் is the already-taught dead
+    // tam-pulli-ra (reused from அவர் above, NOT the fused ரு); க is the
+    // already-taught bare tam-letter-ka; ள் is the dead tam-pulli-lla added
+    // just above. Zero new letters beyond that one.
+    {
+      id: 'tam-word-avargal',
+      stage: 'words',
+      level: 2,
+      text: 'அவர்கள்',
+      gloss: 'avarkaḷ — they (human beings)',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-pulli-ra', 'tam-letter-ka', 'tam-pulli-lla'],
     },
     // Same tense-symbol + personal-suffix fusion already established for
     // செய்கிறேன் (tam-word-seykirren) — here with ஆன் (3rd person singular
@@ -1134,6 +1204,32 @@ export const tamilManifest: Manifest = {
       text: 'அவன் செய்கிறான்',
       gloss: 'avan seykiṟāṉ — he does',
       composedOf: ['tam-word-avan', 'tam-word-seykirraan'],
+    },
+
+    // Tranche 20: the feminine counterpart, ABC of Tamil Lesson
+    // Seventeen's own person-suffix table (p.40, "அவள் - ஆள் (III
+    // person, singular, feminine)", the row directly below the already-
+    // shipped masculine -ஆன்), plus its own worked example sentence
+    // (p.41, "அவள் செய்கிறாள் - She does (singular-feminine)"). Zero new
+    // letters: செ/ய்/கி/றா are all already taught (from செய்கிறான்) and
+    // ள் (tam-pulli-lla) is already taught too, added for அவள்/அவர்கள்.
+    {
+      id: 'tam-word-seykirraal',
+      stage: 'words',
+      level: 3,
+      text: 'செய்கிறாள்',
+      gloss: 'seykiṟāḷ — she does (3rd person singular feminine, present)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-lla'],
+    },
+    {
+      id: 'tam-sentence-aval-seykirraal',
+      stage: 'sentences',
+      level: 3,
+      // Lesson Seventeen's own worked sentence (p.41), the feminine
+      // counterpart to tam-sentence-avan-seykirraan above.
+      text: 'அவள் செய்கிறாள்',
+      gloss: 'avaḷ seykiṟāḷ — she does',
+      composedOf: ['tam-word-aval', 'tam-word-seykirraal'],
     },
 
     // ================= Past tense (level 3) =================
@@ -1236,6 +1332,23 @@ export const tamilManifest: Manifest = {
       text: 'செய்யாதே',
       gloss: 'ceyyātē — don\'t do! (literary negative imperative, singular)',
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tee'],
+    },
+    // Tranche 20: the plural/polite counterpart, from the same Andronov
+    // section group, §231 (p.218): "The suffix -iir(kaL) is joined to the
+    // negative suffix -aat-; e.g., ceytal 'to do' - ceyyaatiir(kaL) 'don't
+    // do'." Shipped bare, without the optional "(kaL)" plural marker —
+    // not a form Andronov marks as obligatory, so dropping it is the same
+    // kind of choice this file makes for any other bracketed variant.
+    {
+      id: 'tam-word-ceyyaathiir',
+      stage: 'words',
+      level: 3,
+      // Same cey-y-aa- stem as ceyyaathee above (செ + ய் + யா), followed
+      // by தீர் (already-taught தீ + the already-taught dead ர், reused
+      // from யார்) — plain concatenation, no sandhiRule needed.
+      text: 'செய்யாதீர்',
+      gloss: "ceyyātīr — don't do! (literary negative imperative, plural/polite)",
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tii', 'tam-pulli-ra'],
     },
 
     // ================= Future tense (level 3) =================
@@ -1346,6 +1459,64 @@ export const tamilManifest: Manifest = {
       composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-tu'],
     },
 
+    // ============ Negative participial nouns, tranche 20 ============
+    // Andronov §240 (p.223, "PARTICIPIAL NOUNS"): the negative suffix
+    // -aat- (already established, ceyyaathee/ceyyaathu above) takes a
+    // further set of person/number suffixes to form a nominal ("he/she/it/
+    // they who does/did/will not do") — grammatically distinct from a
+    // finite verb: no tense distinction of its own, per Andronov's own
+    // note. Each shipped bare, without Andronov's optional "(kaL)" plural
+    // marker (same choice as ceyyaathiir above).
+    {
+      id: 'tam-word-ceyyaathavan',
+      stage: 'words',
+      level: 3,
+      // செய்யா (already-taught stem) + தவன் (த + வ + the already-taught
+      // dead ன், reused from அவன்) — plain concatenation, no sandhiRule.
+      text: 'செய்யாதவன்',
+      gloss: 'ceyyātavaṉ — he who does/will/did not do (negative participial noun, masculine singular)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-ta', 'tam-letter-va', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-word-ceyyaathavar',
+      stage: 'words',
+      level: 3,
+      // Same stem + தவர் (த + வ + the already-taught dead ர், reused from
+      // ceyyaathiir above) — the epicene-plural counterpart of ceyyaathavan.
+      // Andronov §240 itself labels this specific form "(pl. epic)", but
+      // the -அவர்/-ஆர் suffix family is standardly dual-purpose in Tamil
+      // (the same double duty this file's own bare pronoun அவர் already
+      // carries — "he/she, honorific" — see tam-word-avar) — disclosed in
+      // the gloss rather than presented as exclusively plural.
+      text: 'செய்யாதவர்',
+      gloss:
+        'ceyyātavar — they who do/will/did not do (negative participial noun; Andronov cites this specifically as epicene plural, but the -avar suffix, like this file\'s own அவர் pronoun, standardly doubles as honorific singular — "he/she who does/did not do")',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-ta', 'tam-letter-va', 'tam-pulli-ra'],
+    },
+    {
+      id: 'tam-word-ceyyaathavai',
+      stage: 'words',
+      level: 3,
+      // Same stem + தவை (த + வை, the already-taught bare vai letter) —
+      // the neuter-plural counterpart, distinct from ceyyaathatu below.
+      text: 'செய்யாதவை',
+      gloss: 'ceyyātavai — those which do/will/did not do (negative participial noun, neuter plural)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-ta', 'tam-letter-vai'],
+    },
+    {
+      id: 'tam-word-ceyyaathatu',
+      stage: 'words',
+      level: 3,
+      // Same stem + தது (த + து, already taught from ceyyaathu itself) —
+      // the neuter-SINGULAR participial noun, grammatically distinct from
+      // the already-shipped tam-word-ceyyaathu (a FINITE 3rd-singular-
+      // neuter negative indicative verb) despite the surface-similar gloss
+      // and different spelling (செய்யாது vs செய்யாதது).
+      text: 'செய்யாதது',
+      gloss: "ceyyātatu — that which does/will/did not do; also a fossilised abstract noun meaning 'inaction' (negative participial noun, neuter singular)",
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-yaa', 'tam-letter-ta', 'tam-letter-tu'],
+    },
+
     // ================= Dative extension: short/doubling nouns (level 3) =================
     // Extension, 2026-08-12 (tranche 16): tranche 9 shipped the dative
     // (கு/க்கு) via யாருக்கு. ABC of Tamil Lesson Twenty's own further
@@ -1401,6 +1572,27 @@ export const tamilManifest: Manifest = {
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-alveolar-nu', 'tam-letter-ttai', 'tam-letter-ya'],
     },
 
+    // Tranche 20: the feminine counterpart, from the same Lesson
+    // Twenty-One passage (a fresh live fetch of ABC of Tamil confirms it
+    // on p.56: "அவள் + உடைய = அவளுடைய = her") — the genitive of
+    // tam-word-aval ("she"), just added above. ளு here is the
+    // already-taught FUSED letter tam-letter-llu (from tranche 5's ள
+    // vowel-sign table) — using it directly, rather than decomposing to
+    // dead ள் + உ, is what lets plain concatenation reach the real
+    // spelling without a sandhiRule, the same reasoning already documented
+    // on யாருடைய/அவனுடைய/அவருடைய. This is also why the genitive itself
+    // needs zero new letters even though its base pronoun needed one
+    // (dead ள், tam-pulli-lla, added above) — the same split tranche 19
+    // already established for அவன்/அவனுடைய.
+    {
+      id: 'tam-word-avaludaiya',
+      stage: 'words',
+      level: 3,
+      text: 'அவளுடைய',
+      gloss: 'avaḷuṭaiya — her',
+      composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-llu', 'tam-letter-ttai', 'tam-letter-ya'],
+    },
+
     // Tranche 19: the honorific counterpart, from the same Lesson
     // Twenty-One passage, line 2048: "அவர் + உடைய = அவருடைய = his
     // (honorific)". ரு here is the already-taught FUSED letter
@@ -1416,6 +1608,29 @@ export const tamilManifest: Manifest = {
       text: 'அவருடைய',
       gloss: 'avaruṭaiya — his/her (honorific)',
       composedOf: ['tam-letter-a', 'tam-letter-va', 'tam-letter-ru', 'tam-letter-ttai', 'tam-letter-ya'],
+    },
+
+    // Tranche 20: the plural counterpart, same Lesson Twenty-One passage
+    // (p.56: "அவர்கள் + உடைய = அவர்களுடைய = Their (Human beings)") — the
+    // genitive of tam-word-avargal ("they"), just added above. Same ளு
+    // fusion as அவளுடைய directly above (the dead ள் of அவர்கள் fuses into
+    // ளு before உடைய); ர் and க are the already-taught tam-pulli-ra and
+    // tam-letter-ka reused from அவர்கள் itself. Zero new letters.
+    {
+      id: 'tam-word-avargaludaiya',
+      stage: 'words',
+      level: 3,
+      text: 'அவர்களுடைய',
+      gloss: 'avarkaḷuṭaiya — their (human beings)',
+      composedOf: [
+        'tam-letter-a',
+        'tam-letter-va',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-letter-llu',
+        'tam-letter-ttai',
+        'tam-letter-ya',
+      ],
     },
 
     // Tranche 19: நான்'s genitive, "my" — the primer's own Lesson
