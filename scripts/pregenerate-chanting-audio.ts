@@ -25,11 +25,7 @@ import { guruGitaVerses } from '../src/learn/content/chanting.js';
 import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
-
-// Mirrors learn.routes.ts's DEFAULT_VOICE — a cache-key label only, matching
-// exactly what a real "Play audio" click in the UI sends (no `voice` field),
-// so this pregeneration lands in the same cache entries real requests read.
-const CACHE_VOICE_KEY = 'default';
+import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js';
 
 interface Item {
   id: string;

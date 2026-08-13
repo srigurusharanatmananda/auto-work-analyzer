@@ -26,12 +26,13 @@ import { sanskritManifest } from '../src/learn/content/sanskrit.js';
 import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
+import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js';
 
-// Mirrors learn.routes.ts's DEFAULT_VOICE: a cache-key label only. `undefined`
-// is what's actually passed to synthesize(), so the backend's own default
-// voice applies — the same reasoning as learn.routes.ts's own comment on why
-// sending the literal string 'default' as a voice name broke real requests.
-const CACHE_VOICE_KEY = 'default';
+// `undefined` is what's actually passed to synthesize(), so the backend's
+// own default voice applies — the same reasoning as learn.routes.ts's own
+// comment on why sending the literal string 'default' as a voice name broke
+// real requests. `CACHE_VOICE_KEY` (imported above) is only ever used as
+// the cache lookup/write key, never passed to synthesize() itself.
 
 async function main() {
   const speechClient = new SpeechClient();

@@ -57,8 +57,14 @@ export interface LearnRouterDeps {
  * Voice used when the caller does not name one. One literal, shared by the
  * cache lookup and the synthesis call, so a request that omits `voice`
  * reliably hits the same cache entry a previous omitted-`voice` request wrote.
+ *
+ * Exported (not just module-local) so both pregeneration scripts
+ * (`scripts/pregenerate-sanskrit-audio.ts`, `scripts/pregenerate-chanting-
+ * audio.ts`) write cache entries under the same key this route reads —
+ * three independent copies of the same magic string used to exist, silently
+ * drifting apart if this one ever changed.
  */
-const DEFAULT_VOICE = 'default';
+export const DEFAULT_VOICE = 'default';
 
 /** The only two languages this module teaches. `null` for anything else. */
 function manifestFor(language: string): Manifest | null {

@@ -174,27 +174,29 @@ export default function TranslatePage() {
                     {result.translationTransliteration}
                   </p>
                 )}
-                {result.sourceTransliteration && (
-                  <div className="border-t border-border pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
-                      {LANGUAGE_LABEL[from]} romanized
-                    </p>
-                    <p className="mt-1 text-sm italic text-foreground-secondary">
-                      {result.sourceTransliteration}
-                    </p>
-                  </div>
-                )}
-                {isSpeakable(to) && (
-                  <div className="mt-auto flex justify-end">
-                    <Button
-                      variant="ghost"
-                      onClick={() => playSide('result', to, result.translation)}
-                      disabled={speaking !== null}
-                    >
-                      {speaking === 'result' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
-                    </Button>
-                  </div>
-                )}
+                <div className="mt-auto flex flex-col gap-3">
+                  {result.sourceTransliteration && (
+                    <div className="border-t border-border pt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+                        {LANGUAGE_LABEL[from]} romanized
+                      </p>
+                      <p className="mt-1 text-sm italic text-foreground-secondary">
+                        {result.sourceTransliteration}
+                      </p>
+                    </div>
+                  )}
+                  {isSpeakable(to) && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        onClick={() => playSide('result', to, result.translation)}
+                        disabled={!result.translation.trim() || speaking !== null}
+                      >
+                        {speaking === 'result' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-1 items-center justify-center py-12 text-center text-sm text-foreground-tertiary">
