@@ -19,8 +19,7 @@
  */
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { mkdir, readFile, unlink } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { readFile, unlink } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { PDFParse } from 'pdf-parse';
 import type { AiClient } from '../ai/AiClient.js';
@@ -32,7 +31,7 @@ import { splitIntoSyllables } from '../learn/Akshara.js';
 import type { Language } from '../learn/Transliterator.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
-import { uploadSingleOrReject } from '../middleware/upload.middleware.js';
+import { createUuidDiskStorage, uploadSingleOrReject } from '../middleware/upload.middleware.js';
 
 export interface ChantBooksRouterDeps {
   aiClient: AiClient;
@@ -86,16 +85,7 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
   const maxUploadBytes = deps.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
 
   const upload = multer({
-    storage: multer.diskStorage({
-      destination: (_req, _file, cb) => {
-        mkdir(uploadsDir, { recursive: true })
-          .then(() => cb(null, uploadsDir))
-          .catch((error) => cb(error, uploadsDir));
-      },
-      filename: (_req, file, cb) => {
-        cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
-      },
-    }),
+    storage: createUuidDiskStorage(uploadsDir),
     limits: { fileSize: maxUploadBytes },
     fileFilter: (_req, file, cb) => {
       if (ALLOWED_UPLOAD_EXTENSIONS.has(extname(file.originalname).toLowerCase())) {
@@ -164,12 +154,21 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
 
     const books = newBooks();
     const verses = newVerses();
+    let createdBookId: string | undefined;
     try {
       const book = await books.create(req.user!.userId, languageParam, title, file.originalname, file.filename, file.size);
+      createdBookId = book.id;
       await verses.createMany(book.id, parsedVerses);
       res.status(201).json({ success: true, data: { ...book, verseCount: parsedVerses.length } });
     } catch (error) {
       await unlink(file.path).catch(() => {});
+      // Book creation and verse-row insertion are two separate writes, not
+      // one transaction — if the second fails after the first succeeded,
+      // clean up the now-orphaned book row (pointing at a file that was
+      // just deleted above) rather than leaving a zero-verse book behind.
+      if (createdBookId) {
+        await books.remove(req.user!.userId, createdBookId).catch(() => {});
+      }
       console.error('Failed to save chant book:', error);
       res.status(500).json({ success: false, error: 'Failed to save your book', details: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
@@ -243,13 +242,26 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
         await verses.setBreakdown(book.id, verseNumber, breakdown);
       }
 
+      // splitIntoSyllables (Akshara.ts, @vipran/aksharas) analyses
+      // Devanagari specifically — confirmed directly, not assumed: it
+      // returns an empty array for Tamil text, silently dropping the
+      // whole guru/laghu breakdown rather than erroring. No Tamil
+      // equivalent exists in this codebase yet (the built-in Guru Gita
+      // chanting content is Sanskrit-only, so this gap never surfaced
+      // before a Tamil book could be uploaded), so Tamil verses
+      // deliberately get an empty `syllables` array rather than a
+      // misleading Sanskrit-only analysis — the UI hides that section
+      // when it's empty instead of showing a blank one.
       res.json({
         success: true,
         data: {
           bookId: book.id,
           verseNumber,
           rawText: verse.rawText,
-          padas: breakdown.padas.map((pada) => ({ ...pada, syllables: splitIntoSyllables(pada.text) })),
+          padas: breakdown.padas.map((pada) => ({
+            ...pada,
+            syllables: book.language === 'sanskrit' ? splitIntoSyllables(pada.text) : [],
+          })),
           meaning: breakdown.meaning,
           citation: breakdown.citation,
         },

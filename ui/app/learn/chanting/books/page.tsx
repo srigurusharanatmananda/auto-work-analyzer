@@ -313,17 +313,22 @@ export default function ChantBooksPage() {
                     </span>
                     <p className="text-3xl font-semibold text-foreground">{pada.text}</p>
                     <p className="text-sm text-foreground-secondary">{pada.iast}</p>
-                    <div className="flex flex-wrap justify-center gap-1.5">
-                      {pada.syllables.map((syllable, i) => (
-                        <span
-                          key={i}
-                          title={WEIGHT_LABEL[syllable.weight]}
-                          className={`rounded px-2 py-1 text-base ${WEIGHT_STYLE[syllable.weight]}`}
-                        >
-                          {syllable.text}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Syllable/guru-laghu weight analysis is Sanskrit-only for now (the
+                        backend sends an empty array for Tamil — see chantBooks.routes.ts's
+                        own comment) — hidden rather than shown blank when there's nothing to display. */}
+                    {pada.syllables.length > 0 && (
+                      <div className="flex flex-wrap justify-center gap-1.5">
+                        {pada.syllables.map((syllable, i) => (
+                          <span
+                            key={i}
+                            title={WEIGHT_LABEL[syllable.weight]}
+                            className={`rounded px-2 py-1 text-base ${WEIGHT_STYLE[syllable.weight]}`}
+                          >
+                            {syllable.text}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="mt-1 flex flex-col gap-1 text-xs text-foreground-secondary">
                       {pada.words.map((word, i) => (
                         <p key={i}>

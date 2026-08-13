@@ -103,18 +103,26 @@ function parseStandaloneLine(text: string): ParsedBookVerse[] {
 }
 
 /**
- * Tries the danda-wrapped convention first, then the standalone-line
- * convention, accepting whichever produces at least 2 verses in strictly
- * increasing (not necessarily consecutive) order — a single stray match (a
- * page number, a footnote reference) is not enough to call a book
- * "numbered", and a non-increasing sequence means the pattern matched
- * something that isn't really a verse marker.
+ * Tries BOTH the danda-wrapped and standalone-line conventions and takes
+ * whichever produces MORE verses (each still required to be at least 2, in
+ * strictly increasing — not necessarily consecutive — order): a single
+ * stray match (a page number, a footnote reference) is not enough to call
+ * a book "numbered", and a non-increasing sequence means the pattern
+ * matched something that isn't really a verse marker. Deliberately NOT
+ * "whichever succeeds first, danda-wrapped by default" — a book using only
+ * the standalone-line convention can still contain a couple of unrelated
+ * danda-wrapped-looking fragments (e.g. two footnoted citations with
+ * increasing numbers) that would otherwise be accepted immediately,
+ * folding the whole real book into one or two giant "verses" before the
+ * correct, far more complete standalone-line parse ever got a chance.
  */
 export function parseBookVerses(rawText: string): ParsedBookVerse[] {
-  for (const parse of [parseDandaWrapped, parseStandaloneLine]) {
-    const verses = parse(rawText);
-    if (verses.length >= 2 && isSequential(verses)) return verses;
-  }
+  const candidates = [parseDandaWrapped(rawText), parseStandaloneLine(rawText)]
+    .filter((verses) => verses.length >= 2 && isSequential(verses))
+    .sort((a, b) => b.length - a.length);
+
+  if (candidates.length > 0) return candidates[0];
+
   throw new BookParseError(
     'Could not find numbered verses in this document. This app only recognises explicit verse-number markers ' +
       '("॥ 1॥"-style, or a bare number on its own line) — a book without one of those conventions can\'t be split into verses reliably.'

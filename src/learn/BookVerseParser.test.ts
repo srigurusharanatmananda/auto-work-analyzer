@@ -115,4 +115,23 @@ describe('parseBookVerses — rejection', () => {
     const verses = parseBookVerses(text);
     expect(verses.map((v) => v.verseNumber)).toEqual([50, 55]);
   });
+
+  test('prefers the MORE complete parse over whichever convention happens to match first — two unrelated danda-wrapped-looking fragments must not pre-empt a real, far more complete standalone-line numbering', () => {
+    const text =
+      'See footnote ॥ 1॥ for context, and a second reference ॥ 2॥ elsewhere in this preface.\n\n' +
+      '1.\n' +
+      'the actual first verse of the book\n' +
+      '2.\n' +
+      'the actual second verse of the book\n' +
+      '3.\n' +
+      'the actual third verse of the book';
+
+    const verses = parseBookVerses(text);
+    // The standalone-line parse (3 real verses) must win over the
+    // danda-wrapped parse (2 unrelated footnote references), even though
+    // danda-wrapped is checked first internally.
+    expect(verses).toHaveLength(3);
+    expect(verses[0].rawText).toContain('actual first verse');
+    expect(verses[2].rawText).toContain('actual third verse');
+  });
 });

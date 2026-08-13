@@ -114,4 +114,27 @@ describe('computeBreakdown', () => {
     expect(breakdown.padas[0].words[0].iast.length).toBeGreaterThan(0);
     expect(breakdown.padas[0].text).toBe('வணக்கம்');
   });
+
+  test('does not reject a correct breakdown just because the source and the AI response use different Unicode normalization forms (a real PDF-extraction variance, not hypothetical)', async () => {
+    // Devanagari QA has a real singleton precomposed codepoint (U+0958)
+    // whose canonical decomposition is क (U+0915) + nukta (U+093C) — a
+    // genuine two-codepoints-vs-one-codepoint difference for visually and
+    // semantically identical text, exactly the kind of variance some PDF
+    // producers emit but an LLM's own generated text typically does not
+    // (constructed via explicit \u escapes, not typed literals, since a
+    // literal in a source file can silently get normalized by tooling
+    // before this test ever runs).
+    const singleCodepoint = 'क़'; // क़ as ONE codepoint
+    const twoCodepoints = 'क़'; // क + nukta — canonically equivalent, but a different raw string
+    expect(singleCodepoint).not.toBe(twoCodepoints); // sanity: they really do differ as raw strings
+    expect(singleCodepoint.normalize('NFC')).toBe(twoCodepoints.normalize('NFC')); // sanity: NFC unifies them
+
+    const response = `===PADA===\n${twoCodepoints} — a letter\n===MEANING===\nMeaning.`;
+    const client = new AiClient([fakeProvider(response)]);
+    // Source text (as if extracted from an unusual PDF) uses the single
+    // precomposed codepoint; the AI's own response above uses the
+    // two-codepoint form.
+    const breakdown = await computeBreakdown(client, singleCodepoint, 'sanskrit');
+    expect(breakdown.padas[0].words[0].devanagari).toBe(twoCodepoints);
+  });
 });

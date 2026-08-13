@@ -15,9 +15,8 @@
  */
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { mkdir, stat, unlink } from 'node:fs/promises';
+import { stat, unlink } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { extname, resolve, sep } from 'node:path';
 import { resources, resourcesFor, resourceById, type ResourceLanguage } from '../learn/content/resources.js';
 import { ResourceNotesStore } from '../learn/ResourceNotes.js';
@@ -26,6 +25,7 @@ import { mintUploadToken, verifyUploadToken } from '../learn/resourceUploadToken
 import { parseByteRange } from '../transcription/byteRange.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { anyRole } from '../middleware/policy.js';
+import { createUuidDiskStorage } from '../middleware/upload.middleware.js';
 
 export interface ResourcesRouterDeps {
   /** Overridden in tests; each call gets a fresh connection, as before (mirrors LearnRouterDeps.progressFactory). */
@@ -77,19 +77,7 @@ export function createResourcesRouter(deps: ResourcesRouterDeps = {}): Router {
   }
 
   const upload = multer({
-    storage: multer.diskStorage({
-      destination: (_req, _file, cb) => {
-        // Created on demand — same reasoning as `transcription.routes.ts`'s audioDir.
-        mkdir(uploadsDir, { recursive: true })
-          .then(() => cb(null, uploadsDir))
-          .catch((error) => cb(error, uploadsDir));
-      },
-      filename: (_req, file, cb) => {
-        // A uuid, keeping only the extension — the browser-supplied name is
-        // stored in the database for display, never trusted on the filesystem.
-        cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
-      },
-    }),
+    storage: createUuidDiskStorage(uploadsDir),
     limits: { fileSize: maxUploadBytes },
     fileFilter: (_req, file, cb) => {
       if (ALLOWED_UPLOAD_EXTENSIONS.has(extname(file.originalname).toLowerCase())) {

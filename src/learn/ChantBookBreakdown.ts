@@ -123,8 +123,16 @@ function toPadas(padaWords: ParsedWord[][], language: Language): ChantPada[] {
   });
 }
 
+/**
+ * Whitespace-insensitive AND Unicode-normalization-insensitive: PDF text
+ * extraction commonly yields NFD-decomposed combining vowel signs for some
+ * fonts/producers, while an LLM's own generated script text is typically
+ * NFC-composed — visually and semantically identical either way, but a
+ * bare string comparison would see them as different characters and
+ * reject a genuinely-correct breakdown.
+ */
 function normalizeForComparison(text: string): string {
-  return text.replace(/\s+/g, '');
+  return text.normalize('NFC').replace(/\s+/g, '');
 }
 
 /**

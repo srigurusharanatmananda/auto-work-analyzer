@@ -13,8 +13,35 @@
  * need to be found and applied in both places, easy to do once and forget
  * the other.
  */
+import { mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { extname } from 'node:path';
+import multer from 'multer';
 import type { Request, Response, NextFunction } from 'express';
-import type multer from 'multer';
+
+/**
+ * A disk-storage engine that writes to `uploadsDir` (created on demand)
+ * under a server-generated uuid filename, keeping only the original
+ * extension — the browser-supplied name is never trusted on the
+ * filesystem, only stored in the database for display.
+ *
+ * Extracted after this exact shape existed twice, independently, in
+ * `resources.routes.ts` and `chantBooks.routes.ts` — the same "found
+ * twice, extract" reasoning `uploadSingleOrReject` below already
+ * documents for itself.
+ */
+export function createUuidDiskStorage(uploadsDir: string): multer.StorageEngine {
+  return multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      mkdir(uploadsDir, { recursive: true })
+        .then(() => cb(null, uploadsDir))
+        .catch((error) => cb(error, uploadsDir));
+    },
+    filename: (_req, file, cb) => {
+      cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
+    },
+  });
+}
 
 export function uploadSingleOrReject(
   upload: multer.Multer,
