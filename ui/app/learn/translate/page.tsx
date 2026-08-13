@@ -5,9 +5,12 @@ import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
+import { downloadTextFile } from '@/lib/download';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
 import type {
+  BatchTranslateResult,
+  BatchTranslateRow,
   DocumentExtractResult,
   LearnLanguage,
   OcrResult,
@@ -39,9 +42,12 @@ export default function TranslatePage() {
   const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [docLoading, setDocLoading] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchRows, setBatchRows] = useState<BatchTranslateRow[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
     if (!spokenText.trim()) return;
@@ -149,6 +155,63 @@ export default function TranslatePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    // A batch is a separate results table, not a rewrite of the single-item
+    // text box above, so it only needs to guard against overlapping ITSELF —
+    // unlike the OCR/document uploads, there's nothing here for translate()
+    // or another upload to race with.
+    if (!file || batchLoading) return;
+
+    setBatchLoading(true);
+    // Cleared up front, not just left stale on a failed re-upload — without
+    // this, a rejected second file (e.g. over the row cap) would leave the
+    // FIRST file's table and "Download results" button on screen looking
+    // current, with no indication they belong to a different upload.
+    setBatchRows(null);
+    try {
+      const body = new FormData();
+      body.append('csv', file);
+      body.append('from', from);
+      body.append('to', to);
+      const data = await api.post<BatchTranslateResult>('/translate/batch', body);
+      setBatchRows(data.rows);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not process that CSV'));
+    } finally {
+      setBatchLoading(false);
+    }
+  }
+
+  function downloadBatchResults() {
+    if (!batchRows || batchRows.length === 0) return;
+    const columns: Array<keyof BatchTranslateRow> = [
+      'source',
+      'translation',
+      'meaning',
+      'translationTransliteration',
+      'sourceTransliteration',
+      'error',
+    ];
+    // Standard CSV quoting: only quote a field that needs it, doubling any
+    // embedded quote — anything simpler would break the moment a
+    // translation or meaning contains its own comma or newline. A leading
+    // =/+/-/@ is ALSO neutralized (a leading tab/space before it too) —
+    // Excel/Sheets treat that as a formula on open, so an uploaded row like
+    // `=HYPERLINK(...)` echoed straight back into `source` would otherwise
+    // execute the moment this download is opened, not just display as text.
+    const toCsvField = (raw: string) => {
+      const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+      return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+    };
+    const lines = [
+      columns.join(','),
+      ...batchRows.map((row) => columns.map((column) => toCsvField(row[column] ?? '')).join(',')),
+    ];
+    downloadTextFile(lines.join('\n'), 'translation-results.csv', 'text/csv');
   }
 
   return (
@@ -328,6 +391,74 @@ export default function TranslatePage() {
             )}
           </Card>
         </div>
+
+        <Card className="mt-6 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Batch translate a CSV</p>
+              <p className="text-xs text-foreground-tertiary">
+                One phrase or verse per row, first column only — uses the {LANGUAGE_LABEL[from]} →{' '}
+                {LANGUAGE_LABEL[to]} languages selected above.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvUpload} />
+              <Button variant="ghost" size="sm" onClick={() => csvInputRef.current?.click()} disabled={batchLoading}>
+                {batchLoading ? 'Translating batch...' : 'Upload CSV'}
+              </Button>
+              {batchRows && batchRows.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={downloadBatchResults}>
+                  Download results
+                </Button>
+              )}
+            </div>
+          </div>
+          {batchLoading && (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner size="lg" />
+            </div>
+          )}
+          {batchRows && !batchLoading && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs font-semibold uppercase tracking-wide text-foreground-tertiary">
+                    <th className="py-2 pr-4">{LANGUAGE_LABEL[from]}</th>
+                    <th className="py-2 pr-4">{LANGUAGE_LABEL[to]}</th>
+                    <th className="py-2">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchRows.map((row, i) => (
+                    <tr key={i} className="border-b border-border align-top last:border-0">
+                      <td className="py-2 pr-4 whitespace-pre-wrap text-foreground">
+                        {row.source}
+                        {row.sourceTransliteration && (
+                          <p className="mt-1 text-xs italic text-foreground-tertiary">{row.sourceTransliteration}</p>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 whitespace-pre-wrap">
+                        {row.error ? (
+                          <span className="text-error">{row.error}</span>
+                        ) : (
+                          <>
+                            <span className="text-foreground">{row.translation}</span>
+                            {row.translationTransliteration && (
+                              <p className="mt-1 text-xs italic text-foreground-tertiary">
+                                {row.translationTransliteration}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td className="py-2 whitespace-pre-wrap text-foreground-secondary">{row.meaning ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
     </ProtectedRoute>
   );

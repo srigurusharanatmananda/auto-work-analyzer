@@ -14,6 +14,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { PDFParse } from 'pdf-parse';
+import { parse as parseCsv } from 'csv-parse/sync';
 import type { AiClient } from '../ai/AiClient.js';
 import { toIAST } from '../learn/ScriptTransliterator.js';
 import type { Language } from '../learn/Transliterator.js';
@@ -337,6 +338,68 @@ export async function getTextWithTimeout(
   }
 }
 
+/**
+ * One row of a batch CSV upload's result — `Partial<TranslateResult>`, not
+ * a re-declared copy of its fields: a field added/renamed/removed on
+ * `TranslateResult` above now follows through here and in
+ * `ui/types/index.ts`'s mirror automatically instead of needing three
+ * separate edits kept in sync by hand. `Partial` because a wholly failed
+ * row (see `error` below) carries none of them.
+ */
+export type BatchTranslateRow = Partial<TranslateResult> & {
+  source: string;
+  /** Set instead of `translation` when this row's own `translate()` call failed — the rest of the batch is unaffected. */
+  error?: string;
+};
+
+/** The `data` payload of `POST /translate/batch`. */
+export interface BatchTranslateResult {
+  rows: BatchTranslateRow[];
+}
+
+/**
+ * Small on purpose: each row is a full `translate()` call — an LLM round
+ * trip when `from !== to` — so a big batch means a long-held HTTP request
+ * (this route responds once, with the whole table, like `/document` and
+ * `/ocr` do) and a correspondingly large AI cost. Genuine worst case (every
+ * row needing translation, every one of AiClient's configured providers
+ * slow before failing over) is minutes, not seconds — 20 rows keeps that
+ * bounded rather than open-ended, not fast.
+ */
+const MAX_BATCH_ROWS = 20;
+
+/** How many rows this route translates at once — bounds wall-clock time without firing all rows at the AI provider(s) simultaneously. */
+const BATCH_CONCURRENCY = 3;
+
+const MAX_CSV_BYTES = 256 * 1024;
+
+/**
+ * `text/plain` is deliberately NOT in this set, unlike other uploads' own
+ * fileFilters — the fileFilter below still accepts EITHER a matching
+ * mimetype OR a `.csv` extension (same OR as `documentUpload`'s), so a
+ * `.csv` file some OS/browser mislabels as `text/plain` still gets in via
+ * its extension. Including `text/plain` here too would instead let ANY
+ * plain-text file through regardless of extension — csv-parse happily
+ * parses one phrase per line as a single-column CSV, so that would
+ * silently accept a renamed `.txt` file past a filter whose whole point is
+ * to reject one.
+ */
+const CSV_MIMETYPES = new Set(['text/csv', 'application/vnd.ms-excel', 'application/csv']);
+
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_CSV_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (CSV_MIMETYPES.has(file.mimetype) || file.originalname.toLowerCase().endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  },
+});
+
+const uploadCsv = uploadSingleOrReject(csvUpload, 'csv', `${MAX_CSV_BYTES / 1024}KB`);
+
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
   const router = Router();
 
@@ -518,6 +581,118 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
     } finally {
       await parser?.destroy();
     }
+  });
+
+  /**
+   * Batch translate/transliterate a whole CSV in one request — one phrase
+   * or verse per row, first column only (extra columns are ignored, no
+   * header row is assumed: a header cell just gets translated like any
+   * other row, which is the price of not guessing at a header/data split
+   * from content alone). Each row runs through the exact same `translate()`
+   * used by `POST /` above, so a same-language batch is transliteration-
+   * only (no AI, no per-row cost) and a cross-language one calls the AI
+   * per row — a FAILURE IN ONE ROW is recorded on that row (`error`) and
+   * does not fail the batch, since one bad AI response shouldn't discard
+   * every other row's already-successful result.
+   */
+  router.post('/batch', authenticate, anyRole, uploadCsv, async (req: Request, res: Response) => {
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({
+        success: false,
+        error: 'No CSV uploaded — send it as multipart/form-data under the "csv" field.',
+      });
+      return;
+    }
+
+    const from = req.body?.from;
+    const to = req.body?.to;
+    if (!isTranslateLanguage(from) || !isTranslateLanguage(to)) {
+      res.status(400).json({
+        success: false,
+        error: 'Send "from" and "to" fields alongside the file, each one of english, sanskrit, or tamil.',
+      });
+      return;
+    }
+    // Same reasoning as POST /'s own check: fail the whole request up
+    // front, not per row — without this, an unconfigured server would 200
+    // with every row's `error` set to the same internal setup message
+    // instead of one clear failure before any CSV parsing even happens.
+    if (from !== to && !deps.aiClient.isConfigured) {
+      res.status(503).json({
+        success: false,
+        error: 'Translation is not set up — no AI provider is configured.',
+      });
+      return;
+    }
+
+    let records: string[][];
+    try {
+      // relax_column_count: real CSVs vary row-to-row (a stray comma in one
+      // row, a shorter row at the end) — only the first column is ever
+      // read, so a ragged row count elsewhere is not this route's business
+      // to reject. bom: true strips a UTF-8 byte-order mark some exporters
+      // (Excel's "CSV UTF-8") prepend — left in, it survives `trim` (a BOM
+      // is not whitespace) and silently corrupts row 1's text with a
+      // leading invisible character.
+      records = parseCsv(file.buffer.toString('utf-8'), {
+        skip_empty_lines: true,
+        trim: true,
+        relax_column_count: true,
+        bom: true,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: 'Could not parse that file as CSV',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return;
+    }
+
+    const texts = records
+      .map((row) => row[0])
+      .filter((cell): cell is string => typeof cell === 'string' && cell.trim().length > 0);
+
+    if (texts.length === 0) {
+      res.status(422).json({
+        success: false,
+        error: 'No text found in that CSV — put one phrase or verse per row, in the first column.',
+      });
+      return;
+    }
+    if (texts.length > MAX_BATCH_ROWS) {
+      res.status(400).json({
+        success: false,
+        error: `That CSV has ${texts.length} rows — batches are capped at ${MAX_BATCH_ROWS} to keep translation time reasonable. Split it into smaller files.`,
+      });
+      return;
+    }
+
+    // Chunks are awaited strictly in order, so pushing each chunk's results
+    // as it resolves already lands every row at its correct index — no
+    // separate index bookkeeping needed.
+    const rows: BatchTranslateRow[] = [];
+    for (let i = 0; i < texts.length; i += BATCH_CONCURRENCY) {
+      const chunk = texts.slice(i, i + BATCH_CONCURRENCY);
+      const chunkResults = await Promise.all(
+        chunk.map(async (source): Promise<BatchTranslateRow> => {
+          try {
+            const result = await translate(deps.aiClient, source, from, to);
+            if (!result.translation.trim()) {
+              return { source, error: 'The AI did not return a translation for this row.' };
+            }
+            return { source, ...result };
+          } catch (error) {
+            return { source, error: error instanceof Error ? error.message : 'Translation failed' };
+          }
+        })
+      );
+      rows.push(...chunkResults);
+    }
+
+    const data: BatchTranslateResult = { rows };
+    res.json({ success: true, data });
   });
 
   return router;

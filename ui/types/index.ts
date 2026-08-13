@@ -509,3 +509,22 @@ export interface DocumentExtractResult {
   text: string;
   detectedLanguage: TranslateLanguage | null;
 }
+
+/**
+ * One row of `POST /translate/batch` -> `data.rows` — `Partial<TranslateResult>`
+ * plus the row's own source text, not a re-declared copy of `TranslateResult`'s
+ * fields (mirrors the backend's own `BatchTranslateRow` in
+ * `src/routes/translate.routes.ts` for the same reason: one field added
+ * there now follows through here too, instead of three edit sites to keep
+ * in sync by hand).
+ */
+export type BatchTranslateRow = Partial<TranslateResult> & {
+  source: string;
+  /** Set instead of `translation` when this row's own translation failed — the rest of the batch is unaffected. */
+  error?: string;
+};
+
+/** The `data` payload of `POST /translate/batch`. */
+export interface BatchTranslateResult {
+  rows: BatchTranslateRow[];
+}
