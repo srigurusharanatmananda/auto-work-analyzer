@@ -13,6 +13,7 @@
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { PDFParse } from 'pdf-parse';
 import type { AiClient } from '../ai/AiClient.js';
 import { toIAST } from '../learn/ScriptTransliterator.js';
 import type { Language } from '../learn/Transliterator.js';
@@ -248,6 +249,57 @@ const ocrUpload = multer({
 
 const uploadOcrImage = uploadSingleOrReject(ocrUpload, 'image', `${MAX_OCR_IMAGE_BYTES / (1024 * 1024)}MB`);
 
+export interface DocumentExtractResult {
+  text: string;
+  detectedLanguage: TranslateLanguage;
+}
+
+/**
+ * A DETERMINISTIC guess at which script a chunk of extracted text is
+ * dominated by, from raw Unicode codepoint ranges alone — no AI call
+ * needed, unlike the image-OCR path's own `detectedLanguage` (which has
+ * to ask the model, since a photo has no Unicode text to inspect in the
+ * first place; extracted PDF text already IS Unicode text). Whichever of
+ * Devanagari/Tamil has more codepoints wins; no script characters at all
+ * (or a tie, i.e. neither present) reports 'english'. A coarse per-
+ * document signal for pre-filling the `from` dropdown, not a claim about
+ * every word in a mixed document — the same caveat the OCR path's own
+ * language field already carries.
+ */
+export function detectScriptLanguage(text: string): TranslateLanguage {
+  let devanagari = 0;
+  let tamil = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x0900 && cp <= 0x097f) devanagari++;
+    else if (cp >= 0x0b80 && cp <= 0x0bff) tamil++;
+  }
+  if (devanagari === 0 && tamil === 0) return 'english';
+  return devanagari >= tamil ? 'sanskrit' : 'tamil';
+}
+
+/**
+ * 20MB — PDFs run larger than a single photo (`MAX_OCR_IMAGE_BYTES`
+ * above), but this is still parsed entirely in memory (no disk write, no
+ * DB row — see `uploadSingleOrReject`'s own memory-storage reasoning),
+ * so this stays a bound on RAM per request, not a real storage budget.
+ */
+const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
+
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_DOCUMENT_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF documents are allowed'));
+    }
+  },
+});
+
+const uploadDocument = uploadSingleOrReject(documentUpload, 'document', `${MAX_DOCUMENT_BYTES / (1024 * 1024)}MB`);
+
 export function createTranslateRouter(deps: TranslateRouterDeps): Router {
   const router = Router();
 
@@ -363,6 +415,69 @@ export function createTranslateRouter(deps: TranslateRouterDeps): Router {
       }
     }
   );
+
+  /**
+   * Extracts a PDF's own text layer directly — no AI call at all, unlike
+   * `/ocr` above. This only works for a PDF that HAS a text layer (a
+   * document exported from a word processor, or produced by OCR software
+   * that embedded the recognized text) — a scanned/photographed page with
+   * no such layer has no text for this to find, and this route says so
+   * plainly (422) rather than guessing or silently returning nothing.
+   * Confirmed against real files, not assumed: a modern PDF's own English
+   * prose extracts cleanly, but an older scanned book using a legacy,
+   * pre-Unicode Tamil font extracts nothing recognizable as Tamil at all
+   * (either no text layer for those pages, or a non-Unicode encoding this
+   * route has no way to interpret) — exactly the case this 422 exists
+   * for. `/ocr`'s image-upload path remains the fallback for that case.
+   */
+  router.post('/document', authenticate, anyRole, uploadDocument, async (req: Request, res: Response) => {
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({
+        success: false,
+        error: 'No document uploaded — send it as multipart/form-data under the "document" field.',
+      });
+      return;
+    }
+
+    let parser: PDFParse | undefined;
+    try {
+      parser = new PDFParse({ data: file.buffer });
+      const result = await parser.getText();
+      // Built from `result.pages`, NOT `result.text` — pdf-parse's own
+      // concatenated `text` field always inserts a "-- N of M --" page
+      // marker between pages (confirmed directly: even a single BLANK
+      // page's `result.text` is "\n\n-- 1 of 1 --\n\n", never truly
+      // empty). Using it as-is would (a) never let the empty-PDF check
+      // below actually fire, and (b) litter every real multi-page
+      // extraction with those markers as if they were part of the
+      // document's own content.
+      const text = result.pages
+        .map((page) => page.text)
+        .join('\n\n')
+        .trim();
+      if (!text) {
+        res.status(422).json({
+          success: false,
+          error:
+            'No extractable text was found in that PDF — it may be a scanned or image-only document. ' +
+            'Try the image upload instead, one page at a time.',
+        });
+        return;
+      }
+      const data: DocumentExtractResult = { text, detectedLanguage: detectScriptLanguage(text) };
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Document extraction failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Document extraction failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      await parser?.destroy();
+    }
+  });
 
   return router;
 }

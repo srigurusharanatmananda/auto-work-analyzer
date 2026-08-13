@@ -34,7 +34,7 @@ afterAll(() => {
   mock.module('../middleware/policy.js', () => realPolicy);
 });
 
-const { createTranslateRouter } = await import('./translate.routes.js');
+const { createTranslateRouter, detectScriptLanguage } = await import('./translate.routes.js');
 
 function fakeProvider(response: string): AiProvider {
   return { name: 'Fake', generate: async () => response };
@@ -42,6 +42,47 @@ function fakeProvider(response: string): AiProvider {
 
 function fakeVisionProvider(response: string): AiVisionProvider {
   return { name: 'Fake Vision', generateFromImage: async () => response };
+}
+
+/**
+ * A hand-built, minimal single-page PDF with a real text-showing (Tj)
+ * operator — deliberately not a fixture file on disk: this repo has no
+ * binary-test-fixture convention, and a scratchpad-relative path would be
+ * neither portable nor committed anyway. pdf.js's own recovery mode
+ * (which `pdf-parse` is built on) tolerates the simplified/missing xref
+ * table here — confirmed directly against the installed library before
+ * relying on it in these tests, not assumed.
+ */
+function minimalPdf(text: string): Buffer {
+  const escaped = text.replace(/([()\\])/g, '\\$1');
+  const stream = `BT /F1 24 Tf 10 100 Td (${escaped}) Tj ET`;
+  const pdf =
+    `%PDF-1.1\n` +
+    `1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n` +
+    `2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n` +
+    `3 0 obj<</Type/Page/Parent 2 0 R/Resources<</Font<</F1 4 0 R>>>>/MediaBox[0 0 200 200]/Contents 5 0 R>>endobj\n` +
+    `4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n` +
+    `5 0 obj<</Length ${stream.length}>>\nstream\n${stream}\nendstream\nendobj\n` +
+    `trailer<</Size 6/Root 1 0 R>>\n%%EOF`;
+  return Buffer.from(pdf, 'utf-8');
+}
+
+/** Same minimal PDF structure, with a zero-length content stream — a real "this PDF has a page but nothing on it" case, confirmed to extract as genuinely empty text (not just visually blank). */
+function emptyPdf(): Buffer {
+  const pdf =
+    `%PDF-1.1\n` +
+    `1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n` +
+    `2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n` +
+    `3 0 obj<</Type/Page/Parent 2 0 R/Resources<<>>/MediaBox[0 0 200 200]/Contents 5 0 R>>endobj\n` +
+    `5 0 obj<</Length 0>>\nstream\nendstream\nendobj\n` +
+    `trailer<</Size 6/Root 1 0 R>>\n%%EOF`;
+  return Buffer.from(pdf, 'utf-8');
+}
+
+function pdfFormData(buffer: Buffer, filename = 'test.pdf'): FormData {
+  const form = new FormData();
+  form.append('document', new Blob([buffer], { type: 'application/pdf' }), filename);
+  return form;
 }
 
 function pngFormData(): FormData {
@@ -586,6 +627,122 @@ describe('POST /translate/ocr', () => {
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body.details).toBe('vision boom');
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('detectScriptLanguage', () => {
+  test('pure ASCII/Latin text is english', () => {
+    expect(detectScriptLanguage('Hello world, how are you?')).toBe('english');
+  });
+
+  test('no script characters at all (empty string) is english, not a crash', () => {
+    expect(detectScriptLanguage('')).toBe('english');
+  });
+
+  test('Devanagari-dominant text is sanskrit', () => {
+    expect(detectScriptLanguage('नमस्ते, this is mostly नमस्ते नमस्ते Devanagari')).toBe('sanskrit');
+  });
+
+  test('Tamil-dominant text is tamil', () => {
+    expect(detectScriptLanguage('வணக்கம், this is mostly வணக்கம் வணக்கம் Tamil')).toBe('tamil');
+  });
+
+  test('a Devanagari/Tamil tie favors sanskrit (documented tie-break, not an accident)', () => {
+    expect(detectScriptLanguage('न' + 'த')).toBe('sanskrit');
+  });
+});
+
+describe('POST /translate/document', () => {
+  test('rejects a request with no document field', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/document`, { method: 'POST', body: new FormData() });
+      expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects a non-PDF file via the same upload-error-to-400 shape as other uploads', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const form = new FormData();
+      form.append('document', new Blob([new Uint8Array([1, 2, 3])], { type: 'text/plain' }), 'test.txt');
+      const res = await fetch(`${baseUrl}/document`, { method: 'POST', body: form });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('extracts text from a real PDF text layer, no AI call needed', async () => {
+    // No AI provider configured at all — proves this path genuinely needs
+    // none, unlike /ocr's vision requirement.
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/document`, {
+        method: 'POST',
+        body: pdfFormData(minimalPdf('Hello world')),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).toContain('Hello world');
+      expect(body.data.detectedLanguage).toBe('english');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('422s a PDF with no extractable text, naming the likely cause (scanned/image-only)', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/document`, { method: 'POST', body: pdfFormData(emptyPdf()) });
+      expect(res.status).toBe(422);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error).toContain('image upload');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('does not leak pdf-parse\'s own "-- N of M --" page-separator markers into the extracted text', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/document`, {
+        method: 'POST',
+        body: pdfFormData(minimalPdf('Hello world')),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).not.toContain('--');
+      expect(body.data.text).not.toContain('of 1');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a corrupt/unparseable PDF surfaces as a 500 with details, not a crash', async () => {
+    const app = buildApp(new AiClient([]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const garbage = Buffer.from('%PDF-1.1\nthis is not a real pdf structure at all');
+      const res = await fetch(`${baseUrl}/document`, { method: 'POST', body: pdfFormData(garbage) });
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.success).toBe(false);
     } finally {
       server.close();
     }

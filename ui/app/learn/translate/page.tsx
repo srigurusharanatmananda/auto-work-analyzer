@@ -7,7 +7,13 @@ import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
-import type { LearnLanguage, OcrResult, TranslateLanguage, TranslateResult } from '@/types';
+import type {
+  DocumentExtractResult,
+  LearnLanguage,
+  OcrResult,
+  TranslateLanguage,
+  TranslateResult,
+} from '@/types';
 
 const LANGUAGE_LABEL: Record<TranslateLanguage, string> = {
   english: 'English',
@@ -32,8 +38,10 @@ export default function TranslatePage() {
   // disable the other's button for no reason.
   const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [docLoading, setDocLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
     if (!spokenText.trim()) return;
@@ -80,7 +88,7 @@ export default function TranslatePage() {
     // slower translate() resolving AFTER this OCR call finishes could
     // still call setResult() with a translation of text that's no longer
     // in the box.
-    if (!file || loading) return;
+    if (!file || loading || docLoading) return;
 
     setOcrLoading(true);
     try {
@@ -100,11 +108,34 @@ export default function TranslatePage() {
     }
   }
 
+  async function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    // Same three-way mutual exclusion as handleImageUpload — this box is
+    // about to be overwritten with the extracted text, so it must not be
+    // in flight from (or feeding) any of the other operations.
+    if (!file || loading || ocrLoading) return;
+
+    setDocLoading(true);
+    try {
+      const body = new FormData();
+      body.append('document', file);
+      const data = await api.post<DocumentExtractResult>('/translate/document', body);
+      setText(data.text);
+      setResult(null);
+      setFrom(data.detectedLanguage);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not extract text from that document'));
+    } finally {
+      setDocLoading(false);
+    }
+  }
+
   async function translate() {
     // Same reasoning as handleImageUpload's own `loading` guard, the other
-    // direction: refuses to start while an OCR upload is still populating
-    // the very text box this is about to read from.
-    if (!text.trim() || ocrLoading) return;
+    // direction: refuses to start while an OCR or document upload is still
+    // populating the very text box this is about to read from.
+    if (!text.trim() || ocrLoading || docLoading) return;
 
     setLoading(true);
     try {
@@ -182,9 +213,24 @@ export default function TranslatePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => imageInputRef.current?.click()}
-                  disabled={ocrLoading || loading}
+                  disabled={ocrLoading || loading || docLoading}
                 >
                   {ocrLoading ? 'Reading image...' : 'Upload image'}
+                </Button>
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={handleDocumentUpload}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => documentInputRef.current?.click()}
+                  disabled={docLoading || loading || ocrLoading}
+                >
+                  {docLoading ? 'Reading PDF...' : 'Upload PDF'}
                 </Button>
               </div>
             </div>
@@ -193,10 +239,11 @@ export default function TranslatePage() {
               onChange={(e) => setText(e.target.value)}
               placeholder={`Paste or type ${LANGUAGE_LABEL[from]} text here...`}
               rows={8}
-              // Disabled while OCR is filling this box in — without this,
-              // typing during that window is a real edit that setText(data.text)
-              // then silently overwrites the moment the OCR call resolves.
-              disabled={ocrLoading}
+              // Disabled while OCR/document extraction is filling this box
+              // in — without this, typing during that window is a real edit
+              // that setText(data.text) then silently overwrites the moment
+              // the upload call resolves.
+              disabled={ocrLoading || docLoading}
               className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
             />
             <div className="flex justify-end gap-2">
@@ -209,7 +256,11 @@ export default function TranslatePage() {
                   {speaking === 'source' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
                 </Button>
               )}
-              <Button variant="primary" onClick={translate} disabled={!text.trim() || loading || ocrLoading}>
+              <Button
+                variant="primary"
+                onClick={translate}
+                disabled={!text.trim() || loading || ocrLoading || docLoading}
+              >
                 {loading ? 'Translating...' : 'Translate'}
               </Button>
             </div>

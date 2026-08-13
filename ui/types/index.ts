@@ -495,3 +495,15 @@ export interface OcrResult {
   /** `null` when the model couldn't confidently pick one. */
   detectedLanguage: TranslateLanguage | null;
 }
+
+/**
+ * The `data` payload of `POST /translate/document`.
+ *
+ * `detectedLanguage` is non-nullable here unlike `OcrResult`'s — script
+ * detection is a deterministic codepoint count, not a model guess, so it
+ * always resolves to a language (defaulting to `'english'`).
+ */
+export interface DocumentExtractResult {
+  text: string;
+  detectedLanguage: TranslateLanguage;
+}
