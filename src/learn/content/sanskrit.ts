@@ -917,24 +917,9 @@ export const sanskritManifest: Manifest = {
       stage: 'letters',
       level: 1,
       // New (tranche 21): य (already taught) + the ो vowel sign already
-      // proven on ब — needed only for skt-word-yuvayos.
+      // proven on ब — needed only for skt-word-yuvayoh.
       text: 'यो',
       gloss: 'yo',
-      composedOf: [],
-    },
-    {
-      id: 'skt-letter-sa-halanta',
-      stage: 'letters',
-      level: 1,
-      // New (tranche 21): word-final स्, no vowel — the same halanta
-      // category as this file's already-taught म्/त् (skt-letter-
-      // ma-halanta, skt-letter-ta-halanta), a different consonant.
-      // Needed by skt-word-yuvayos (below) AND skt-word-tishthes (the
-      // optative section, further below) — two of this tranche's own
-      // parallel research areas independently proposed the identical
-      // letter, discovered and reconciled rather than shipped twice.
-      text: 'स्',
-      gloss: 's — word-final, no vowel',
       composedOf: [],
     },
     {
@@ -1837,15 +1822,20 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-yu', 'skt-letter-vaa', 'skt-letter-bhyaa', 'skt-letter-ma-halanta'],
     },
     {
-      id: 'skt-word-yuvayos',
+      id: 'skt-word-yuvayoh',
       stage: 'words',
       level: 3,
       // यु (already taught) + व (already taught) + यो (new, above) +
-      // स् (new, above). §491(a)'s dual row: "G.L. युवयोस्" —
-      // syncretizes genitive/locative, completing the dual.
-      text: 'युवयोस्',
-      gloss: 'yuvayos — of/in you two (genitive/locative dual personal pronoun)',
-      composedOf: ['skt-letter-yu', 'skt-letter-va', 'skt-letter-yo', 'skt-letter-sa-halanta'],
+      // ः (already taught, skt-letter-visarga). §491(a)'s dual row gives
+      // the underlying G.L. ending as -os, but word-final -s always
+      // surfaces as visarga in citation/pausa position — the same rule
+      // this file already applies for नरः/अश्वः (skt-letter-visarga) —
+      // so the real form is युवयोः (yuvayoḥ), not युवयोस्. (A prior
+      // version of this lesson shipped the phonotactically invalid स्
+      // ending directly; caught in code review and corrected here.)
+      text: 'युवयोः',
+      gloss: 'yuvayoḥ — of/in you two (genitive/locative dual personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-va', 'skt-letter-yo', 'skt-letter-visarga'],
     },
 
     // ============ Optative mood (vidhi-liṅ), tranche 21: √sthā, singular ============
@@ -1875,15 +1865,19 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-ya', 'skt-letter-ma-halanta'],
     },
     {
-      id: 'skt-word-tishthes',
+      id: 'skt-word-tishtheh',
       stage: 'words',
       level: 3,
-      // ति + ष्ठे (new, above) + स् (already taught, shared with
-      // skt-word-yuvayos above). §738's 2nd-singular cell: "2 भवेस्"
-      // applied to तिष्ठ.
-      text: 'तिष्ठेस्',
-      gloss: 'tiṣṭhes — you (singular) may/should stand (2nd person singular optative, parasmaipada)',
-      composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-sa-halanta'],
+      // ति + ष्ठे (new, above) + ः (already taught, skt-letter-visarga).
+      // §738's 2nd-singular cell gives the underlying ending as -es, but
+      // word-final -s always surfaces as visarga in citation/pausa
+      // position — the same rule this file already applies for नरः/
+      // अश्वः — so the real form is तिष्ठेः (tiṣṭheḥ), not तिष्ठेस्. (A
+      // prior version of this lesson shipped the phonotactically invalid
+      // स् ending directly; caught in code review and corrected here.)
+      text: 'तिष्ठेः',
+      gloss: 'tiṣṭheḥ — you (singular) may/should stand (2nd person singular optative, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthe', 'skt-letter-visarga'],
     },
 
     // ============ Imperative mood, tranche 20: √sthā, singular ============

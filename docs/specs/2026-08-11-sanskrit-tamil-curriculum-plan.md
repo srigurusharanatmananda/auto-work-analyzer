@@ -900,20 +900,26 @@ as a proposal, not an unreviewed edit.
   resolving it. One new letter (भ्य). Completes all 7 cases of the
   2nd-person singular pronoun.
 - **Sanskrit — the 2nd-person dual pronoun**: युवाम् (nom/acc/voc),
-  युवाभ्याम् (instr/dat/abl), युवयोस् (gen/loc) — Whitney §491(a). Six
+  युवाभ्याम् (instr/dat/abl), युवयोः (gen/loc) — Whitney §491(a). Six
   grammatical cases collapse to 3 distinct surface forms via case
   syncretism; each shipped as one word lesson whose gloss names every
   case it covers, rather than three near-duplicate lessons. Four new
-  letters, one (स्, word-final halanta) independently proposed by two of
-  this tranche's own parallel items for unrelated reasons (see the
-  process note below) and reconciled rather than duplicated.
+  letters. (This item originally shipped the genitive/locative form as
+  युवयोस्, with a new bare word-final स् letter — phonotactically invalid
+  Sanskrit, since word-final -s always surfaces as visarga in citation
+  position, the exact rule this file already applies for नरः/अश्वः. Code
+  review on this pass's own PR caught it; fixed by reusing the
+  already-existing skt-letter-visarga instead of introducing an invalid
+  new letter — see the process note below.)
 - **Sanskrit — the optative mood (vidhi-liṅ), singular**: तिष्ठेत्
   ("he/she/it may/should stand"), तिष्ठेयम् ("I may/should stand"),
-  तिष्ठेस् ("you may/should stand") — Whitney Chapter IX §738 (bhū's own
+  तिष्ठेः ("you may/should stand") — Whitney Chapter IX §738 (bhū's own
   optative paradigm) applied to तिष्ठ per §671's already-cited
   inflects-like-bhū equivalence (the same equivalence tranche 20 used for
-  the imperative). Two new letters, one shared with the dual-pronoun item
-  above.
+  the imperative). One new letter. (Same visarga bug as the dual-pronoun
+  item above — this item's 2nd-singular form originally shipped as
+  तिष्ठेस्, sharing the same invalid bare-स् letter; fixed the same way,
+  reusing skt-letter-visarga.)
 - **Sanskrit — dvandva (copulative) compounds, the samāhāra subtype**:
   सुखदुःखम् ("pleasure and pain"), Wikner 11.B.1 — the second compound
   type shipped (tranche 20 shipped only ṣaṣṭhī-tatpuruṣa). A samāhāra
@@ -950,13 +956,27 @@ as a proposal, not an unreviewed edit.
   compositions (அவள் செய்தாள், etc.) are flagged as ready-on-request in
   this item's own openQuestions rather than shipped speculatively.
 
-Sanskrit: 136 → 156 lessons. Tamil: 269 → 277 lessons.
+Sanskrit: 136 → 156 lessons (one letter, skt-letter-sa-halanta, was removed
+during code-review fixes below, netting the same total the workflow
+originally proposed). Tamil: 269 → 277 lessons.
 
 **A note on process**: the letter-collision and self-report discrepancy
 above were both caught by direct verification (grepping the working file
 before insertion; reading raw JSON instead of prose summaries) rather than
-by the workflow's own agents — worth carrying forward as standing
-discipline for the next tranche, not just this one.
+by the workflow's own agents. Code review on this pass's own PR caught a
+further, more serious issue neither the workflow's drafter nor its
+verifier caught: a genuinely invalid Sanskrit form (bare word-final स्
+where visarga is phonotactically required) that the mechanical
+`composedOf`-reconstruction check cannot detect, since the wrong letter
+and the wrong word text agreed with each other. Two lessons
+(skt-word-yuvayoh, renamed from skt-word-yuvayos, and skt-word-tishtheh,
+renamed from skt-word-tishthes) were corrected to use the existing
+skt-letter-visarga in place of the invalid new letter, which was then
+removed as unused. Worth carrying forward as standing discipline for the
+next tranche: `validateManifest`'s checks (dependency existence, stage,
+level, text reconstruction) verify internal consistency, not phonological
+validity — a human or adversarial-review pass must still check that the
+Devanagari itself is real Sanskrit/Tamil, not just self-consistent.
 
 ## What's next, in order
 
@@ -972,11 +992,17 @@ discipline for the next tranche, not just this one.
    grammatical concept; itaretara dvandva is blocked on dual-number
    declension, untaught in any form). Tamil's person-conjugation table
    now has present tense for all four persons this file names (அவன்/
-   அவள்/அவர்/அவர்கள்) and past/future for all four as well; 1st-person
-   plural (நாம்/நாங்கள்), 2nd-person plural/honorific (நீங்கள்), and
-   3rd-person neuter (அது/அவை) remain entirely unstarted — each needs its
-   own new base-pronoun word first. Each still needs its own citation the
-   way every tranche so far has had.
+   அவள்/அவர்/அவர்கள்); past/future tense covers அவன்/அவள் (singular) and
+   அவர்கள் (plural) but NOT the honorific singular (செய்தார்/செய்வார் —
+   distinct from the already-shipped plural செய்தார்கள்/செய்வார்கள்) or
+   அவன்'s own future (செய்வான் was never shipped, only its past
+   செய்தான்) — both still need their own citation and are natural next
+   slices, not yet done despite the present-tense table's own honorific
+   coverage. 1st-person plural (நாம்/நாங்கள்), 2nd-person
+   plural/honorific (நீங்கள்), and 3rd-person neuter (அது/அவை) remain
+   entirely unstarted — each needs its own new base-pronoun word first.
+   Each still needs its own citation the way every tranche so far has
+   had.
 2. **Expert-tier reading** for both languages, once a real short verse —
    freshly chosen for what it needs, not assumed to be one of the two
    calibration verses above — is fully decomposable into taught vocabulary
