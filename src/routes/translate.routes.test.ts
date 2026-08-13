@@ -10,7 +10,7 @@
  */
 import { afterAll, describe, expect, mock, test } from 'bun:test';
 import express from 'express';
-import { AiClient, type AiProvider } from '../ai/AiClient.js';
+import { AiClient, type AiProvider, type AiVisionProvider } from '../ai/AiClient.js';
 
 const TEST_USER_ID = 'translate-test-user';
 
@@ -38,6 +38,19 @@ const { createTranslateRouter } = await import('./translate.routes.js');
 
 function fakeProvider(response: string): AiProvider {
   return { name: 'Fake', generate: async () => response };
+}
+
+function fakeVisionProvider(response: string): AiVisionProvider {
+  return { name: 'Fake Vision', generateFromImage: async () => response };
+}
+
+function pngFormData(): FormData {
+  const form = new FormData();
+  // Content doesn't need to be a real PNG — fileFilter only checks the
+  // declared mimetype/field name, and the fake AiVisionProvider below never
+  // actually decodes the bytes.
+  form.append('image', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }), 'test.png');
+  return form;
 }
 
 function buildApp(aiClient: AiClient) {
@@ -310,7 +323,12 @@ describe('POST /translate', () => {
     }
   });
 
-  test('a translation marker with no meaning marker after it falls back to the whole response', async () => {
+  test('a translation marker with no meaning marker still extracts the translation, with no meaning', async () => {
+    // parseMarkerSections extracts whatever markers ARE present rather than
+    // requiring every marker before trusting any of them — a model that
+    // only partially followed the format still gets its translation shown
+    // cleanly, not buried behind a literal "===TRANSLATION===" the user
+    // would otherwise see.
     const app = buildApp(new AiClient([fakeProvider('===TRANSLATION===\nGreetings, no meaning section here')]));
     const { server, baseUrl } = await listen(app);
     try {
@@ -322,8 +340,69 @@ describe('POST /translate', () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.data.translation).toBe('===TRANSLATION===\nGreetings, no meaning section here');
+      expect(body.data.translation).toBe('Greetings, no meaning section here');
       expect(body.data.meaning).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a genuinely empty TRANSLATION section is a clear 502, not a silent 200 with blank content', async () => {
+    const app = buildApp(new AiClient([fakeProvider('===TRANSLATION===\n\n===MEANING===\nSome context.')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      expect(res.status).toBe(502);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('when TRANSLATION is missing but a later marker (MEANING) is present, only the leading text becomes the translation — not the whole response with the marker scaffolding embedded in it', async () => {
+    const response = "I couldn't translate this confidently.\n===MEANING===\nLooks like a proverb.";
+    const app = buildApp(new AiClient([fakeProvider(response)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe("I couldn't translate this confidently.");
+      expect(body.data.translation).not.toContain('===MEANING===');
+      expect(body.data.meaning).toBe('Looks like a proverb.');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a code fence wrapping the ENTIRE marked-up response is stripped once, up front — not left dangling on the last section', async () => {
+    const response = '```\n===TRANSLATION===\nGreetings\n===MEANING===\nAn informal hello.\n```';
+    const app = buildApp(new AiClient([fakeProvider(response)]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'नमस्ते', from: 'sanskrit', to: 'english' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.translation).toBe('Greetings');
+      // The regression this guards: without stripping the fence BEFORE
+      // marker-parsing, the trailing ``` used to end up appended to
+      // whichever section came last.
+      expect(body.data.meaning).toBe('An informal hello.');
     } finally {
       server.close();
     }
@@ -341,6 +420,172 @@ describe('POST /translate', () => {
         body: JSON.stringify({ text: 'hello', from: 'english', to: 'tamil' }),
       });
       expect(res.status).toBe(500);
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('POST /translate/ocr', () => {
+  test('rejects a request with no image field', async () => {
+    const app = buildApp(new AiClient([], fakeVisionProvider('unused')));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: new FormData() });
+      expect(res.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('rejects a disallowed file type via the same upload-error-to-400 shape as other uploads', async () => {
+    const app = buildApp(new AiClient([], fakeVisionProvider('unused')));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const form = new FormData();
+      form.append('image', new Blob([new Uint8Array([1, 2, 3])], { type: 'text/plain' }), 'test.txt');
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: form });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('503s when no vision provider is configured (no GOOGLE_API_KEY)', async () => {
+    const app = buildApp(new AiClient([fakeProvider('unused')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      expect(res.status).toBe(503);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('the vision check runs BEFORE multer buffers the upload — an oversized file with no vision provider still 503s, not 400', async () => {
+    // If the size check ran first, this would be a 400 (LIMIT_FILE_SIZE)
+    // instead — this proves the ordering, not just the outcome.
+    const app = buildApp(new AiClient([fakeProvider('unused')]));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const form = new FormData();
+      const oversized = new Uint8Array(11 * 1024 * 1024); // over the 10MB limit
+      form.append('image', new Blob([oversized], { type: 'image/png' }), 'big.png');
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: form });
+      expect(res.status).toBe(503);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('extracts text and detected language from a valid marker response', async () => {
+    const response = '===TEXT===\nनमस्ते\n===LANGUAGE===\nsanskrit';
+    const app = buildApp(new AiClient([], fakeVisionProvider(response)));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).toBe('नमस्ते');
+      expect(body.data.detectedLanguage).toBe('sanskrit');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('an "unknown" or unrecognized language marker becomes null, never a guess', async () => {
+    const response = '===TEXT===\nsome illegible scrawl\n===LANGUAGE===\nunknown';
+    const app = buildApp(new AiClient([], fakeVisionProvider(response)));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.detectedLanguage).toBeNull();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a response with no markers at all falls back to the fence-stripped whole text, with no detected language', async () => {
+    const app = buildApp(new AiClient([], fakeVisionProvider('```\nplain text, no markers\n```')));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).toBe('plain text, no markers');
+      expect(body.data.detectedLanguage).toBeNull();
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a code fence wrapping the ENTIRE marked-up OCR response is stripped once, up front — LANGUAGE does not end up with a trailing fence', async () => {
+    const response = '```\n===TEXT===\nनमस्ते\n===LANGUAGE===\nsanskrit\n```';
+    const app = buildApp(new AiClient([], fakeVisionProvider(response)));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).toBe('नमस्ते');
+      // The regression this guards: without stripping the fence first,
+      // this used to come back as "sanskrit\n```" — failing
+      // isTranslateLanguage's exact match and silently degrading to null.
+      expect(body.data.detectedLanguage).toBe('sanskrit');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('when TEXT is missing but LANGUAGE is present, the leading text (not the whole response) becomes the fallback text', async () => {
+    const response = "I can't read this clearly.\n===LANGUAGE===\nunknown";
+    const app = buildApp(new AiClient([], fakeVisionProvider(response)));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.text).toBe("I can't read this clearly.");
+      expect(body.data.text).not.toContain('===LANGUAGE===');
+    } finally {
+      server.close();
+    }
+  });
+
+  test('422s when no text was found in the image', async () => {
+    const app = buildApp(new AiClient([], fakeVisionProvider('===TEXT===\n===LANGUAGE===\nunknown')));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      expect(res.status).toBe(422);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a failing vision provider surfaces as a 500 with details', async () => {
+    const failingVision: AiVisionProvider = {
+      name: 'Fake Vision',
+      generateFromImage: async () => {
+        throw new Error('vision boom');
+      },
+    };
+    const app = buildApp(new AiClient([], failingVision));
+    const { server, baseUrl } = await listen(app);
+    try {
+      const res = await fetch(`${baseUrl}/ocr`, { method: 'POST', body: pngFormData() });
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.details).toBe('vision boom');
     } finally {
       server.close();
     }

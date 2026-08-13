@@ -7,7 +7,7 @@ import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
 import toast from 'react-hot-toast';
-import type { LearnLanguage, TranslateLanguage, TranslateResult } from '@/types';
+import type { LearnLanguage, OcrResult, TranslateLanguage, TranslateResult } from '@/types';
 
 const LANGUAGE_LABEL: Record<TranslateLanguage, string> = {
   english: 'English',
@@ -31,7 +31,9 @@ export default function TranslatePage() {
   // rather than a single shared boolean, so playing one side doesn't
   // disable the other's button for no reason.
   const [speaking, setSpeaking] = useState<'source' | 'result' | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   async function playSide(side: 'source' | 'result', language: LearnLanguage, spokenText: string) {
     if (!spokenText.trim()) return;
@@ -65,8 +67,44 @@ export default function TranslatePage() {
     }
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Cleared up front, not just on every exit path below — same reasoning
+    // as handleUpload's own clear, so re-picking the SAME file still fires
+    // onChange.
+    e.target.value = '';
+    // Guards against overlapping with a translate() already in flight, not
+    // just its own button's disabled state — the button is the normal way
+    // in, but disabled state alone doesn't stop a request already queued
+    // (e.g. a fast second click before React re-renders). Without this, a
+    // slower translate() resolving AFTER this OCR call finishes could
+    // still call setResult() with a translation of text that's no longer
+    // in the box.
+    if (!file || loading) return;
+
+    setOcrLoading(true);
+    try {
+      const body = new FormData();
+      body.append('image', file);
+      const data = await api.post<OcrResult>('/translate/ocr', body);
+      setText(data.text);
+      setResult(null);
+      // Only ever moves `from` TO a confidently-detected language, never
+      // clears it back to a guess — if the model couldn't tell,
+      // whatever the learner already had selected stays selected.
+      if (data.detectedLanguage) setFrom(data.detectedLanguage);
+    } catch (caught) {
+      toast.error(messageFor(caught, 'Could not extract text from that image'));
+    } finally {
+      setOcrLoading(false);
+    }
+  }
+
   async function translate() {
-    if (!text.trim()) return;
+    // Same reasoning as handleImageUpload's own `loading` guard, the other
+    // direction: refuses to start while an OCR upload is still populating
+    // the very text box this is about to read from.
+    if (!text.trim() || ocrLoading) return;
 
     setLoading(true);
     try {
@@ -133,6 +171,21 @@ export default function TranslatePage() {
                 <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>
                   Upload .txt
                 </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={ocrLoading || loading}
+                >
+                  {ocrLoading ? 'Reading image...' : 'Upload image'}
+                </Button>
               </div>
             </div>
             <textarea
@@ -140,7 +193,11 @@ export default function TranslatePage() {
               onChange={(e) => setText(e.target.value)}
               placeholder={`Paste or type ${LANGUAGE_LABEL[from]} text here...`}
               rows={8}
-              className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary"
+              // Disabled while OCR is filling this box in — without this,
+              // typing during that window is a real edit that setText(data.text)
+              // then silently overwrites the moment the OCR call resolves.
+              disabled={ocrLoading}
+              className="w-full rounded-md border border-border bg-background p-3 text-base text-foreground placeholder:text-foreground-tertiary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
             />
             <div className="flex justify-end gap-2">
               {isSpeakable(from) && (
@@ -152,7 +209,7 @@ export default function TranslatePage() {
                   {speaking === 'source' ? 'Synthesizing (can take minutes)...' : 'Play audio'}
                 </Button>
               )}
-              <Button variant="primary" onClick={translate} disabled={!text.trim() || loading}>
+              <Button variant="primary" onClick={translate} disabled={!text.trim() || loading || ocrLoading}>
                 {loading ? 'Translating...' : 'Translate'}
               </Button>
             </div>

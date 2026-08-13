@@ -17,6 +17,7 @@ import { Router } from "express";
 import multer from "multer";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { anyRole } from "../middleware/policy.js";
+import { uploadSingleOrReject } from "../middleware/upload.middleware.js";
 import { WorkItem, WorkItemPriority } from "../domain/WorkItem.js";
 import { RenderedTask, renderTasks } from "../formatting/ClickUpRenderer.js";
 import { renderMarkdown } from "../formatting/MarkdownRenderer.js";
@@ -458,26 +459,10 @@ export function createTasksRouter(deps: TasksRouterDeps): Router {
     },
   });
 
-  /**
-   * Multer signals a rejected upload — over the 5 MB limit, or a non-text
-   * mimetype — by calling back with an Error. Left alone that reaches Express's
-   * global handler and answers 500 "Internal server error", blaming the server
-   * for a bad request. This turns both into a 400 naming the cause.
-   */
-  const uploadNotes = (req: any, res: any, next: any): void => {
-    upload.single("notes")(req, res, (error: any) => {
-      if (!error) return next();
-      const tooLarge = error?.code === "LIMIT_FILE_SIZE";
-      res.status(400).json({
-        success: false,
-        error: tooLarge
-          ? "That file is larger than the 5 MB limit."
-          : error instanceof Error
-            ? error.message
-            : "Upload rejected",
-      });
-    });
-  };
+  // See upload.middleware.ts's own header for why this is shared, not
+  // reimplemented here — it used to be, until translate.routes.ts's OCR
+  // upload needed the identical shape a second time.
+  const uploadNotes = uploadSingleOrReject(upload, "notes", "5 MB");
 
   /**
    * Where the destination is chosen, on every path that renders or creates.

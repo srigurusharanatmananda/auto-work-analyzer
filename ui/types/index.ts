@@ -488,3 +488,10 @@ export interface TranslateResult {
   translationTransliteration?: string;
   sourceTransliteration?: string;
 }
+
+/** The `data` payload of `POST /translate/ocr`. */
+export interface OcrResult {
+  text: string;
+  /** `null` when the model couldn't confidently pick one. */
+  detectedLanguage: TranslateLanguage | null;
+}
