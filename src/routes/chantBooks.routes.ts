@@ -43,9 +43,15 @@ export interface ChantBooksRouterDeps {
 }
 
 /**
- * Same 500MB allowance `resources.routes.ts` gives a scanned book, and for
- * the same reason: multer streams the upload straight to disk, so this
- * bounds disk usage, not RAM.
+ * Same 500MB allowance `resources.routes.ts` gives a scanned book: multer
+ * streams the upload straight to disk, so this bounds disk usage.
+ *
+ * It does NOT bound RAM on its own, and the analogy to `resources.routes.ts`
+ * stops there — that route only stores what it takes, while this one parses
+ * it, and `extractText` below must read the whole file into one Buffer
+ * because pdf-parse has no streaming API. `withExclusivePdfParse` is what
+ * makes the peak bounded: one parse at a time, so the worst case is one
+ * file's buffer rather than one per concurrent upload.
  *
  * This was 50MB, on the reasoning that a chant book is extracted-text
  * rather than scanned-image PDF and so would be far smaller. That reasoning
@@ -70,6 +76,33 @@ const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf', '.txt']);
  */
 const DOCUMENT_PARSE_TIMEOUT_MS = 5 * 60_000;
 
+/**
+ * Only one PDF is parsed at a time, process-wide.
+ *
+ * Multer streams the upload to disk, so the 500MB cap above really does bound
+ * disk rather than RAM — but `extractText` then undoes that by reading the
+ * whole file into a single Buffer for pdf-parse, which has no streaming API.
+ * `translate.routes.ts` faces the same constraint and answers it by capping at
+ * 20MB; a chant book cannot, because a real scripture edition is genuinely
+ * large. So the cap stays at 500MB and the CONCURRENCY is bounded instead:
+ * without this, a handful of simultaneous large uploads allocate their buffers
+ * at once and OOM-kill the API for every user, and pdf.js parsing is
+ * CPU-bound enough to stall the event loop for minutes besides.
+ *
+ * A queue rather than a rejection: an upload that waits is a slow upload, an
+ * upload that 503s is a lost one, and the learner has already spent the
+ * transfer time by the time we get here.
+ */
+let pdfParseQueue: Promise<unknown> = Promise.resolve();
+export function withExclusivePdfParse<T>(run: () => Promise<T>): Promise<T> {
+  // `.catch(() => {})` on the tail, not on the returned promise: one upload's
+  // failure must not reject the next one's turn, but the caller still needs
+  // to see its own error.
+  const turn = pdfParseQueue.then(run);
+  pdfParseQueue = turn.catch(() => {});
+  return turn;
+}
+
 function isLanguage(value: unknown): value is Language {
   return value === 'sanskrit' || value === 'tamil';
 }
@@ -78,25 +111,27 @@ async function extractText(filePath: string, extension: string): Promise<string>
   if (extension === '.txt') {
     return (await readFile(filePath, 'utf-8')).trim();
   }
-  const buffer = await readFile(filePath);
-  const parser = new PDFParse({ data: buffer });
-  try {
-    let timer: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`PDF parsing timed out after ${DOCUMENT_PARSE_TIMEOUT_MS}ms — the file may be malformed or unusually complex`)),
-        DOCUMENT_PARSE_TIMEOUT_MS
-      );
-    });
+  return withExclusivePdfParse(async () => {
+    const buffer = await readFile(filePath);
+    const parser = new PDFParse({ data: buffer });
     try {
-      const result = await Promise.race([parser.getText(), timeout]);
-      return result.pages.map((page) => page.text).join('\n\n').trim();
+      let timer: ReturnType<typeof setTimeout>;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`PDF parsing timed out after ${DOCUMENT_PARSE_TIMEOUT_MS}ms — the file may be malformed or unusually complex`)),
+          DOCUMENT_PARSE_TIMEOUT_MS
+        );
+      });
+      try {
+        const result = await Promise.race([parser.getText(), timeout]);
+        return result.pages.map((page) => page.text).join('\n\n').trim();
+      } finally {
+        clearTimeout(timer!);
+      }
     } finally {
-      clearTimeout(timer!);
+      await parser.destroy();
     }
-  } finally {
-    await parser.destroy();
-  }
+  });
 }
 
 export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {

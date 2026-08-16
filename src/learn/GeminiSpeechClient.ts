@@ -115,18 +115,31 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
       );
     }
 
-    return withTimeout(DEFAULT_TIMEOUT_MS, signal, async (innerSignal) => {
-      // Prosody is a spoken-style instruction to the model, not a config
-      // field on Gemini's side — folded into the input text itself, the
-      // way Gemini's own docs show ("Say cheerfully: ..."). The "Say ...:"
-      // framing is not just stylistic: verified by hand that sending bare
-      // text with no instruction gets a 400 ("Model tried to generate text,
-      // but it should only be used for TTS") — the model needs to be told
-      // this is something to speak, not to respond to. So this always
-      // wraps, even with no prosody given.
-      const input = `Say ${prosody ? `in a ${prosody} voice` : 'clearly'}: ${text}`;
+    // Prosody is a spoken-style instruction to the model, not a config field
+    // on Gemini's side — folded into the input text itself, the way Gemini's
+    // own docs show ("Say cheerfully: ..."). The "Say ...:" framing is not
+    // just stylistic: verified by hand that sending bare text with no
+    // instruction gets a 400 ("Model tried to generate text, but it should
+    // only be used for TTS") — the model needs to be told this is something
+    // to speak, not to respond to. So this always wraps, even with no prosody.
+    const input = `Say ${prosody ? `in a ${prosody} voice` : 'clearly'}: ${text}`;
 
-      let response!: Response;
+    // Each ATTEMPT gets its own DEFAULT_TIMEOUT_MS, rather than all three
+    // sharing one budget. Sharing it meant a first attempt that spent ~15s
+    // generating and then came back content_blocked left under 15s for two
+    // more attempts plus backoff, so the outer abort fired mid-retry and the
+    // learner got "Synthesis timed out." instead of either the real reason or
+    // the audio a retry would have produced. The caller's own `signal` still
+    // bounds the whole operation, so this cannot run away.
+    return this.synthesizeWithRetries(input, voice, signal);
+  }
+
+  private async synthesizeWithRetries(
+    input: string,
+    voice: string,
+    signal: AbortSignal | undefined
+  ): Promise<SynthesisResult> {
+    let response!: Response;
       let blockedBody = '';
 
       // Gemini's safety filter intermittently answers a perfectly ordinary
@@ -146,30 +159,32 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
         if (attempt > 0) await this.sleep(CONTENT_BLOCKED_BACKOFF_MS * attempt);
 
         try {
-          response = await this.fetchImpl(ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': this.apiKey,
-            },
-            body: JSON.stringify({
-              model: this.model,
-              input,
-              response_format: { type: 'audio' },
-              generation_config: { speech_config: [{ voice }] },
-            }),
-            signal: innerSignal,
-          });
+          response = await withTimeout(DEFAULT_TIMEOUT_MS, signal, (innerSignal) =>
+            this.fetchImpl(ENDPOINT, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': this.apiKey!,
+              },
+              body: JSON.stringify({
+                model: this.model,
+                input,
+                response_format: { type: 'audio' },
+                generation_config: { speech_config: [{ voice }] },
+              }),
+              signal: innerSignal,
+            })
+          );
         } catch (error) {
           // A caller-side timeout (learn.routes.ts's outer bound, or this
           // client's own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped
           // connection below, not a hard failure.
           if (isAbortError(error)) {
-            throw new SpeechUnavailableError('Synthesis timed out.');
+            throw new SpeechUnavailableError('Synthesis timed out.', 'That took too long to speak — try again.');
           }
           const code = (error as NodeJS.ErrnoException)?.code;
           if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
-            throw new SpeechUnavailableError('Could not reach the Gemini API.');
+            throw new SpeechUnavailableError('Could not reach the Gemini API.', 'Could not reach the speech service — try again shortly.');
           }
           throw error;
         }
@@ -178,11 +193,14 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
 
         const body = await response.text().catch(() => '');
         if (response.status === 401 || response.status === 403) {
+          // No learnerMessage: a rejected key is an operator problem, and naming
+          // the provider or the status tells a learner nothing they can act on.
           throw new SpeechUnavailableError(`Gemini rejected the API key (${response.status}).`);
         }
         if (response.status === 429) {
           throw new SpeechUnavailableError(
-            'Gemini rate-limited this request (429) — its free tier is per-minute, so this usually clears on its own.'
+            'Gemini rate-limited this request (429) — its free tier is per-minute, so this usually clears on its own.',
+            'Too many audio requests just now — wait a moment and try again.'
           );
         }
         if (response.status === 400 && body.includes('content_blocked')) {
@@ -200,7 +218,8 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
         // can do nothing about and which usually clears — the same class of
         // thing a 429 is, not the same class as a malformed request.
         throw new SpeechUnavailableError(
-          `Gemini's safety filter blocked this text on every attempt: ${blockedBody}`.trim()
+          `Gemini's safety filter blocked this text on every attempt: ${blockedBody}`.trim(),
+          'The speech service declined to read this text — try again, it is usually transient.'
         );
       }
 
@@ -222,6 +241,5 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
 
       const pcm = Buffer.from(base64Audio, 'base64');
       return { audio: pcmToWav(pcm), contentType: 'audio/wav' };
-    });
   }
 }

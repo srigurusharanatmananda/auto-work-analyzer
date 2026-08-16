@@ -26,7 +26,7 @@ import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
 import {
-  DEFAULT_VOICE as CACHE_VOICE_KEY,
+  cacheVoiceKeyFor,
   defaultSpeechClientFor,
 } from '../src/routes/learn.routes.js';
 
@@ -52,6 +52,9 @@ async function main() {
   // wasn't up, leaving 181 of the Guru Gita's 182 verses unwarmed.
   const speechClient = defaultSpeechClientFor()('sanskrit');
   const audioCache = new AudioCache();
+  // Backend-scoped, so a run against one backend never reads or overwrites
+  // the other's entries — see cacheVoiceKeyFor's own comment.
+  const cacheVoiceKey = cacheVoiceKeyFor(speechClient);
 
   // Only the self-hosted client has a container to wait for; Gemini is a
   // hosted API with nothing to poll.
@@ -77,7 +80,7 @@ async function main() {
     // here would mean this pregeneration writes a cache entry a real
     // request's own key never reads.
     const synthesisText = transliterateForSynthesis(item.text.trim(), 'sanskrit');
-    const existing = await audioCache.get(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY);
+    const existing = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
     if (existing) {
       cached++;
       console.log(`[cached]       ${item.id} (${item.text})`);
@@ -88,7 +91,7 @@ async function main() {
     const started = Date.now();
     try {
       const result = await speechClient.synthesize({ text: synthesisText, prosody: DEFAULT_PROSODY });
-      await audioCache.put(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY, result.audio);
+      await audioCache.put(synthesisText, cacheVoiceKey, DEFAULT_PROSODY, result.audio);
       generated++;
       console.log(`[done]         ${item.id} — ${Math.round((Date.now() - started) / 1000)}s`);
     } catch (error) {

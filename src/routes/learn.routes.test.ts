@@ -55,7 +55,7 @@ afterAll(() => {
 // Imported dynamically, and only after the mocks above are installed, so this
 // module (and the two it wires in) resolve against the fakes rather than the
 // real, Postgres-backed middleware.
-const { createLearnRouter, defaultSpeechClientFor } = await import('./learn.routes.js');
+const { createLearnRouter, defaultSpeechClientFor, cacheVoiceKeyFor } = await import('./learn.routes.js');
 
 /** In-memory stand-in for ProgressService. One Set per (userId, language). */
 function fakeProgress(): ProgressService & { seenByKey: Map<string, Set<string>>; recordSeenCalls: number } {
@@ -328,6 +328,31 @@ describe('defaultSpeechClientFor', () => {
     expect(defaultSpeechClientFor(placeholder)('sanskrit').constructor.name).toBe('SpeechClient');
   });
 
+  test('the injected env reaches the CLIENTS, not just the routing decision', async () => {
+    // Guards the half-injectable trap: this used to decide routing from `env`
+    // while the clients read process.env themselves, so an injected key was
+    // silently ignored and a test asserting only constructor.name still
+    // passed.
+    //
+    // Uses the PLACEHOLDER key deliberately. GeminiSpeechClient rejects that
+    // value before it opens a socket, so this proves the injected value
+    // reached the client without hitting a live provider — which this repo's
+    // standing rules forbid outright, and which an earlier draft of this very
+    // test did by accident (it reached Gemini and came back API_KEY_INVALID).
+    const previous = process.env.GOOGLE_API_KEY;
+    process.env.GOOGLE_API_KEY = 'AIzaRealKeyInProcessEnv';
+    try {
+      const env = { GOOGLE_API_KEY: 'your_google_api_key_here' } as NodeJS.ProcessEnv;
+      const client = defaultSpeechClientFor(env)('tamil');
+      // Were the seam still broken, the client would hold the real
+      // process.env key and this would attempt a network call instead.
+      await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SpeechUnavailableError);
+    } finally {
+      if (previous === undefined) delete process.env.GOOGLE_API_KEY;
+      else process.env.GOOGLE_API_KEY = previous;
+    }
+  });
+
   test('LEARN_SANSKRIT_TTS=self-hosted overrides an available Google key', () => {
     const env = {
       GOOGLE_API_KEY: 'AIzaTestKey',
@@ -337,6 +362,36 @@ describe('defaultSpeechClientFor', () => {
     // Tamil is unaffected — the override is Sanskrit's, and the self-hosted
     // container has no Tamil voice to fall back to.
     expect(defaultSpeechClientFor(env)('tamil').constructor.name).toBe('GeminiSpeechClient');
+  });
+});
+
+describe('cacheVoiceKeyFor', () => {
+  // Both backends used to write under the bare label 'default', so one
+  // backend's bytes could be served for the other's key. That is what left
+  // Guru Gita verse 1 playing in the self-hosted container's voice while
+  // every other verse played in Gemini's, and what would have made
+  // LEARN_SANSKRIT_TTS=self-hosted a no-op (the pregeneration scripts would
+  // hit Gemini's entries and generate nothing).
+  test('keys the two backends apart, so switching backends is a miss not a wrong-voice hit', async () => {
+    const { SpeechClient } = await import('../learn/SpeechClient.js');
+    const { GeminiSpeechClient } = await import('../learn/GeminiSpeechClient.js');
+
+    const selfHosted = cacheVoiceKeyFor(new SpeechClient());
+    const gemini = cacheVoiceKeyFor(new GeminiSpeechClient({ apiKey: 'k' }));
+
+    expect(selfHosted).not.toBe(gemini);
+    expect(selfHosted).toBe('default@parler');
+    expect(gemini).toBe('default@gemini');
+  });
+
+  test('an explicitly named voice is still scoped to its backend', async () => {
+    const { GeminiSpeechClient } = await import('../learn/GeminiSpeechClient.js');
+    const client = new GeminiSpeechClient({ apiKey: 'k' });
+
+    expect(cacheVoiceKeyFor(client, 'Kore')).toBe('Kore@gemini');
+    // Blank is treated as absent, the same as undefined — otherwise a caller
+    // sending voice:'' would split the cache from every other default request.
+    expect(cacheVoiceKeyFor(client, '   ')).toBe('default@gemini');
   });
 });
 
@@ -390,9 +445,11 @@ describe('POST /learn/speak', () => {
     });
     const cachedBytes = Buffer.from('cached-audio-bytes');
     // Pre-seed the cache with exactly what the route will look up: text after
-    // transliteration (identity, for both languages today), the default
-    // voice, DEFAULT_PROSODY.
-    await audioCache.put('न', 'default', DEFAULT_PROSODY, cachedBytes);
+    // transliteration (identity, for both languages today), the default voice
+    // key, DEFAULT_PROSODY. The voice key carries the BACKEND — a fake
+    // synthesizer is not a SpeechClient, so it keys as 'gemini'; see
+    // cacheVoiceKeyFor for why the backend has to be in the key at all.
+    await audioCache.put('न', 'default@gemini', DEFAULT_PROSODY, cachedBytes);
 
     const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
     const { server, baseUrl } = await listen(app);
@@ -437,7 +494,37 @@ describe('POST /learn/speak', () => {
       // this equals the raw Devanagari the request sent.
       expect(speechClient.calls[0]!.text).toBe('न');
       expect(audioCache.putCalls).toBe(1);
-      expect(audioCache.store.get(JSON.stringify(['न', 'default', DEFAULT_PROSODY]))?.equals(synthesized)).toBe(true);
+      expect(audioCache.store.get(JSON.stringify(['न', 'default@gemini', DEFAULT_PROSODY]))?.equals(synthesized)).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  test('a SpeechUnavailableError with a learnerMessage shows that, never the raw message', async () => {
+    const audioCache = fakeAudioCache();
+    const speechClient = fakeSpeechClient(() => {
+      throw new SpeechUnavailableError(
+        'GOOGLE_API_KEY is not set, so Gemini speech generation is unavailable.',
+        'Could not reach the speech service — try again shortly.'
+      );
+    });
+
+    const app = buildApp({ audioCache, speechClientFor: () => speechClient, progressFactory: fakeProgress });
+    const { server, baseUrl } = await listen(app);
+
+    try {
+      const res = await fetch(`${baseUrl}/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: 'sanskrit', text: 'न' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(503);
+      expect(body.error).toBe('Could not reach the speech service — try again shortly.');
+      // The specific guarantee: no provider name, no env var name, reaches a learner.
+      expect(body.error).not.toContain('GOOGLE_API_KEY');
+      expect(JSON.stringify(body)).not.toContain('Gemini');
     } finally {
       server.close();
     }
@@ -461,7 +548,13 @@ describe('POST /learn/speak', () => {
       const body = await res.json();
 
       expect(res.status).toBe(503);
-      expect(body).toEqual({ success: false, error: 'TTS service is not up yet' });
+      // The RAW message is logged, never returned — it routinely names the
+      // provider or a missing env var. A throw site that sets no
+      // learnerMessage falls back to this generic one.
+      expect(body).toEqual({
+        success: false,
+        error: 'Text-to-speech is unavailable right now — try again shortly.',
+      });
     } finally {
       server.close();
     }
@@ -539,7 +632,7 @@ describe('POST /learn/speak', () => {
       // call that omitted a voice. `undefined` here is what lets each
       // backend's own default apply.
       expect(speechClient.calls[0]!.voice).toBeUndefined();
-      expect(audioCache.store.has(JSON.stringify(['न', 'default', DEFAULT_PROSODY]))).toBe(true);
+      expect(audioCache.store.has(JSON.stringify(['न', 'default@gemini', DEFAULT_PROSODY]))).toBe(true);
     } finally {
       server.close();
     }

@@ -169,6 +169,28 @@ describe('synthesize', () => {
     expect(requests).toHaveLength(3);
   });
 
+  test('each retry attempt gets its own timeout budget, not a shared one', async () => {
+    // The retry loop used to sit INSIDE one withTimeout, so three attempts
+    // plus backoff shared a single 30s budget: a first attempt that spent
+    // most of it and then returned content_blocked left no room for the
+    // retries, and the learner got "Synthesis timed out." instead of the
+    // audio a retry would have produced. Proven by the signals rather than
+    // by wall-clock: a shared budget means every attempt sees the SAME
+    // AbortSignal instance; a per-attempt budget means a fresh one each time.
+    const signals: AbortSignal[] = [];
+    let calls = 0;
+    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+      signals.push(init!.signal as AbortSignal);
+      return ++calls === 1 ? contentBlockedResponse() : audioResponse(SAMPLE_PCM_BASE64);
+    }) as unknown as typeof fetch;
+
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+    await client.synthesize({ text: 'कैलास' });
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+
   test('a 400 that is NOT content_blocked fails immediately, without retrying', async () => {
     const { client, requests } = clientFor({
       respond: () => new Response('{"error":{"message":"Unknown model"}}', { status: 400 }),

@@ -38,7 +38,7 @@ afterAll(() => {
   mock.module('../middleware/policy.js', () => realPolicy);
 });
 
-const { createChantBooksRouter } = await import('./chantBooks.routes.js');
+const { createChantBooksRouter, withExclusivePdfParse } = await import('./chantBooks.routes.js');
 
 function fakeProvider(response: string): AiProvider {
   return { name: 'Fake', generate: async () => response };
@@ -184,6 +184,40 @@ function minimalPdf(lines: string[]): Buffer {
   return Buffer.from(pdf, 'latin1');
 }
 
+describe('withExclusivePdfParse', () => {
+  test('runs one at a time, and one failure does not poison the next turn', async () => {
+    let active = 0;
+    let peak = 0;
+    const order: string[] = [];
+
+    const task = (name: string, fail = false) =>
+      withExclusivePdfParse(async () => {
+        active++;
+        peak = Math.max(peak, active);
+        // Yield twice, so an unserialised implementation would interleave here.
+        await Promise.resolve();
+        await Promise.resolve();
+        active--;
+        order.push(name);
+        if (fail) throw new Error(`${name} failed`);
+        return name;
+      });
+
+    const a = task('a');
+    const b = task('b', true);
+    const c = task('c');
+
+    expect(await a).toBe('a');
+    await expect(b).rejects.toThrow('b failed');
+    // The whole point of the `.catch` on the queue tail: b's rejection must
+    // not stop c from getting its turn.
+    expect(await c).toBe('c');
+
+    expect(peak).toBe(1);
+    expect(order).toEqual(['a', 'b', 'c']);
+  });
+});
+
 describe('POST /chant-books', () => {
   test('uploads a .txt file, parses it, and creates the book with its verses', async () => {
     const storageRoot = await mkdtemp(join(tmpdir(), 'chant-books-test-'));
@@ -230,6 +264,40 @@ describe('POST /chant-books', () => {
       expect(res.status).toBe(201);
       expect(payload.data.verseCount).toBe(3);
       expect(payload.data.originalFilename).toBe('gurugita.pdf');
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('parses PDFs one at a time, so concurrent large uploads cannot pile up in memory', async () => {
+    // The 500MB cap bounds DISK (multer streams to disk), but extractText
+    // reads the whole file into one Buffer for pdf-parse, which has no
+    // streaming API. Without serialisation, simultaneous large uploads
+    // allocate their buffers at once and can OOM the API for every user.
+    // This case guards CORRECTNESS under the queue — that serialising does
+    // not drop or corrupt a concurrent upload. The serialisation itself is
+    // asserted directly in the withExclusivePdfParse case below.
+    const storageRoot = await mkdtemp(join(tmpdir(), 'chant-books-test-'));
+    const app = buildApp({ aiClient: new AiClient([]), booksFactory: fakeBooks, versesFactory: fakeVerses, storageRoot });
+    const { server, baseUrl } = await listen(app);
+    try {
+      const pdf = minimalPdf(['1.', 'first verse text here', '2.', 'second verse text here']);
+      const post = (title: string) => {
+        const body = new FormData();
+        body.append('file', new Blob([pdf], { type: 'application/pdf' }), `${title}.pdf`);
+        body.append('language', 'sanskrit');
+        body.append('title', title);
+        return fetch(baseUrl, { method: 'POST', body });
+      };
+
+      const responses = await Promise.all([post('A'), post('B'), post('C'), post('D')]);
+
+      // All four still succeed — the queue delays, it never rejects.
+      expect(responses.map((r) => r.status)).toEqual([201, 201, 201, 201]);
+      for (const res of responses) {
+        expect((await res.json()).data.verseCount).toBe(2);
+      }
     } finally {
       server.close();
       await rm(storageRoot, { recursive: true, force: true });
