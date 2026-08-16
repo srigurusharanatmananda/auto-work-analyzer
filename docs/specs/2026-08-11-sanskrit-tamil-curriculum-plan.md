@@ -978,37 +978,216 @@ level, text reconstruction) verify internal consistency, not phonological
 validity — a human or adversarial-review pass must still check that the
 Devanagari itself is real Sanskrit/Tamil, not just self-consistent.
 
+**Twenty-third pass — tranche 22**: run as an orchestrated multi-agent
+`Workflow` — 6 research+draft areas, each checked by TWO verifiers given
+deliberately different lenses (one re-fetching the primary source, one
+applying `validateManifest` by hand and then executing it over a scratch
+copy) rather than two verifiers doing the same job twice.
+
+- **Sanskrit verbs beyond the singular**: the dual and plural cells of both
+  paradigm tables — तिष्ठतः/तिष्ठन्ति/तिष्ठथः/तिष्ठथ/तिष्ठावः/तिष्ठामः
+  (parasmaipada, Wikner 2.B.1) and नयेते/नयन्ते/नयावहे/नयामहे (ātmanepada,
+  Wikner 3.B.1), plus वदन्ति. Dropped on the source's own pedagogy, not on
+  sourcing: the whole parasmaipada half of Wikner's नी table, because 3.B.1
+  says outright to use the ātmanepada endings for that root — the
+  skt-word-nayati trap, caught a second time.
+- **Sanskrit 2nd-person plural**: युष्मान्, युष्माभिः, युष्मभ्यम्, युष्मत्,
+  युष्माकम्, युष्मासु (Whitney §491(a)), closing the paradigm tranches 18-21
+  walked down. वस् dropped for the same three-way case collision that
+  dropped ते in tranche 19.
+- **Tamil person-categories**: நாம்/நாங்கள் (the inclusive/exclusive "we"
+  distinction, glossed from the primer rather than from recall), நீங்கள்,
+  அது/அவை/அவைகள், each with its present-tense form and sentence — the three
+  categories the plan recorded as "entirely unstarted" are now complete for
+  the present tense.
+- **Tamil tense gaps**: செய்தார் and செய்வான் shipped. செய்வார் (honorific
+  singular future) DROPPED as genuinely unsourceable — ABC of Tamil Book One
+  stops at present tense for that cell and Andronov states the rule but
+  switches verbs for its example. Both Tamil sources are now exhausted for
+  it; unblocking needs a new source.
+- **Level 4 opened, for Sanskrit only**: four sentences quoted verbatim from
+  Wikner's 3.B.3 graded exercises and glossed with his own printed answers.
+  A full scan of the primer found exactly five decomposable lines in the
+  whole book, one already shipped. Tamil Level 4 ships EMPTY, for a measured
+  reason: this curriculum teaches one verb root (செய்) while the primer's
+  sentences run on sixteen.
+- **Level 5 remains empty, and the measurement is the deliverable**: all 182
+  Guru Gita verses were tokenised against the taught Sanskrit vocabulary.
+  The best verse has 3 of 12 words taught; NO verse has zero gaps. Unglossed
+  scripture reading is many vocabulary tranches away, and saying so with a
+  number is worth more than another speculative attempt.
+
+Sanskrit: 155 → 183 lessons. Tamil: 277 → 298 lessons.
+
+**Two process findings worth carrying forward.** First: giving the two
+verifiers *different lenses* rather than running the same check twice paid
+for itself immediately — the source verifier established that a proposed
+युष्माभिः is not in Whitney's bytes at all (he prints युष्माभिस्), while the
+mechanics verifier independently proved the batch clean under
+`validateManifest`. Neither would have found the other's issue. Second, and
+more important: the Tamil verifier discovered that ABC of Tamil's PDF text
+layer is legacy TAB/TSCII that **decodes wrong**, and switched to rendering
+pages to 600-dpi images and reading the glyphs. Its verdict — *"every Tamil
+form in this tranche is real; almost every page number is not"* — is the
+kind of finding only an independent re-derivation produces. Rendering, not
+text extraction, is now the standard for that source. The equivalent
+Sanskrit finding: Wikner's PDF embeds Devanagari in a non-Unicode font, so
+his book can establish which form exists and what it means, but never how it
+is spelled — spellings must come from Whitney's Wikisource transcription,
+whose chapter pages are transclusion stubs and must be read from the `Page:`
+namespace.
+
+**Twenty-fourth pass — tranche 23**: same six-agent shape, in response to an
+explicit instruction to finish the grammar item before pushing further at the
+levels. Ran twice: the first attempt lost 6 of 8 agents to the machine
+sleeping mid-response, and was recovered with `Workflow`'s `resumeFromRunId`,
+which replayed the completed drafts from cache and re-ran only the casualties.
+
+- **Sanskrit nouns beyond the singular** — नरौ, नराः, नरान्, अश्वाः, अश्वान्,
+  वृक्षान्, on Wikner's own paradigm noun (3.B.2), plus five sentences quoted
+  whole from his exercises and answer key. This is what tranche 22 named as
+  its highest-value follow-up: नराः तिष्ठन्ति is the first sentence in the
+  file where the SUBJECT rather than another verb carries the number the verb
+  agrees with, and नरः अश्वः च नयेते shows the converse — two singular
+  subjects joined by च taking a dual verb.
+- **The three present indicatives closed** — √sthā needed only तिष्ठसि, √vad
+  had nothing but वदति/वदन्ति (seven forms land here), √nī was missing its
+  whole madhyama-puruṣa row (नयसे, नयेथे, नयध्वे). All nine cells of each are
+  now taught.
+- **Tamil past/future for the pronouns tranche 22 added** — செய்வோம்,
+  செய்வீர்கள், செய்தீர்கள், செய்தது, செய்தன, with their sentences.
+- **Confirmed unsourceable, four times over**: செய்வார், செய்தோம், செய்யும்,
+  செய்வன. All fail identically — Andronov states the rule in the right
+  section, conjugates செய் by name in that section's *other* tenses, then
+  switches verbs for exactly the wanted cell. That is a structural property
+  of the source, not bad luck, and a future tranche should not spend budget
+  re-grepping for them. What would unblock them is a source printing a full
+  paradigm TABLE rather than rule-plus-example prose — Arden's *A Progressive
+  Grammar of Common Tamil* is the named candidate, not yet fetched.
+- **अश्वौ blocked on a glyph, established by census not by giving up early**:
+  श्वौ is genuinely absent from Whitney vol. 1 (an insource regex over the
+  whole scan finds श्व on six pages, श्वा on one, श्वौ on none). It blocks
+  three Wikner-printed sentences. This shape will recur — the file needs
+  conjunct-plus-vowel-sign glyphs that Whitney happens never to print,
+  because Whitney is a grammar, not a corpus.
+
+Sanskrit: 183 → 213 lessons. Tamil: 298 → 309.
+
+**The methodological correction that outlives this tranche**: *"the extraction
+loses X" is not "the source lacks X."* Tranche 22 concluded flatly that
+Wikner's Devanagari and vowel lengths could not be read from him at all, and
+built a whole justification chain through Whitney on that basis. Rendering his
+PDF at 400 dpi — the method this project had until then used only for Tamil —
+shows him printing narāḥ, narān, aśvāḥ, vṛkṣān and nayāmahe with macrons
+intact. The rendering technique that fixed the Tamil source fixed the Sanskrit
+one too, and nobody tried it there for a full tranche. Reach for rendering
+before concluding a source is deficient.
+
+**Two process failures worth recording, both real:** the workflow ran twice
+because of environmental interruptions, and the recovery path (`resume`)
+worked exactly as intended. But the first recovery quietly shipped 16 Sanskrit
+lessons on the MECHANICS verifier alone, because that area's source verifier
+had crashed and the survivorship rule only required "at least one verdict and
+no DROP". The content happened to be sound — re-checked by hand against
+Whitney §735(a)'s printed paradigm afterwards, every ending attested — but the
+rule was wrong and is now "both lenses must have looked at it". A verifier
+that dies must not read as a verifier that approved.
+
+**Twenty-fifth pass — tranche 24**: three areas, all eleven agents completing
+cleanly. Survivorship was tightened first, per the finding above: a lesson now
+ships only if BOTH lenses actually returned a verdict on it.
+
+- **Level 4 filled from Wikner's own exercises**: 26 more sentences, each a
+  printed line carrying Wikner's own printed English as its gloss, taking
+  Sanskrit Level 4 from 4 to 30. The area reports Level 4 now SATURATED for
+  Wikner's lessons 1-4 — every sentence he prints in 1.B.2, 1.B.3, 2.B.2,
+  3.B.3 and 4.B.3 is either shipped or listed with the one word blocking it.
+- **The rest of the नर declension**: नराभ्याम्, नरैः, नरेभ्यः, नरयोः,
+  नराणाम्, नरेषु, plus वृक्षः (the cheapest form in the file, deferred twice)
+  and वृक्षाः, with three more whole-quoted sentences.
+- **Tamil's second verb root**: போ, with the three person forms ABC of Tamil
+  actually prints, and their sentences. The primer runs its full table on
+  செய் alone, so a partial paradigm is what the source supports and what
+  shipped.
+
+Sanskrit: 213 → 253 lessons. Tamil: 309 → 315.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 30 sentences
+are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
+permutations out of Wikner's conjugation exercises. They are legitimately
+printed and legitimately glossed, so they clear this project's sourcing bar —
+but Level 4 is defined as "graded reading of real text, dictionary in hand",
+and a conjugation drill is not reading. The tier is populated; whether it
+*teaches what it claims to* is a separate question, and the honest answer
+today is that it mostly drills verb agreement. Real graded prose needs
+Wikner's lessons 5-11, which need a vocabulary tranche first (bālā "girl",
+phala "fruit", and the locative/genitive/instrumental declensions). A sentence
+tranche cannot reach them.
+
+**अश्वौ is now closed hard, by census rather than by fatigue.** The search was
+re-run across ALL of English Wikisource, every namespace including every
+proofread `Page:`. श्वौ: 0 hits; अश्वौ: 0 hits. Three Wikner-printed sentences
+stay blocked on that single glyph, and unblocking them needs a genuinely new
+scan-backed source, not more searching in this one. This is the recurring
+shape of the Sanskrit problem: the file needs conjunct-plus-vowel-sign glyphs
+that Whitney happens never to print, because Whitney is a grammar, not a
+corpus.
+
 ## What's next, in order
 
-1. **Grammar completeness, scoped from real primer/source content**:
-   Sanskrit's 2nd-person pronoun is now complete for singular, dual, and
-   nominative-only plural; the dual/plural verb forms (beyond 1st/2nd/3rd
-   singular) and the rest of the plural pronoun's case table remain. More
-   mood coverage (tranche 21 shipped only the optative singular active,
-   parasmaipada, for one root — dual/plural and the ātmanepada column
-   remain, per this tranche's own openQuestions). More compound types
-   (avyayībhāva, bahuvrīhi — both explicitly blocked on new vocabulary
-   this file doesn't teach yet, and bahuvrīhi also needs a genuinely new
-   grammatical concept; itaretara dvandva is blocked on dual-number
-   declension, untaught in any form). Tamil's person-conjugation table
-   now has present tense for all four persons this file names (அவன்/
-   அவள்/அவர்/அவர்கள்); past/future tense covers அவன்/அவள் (singular) and
-   அவர்கள் (plural) but NOT the honorific singular (செய்தார்/செய்வார் —
-   distinct from the already-shipped plural செய்தார்கள்/செய்வார்கள்) or
-   அவன்'s own future (செய்வான் was never shipped, only its past
-   செய்தான்) — both still need their own citation and are natural next
-   slices, not yet done despite the present-tense table's own honorific
-   coverage. 1st-person plural (நாம்/நாங்கள்), 2nd-person
-   plural/honorific (நீங்கள்), and 3rd-person neuter (அது/அவை) remain
-   entirely unstarted — each needs its own new base-pronoun word first.
-   Each still needs its own citation the way every tranche so far has
-   had.
-2. **Expert-tier reading** for both languages, once a real short verse —
-   freshly chosen for what it needs, not assumed to be one of the two
-   calibration verses above — is fully decomposable into taught vocabulary
-   and taught grammar. At that point, source and read the actual verse in
-   full (public-domain, per this plan's own quality bar) before any of it
-   becomes lesson content.
+*Rewritten after tranches 22-24, which closed most of what the previous
+version of this list named. Superseded items are gone rather than left
+standing with a "done" beside them; the tranche log above is the record.*
+
+1. **A Sanskrit VOCABULARY tranche — now the bottleneck for everything
+   else.** Not more paradigm cells: this file teaches three verb roots
+   (√sthā, √vad, √nī) and three nouns (नर, अश्व, वृक्ष), and every remaining
+   blocked item traces back to that. Wikner's own 4.B.1 reference sheet
+   (lines 1087-1092) names √gam (गच्छति), √labh (लभते) and √vah (वहति) with
+   printed English glosses and uses them heavily in exercises; वहति alone
+   unblocks two more printed sentences, and roughly a dozen of his glossed
+   sentences need nothing but these three plus forms already taught. Cost is
+   letters only — गच्छ needs a छ-conjunct, लभ needs भ in a word, वह needs
+   nothing new. Then the lesson 5-11 vocabulary (bālā "girl", phala "fruit")
+   and the locative/genitive/instrumental declensions, which is what stands
+   between Level 4 and actual graded prose.
+2. **Make Level 4 read like Level 4.** It is populated (30 sentences) but 25
+   are two-verb-plus-च conjugation drills. After item 1 lands, revisit it
+   with Wikner's lessons 5-11 and prefer real sentences over permutations —
+   and consider whether the drill-shaped ones belong at level 3 instead,
+   the way tranche 22 demoted `tam-sentence-en-kan` rather than let an
+   alphabet-drill fragment stand as graded reading.
+3. **A new Tamil source, which is now a hard blocker rather than a
+   preference.** Four cells of the செய் grid (செய்வார், செய்தோம், செய்யும்,
+   செய்வன) are confirmed unsourceable four times over from ABC of Tamil Book
+   One plus Andronov, and the failure is structural: Andronov varies his
+   illustrative verb by paragraph, so the wanted cell is always conjugated on
+   some other verb. Tamil Level 4 is blocked the same way — Book One contains
+   no graded reading at any vocabulary size, established by enumeration. The
+   named candidates, neither yet fetched: ABC of Tamil Books Two/Three (if
+   tamilvu.org hosts them) and Arden's *A Progressive Grammar of Common
+   Tamil*, which is a teaching grammar with real conjugation tables and old
+   enough for archive.org. Either would also settle the ceyv-/ceyk- register
+   question this file keeps re-deciding case by case.
+4. **A Devanagari corpus source, for glyphs Whitney never prints.** अश्वौ is
+   blocked on श्वौ, which a census over all of English Wikisource shows
+   appears nowhere in any namespace — three Wikner sentences stay out because
+   of it. Whitney is a grammar, not a corpus, so this will keep recurring.
+   What is needed is a scan-backed Devanagari text of comparable standing.
+5. **Sanskrit moods beyond the singular** — the optative and imperative dual
+   and plural of √sthā, and either mood for √vad and √nī. Blocked in an
+   interesting way: Whitney §§738-741 would give the Devanagari, but Wikner's
+   exercises never leave the present indicative, so the ENGLISH GLOSS has no
+   source. Resolving it means either finding where Wikner introduces these
+   moods later, or deciding deliberately that Whitney's own section headings
+   may serve as gloss source — a methodology change to make on purpose, not
+   inside a tranche.
+6. **Expert-tier reading (Level 5)**, still the last item and still far off.
+   The bar is a real short verse fully decomposable into taught vocabulary
+   and grammar. Measured, not assumed: tokenising all 182 Guru Gita verses
+   against the taught Sanskrit vocabulary gives a best case of 3 words out of
+   12, and no verse reaches zero gaps. This is many vocabulary tranches away,
+   and item 1 is the only thing that moves it.
 
 Each step gets the same treatment this one did: read the actual primer
 section (not recalled from training data), cite it per item, run
