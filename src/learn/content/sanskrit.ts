@@ -46,7 +46,51 @@
  * cleanly scoped). Tranche 18 finally closes the 2nd-person-pronoun gap,
  * via a second source — William Dwight Whitney's Sanskrit Grammar (1889,
  * public domain, `skt-whitney-grammar`), §491: त्वम् ("you", singular)
- * and यूयम् ("you all", plural) — two new letters (त्व, यू). See
+ * and यूयम् ("you all", plural) — two new letters (त्व, यू). Tranches 19-21
+ * work down the rest of that same Whitney table (the singular's remaining
+ * cases, then the whole dual), plus √sthā's imperative and optative
+ * singular and the first two samāsa compounds — each documented in its own
+ * section comment below rather than here.
+ *
+ * Tranche 22 does three things at once, and is the first tranche to open
+ * level 4. (a) Verbs beyond the singular: every verb in this file until now
+ * was eka-vacana, one column of a table that has three, so the dvi-vacana
+ * and bahu-vacana cells of Wikner's own two paradigm tables land here —
+ * parasmaipada for तिष्ठ (तिष्ठतः, तिष्ठन्ति, तिष्ठथः, तिष्ठथ, तिष्ठावः,
+ * तिष्ठामः, Wikner 2.B.1), ātmanepada for नी (नयेते, नयन्ते, नयावहे,
+ * नयामहे, Wikner 3.B.1/4.B.1), plus वदन्ति and Wikner's own exercise
+ * sentence तिष्ठति वदन्ति च, the first sentence here whose two verbs
+ * disagree in number. (b) The 2nd-person PLURAL of Whitney §491(a) —
+ * युष्मान्, युष्माभिः, युष्मभ्यम्, युष्मत्, युष्माकम्, युष्मासु — closing
+ * the paradigm tranches 18-21 walked down the singular and dual of. (c)
+ * Level 4 ("Reading Practice"), empty since the level scheme existed,
+ * opened with four sentences quoted verbatim from Wikner's graded exercise
+ * set at 3.B.3 and glossed with his own printed answers. Six new letters
+ * (न्ति, न्ते, ष्म, ष्मा, न्, भि), each added only because a word below
+ * needs it.
+ *
+ * Deliberately dropped in tranche 22: the parasmaipada half of Wikner's own
+ * नी table (नयसि/नयथः/नयथ/नयामि/नयावः/नयामः — all printed by him, several
+ * letter-feasible today, and all wrong for this course, which says at 3.B.1
+ * "in the case of dhātu nī for example, use the ātmane-pada endings"; this
+ * is exactly the skt-word-nayati trap); √vad's own dual/plural beyond
+ * वदन्ति, for scope; Whitney's accentless enclitic वस्, which collides
+ * across three cases at once (§491(b)), the same collision that dropped ते
+ * in tranche 19; and every older-language plural variant of §492(a). Level
+ * 4 took only what was already decomposable: a full scan of Wikner found
+ * exactly five such lines in the book, one of them already shipped.
+ *
+ * Still blocked after tranche 22: no Devanagari for any tiṣṭha- or naya-
+ * form can be read out of Wikner at all — his PDF embeds it in a
+ * non-Unicode font that extracts as garbage and archive.org's OCR of the
+ * book has none — so those forms' script and vowel lengths rest on Whitney
+ * §606/§671/§733/§735.a/§749.a and their visarga spellings on §145, all
+ * read directly. Plural SUBJECTS (नराः, अश्वौ) are still untaught, so
+ * Wikner's own agreement rule can only be demonstrated verb-to-verb; the
+ * singular row still lacks तिष्ठसि/नयसे (one untaught letter each, सि/से —
+ * the cheapest next tranche); and the sandhi'd surface of any level-4
+ * sentence stays unshippable, because Wikner never prints one and writing
+ * one would be composing Sanskrit rather than reading it. See
  * `docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md` for the full
  * beginner-to-advanced plan this is a tranche of. The vowel-sign
  * batch is deliberately partial (one consonant's full table, plus a few
@@ -54,6 +98,164 @@
  * all 33 consonants, and the conjunct batch is deliberately just the two
  * Wikner himself singles out as special rather than his own ~150-entry
  * reference table — see each block's own comment for why.
+ *
+ * Tranche 23 finishes both halves of what tranche 22 left open. (a) Nouns
+ * beyond the singular, on Wikner's own paradigm noun and the two stems he
+ * assigns to the same declension by name (3.B.2, lines 976-979): नरौ, नराः,
+ * नरान्, अश्वाः, अश्वान्, वृक्षान् — plus five sentences quoted whole from
+ * his exercises and answer key rather than assembled here. नराः तिष्ठन्ति is
+ * the one tranche 22 named as its single highest-value follow-up, and the
+ * first sentence in this file where the SUBJECT, not another verb, carries
+ * the number the verb agrees with; नराः अश्वान् नयन्ते is the first with a
+ * plural subject AND a plural object, so the nominative/accusative contrast
+ * is finally visible outside the singular; नरौ वृक्षान् नयामहे unblocks the
+ * sentence नयामहे was originally taught for; नराः वदन्ति नयन्ते च is the
+ * answer वदन्ति and नयन्ते were both shipped for; and नरः अश्वः च नयेते cost
+ * nothing at all — all four of its words were already taught, it was
+ * reachable since tranche 22 and simply never taken — and shows the converse
+ * of the agreement rule, two SINGULAR subjects joined by च taking a dual
+ * verb. (b) The three present indicatives this file has been filling a cell
+ * at a time are now closed: √sthā's parasmaipada was missing only तिष्ठसि,
+ * √vad had nothing but वदति and वदन्ति (वदसि, वदामि, वदतः, वदथः, वदथ,
+ * वदावः, वदामः land here), and √nī's ātmanepada was missing its entire
+ * madhyama-puruṣa row (नयसे, नयेथे, नयध्वे). All nine cells of each are now
+ * taught. Eight new letters (रौ, श्वा, क्षा, सि, से, दा, थे, ध्वे), each read
+ * as a combined string off a proofread Whitney page and each added only
+ * because a word below needs it.
+ *
+ * One methodological correction that outlives this tranche: "the extraction
+ * loses X" is not "the source lacks X". Earlier drafts of the noun block
+ * asserted flatly that Wikner's vowel lengths cannot be read from him at
+ * all. Rendering his PDF at 400 dpi — the method this project had until now
+ * used only for Tamil — shows him printing narāḥ, narān, aśvāḥ, vṛkṣān and
+ * nayāmahe with their macrons intact, in cells visibly distinct from the
+ * short-vowel ones beside them, so Wikner and Whitney agree independently on
+ * every vowel length shipped here. The Devanagari itself is still Whitney's
+ * (§330 for the endings, §735.a for the verb paradigm, §145 for every final
+ * -स् → -ः), because Wikner has none that can be read at all.
+ *
+ * Deliberately dropped in tranche 23: अश्वौ, and with it three sentences
+ * Wikner prints and glosses (3.B.3(c)2, (c)3 and (d)2, one of them his only
+ * demonstration anywhere that a singular plus a dual subject takes a PLURAL
+ * verb). The form and the English are beyond doubt; the glyph श्वौ is not —
+ * an insource census over Whitney vol. 1 finds श्व on six pages, श्वा on
+ * exactly one, श्वौ on none, so it could not be read anywhere and assembling
+ * it would be writing Devanagari from recall. That is recorded in the block
+ * below as a CHOICE rather than a rule, because it is a stricter bar than
+ * this file's own precedent for the same move (skt-letter-raa/-te/-re/-ye/
+ * -shthaa were each admitted as "a proven sign on a different consonant"); a
+ * later tranche may decide it the other way, deliberately. Also dropped: the
+ * parasmaipada half of √nī (नयसि/नयथः/नयथ/नयामि/नयावः/नयामः — printed by
+ * Wikner, forbidden for this root by his own 3.B.1 line 959, the same
+ * skt-word-nayati trap tranche 22 dropped them for); वृक्षः and its sentence
+ * (3.B.3(d)5, line 1012 → answer 3996), fully sourceable and needing no new
+ * letter at all, held back only because it is a singular and this tranche's
+ * noun axis is dual and plural; and the five remaining cases in dual and
+ * plural (नराभ्याम्, नरयोः, नरैः, नरेभ्यः, नरेषु, नराणाम्, all sitting in
+ * Wikner 5.B.1's table at lines 1203-1207), which want one coherent block of
+ * their own — he flags an internal-sandhi complication in the genitive
+ * plural at line 1215 ("thus asvanam but vr. ks.an.am") that deserves a
+ * lesson rather than a parenthesis.
+ *
+ * Still blocked after tranche 23: अश्वाः ships with NO sentence, flagged in
+ * its own comment — all three Wikner sentences containing it (5.B.2(d)2,
+ * 5.B.2(d)4, and the 4.B.3(e)6 answer at line 4012) need नराणाम्, वृक्षेषु or
+ * वृक्षेभ्यः, none of which this file has. Wikner's three other exercise
+ * verbs — √gam, √labh, √vah, on his 4.B.1 reference sheet at lines 1087-1092
+ * — still have zero forms here, which is now the largest single content gap
+ * and also the cheapest next tranche. Non-present tenses and moods stay
+ * stuck for a different reason: Wikner's exercises never leave the present
+ * indicative, so he cannot supply the "which form, and what does it mean"
+ * half at all, and taking one from Whitney's tables alone would be a change
+ * of method that should be decided on its own rather than inside a tranche.
+ * Sandhi'd surfaces remain unshippable, unchanged since tranche 22: Wikner
+ * never prints one, and writing one would be composing Sanskrit rather than
+ * reading it.
+ *
+ * Tranche 24 closes the two things tranche 23 explicitly deferred, and both
+ * turn out to have been held back by a claim that was true when written and
+ * false by the time it was acted on. (a) The rest of Wikner's नर declension:
+ * नराभ्याम्, नरैः, नरेभ्यः, नरयोः, नराणाम्, नरेषु — every remaining dual and
+ * plural cell of his 5.B.1 table — plus वृक्षः, the singular tranche 23 also
+ * deferred and the cheapest form in the file, and वृक्षाः, which exists only
+ * to give नरयोः a real sentence. Three sentences come with them, all quoted
+ * whole from his exercises and answer key: वृक्षः अश्वः च तिष्ठतः (the second
+ * demonstration in this file that two singular subjects joined by च take a
+ * dual verb), नराणाम् अश्वाः तिष्ठन्ति (which finally gives अश्वाः the
+ * sentence tranche 23 shipped it without), and नरयोः वृक्षाः तिष्ठन्ति. Three
+ * new letters (रै, षु, णा), each read as a combined string off a proofread
+ * Whitney page and each added only because a word below needs it. The genitive
+ * plural is the reason this block waited: नराणाम् and नरेषु each carry a real
+ * internal-sandhi change (n→ṇ, s→ṣ) that both sources state explicitly —
+ * Wikner 5.B.1/6.B/11.A.3, Whitney §189-190a and §329g/§338f — and neither
+ * takes a sandhiRule, because the changed sound lives inside the letter (णा,
+ * षु) and setting the field would switch OFF the one check able to catch a
+ * dental-for-retroflex substitution in exactly the lessons where that is the
+ * likeliest error. (b) Level 4 goes from four sentences to thirty. Tranche
+ * 22's scan found "exactly five decomposable lines in the book"; that was
+ * true of tranche 22's vocabulary and stale the moment tranche 23 closed all
+ * three present-indicative paradigms, and re-running it yields twenty-six
+ * more, from 1.B.2, 1.B.3, 2.B.2 and 4.B.3 — zero new letters and zero new
+ * words, every character a join of words already taught. Tranche 22 also said
+ * the sandhi'd surface of a level-4 sentence is unshippable because Wikner
+ * never prints one; that is still true and is exactly why these ship, since in
+ * lessons 1-4 he has not introduced sandhi at all and prints every exercise
+ * and answer in pausa with the visarga intact, so the space-joined text IS his
+ * printed surface. After this, lessons 1-4 are exhausted.
+ *
+ * Three method corrections tranche 24 makes to its own sources, all of which
+ * outlive it. Wikner's PRINTED page numbers drift from his PDF page numbers,
+ * and the drift is easy to get wrong by one in the direction that looks right:
+ * his full nara table is PDF page 48, an UNNUMBERED chapter-opening leaf, and
+ * the running head reading "Lesson 5.B 39" belongs to the next leaf. Cite PDF
+ * page plus extraction line, never a printed number alone. His 8.B appendix
+ * "Declension Paradigms" contradicts his own main table in three of eight nara
+ * rows (narām for naram, narāyāt for narāt, narāsya for narasya) — it is
+ * corroboration only, never a sole citation. And his own statement of the
+ * n→ṇ rule at line 1215 prints "thus aśvanām but vṛkṣāṇām", missing the macron
+ * his own paradigm stem requires; it is quoted here as printed, because a
+ * citation records what is on the page and the contrast he is drawing is the
+ * ṇ, not the ā.
+ *
+ * Deliberately dropped in tranche 24: अश्वौ again, and the block is now harder
+ * than tranche 23's — the insource census was re-run over ALL of English
+ * Wikisource rather than Whitney vol. 1, and श्वौ and अश्वौ each return zero
+ * hits in every namespace including every proofread Page:, with no second
+ * scan-backed grammar of comparable standing on the site to try. It costs four
+ * Wikner sentences. Whoever wants it must either bring a genuinely new source
+ * or take, deliberately and in writing, the policy decision to reverse tranche
+ * 23 and admit combined glyphs assembled from separately-attested parts —
+ * which this file's own earlier precedent (skt-letter-raa/-te/-re/-ye/-shthaa)
+ * would permit. Also dropped: नरात्, the last cheap cell of the 5.B.1 table
+ * and needing no new letter, because his main table prints narāt and his
+ * appendix narāyāt; Whitney §330's कामात्/देवात् sides with the main table, so
+ * it is very likely resolvable, but resolving a source-internal contradiction
+ * was not this tranche's brief and it is recorded here rather than settled in
+ * passing. वृक्षाणाम्, which is the form Wikner names in the n→ṇ rule itself
+ * and needs no letter beyond the new णा, is dropped because he never glosses
+ * it and never uses it in an exercise — it appears only inside the statement
+ * of the rule, so नराणाम् carries the rule instead. Level 4 dropped everything
+ * blocked by a single untaught word rather than reaching for it: Wikner's
+ * 3.B.3(c)2/(c)3/(d)2 and 5.B.2(e)5 (अश्वौ), 3.B.3(d)5's own siblings and all
+ * of 4.B.3(d)/(e) (वहति, गच्छति, लभते, अश्वेन, अश्वात्, वृक्षात्, वृक्षेभ्यः),
+ * plus every within-batch and already-shipped duplicate, notably his 2.B.2(c)7
+ * whose text is the तिष्ठति वदन्ति च shipped at level 3 in tranche 22.
+ *
+ * Still blocked after tranche 24: Wikner's three other exercise verbs — √gam,
+ * √labh, √vah, on his 4.B.1 reference sheet at lines 1087-1092 — still have
+ * zero forms here, and they are now unambiguously both the largest content gap
+ * and the cheapest next tranche, since one of them alone unblocks several
+ * sentences he prints and glosses. Lessons 5-11 are a different problem from
+ * lessons 1-4 and cannot be mined for sentences at all yet: their answer keys
+ * need bālā, phala, and locative/genitive/instrumental forms of stems this file
+ * does not decline, i.e. a vocabulary tranche, not a sentence tranche. नरे
+ * (locative singular) is free — Whitney §327g and §330's कामे/देवे, Wikner's
+ * own table cell and case prose, no new letter — and was simply outside this
+ * brief; it is the cheapest single item left. वृक्षेषु and वृक्षेभ्यः each need
+ * one new letter, क्षे, and वृक्षेषु in particular would ship 5.B.2(e)2, the
+ * second attestation of the singular+singular+ca→dual-verb pattern. Non-present
+ * tenses and moods stay stuck for the reason tranche 23 gave, and sandhi'd
+ * surfaces for the reason tranche 22 gave.
  *
  * The paragraphs below describe the ORIGINAL seed (six consonants, five
  * words) and its first, 2026-08-10 extension (one sentence) — kept as the
@@ -956,6 +1158,309 @@ export const sanskritManifest: Manifest = {
       gloss: 'du',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-nti',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): the न्त conjunct plus the short-i sign. न्त is on
+      // Wikner's own standard conjunct list (7.A.6, line 1717: "nt+ nta") —
+      // that table's glyph column is lost to the same font corruption this
+      // file has flagged since tranche 3, so it is the transliteration
+      // column that is read there, not the glyph. The ि sign is Wikner
+      // 6.A.1, already proven in this file on क/त/म/न (skt-letter-ki, -ti,
+      // -mi, -ni). The combined Devanagari string is READ, not assembled:
+      // Whitney (1889) §735.a prints the 3rd-plural active of √भू as
+      // "भवन्ति bhávanti", of which न्ति is a literal substring, and §733.9
+      // gives the formation — "here, as before the 3d pl. endings, the
+      // stem-final is lost... thus, bhávanti (bháva+anti)", which is
+      // exactly why तिष्ठ + न्ति is the right decomposition and तिष्ठा +
+      // anything is not. Needed only because skt-word-tishthanti and
+      // skt-word-vadanti below need it.
+      text: 'न्ति',
+      gloss: 'nti — conjunct (न् + ति)',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-nte',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): the same न्त conjunct (Wikner 7.A.6, line 1717)
+      // with the े sign already proven on ब/ण/त/र/य/ह (skt-letter-be,
+      // -nne, -te, -re, -ye, -he). Combined string read from Whitney
+      // §735.a's middle-voice row, "भवन्ते bhávante"; §733.9 gives
+      // "bhávante (bháva+ante)" and §733.6 notes "the use of the full
+      // endings ante, anta, antām in 3d pl. mid. forms". Needed only
+      // because skt-word-nayante below needs it.
+      text: 'न्ते',
+      gloss: 'nte — conjunct (न् + ते)',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-shma',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): ष् + म, an ordinary word-internal conjunct
+      // (Wikner 7.A.1-7.A.2, the same category as this file's श्व/स्य/ष्ठ/
+      // स्तु/स्वि/त्व/भ्य) — read off Whitney §491(a)'s own plural table,
+      // "2d pers." column, D. and Ab. cells ("युष्मभ्यम्, वस्" and
+      // "युष्मत्"). Kept distinct from ष्मा just below, exactly as this
+      // file already keeps ष्ठ/ष्ठा/ष्ठे and भ्य/भ्या apart — and here the
+      // one-mātrā difference is load-bearing: the dative and ablative take
+      // ष्म, the other four plural cases take ष्मा. Needed only because
+      // skt-word-yusmabhyam and skt-word-yusmat below need it.
+      text: 'ष्म',
+      gloss: 'ṣma — conjunct (ष् + म)',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-shmaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): the conjunct above + the ा vowel sign already
+      // proven on ब/र/ष्ठ/त्व/य/व/भ्य — read off Whitney §491(a)'s plural
+      // table, "2d pers." column, A./I./G./L. cells ("युष्मान्, वस्",
+      // "युष्माभिस्", "युष्माकम्, वस्", "युष्मासु"). Needed only because
+      // the four plural forms below need it.
+      text: 'ष्मा',
+      gloss: 'ṣmā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-na-halanta',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): word-final न्, no vowel — the same halanta
+      // category as the already-taught म्/त् (skt-letter-ma-halanta,
+      // skt-letter-ta-halanta), per Wikner 7.A.1's general rule ("this is
+      // the form used when a word ends in a consonant"), a different
+      // consonant. Whitney §491(a)'s plural table, "2d pers." accusative
+      // row: "युष्मान्, वस् / yuṣmā́n, vas" — the न् confirmed from the
+      // page's own Devanagari, not inferred from the roman "yuṣmā́n".
+      // Needed only because skt-word-yusman below needs it.
+      text: 'न्',
+      gloss: 'n — word-final, no vowel',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-bhi',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 22): भ (already taught) + the ि vowel sign already
+      // proven on क/त/म/न/य — this file teaches भ, भ्य and भ्या but had no
+      // भि. Whitney §491(a)'s plural table, "2d pers." instrumental row:
+      // "युष्माभिस् yuṣmā́bhis". Needed only because skt-word-yusmabhih
+      // below needs it.
+      text: 'भि',
+      gloss: 'bhi',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-rau',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): र with the ौ sign already proven in this file on
+      // ब and न (skt-letter-bau, skt-letter-nau) — the same sign on a third
+      // consonant, which is the move skt-letter-re and skt-letter-raa were
+      // each introduced by. The combined string is READ, not assembled:
+      // Whitney (1889) p. 71 = §127 (pagequality 4), the a+āu example list,
+      // prints ज्वरौषधम् jvarāuṣadham (jvara-āuṣadham), of which रौ is a
+      // literal substring (ज ् व | र ौ | ष ध म ्). Whitney §330 (p. 142)
+      // independently shows the sign in exactly the grammatical slot this
+      // letter exists for — the masculine a-stem dual, "कामौ kā́māu /
+      // देवौ devāú". The gloss is simply the transliteration: Whitney's own
+      // convention writes that ending "āu", this file's (and Wikner's)
+      // writes it "au". Needed only because skt-word-narau below needs it.
+      text: 'रौ',
+      gloss: 'rau',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-shvaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): two readings combined, both Whitney. The conjunct
+      // श्व is p. 35 = §13e (pagequality 4) — "Of श ç, which generally
+      // becomes [old form] when followed by a consonant: thus, श्च çca,
+      // श्न çna, श्व çva" — the same citation already behind this file's
+      // skt-letter-shva. The COMBINED string श्वा is read rather than
+      // assembled: p. 547 (pagequality 4), Whitney's printed specimen of
+      // Rig-Veda X.125.8, "भुव॑नानि॒ विश्वा॑", where विश्वा contains
+      // श ् व ा contiguously (the udātta mark U+0951 follows the ा, it does
+      // not sit inside it — checked at codepoint level, since a
+      // visually-correct श्वा with the mark in the wrong place would still
+      // be wrong). An insource census of Whitney vol. 1 finds श्वा on that
+      // one page only. The ा sign is already proven here on ब/र/ष्ठ/त्व/य/
+      // व/भ्य/ष्म. Kept distinct from the already-taught श्व exactly as this
+      // file already keeps ष्ठ/ष्ठा and भ्य/भ्या apart, and here the
+      // one-mātrā difference is load-bearing: it is the whole difference
+      // between अश्वः and अश्वाः. Needed only because skt-word-ashvaah and
+      // skt-word-ashvaan below need it.
+      text: 'श्वा',
+      gloss: 'śvā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-ksaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): the क्ष conjunct this file has taught since
+      // tranche 3 (skt-letter-ksa, Wikner 7.A.3-7.A.5) with the ा sign
+      // already proven on ब/र/ष्ठ/त्व/य/व/भ्य/ष्म — the two of them read as
+      // one string, not assembled. Whitney p. 420 = §1071c (pagequality 4),
+      // on the periphrastic perfect: "Most roots beginning with a vowel in a
+      // heavy syllable... make this perfect only, and not the simple one:
+      // thus, आसाम् āsā́m from √आस् ās sit, ईक्षाम् īkṣā́m from √ईक्ष् īkṣ
+      // see" — क्षा is a literal substring of ईक्षाम् (ई | क ् ष ा | म ्),
+      // and Whitney's own transliteration of that substring supplies the
+      // gloss. Needed only because skt-word-vrksaan below needs it.
+      text: 'क्षा',
+      gloss: 'kṣā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-si',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): स (already taught, skt-letter-sa) with the ि sign
+      // already proven on क/त/म/न/य/भ (skt-letter-ki, -ti, -mi, -ni, -yi,
+      // -bhi) — this file had every part and not the whole. Read as a
+      // combined string from Whitney, Page:Sanskrit Grammar by Whitney
+      // p1.djvu/293 (pagequality 4), the §735.a paradigm of √भू, row "2",
+      // column "active. s.": "भवसि bhávasi", of which सि is the second and
+      // third characters; the transliteration in that same cell gives the
+      // gloss. Needed only because skt-word-tishthasi and skt-word-vadasi
+      // below need it.
+      text: 'सि',
+      gloss: 'si',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-se',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): the same स with the े sign already proven on
+      // ब/ण/त/र/य/ष्ठ (skt-letter-be, -nne, -te, -re, -ye, -shthe). Read
+      // from Whitney Page 293 (pagequality 4), §735.a, row "2", column
+      // "middle. s.": "भवसे bhávase" — gloss from that cell's own
+      // transliteration. Needed only because skt-word-nayase below needs it.
+      text: 'से',
+      gloss: 'se',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-daa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): द (skt-letter-da) with the ा sign already proven
+      // on eight other consonants here — the one combination this file had
+      // never taught. Unusually, no cutting out of a longer form is needed:
+      // Whitney Page 256 (pagequality 4), §603.II prints the root standing
+      // alone with its own transliteration, "ददा dadā from √दा dā give",
+      // corroborated on Page 270 (pagequality 4), §643.b, "ददा dadā from
+      // √दा dā". Needed only because वदामि, वदावः and वदामः below need it.
+      text: 'दा',
+      gloss: 'dā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-the',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): थ (skt-letter-tha, taught since the alphabet
+      // tranche) with the े sign proven on ब/ण/त/र/य/ष्ठ. Read from Whitney
+      // Page 293 (pagequality 4), §735.a, row "2", column "middle. d.":
+      // "भवेथे bhávethe", of which थे is the last two characters — the same
+      // cell that attests the ए of the dual stem नये. Gloss from that cell's
+      // own transliteration. (The id reads as an English word by accident;
+      // it follows this file's existing scheme, skt-letter-te/-ye/-re.)
+      // Needed only because skt-word-nayethe below needs it.
+      text: 'थे',
+      gloss: 'the',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-dhve',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 23): ध् + वे, an ordinary word-internal conjunct plus
+      // vowel sign (the same category as this file's श्व/स्य/ष्ठ/त्व/भ्य/
+      // ष्म), built of ध and व, both taught since the alphabet tranche, with
+      // the virāma already used in skt-letter-ma-halanta/-ta-halanta/
+      // -na-halanta. Read whole from Whitney Page 293 (pagequality 4),
+      // §735.a, row "2", column "middle. p.": "भवध्वे bhávadhve", of which
+      // ध्वे is the last three characters; gloss from that cell's own
+      // transliteration, in the format skt-letter-tva/-nti/-shma already
+      // use. Needed only because skt-word-nayadhve below needs it.
+      text: 'ध्वे',
+      gloss: 'dhve — conjunct (ध् + वे)',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-rai',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 24): र (skt-letter-ra) with the ै sign — this file has
+      // taught बै since the mātrā tranche but never the same sign on र. Read
+      // as a COMBINED string rather than assembled: Whitney,
+      // Page:Sanskrit Grammar by Whitney p1.djvu/342 (pagequality 4), §879b
+      // on the s-aorist — "from √रिच् ric leave, अरैक्ष् arāikṣ and अरिक्ष्
+      // arikṣ" — of which रै is a literal substring (अ | र ै | क ् ष ्),
+      // checked codepoint by codepoint rather than by eye. An insource census
+      // over Whitney vol. 1 returns रै on that one page only (totalhits 1).
+      // GLOSS: Whitney transliterates the diphthong "āi"; this file's
+      // convention (and Wikner's) writes it "ai" — exactly the split already
+      // recorded for skt-letter-rau, whose citation reads "jvarāuṣadham" and
+      // whose gloss is "rau". Needed only because skt-word-naraih below
+      // needs it.
+      text: 'रै',
+      gloss: 'rai',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-ssu',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 24): ष (skt-letter-ssa, taught since the alphabet
+      // tranche) with the ु sign already proven here on ब/स/द/त
+      // (skt-letter-bu, -su, -du, -tu). Spelling AND gloss come from one
+      // Whitney cell, and it is the very paradigm slot this letter exists
+      // for: Page:Sanskrit Grammar by Whitney p1.djvu/143 (pagequality 4),
+      // the §330 a-stem paradigm, Plural row "L." — "कामेषु kā́meṣu | देवेषु
+      // devéṣu | आस्येषु āsyèṣu" — of which षु is a literal substring of
+      // कामेषु (क ा म े | ष ु), that cell's own transliteration supplying
+      // the gloss. NOT the same letter as skt-letter-su (स + ु): the two ids
+      // differ by one ASCII character and the two texts by one codepoint
+      // (U+0937 versus U+0938), and it is the retroflex one the locative
+      // plural actually takes. Needed only because skt-word-naresu below
+      // needs it.
+      text: 'षु',
+      gloss: 'ṣu',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-nnaa',
+      stage: 'letters',
+      level: 1,
+      // New (tranche 24): ण (skt-letter-nna) with the ा sign already proven
+      // here on ब/र/ष्ठ/त्व/य/व/भ्य/ष्म/श्व/क्ष — and, per the stricter bar
+      // tranche 23 set for itself, the COMBINED string read rather than
+      // composed. Whitney, Page:Sanskrit Grammar by Whitney p1.djvu/147
+      // (pagequality 4), the §339 i-stem paradigm (whose models are named at
+      // the foot of p.146: "अग्नि agní m. fire; गति gáti f. gait; वारि vā́ri
+      // n. water"), Plural row "G.", neuter cell: "वारीणाम् vā́rīṇām", of
+      // which णा is a literal substring (व ा र ी | ण ा | म ्), that cell's
+      // own transliteration supplying the gloss. Corroborated in the
+      // identical grammatical slot on two further proofread pages: p.149,
+      // §341 u-stem, Pl. G. "शत्रूणाम् çátrūṇām"; p.167, ṛ-stem, Pl. G.
+      // "दातॄणाम् dātṝṇā́m". Kept distinct from skt-letter-nne (णे) and — the
+      // difference that matters — from the DENTAL ना, which is what Whitney's
+      // own कामानाम् prints; see skt-word-naranam below, where that one
+      // codepoint is the entire lesson. Needed only because skt-word-naranam
+      // below needs it.
+      text: 'णा',
+      gloss: 'ṇā',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -1826,13 +2331,21 @@ export const sanskritManifest: Manifest = {
       stage: 'words',
       level: 3,
       // यु (already taught) + व (already taught) + यो (new, above) +
-      // ः (already taught, skt-letter-visarga). §491(a)'s dual row gives
-      // the underlying G.L. ending as -os, but word-final -s always
-      // surfaces as visarga in citation/pausa position — the same rule
-      // this file already applies for नरः/अश्वः (skt-letter-visarga) —
-      // so the real form is युवयोः (yuvayoḥ), not युवयोस्. (A prior
-      // version of this lesson shipped the phonotactically invalid स्
-      // ending directly; caught in code review and corrected here.)
+      // ः (already taught, skt-letter-visarga). §491(a)'s dual row prints
+      // the G.L. form as युवयोस्, but Whitney states outright that the
+      // final स् there is his own printing convention rather than the
+      // word's form before a pause — §152: "Words will everywhere in this
+      // work be written with final s or r instead of ḥ"; §145: "Of the
+      // sibilants, none may stand unaltered at the end of a word. The स्
+      // s... is, like र् r, changed to a breathing, the visarga"; §170a:
+      // "The स् s, as already noticed (145), becomes visarga before a
+      // pause." A vocabulary lesson cites a word in pausa, so by Whitney's
+      // own rule the form is युवयोः, not युवयोस् — the same rule behind
+      // नरः/अश्वः and behind skt-word-yusmabhih below. (A prior version of
+      // this lesson shipped the phonotactically invalid स् ending directly;
+      // caught in code review and corrected here — those three sections are
+      // the source-level justification that correction was resting on
+      // implicitly, added in tranche 22.)
       text: 'युवयोः',
       gloss: 'yuvayoḥ — of/in you two (genitive/locative dual personal pronoun)',
       composedOf: ['skt-letter-yu', 'skt-letter-va', 'skt-letter-yo', 'skt-letter-visarga'],
@@ -1980,6 +2493,1855 @@ export const sanskritManifest: Manifest = {
       gloss:
         'sukhaduḥkham — pleasure and pain (a samāhāra dvandva compound: a pair of opposites treated as one neuter-singular unit, per Wikner\'s own framing of this compound type)',
       composedOf: ['skt-word-sukha', 'skt-word-duhkham'],
+    },
+
+    // ============ Verbs beyond the singular, tranche 22 ============
+    // Every verb in this file until now was eka-vacana: तिष्ठति/तिष्ठामि,
+    // नयते/नये, and the whole imperative/optative row — nine forms all
+    // sitting in ONE column of a table that has three. Wikner 2.B.1 (lines
+    // 744-756) is a nine-cell parasmaipada table for तिष्ठ with his own
+    // English printed under every cell; Wikner 3.B.1 (lines 941-948,
+    // repeated as a reference sheet at 4.B.1, lines 1063-1093) is the
+    // eighteen-cell parasmaipada+ātmanepada table for नी. This tranche
+    // fills the dvi-vacana and bahu-vacana cells of both — but only in the
+    // pada each root is actually taught in.
+    //
+    // Deliberately NOT shipped: the parasmaipada half of Wikner's own नी
+    // table (नयसि, नयथः, नयथ, नयामि, नयावः, नयामः). All six are printed by
+    // Wikner and several are letter-feasible today, but 3.B.1 line 959 says
+    // outright "in the case of dhātu nī for example, use the ātmane-pada
+    // endings" — shipping them would be linguistically real and wrong for
+    // this source's own pedagogy, which is precisely the skt-word-nayati
+    // failure this file exists to avoid repeating. √vad's own dual/plural
+    // (वदतः, वदथः, वदथ, वदावः, वदामः) is likewise left out for scope;
+    // वदन्ति is the single exception, included only because the Wikner
+    // sentence shipped at the end of this block contains it.
+    //
+    // Why Whitney does so much work here. Wikner's PDF embeds its
+    // Devanagari in a non-Unicode font that extracts as garbage, and drops
+    // every macron from his transliteration (his own तिष्ठामि, already in
+    // this file, extracts as "tis.t.hami"), so neither the script nor the
+    // vowel length of तिष्ठावः/तिष्ठामः/नयावहे/नयामहे can be read from him
+    // at all. Whitney (1889) supplies both: §606 gives the stems भव, नय and
+    // वद in Devanagari and puts all three roots in one class; §671 and
+    // §749.a state that तिष्ठ is inflected "like bhávāmi"; §733.9 states the
+    // lengthening rule verbatim ("the stem-final a becomes ā before m and v
+    // of 1st personal endings"); §735.a prints the whole paradigm in
+    // Devanagari; and §145 reconciles Whitney's citation spellings
+    // भवतस्/भवथस्/भवावस्/भवामस् with Wikner's visarga forms — the same
+    // convention this file already follows for नरः and तिष्ठेः.
+    {
+      id: 'skt-word-tishthatah',
+      stage: 'words',
+      // Level 3 throughout this block, same reasoning as skt-word-naye and
+      // skt-word-tishthami: a person/number-marking distinction on an
+      // already-taught root, not new vocabulary.
+      level: 3,
+      // Wikner 2.B.1, lines 749-751, verbatim: "prathama- tis.t.hati
+      // tis. .thatah. tis. .thanti / purus.a  he/she/it stands   they (two)
+      // stand   they (pl.) stand" — the gloss below is Wikner's own printed
+      // English, from the cell directly under this form. Whitney §735.a's
+      // 3rd-dual active of the identical a-class stem is "भवतस् bhávatas";
+      // Whitney prints the citation form -तस्, Wikner's -तः is the same
+      // ending in pausa (§145: "The स् s... is, like र् r, changed to a
+      // breathing, the visarga").
+      text: 'तिष्ठतः',
+      gloss: 'tiṣṭhataḥ — they (two) stand (3rd person dual, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-ta', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-tishthanti',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1's bahu-vacana prathama-puruṣa cell (lines 749-751),
+      // glossed by Wikner himself "they (pl.) stand". He returns to this
+      // exact form at 3.B.2 (lines 980-983): "Where `tis.t.hanti' is
+      // translated as `they (pl.) stand', the pronoun `they' is implied in
+      // the verb and it is not necessary to add an explicit Sanskrit
+      // pronoun." Devanagari of the -न्ति ending read from Whitney §735.a
+      // ("भवन्ति bhávanti").
+      text: 'तिष्ठन्ति',
+      gloss: 'tiṣṭhanti — they (pl.) stand (3rd person plural, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-nti'],
+    },
+    {
+      id: 'skt-word-tishthathah',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1, lines 752-753, verbatim: "madhyama- tis.t.hasi
+      // tis. .thathah.   tis. .thatha / purus.a  you (sing.) stand  you
+      // (two) stand  you (pl.) stand" — gloss is Wikner's own. Whitney
+      // §735.a's 2nd-dual active is "भवथस् bhávathas", the same -थ- before
+      // the ending, differing only in the pausa visarga (§145). थ
+      // (skt-letter-tha) has been taught since the alphabet tranche and is
+      // used in a word here for the first time.
+      text: 'तिष्ठथः',
+      gloss: 'tiṣṭhathaḥ — you (two) stand (2nd person dual, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-tha', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-tishthatha',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1's bahu-vacana madhyama-puruṣa cell (lines 752-753),
+      // glossed by Wikner "you (pl.) stand", and confirmed again by his own
+      // answer key: exercise 2.B.2(d)5's prompt (line 787) "He stands and
+      // you (pl.) speak" has the printed answer (line 3979) "tis.t.hati
+      // vadatha ca". No visarga here, and that is not an omission: Whitney
+      // §735.a's 2nd-plural active is "भवथ bhávatha", with no final
+      // sibilant for §145 to turn into one — unlike its five siblings in
+      // this block.
+      text: 'तिष्ठथ',
+      gloss: 'tiṣṭhatha — you (pl.) stand (2nd person plural, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-tha'],
+    },
+    {
+      id: 'skt-word-tishthavah',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1, lines 754-755, verbatim: "uttama- tis.t.hami
+      // tis. .thavah.   tis. .thamah. / purus.a  I stand   we (two) stand
+      // we (pl.) stand" — gloss is Wikner's own. The long ā is NOT readable
+      // from Wikner (see this block's own comment on his font); it is read
+      // from Whitney §733.9 ("the stem-final a becomes ā before m and v of
+      // 1st personal endings — but not before am of 1st sing. impf.") and
+      // from §735.a's 1st-dual active "भवावस् bhávāvas". The ā lives in
+      // ष्ठा (skt-letter-shthaa, already taught for तिष्ठामि), so the
+      // lengthening is carried by the letter choice, not by a sandhiRule.
+      text: 'तिष्ठावः',
+      gloss: 'tiṣṭhāvaḥ — we (two) stand (1st person dual, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthaa', 'skt-letter-va', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-tishthamah',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1's bahu-vacana uttama-puruṣa cell (lines 754-755),
+      // glossed by Wikner "we (pl.) stand", and confirmed again by his
+      // answer key: exercise 2.B.2(d)7's prompt (line 789) "We (pl.) stand
+      // and you (two) speak" has the printed answer (line 3981)
+      // "tis.t.hamah. vadathah. ca". Long ā from Whitney §733.9 and
+      // §735.a's 1st-plural active "भवामस् bhávāmas"; final -स् → -ः per
+      // §145.
+      text: 'तिष्ठामः',
+      gloss: 'tiṣṭhāmaḥ — we (pl.) stand (1st person plural, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shthaa', 'skt-letter-ma', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-nayete',
+      stage: 'words',
+      level: 3,
+      // Wikner 3.B.1's √nī table — column headers at lines 941-943
+      // ("parasmai-pada... atmane-pada" over "eka-/dvi-/bahu- vacana"),
+      // prathama-puruṣa row at line 944: "prathama- nayati nayatah nayanti
+      // nayate nayete nayante". The fifth cell — ātmanepada, dvi-vacana —
+      // is nayete; repeated verbatim on 4.B.1's reference sheet (line 1080)
+      // and in its chant order (line 1070): "nayate-nayete-nayante". The
+      // English is Wikner's own answer key, not inferred: exercise
+      // 3.B.3(c)3 (line 1003) "asvau naram vr. ks.an nayete" is answered
+      // (line 3988) "The horses (two) lead the man to the trees (pl.)".
+      // Devanagari of the ending from Whitney §735.a's 3rd-dual middle
+      // "भवेते bhávete"; §733.5 explains the e ("the conversion of initial
+      // ā of the 2d and 3d du. mid. endings to e"); §606 gives the stem
+      // itself in Devanagari, "नय náya from √नी nī lead". Zero new letters.
+      text: 'नयेते',
+      gloss: 'nayete — they (two) lead (3rd person dual, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ye', 'skt-letter-te'],
+    },
+    {
+      id: 'skt-word-nayante',
+      stage: 'words',
+      level: 3,
+      // Wikner 3.B.1 line 944, sixth cell of the prathama-puruṣa row
+      // (ātmanepada bahu-vacana); repeated at 4.B.1 line 1080 and chanted
+      // at line 1070. Gloss from Wikner's own answer key twice over:
+      // 3.B.3(d)3's prompt (line 1010) "The men (pl.) are speaking and
+      // leading," is answered (line 3994) "narah. vadanti nayante ca", and
+      // 3.B.3(d)6's prompt (line 1013) "The men (pl.) lead the horses
+      // (pl.)." is answered (line 3997) "narah. asvan nayante". Devanagari
+      // from Whitney §735.a's 3rd-plural middle "भवन्ते bhávante"; §733.9
+      // ("bhávante (bháva+ante)") is why this decomposes as नय + न्ते.
+      text: 'नयन्ते',
+      gloss: 'nayante — they (pl.) lead (3rd person plural, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ya', 'skt-letter-nte'],
+    },
+    {
+      id: 'skt-word-nayavahe',
+      stage: 'words',
+      level: 3,
+      // Wikner 3.B.1 line 948, uttama-puruṣa row: "uttama-   nayami
+      // nayavah. nayamah. naye nayavahe nayamahe" — under the headers at
+      // lines 941-943, the fifth cell is ātmanepada dvi-vacana. Repeated at
+      // 4.B.1 line 1084 and in Wikner's chant order (line 1071):
+      // "naye-nayavahe-nayamahe".
+      //
+      // Flagged deliberately, not buried: this is the ONE form in the
+      // tranche with no Wikner-printed English of its own. He glosses his
+      // तिष्ठ table cell by cell but not his नī table, and this cell happens
+      // never to surface in an exercise. The gloss below is therefore read
+      // off the table's own axis labels plus Wikner's own English for the
+      // same axis position in 2.B.1 (line 755, uttama-puruṣa dvi-vacana =
+      // "we (two)") — a labelled table read, the same basis skt-word-naye
+      // already stands on, not recall. Long ā from Whitney §733.9 and
+      // §735.a's 1st-dual middle "भवावहे bhávāvahe"; stem नय from §606.
+      text: 'नयावहे',
+      gloss: 'nayāvahe — we (two) lead (1st person dual, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-yaa', 'skt-letter-va', 'skt-letter-he'],
+    },
+    {
+      id: 'skt-word-nayamahe',
+      stage: 'words',
+      level: 3,
+      // Wikner 3.B.1 line 948, sixth cell of the uttama-puruṣa row
+      // (ātmanepada bahu-vacana); repeated at 4.B.1 line 1084 and chanted
+      // at line 1071. Unlike नयावहे just above, this one does have Wikner's
+      // own English: exercise 3.B.3(c)6 (line 1006) "narau vr. ks.an
+      // nayamahe" is answered (line 3991) "We (pl.) lead the men (two) to
+      // the trees (pl.)." Long ā from Whitney §733.9 and §735.a's
+      // 1st-plural middle "भवामहे bhávāmahe"; stem नय from §606.
+      text: 'नयामहे',
+      gloss: 'nayāmahe — we (pl.) lead (1st person plural, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-yaa', 'skt-letter-ma', 'skt-letter-he'],
+    },
+    {
+      id: 'skt-word-vadanti',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.2, exercise (c)7, line 780: "7. tis.t.hati vadanti ca",
+      // with his own printed answer at line 3973: "7. He stands and they
+      // (pl.) speak." — so the gloss is Wikner's English, not a reading off
+      // a paradigm. Confirmed again at 3.B.3(d)3: prompt (line 1010) "The
+      // men (pl.) are speaking and leading," → answer (line 3994) "narah.
+      // vadanti nayante ca". The root is Wikner's own (4.B.1 verb list,
+      // line 1090: "√vad vadati he speaks"); Whitney §606 puts वद in the
+      // same class as भव and नय, in Devanagari ("वद váda from √वद् vad
+      // speak"), so §735.a's "भवन्ति bhávanti" ending applies unchanged.
+      // Included only because the sentence below is shipped verbatim and
+      // needs it — √vad's other dual/plural cells are deliberately left out
+      // (see this block's own comment).
+      text: 'वदन्ति',
+      gloss: 'vadanti — they (pl.) speak (3rd person plural, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-nti'],
+    },
+    {
+      id: 'skt-sentence-tishthati-vadanti-ca',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner, not assembled from separately-sourced
+      // words: exercise 2.B.2(c)7, line 780, verbatim "tis.t.hati vadanti
+      // ca", with his own answer appendix, line 3973, verbatim "He stands
+      // and they (pl.) speak." This is the first sentence in the file whose
+      // two verbs differ in NUMBER, which is the point Wikner makes
+      // immediately under his 2.B.1 table (line 756): "Note that when the
+      // subject is dual, the dual form of the verb must be used." Until
+      // plural subjects (नराः, अश्वौ) are taught, that agreement can only be
+      // shown verb-to-verb like this, never subject-to-verb.
+      //
+      // No sandhiRule: Wikner prints his Lesson 2 exercises in pausa,
+      // unsandhi'd, exactly as this file's own skt-sentence-narah-vadati is
+      // (with skt-sentence-naro-vadati carrying the sandhi'd counterpart
+      // separately). The trailing च is the same indeclinable already taught
+      // as skt-word-ca.
+      text: 'तिष्ठति वदन्ति च',
+      gloss: 'tiṣṭhati vadanti ca — he stands and they (pl.) speak',
+      composedOf: ['skt-word-tishthati', 'skt-word-vadanti', 'skt-word-ca'],
+    },
+
+    // ============ 2nd-person PLURAL pronoun, tranche 22 ============
+    // Completes Whitney §491(a) — the same table and the same "2d pers."
+    // column tranches 18-21 worked down for the singular and the dual.
+    // Tranche 18 shipped the plural nominative alone (यूयम्); this closes
+    // the remaining six cases and with them the whole 2nd-person paradigm
+    // across all three numbers. The text lives in the Page: namespace of
+    // the Wikisource transcription (Page:Sanskrit Grammar by Whitney
+    // p1.djvu/214 and /215, both pagequality 4 — proofread against the page
+    // scans), since the Chapter VII page itself is only a transclusion stub
+    // and the table cannot be read there.
+    //
+    // The plural is where this table's one real trap sits. In the singular,
+    // the accentless brief alternate ते collided across two cases and was
+    // dropped (tranche 19, see skt-word-tava's comment). In the plural the
+    // same problem is one degree worse: वस् is printed in THREE cases at
+    // once — A. "युष्मान्, वस्", D. "युष्मभ्यम्, वस्", G. "युष्माकम्, वस्"
+    // — so it is dropped on identical grounds, reinforced by §491(b): "The
+    // briefer second forms for accus., dat., and gen., in all numbers, are
+    // accentless; and hence they are not allowed to stand at the beginning
+    // of a sentence, or elsewhere where any emphasis is laid." A word a
+    // learner cannot put at the front of a sentence is not a word this
+    // stage can teach honestly. Everything below is the fuller, accented
+    // form. Also dropped: युष्मे and युष्माक (§492(a), explicitly older-
+    // language, and युष्मे is not even assignable to one case — "dat. or
+    // loc."), युष्मास् (§492(a): "The VS. makes twice the acc. pl. fem.
+    // yuṣmā́s"), and a vocative, which the plural block simply does not have
+    // — the dual block prints "N. A. V." explicitly, so the table does mark
+    // vocatives where they exist and its silence here is informative.
+    {
+      id: 'skt-word-yusman',
+      stage: 'words',
+      level: 3,
+      // यु (already taught) + ष्मा + न् (both new, above). Whitney §491(a),
+      // plural table, A. row, "2d pers." column: "युष्मान्, वस् / yuṣmā́n,
+      // vas" — ships the fuller/accented युष्मान्, not the accentless brief
+      // alternate वस् (see this block's comment).
+      text: 'युष्मान्',
+      gloss: 'yuṣmān — you all (accusative plural personal pronoun, direct object)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shmaa', 'skt-letter-na-halanta'],
+    },
+    {
+      id: 'skt-word-yusmabhih',
+      stage: 'words',
+      level: 3,
+      // यु + ष्मा + भि (new, above) + ः (already taught). Whitney §491(a),
+      // plural table, I. row, "2d pers." column: "युष्माभिस् yuṣmā́bhis" — a
+      // single form, no accentless alternate for this case.
+      //
+      // Whitney prints the final sibilant as स्, but he states explicitly
+      // that this is his own printing convention and not the word's form
+      // before a pause: §145, "Of the sibilants, none may stand unaltered
+      // at the end of a word. The स् s... is, like र् r, changed to a
+      // breathing, the visarga"; §152, "Words will everywhere in this work
+      // be written with final s or r instead of ḥ; and the rules of
+      // combination will be stated as for the two more original sounds, and
+      // not for the visarga"; §170a, "The स् s, as already noticed (145),
+      // becomes visarga before a pause." A vocabulary lesson cites a word
+      // in pausa, so by Whitney's own rule the form is युष्माभिः — derived
+      // from the source, not from this file's habits. (It happens to agree
+      // with the visarga already shipped for नरः/अश्वः/तिष्ठेः/युवयोः, but
+      // the authority is §145/§152/§170a, not that precedent.)
+      text: 'युष्माभिः',
+      gloss: 'yuṣmābhiḥ — by/with you all (instrumental plural personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shmaa', 'skt-letter-bhi', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-yusmabhyam',
+      stage: 'words',
+      level: 3,
+      // यु + ष्म (new, above — SHORT, no ā) + भ्य (already taught, tranche
+      // 21) + म् (already taught). Whitney §491(a), plural table, D. row,
+      // "2d pers." column: "युष्मभ्यम्, वस् / yuṣmábhyam, vas" — the fuller
+      // form, not वस्. §493 comments on this very ending: "The bhyam (or
+      // hyam) of dat. sing. and pl. is met with only here" — the same
+      // ending already taught in the singular तुभ्यम्. The short ष्म here,
+      // against ष्मा in the accusative/instrumental/genitive/locative, was
+      // checked at codepoint level against the page's own Devanagari: this
+      // is exactly the one-mātrā difference a reconstruction check cannot
+      // catch on its own, because the same hand writes both sides of it.
+      text: 'युष्मभ्यम्',
+      gloss: 'yuṣmabhyam — to/for you all (dative plural personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shma', 'skt-letter-bhya', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-yusmat',
+      stage: 'words',
+      level: 3,
+      // यु + ष्म (short, as in the dative above) + त् (already taught,
+      // tranche 20). Whitney §491(a), plural table, Ab. row, "2d pers."
+      // column: "युष्मत् yuṣmát" — a single, unambiguous form, no
+      // accentless alternate. Directly parallels the already-taught
+      // singular ablative त्वत् (skt-word-tvat), whose row is "Ab. मत् ||
+      // त्वत्".
+      text: 'युष्मत्',
+      gloss: 'yuṣmat — from you all (ablative plural personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shma', 'skt-letter-ta-halanta'],
+    },
+    {
+      id: 'skt-word-yusmakam',
+      stage: 'words',
+      level: 3,
+      // यु + ष्मा + क (already taught, used bare so its inherent 'a'
+      // supplies the -kam syllable's vowel, the same treatment
+      // skt-word-yuyam already gives bare य) + म् (already taught).
+      // Whitney §491(a), plural table, G. row, "2d pers." column:
+      // "युष्माकम्, वस् / yuṣmā́kam, vas" — the fuller form, not वस्.
+      text: 'युष्माकम्',
+      gloss: 'yuṣmākam — of you all, your (genitive plural personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shmaa', 'skt-letter-ka', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-yusmasu',
+      stage: 'words',
+      level: 3,
+      // यु + ष्मा + सु (already taught, tranche 21) — zero new letters
+      // beyond ष्मा. Whitney §491(a), plural table, L. row, "2d pers."
+      // column: "युष्मासु" — a single, unambiguous form. The Wikisource
+      // proofreaders mark the roman here with {{SIC}}, flagging that the
+      // printed "yuṣmāsu" omits an accent that should read "yuṣmā́su"; that
+      // correction concerns the ACCENT ONLY and leaves the Devanagari —
+      // which is what this lesson ships, and which is unaccented throughout
+      // this file anyway — untouched. Vowel-final, so no visarga question
+      // arises.
+      text: 'युष्मासु',
+      gloss: 'yuṣmāsu — in/on/among you all (locative plural personal pronoun)',
+      composedOf: ['skt-letter-yu', 'skt-letter-shmaa', 'skt-letter-su'],
+    },
+
+    // ============ Nouns beyond the singular, tranche 23 ============
+    // The counterpart of tranche 22, and the gap tranche 22 wrote down in
+    // its own words: every VERB in this file got its dual and plural there,
+    // while every NOUN was still eka-vacana, so Wikner's agreement rule
+    // (2.B.1, line 756: "Note that when the subject is dual, the dual form
+    // of the verb must be used") could only ever be shown verb-to-verb,
+    // never subject-to-verb. This block closes that, on Wikner's own
+    // paradigm noun. नरौ, नराः and नरान् are the dvi-vacana and bahu-vacana
+    // cells of his 3.B.2 declension table (lines 976-978), reprinted at
+    // 4.B.2 (lines 1110-1111) and inside 5.B.1's fuller table (lines
+    // 1200-1202), and chanted by him at lines 1219-1220. अश्वाः, अश्वान् and
+    // वृक्षान् are the same cells applied to the two stems Wikner himself
+    // assigns to this paradigm by name at line 979: "Other nouns that take
+    // this form of declension are asva `horse', and vr. ks.a `tree'."
+    //
+    // Where the spelling comes from, and — as important — what is NOT being
+    // claimed. Wikner is authority for WHICH form exists and what it means.
+    // `pdftotext` on his PDF loses every macron: his nominative singular and
+    // nominative plural both extract as "narah.", his accusative plural as
+    // "naran". That is a fact about the EXTRACTION and not about the source,
+    // and this block says so rather than the reverse — rendering his PDF at
+    // 400 dpi and reading the glyphs (the method this project had until now
+    // used only for Tamil) shows page 36 printing "prathamā naraḥ narau
+    // narāḥ" and "dvitīyā naram narau narān" with the macrons plainly
+    // separating the plural cell from the singular one beside it, page 37
+    // printing "vṛkṣān" and "nayāmahe", page 49 "aśvāḥ" twice, page 124
+    // "narāḥ vadanti nayante ca" and "narāḥ aśvān nayante". So Wikner
+    // corroborates every vowel length below independently.
+    //
+    // The DEVANAGARI is still Whitney's, because Wikner has none that can be
+    // read at all (his script is embedded in a non-Unicode font). Whitney
+    // §330 (pp. 142-143, both pagequality 4) prints the masculine a-stem
+    // paradigm of काम and देव — "Du. N. A. V.: कामौ kā́māu / देवौ devāú",
+    // "Pl. N. V.: कामास् kā́mās / देवास् devā́s", "Pl. A.: कामान् kā́mān /
+    // देवान् devā́n" — and §331 (p. 143) adds that "among nouns, there are no
+    // irregularities in this declension". Whitney's citation form ends in
+    // -स् where Sanskrit in pausa has -ः, converted per his own §145 (p. 78,
+    // pagequality 4): "The स् s... is, like र् r, changed to a breathing,
+    // the visarga." That is the conversion already recorded for नरः,
+    // तिष्ठावः and युष्माभिः, and here it merely confirms the visarga Wikner
+    // himself prints.
+    //
+    // What this does NOT amount to is reading these words whole out of
+    // Whitney, and the attempt is recorded rather than left implied: he
+    // never declines नर or अश्व at all (his only अश्व is inside the Rig-Veda
+    // word अश्विनो on p. 33), and whole-word searches for नरौ, नराः, नरान्,
+    // अश्वौ, अश्वाः, अश्वान्, वृक्षान् each return 0 hits across the scan,
+    // as does insource:/नरा/. Whitney supplies the ENDINGS from his own
+    // काम/देव paradigm; the stems have been in this file since tranches 4
+    // and 7. That composite basis is exactly the one नरस्य, नरेण and नराय
+    // already stand on.
+    //
+    // Deliberately dropped here: अश्वौ, and with it three sentences Wikner
+    // both prints and glosses — 3.B.3(c)2 (line 1002) "narah. asvau ca
+    // tis.t.hanti" → answer line 3987 "The man and horses (two) are
+    // standing." (his only demonstration anywhere that a singular plus a
+    // dual subject takes a PLURAL verb); 3.B.3(d)2 (prompt line 1009) →
+    // answer line 3993 "asvau naram nayete"; 3.B.3(c)3 (line 1003) "asvau
+    // naram vr. ks.an nayete". The form and the English are beyond doubt;
+    // the SPELLING is not. अश्वौ needs the glyph श्वौ, and an insource
+    // census over Whitney vol. 1 finds श्व on six pages (32, 33, 35, 71,
+    // 546, 547), श्वा on exactly one (547), and श्वौ on ZERO — so the
+    // combined string could not be read anywhere, and assembling it from its
+    // attested parts would be writing Devanagari from recall. Recorded
+    // plainly because this is a STRICTER bar than the file's own precedent:
+    // skt-letter-raa, -te, -re, -ye and -shthaa were each admitted on the
+    // formula "the same sign already proven on a different consonant", and
+    // श्वौ is admissible on identical grounds (श्व at Whitney §13e, the ौ
+    // sign at §127 and §330). This tranche chose to read the combined string
+    // instead, and paid four of Wikner's sentences for the choice. It is a
+    // choice, not a rule the file has adopted; a later tranche may decide it
+    // the other way, deliberately.
+    {
+      id: 'skt-word-narau',
+      stage: 'words',
+      // Level 3 throughout this block, the same reasoning as the tranche-22
+      // verb forms above: a number-marking distinction on an already-taught
+      // stem, not new vocabulary.
+      level: 3,
+      // Wikner 3.B.2, the नर declension table: column headers at line 976
+      // ("eka-vacana dvi-vacana bahu-vacana") over line 977 "prathama
+      // narah. narau narah." and line 978 "dvitya naram narau naran". The
+      // dvi-vacana cell is narau in BOTH rows, which is why the gloss
+      // records the syncretism instead of picking a case. The same two rows
+      // are reprinted at 4.B.2 (lines 1110-1111), and 5.B.1's fuller table
+      // (lines 1200-1202) adds a third — "sambodhana prathama he nara he
+      // narau he narah." — so the dvi-vacana cell is narau in the
+      // nominative, the vocative and the accusative alike, which Whitney
+      // independently labels "Du. N. A. V." at §330. Wikner himself notes at
+      // line 1197 that sambodhana "is simply a special use of the prathamā
+      // (first) case ending". He chants the row at lines 1219-1220.
+      //
+      // The English is Wikner's own, twice, once per case: 3.B.3(c)6 (line
+      // 1006) "narau vr. ks.an nayamahe" is answered (line 3991) "We (pl.)
+      // lead the men (two) to the trees (pl.)" — accusative; 6.B.4(c)4 (line
+      // 1509) "narau vr. ks.an.am phalani asvam labhete" is answered (line
+      // 4038) "The men (two) take the fruit (pl.) of the trees (pl.) to the
+      // horse" — nominative. (Housekeeping for whoever checks this next:
+      // Wikner's answer appendix mislabels that block, heading it "6.B.3.c."
+      // at line 4035 though the exercises are headed "6.B.4 Exercises" at
+      // line 1502. The mapping used here is the correct one.)
+      //
+      // SPELLING: not Wikner — his Devanagari extracts as garbage. His roman
+      // was read off the PDF rendered at 400 dpi rather than off the text
+      // layer: page 36 prints "narau" unambiguously in both dvi-vacana
+      // cells. The stem नर is this file's own skt-word-nara; the dual
+      // ending's Devanagari is Whitney §330's "Du. N. A. V.: कामौ / देवौ"
+      // (p. 142). Whitney nowhere prints नरौ itself — whole-word and
+      // insource:/नरा/ searches both return 0 — and that is stated here
+      // rather than papered over.
+      text: 'नरौ',
+      gloss:
+        "narau — the men (two) (nominative/vocative/accusative dual — one form for all three, as Wikner's own table shows)",
+      composedOf: ['skt-letter-na', 'skt-letter-rau'],
+    },
+    {
+      id: 'skt-word-naraah',
+      stage: 'words',
+      level: 3,
+      // The one form in this block Wikner glosses in running prose rather
+      // than only in a table. 3.B.2, lines 980-983, verbatim: "Where
+      // `tis.t.hanti' is translated as `they (pl.) stand', the pronoun
+      // `they' is implied in the verb and it is not necessary to add an
+      // explicit Sanskrit pronoun. When the subject of the sentence is
+      // explicitly stated, for example `the men (pl.) stand', then the
+      // implied pronoun falls away, and this is translated as `narah.
+      // tis.t.hanti'." Table cell: line 977, prathama / bahu-vacana.
+      // Confirmed twice more by his answer key — prompt 3.B.3(d)3 (line
+      // 1010) "The men (pl.) are speaking and leading," → answer (line 3994)
+      // "narah. vadanti nayante ca"; prompt (d)6 (line 1013) "The men (pl.)
+      // lead the horses (pl.)." → answer (line 3997) "narah. asvan nayante".
+      //
+      // SPELLING: the long ā is destroyed by `pdftotext`, which renders both
+      // the nominative singular and the nominative plural of this row as
+      // "narah.". It is NOT absent from the source: rendering PDF page 36 at
+      // 400 dpi shows Wikner printing "narāḥ" with its macron in the
+      // prathamā / bahu-vacana cell, visibly distinct from "naraḥ" in the
+      // eka-vacana cell beside it, and the same macroned "narāḥ" appears in
+      // his answers on PDF page 124 (3.B.3.d.3 and d.6). Wikner therefore
+      // corroborates the vowel length independently; the Devanagari spelling
+      // of it is still read from Whitney §330 (p. 142), "Pl. N. V.: कामास्
+      // kā́mās / देवास् devā́s", with the final -स् → visarga per Whitney §145
+      // (p. 78) — the same conversion already recorded for नरः, तिष्ठावः and
+      // युष्माभिः, and here it agrees with the visarga Wikner prints. The ā
+      // lives inside skt-letter-raa, so no sandhiRule is needed to carry the
+      // lengthening.
+      text: 'नराः',
+      gloss: 'narāḥ — the men (pl.) (nominative plural)',
+      composedOf: ['skt-letter-na', 'skt-letter-raa', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-naraan',
+      stage: 'words',
+      level: 3,
+      // Wikner 3.B.2, line 978, the dvitīyā row under the line-976 headers:
+      // "dvitya naram narau naran" — bahu-vacana naran; reprinted at 4.B.2
+      // line 1111 and 5.B.1 line 1202, and chanted at line 1220. His own
+      // prose at lines 972-974 defines what the row means: "the second
+      // (dvitya) case ending generally indicates the immediate destination
+      // of the action expressed by the verb, i.e. the direct object of the
+      // sentence." His own printed English for this exact cell: 6.B.4(c)5
+      // (line 1510) "balah. naran phalani asvena nayante" is answered (line
+      // 4039) "The girls (pl.) lead the men (pl.) to the fruit (pl.) by
+      // horse." SPELLING: the long ā is lost by `pdftotext` ("naran") but
+      // printed by Wikner at 400 dpi; its Devanagari, and the final न्
+      // halanta, are read from Whitney §330 (p. 143), "Pl. A.: कामान् kā́mān
+      // / देवान् devā́n" — from the page's own Devanagari, not inferred from
+      // the roman. न् is skt-letter-na-halanta, added in tranche 22 for
+      // युष्मान्, the structurally identical accusative plural.
+      text: 'नरान्',
+      gloss: 'narān — the men (pl.) (accusative plural, direct object)',
+      composedOf: ['skt-letter-na', 'skt-letter-raa', 'skt-letter-na-halanta'],
+    },
+    {
+      id: 'skt-word-ashvaah',
+      stage: 'words',
+      level: 3,
+      // That अश्व takes this paradigm is Wikner's own explicit statement,
+      // 3.B.2 line 979 ("Other nouns that take this form of declension are
+      // asva `horse', and vr. ks.a `tree'."), so line 977's nominative-
+      // plural cell applies to it unchanged. He prints the form with his own
+      // English at 5.B.2(d)2 (line 1229) "naran.am asvah. tis. .thanti",
+      // answered (line 4017) "The horses (pl.) of the men (pl.) are
+      // standing." — the gloss below is that answer's own subject phrase —
+      // and again at 5.B.2(d)4 (line 1231) → (line 4019) "The man's horses
+      // (pl.) are standing among the trees (pl.)."
+      //
+      // SPELLING: the long ā is lost by `pdftotext` (both aśvaḥ and aśvāḥ
+      // extract as "asvah."), but it is NOT absent from Wikner — rendering
+      // PDF page 49 at 400 dpi shows him printing "aśvāḥ" with its macron in
+      // both (d)2 and (d)4. The Devanagari of that ā is read from Whitney
+      // §330 (p. 142), "Pl. N. V.: कामास् kā́mās / देवास् devā́s", with the
+      // -स् → visarga conversion of §145 (p. 78), which Wikner's own printed
+      // visarga confirms. The stem अश्व has been in this file since tranche
+      // 7; श्वा is the new skt-letter-shvaa above.
+      //
+      // FLAGGED, not buried: this word ships with NO sentence. Wikner prints
+      // aśvāḥ in three sentences and this file can reach none of them —
+      // 5.B.2(d)2 (line 1229) needs नराणाम्, 5.B.2(d)4 (line 1231) needs
+      // वृक्षेषु, and the 4.B.3(e)6 answer (line 4012, "asvah. naram
+      // vr.ks.ebhyah. vahanti", prompt line 1139 "The horses (pl.) carry the
+      // man from the trees (pl.)") needs वृक्षेभ्यः. It ships for the sake of
+      // completing the nominative-plural pair with नराः, and nothing more; it
+      // stays sentence-less until the genitive/locative plural block lands.
+      text: 'अश्वाः',
+      gloss: 'aśvāḥ — the horses (pl.) (nominative plural)',
+      composedOf: ['skt-letter-a', 'skt-letter-shvaa', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-ashvaan',
+      stage: 'words',
+      level: 3,
+      // Wikner's own English, twice: prompt 3.B.3(d)6 (line 1013) "The men
+      // (pl.) lead the horses (pl.)." → printed answer (line 3997) "narah.
+      // asvan nayante"; prompt 4.B.3(e)4 (line 1137) "We (pl.) go from the
+      // tree to the horses," → printed answer (line 4010) "asvan vr. ks.at
+      // gacchamah." The cell itself is 3.B.2 line 978's dvitīyā /
+      // bahu-vacana, applied to अश्व by his line 979. SPELLING: long ā lost
+      // by `pdftotext` ("asvan"), printed by Wikner at 400 dpi, and read in
+      // Devanagari — with the final न् — from Whitney §330 (p. 143), "Pl.
+      // A.: कामान् kā́mān / देवान् devā́n". Stem from skt-word-ashva; श्वा is
+      // skt-letter-shvaa above; न् is skt-letter-na-halanta.
+      text: 'अश्वान्',
+      gloss: 'aśvān — the horses (pl.) (accusative plural, direct object)',
+      composedOf: ['skt-letter-a', 'skt-letter-shvaa', 'skt-letter-na-halanta'],
+    },
+    {
+      id: 'skt-word-vrksaan',
+      stage: 'words',
+      level: 3,
+      // Wikner assigns वृक्ष to this paradigm by name at 3.B.2 line 979, so
+      // line 978's dvitīyā / bahu-vacana cell applies. His own English,
+      // twice: 3.B.3(c)3 (line 1003) "asvau naram vr. ks.an nayete" is
+      // answered (line 3988) "The horses (two) lead the man to the trees
+      // (pl.)."; prompt 4.B.3(e)3 (line 1136) is answered (line 4009) "vr.
+      // ks.an asvaih. vahanti" for "They (pl.) carry the trees (pl.) with
+      // horses". The "destination" half of the gloss is Wikner's own framing
+      // at 3.B.2 (lines 984-986): "For verbs having a sense of motion... the
+      // destination is expressed in dvitya" — the same wording this file
+      // already used for वृक्षम्. SPELLING: long ā lost by `pdftotext` ("vr.
+      // ks.an"), printed by Wikner at 400 dpi, read in Devanagari from
+      // Whitney §330 (p. 143), "Pl. A.: कामान् / देवान्". Stem वृक्ष has been
+      // in this file since tranche 4; क्षा is the new skt-letter-ksaa above.
+      text: 'वृक्षान्',
+      gloss: 'vṛkṣān — the trees (pl.) (accusative plural, here: destination)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-na-halanta'],
+    },
+    {
+      id: 'skt-sentence-naraah-tishthanti',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner, not assembled: 3.B.2, lines 980-983 (the
+      // passage quoted in full in skt-word-naraah's comment above), where
+      // both the Sanskrit and its English sit in one paragraph written
+      // precisely to make the point this lesson exists to teach — what
+      // happens when the subject stops being implied by the verb and is
+      // stated instead. This is the form tranche 22 named as its single
+      // highest-value follow-up: the first sentence in this file where the
+      // SUBJECT, not another verb, carries the number the verb agrees with,
+      // closing the gap skt-sentence-tishthati-vadanti-ca's own comment
+      // recorded ("until plural subjects are taught, that agreement can only
+      // be shown verb-to-verb like this, never subject-to-verb").
+      //
+      // No sandhiRule: both words stand in their independent citation
+      // (pausa) forms, exactly as Wikner prints them — the same relationship
+      // skt-sentence-narah-vadati has to its sandhi'd counterpart नरो वदति.
+      text: 'नराः तिष्ठन्ति',
+      gloss: 'narāḥ tiṣṭhanti — the men (pl.) stand',
+      composedOf: ['skt-word-naraah', 'skt-word-tishthanti'],
+    },
+    {
+      id: 'skt-sentence-narah-ashvah-ca-nayete',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner: exercise 3.B.3(c)5, line 1005, verbatim
+      // "narah. asvah. ca nayete", with his own printed answer at line 3990,
+      // verbatim "The man and the horse are leading." Both nouns here are
+      // SINGULAR — rendered at 400 dpi, page 37 shows visarga and no macron
+      // on either, and his answer says "The man and the horse", not "the
+      // men" — and it is their conjunction by च that makes the verb dual.
+      //
+      // Wikner's stated rule, 2.B.1 line 756, is "Note that when the subject
+      // is dual, the dual form of the verb must be used." — which speaks of
+      // a dual subject, not of two singulars joined by च. That extension is
+      // not stated by him in words; it is demonstrated by this exercise
+      // itself. He demonstrates the neighbouring case the same way at
+      // 3.B.3(c)2, "narah. asvau ca tis.t.hanti" (answer line 3987, "The man
+      // and horses (two) are standing."), where a singular plus a dual takes
+      // a PLURAL verb. The gloss records what the sentence shows, rather
+      // than putting a rule in Wikner's mouth.
+      //
+      // This sentence costs the file nothing: all four of its words are
+      // already taught and no new letter is needed. It was reachable before
+      // this tranche and was simply never taken; it is here because it is
+      // the cleanest demonstration in Wikner of subject-to-verb number
+      // agreement, and it pairs directly against नराः तिष्ठन्ति above. No
+      // sandhiRule — Wikner prints all four words unsandhied.
+      text: 'नरः अश्वः च नयेते',
+      gloss:
+        'naraḥ aśvaḥ ca nayete — the man and the horse are leading (both nouns are singular, yet the verb is dual: च joining two singular subjects makes the pair count as dual for agreement, which is what Wikner himself shows in his answer to this exercise)',
+      composedOf: ['skt-word-narah', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-nayete'],
+    },
+    {
+      id: 'skt-sentence-naraah-ashvaan-nayante',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner: exercise 3.B.3(d)6 — his English prompt at
+      // line 1013, verbatim "The men (pl.) lead the horses (pl.).", and his
+      // own printed answer at line 3997, verbatim "narah. asvan nayante".
+      // The gloss below is the prompt, word for word. This is the first
+      // sentence in the file in which BOTH subject and object are plural
+      // nouns with a plural verb agreeing with the subject: the
+      // nominative/accusative contrast that until now could only be shown in
+      // the singular (नरः vs. नरम्) is here shown in the plural (नराः vs.
+      // अश्वान्), with the case endings alone deciding who leads whom.
+      // नयन्ते is already in the file from tranche 22, and its own comment
+      // already cites this very answer line for its gloss. No sandhiRule:
+      // Wikner prints the three words unsandhied.
+      text: 'नराः अश्वान् नयन्ते',
+      gloss: 'narāḥ aśvān nayante — the men (pl.) lead the horses (pl.)',
+      composedOf: ['skt-word-naraah', 'skt-word-ashvaan', 'skt-word-nayante'],
+    },
+    {
+      id: 'skt-sentence-narau-vrksaan-nayamahe',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner: exercise 3.B.3(c)6, line 1006, verbatim
+      // "narau vr. ks.an nayamahe", with his own printed answer at line
+      // 3991, verbatim "We (pl.) lead the men (two) to the trees (pl.)."
+      // The parenthetical in the gloss is Wikner's own point, made at 3.B.2
+      // lines 980-982 ("the pronoun `they' is implied in the verb and it is
+      // not necessary to add an explicit Sanskrit pronoun"), and lines
+      // 984-986 are why there are two accusatives here: "There are some
+      // verbs (such as n[ī]) which have both a direct object and a
+      // destination, in which case both are expressed in dvitya" — नरौ is
+      // the direct object, वृक्षान् the destination, exactly the structure
+      // this file already ships in the singular as नरः अश्वम् वृक्षम् नयते.
+      // This is the sentence that made नयामहे worth teaching in tranche 22
+      // (that lesson's comment cites this same 1006/3991 pair for its
+      // gloss), and it has been unreachable ever since for want of नरौ and
+      // वृक्षान्. No sandhiRule — Wikner prints the three words unsandhied.
+      text: 'नरौ वृक्षान् नयामहे',
+      gloss:
+        'narau vṛkṣān nayāmahe — we (pl.) lead the men (two) to the trees (pl.) (नरौ is the dual OBJECT here, not the subject: the subject is the "we" carried inside the verb ending)',
+      composedOf: ['skt-word-narau', 'skt-word-vrksaan', 'skt-word-nayamahe'],
+    },
+    {
+      id: 'skt-sentence-naraah-vadanti-nayante-ca',
+      stage: 'sentences',
+      level: 3,
+      // Quoted whole from Wikner: exercise 3.B.3(d)3 — his English prompt at
+      // line 1010, verbatim "The men (pl.) are speaking and leading,", and
+      // his own printed answer at line 3994, verbatim "narah. vadanti
+      // nayante ca". The gloss below is the prompt. Worth having beside
+      // skt-sentence-tishthati-vadanti-ca (already in the file, from
+      // 2.B.2(c)7), which pairs two verbs that DISAGREE in number with no
+      // stated subject at all; here one stated plural subject governs two
+      // verbs that agree with it and with each other across both padas —
+      // वदन्ति parasmaipada, नयन्ते ātmanepada — with च after the second of
+      // the two linked verbs, the same position it takes in that earlier
+      // sentence. वदन्ति's and नयन्ते's own comments already cite this exact
+      // answer line for their glosses, which is how this sentence came to be
+      // the one they were shipped for. No sandhiRule: Wikner prints all four
+      // words unsandhied.
+      text: 'नराः वदन्ति नयन्ते च',
+      gloss: 'narāḥ vadanti nayante ca — the men (pl.) are speaking and leading',
+      composedOf: ['skt-word-naraah', 'skt-word-vadanti', 'skt-word-nayante', 'skt-word-ca'],
+    },
+
+    // ============ Closing the present-indicative paradigms, tranche 23 ============
+    // The other half of tranche 23. Three nine-cell present indicatives have
+    // been filled a cell at a time since tranche 12; this closes all three.
+    // √sthā's parasmaipada was missing only तिष्ठसि; √vad had nothing but
+    // वदति and वदन्ति; √nī's ātmanepada was missing its whole madhyama-puruṣa
+    // row. Every cell of each is now taught.
+    //
+    // The split of sources is this file's usual one and does more work than
+    // usual here. Wikner is authority for WHICH form exists and what it
+    // means: his glossed nine-cell √sthā table at 2.B.1 (lines 749-755), his
+    // 2.B.2 exercises and answer key (lines 774-790, 3966-3982) where every
+    // one of the five new √vad forms is printed beside an English
+    // translation, and his √nī table at 3.B.1 (lines 941-949) repeated as a
+    // reference sheet at 4.B.1 (lines 1077-1085). Wikner is authority for
+    // NOTHING about spelling: his Devanagari is a non-Unicode font, and his
+    // transliteration as extracted loses vowel length — "vadavah.",
+    // "vadamah.", "vadami" for vadāvaḥ, vadāmaḥ, vadāmi. Every ā below comes
+    // from Whitney's Devanagari, not from Wikner's roman.
+    //
+    // Whitney §735.a (Page 293, pagequality 4 — proofread against the scans)
+    // paradigms √भू, stem भव. Wikner states at 2.B.1 line 759 that every verb
+    // in these exercises is first-class, bhvādi-gaṇa — the same class — so
+    // the endings Whitney prints for भव are the endings तिष्ठ, वद and नय
+    // take; §606 puts भव, नय and वद in one class in Devanagari, and §671 and
+    // §749.a state that तिष्ठ is inflected "like bhávāmi". Where Whitney
+    // prints a word-final स् (भवतस्, भवथस्, भवावस्, भवामस्) the form ships
+    // here with ः per his own §145 (Page 78): final s "is changed to a
+    // breathing, the visarga". That is this file's established precedent —
+    // skt-word-tishthavah, skt-word-yusmabhih — not a new liberty.
+    //
+    // One form was deliberately NOT taken, again. Wikner's √nī table prints
+    // नयसि, नयथः and नयथ, but his 3.B.1 line 959 tells the learner to use the
+    // ātmane-pada endings for this root, so only the ātmanepada cells
+    // (नयसे, नयेथे, नयध्वे) are taught. Same rule that has kept नयति out of
+    // this file since tranche 7.
+    {
+      id: 'skt-word-tishthasi',
+      stage: 'words',
+      level: 3,
+      // Wikner 2.B.1's √sthā table, lines 752-753: "madhyama- tis.t.hasi" /
+      // "purus.a you (sing.) stand" (eka-vacana column) — the gloss is his
+      // own printed English from the cell directly under the form. Stated a
+      // second time at 1.B.2 line 551 ("madhyama-purus.a tis.t.hasi you
+      // stand") and used in exercise 2.B.2(c)4 (line 777, "tis.t.hasi
+      // vadathah. ca"), whose answer at line 3970 reads "You (s.) stand and
+      // you (two) speak." This was the last empty cell of the √sthā
+      // parasmaipada table, and tranche 22's own comment named it (with
+      // नयसे) as the cheapest next tranche. SPELLING: stem तिष्ठ from this
+      // file's own skt-word-tishtha/skt-word-tishthati; ending सि from
+      // Whitney §735.a's "भवसि bhávasi" (Page 293, row 2, active s.).
+      text: 'तिष्ठसि',
+      gloss: 'tiṣṭhasi — you (sing.) stand (2nd person singular, parasmaipada)',
+      composedOf: ['skt-letter-ti', 'skt-letter-shtha', 'skt-letter-si'],
+    },
+    {
+      id: 'skt-word-vadasi',
+      stage: 'words',
+      level: 3,
+      // Wikner 1.B.2 line 564, a worked sentence printed with its own
+      // translation: "tis.t.hasi vadasi ca   You stand and you speak, or You
+      // stand and speak." The person/number label comes from the same
+      // section's table at line 551 (madhyama-puruṣa = "you", eka-vacana)
+      // together with lines 556-557, "√vad remains clearly recognizable in
+      // the form vadati `he/she/it speaks'". Drilled again in exercises
+      // 1.B.3(d)2/(d)5 (lines 581-582) and answers 1.B.3(e)4/(e)3 (lines
+      // 3961, 3963). SPELLING: stem वद from this file's own skt-word-vadati;
+      // ending सि from Whitney §735.a's "भवसि bhávasi" (Page 293).
+      text: 'वदसि',
+      gloss: 'vadasi — you (sing.) speak (2nd person singular, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-si'],
+    },
+    {
+      id: 'skt-word-vadami',
+      stage: 'words',
+      level: 3,
+      // Wikner 1.B.2 line 562, printed as its own glossed entry: "vadami   I
+      // speak or I am speaking." (uttama-puruṣa eka-vacana per the same
+      // section's table at line 552, "uttama-purus.a tis..thami I stand").
+      // Used again at line 563 ("tis.t.hati vadami ca   He stands and I
+      // speak.") and in answers 1.B.3(e)1/(e)6 (lines 3961, 3963) and
+      // 2.B.2(d)4 (line 3978). SPELLING: Wikner's extracted text loses the
+      // vowel length ("vadami"), so the ā comes from Whitney §735.a's
+      // "भवामि bhávāmi" (Page 293, row 1, active s.) — the same -आमि ending
+      // this file already ships in तिष्ठामि — with §733.9 giving the rule
+      // ("the stem-final a becomes ā before m and v of 1st personal
+      // endings"). दा is the new skt-letter-daa above; मि is skt-letter-mi.
+      text: 'वदामि',
+      gloss: 'vadāmi — I speak, I am speaking (1st person singular, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-daa', 'skt-letter-mi'],
+    },
+    {
+      id: 'skt-word-vadatah',
+      stage: 'words',
+      level: 3,
+      // Wikner exercise 2.B.2(c)1, line 774: "1. tis.t.hanti vadatah. ca",
+      // whose answer at line 3967 reads "2.B.2.c.1. They (pl.) stand and
+      // they (two) speak." — so vadataḥ = "they (two) speak", his English,
+      // not a reading off a paradigm. Corroborated by exercise (c)6 (line
+      // 779) / answer 3972, and by the person/number labels of his 2.B.1
+      // table (lines 750-751, prathama-puruṣa dvi-vacana = "they (two)").
+      // SPELLING: stem वद from skt-word-vadati; ending from Whitney §735.a's
+      // "भवतस् bhávatas" (Page 293, row 3, active d.), final स् → ः per §145
+      // — the same conversion already recorded for तिष्ठतः.
+      text: 'वदतः',
+      gloss: 'vadataḥ — they (two) speak (3rd person dual, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-ta', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-vadathah',
+      stage: 'words',
+      level: 3,
+      // Wikner exercise 2.B.2(c)4, line 777: "4. tis.t.hasi vadathah. ca",
+      // answer line 3970: "4. You (s.) stand and you (two) speak." —
+      // vadathaḥ = "you (two) speak". Corroborated by exercise (c)5 (line
+      // 778) / answer 3971, and by answers 2.B.2(d)3 and (d)7 (lines 3977,
+      // 3981), where vadathaḥ renders the English "you (two) speak" of
+      // prompts at lines 785 and 789. SPELLING: stem वद from
+      // skt-word-vadati; ending from Whitney §735.a's "भवथस् bhávathas"
+      // (Page 293, row 2, active d.), final स् → ः per §145.
+      text: 'वदथः',
+      gloss: 'vadathaḥ — you (two) speak (2nd person dual, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-tha', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-vadatha',
+      stage: 'words',
+      level: 3,
+      // Wikner exercise 2.B.2(d)1, line 783 — English "1. We (two) stand and
+      // you (pl.) speak" — answered at line 3975 with "2.B.2.d.1.
+      // tis.t.havah. vadatha ca", so vadatha = "you (pl.) speak".
+      // Corroborated twice more: (d)5 (line 787, "He stands and you (pl.)
+      // speak") → answer 3979 "tis.t.hati vadatha ca"; (d)8 (line 790, "You
+      // (pl.) speak and you (sing.) stand") → answer 3982 "vadatha
+      // tis..thasi ca". Label also from his 2.B.1 table (lines 752-753,
+      // madhyama-puruṣa bahu-vacana = "you (pl.)"). SPELLING: stem वद from
+      // skt-word-vadati; ending from Whitney §735.a's "भवथ bhávatha" (Page
+      // 293, row 2, active p.). No visarga, and that is not an omission —
+      // Whitney prints the bare थ, with no final sibilant for §145 to act on,
+      // exactly as with तिष्ठथ.
+      text: 'वदथ',
+      gloss: 'vadatha — you (pl.) speak (2nd person plural, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-da', 'skt-letter-tha'],
+    },
+    {
+      id: 'skt-word-vadavah',
+      stage: 'words',
+      level: 3,
+      // Wikner exercise 2.B.2(c)2, line 775: "2. tis.t.hathah. vadavah. ca",
+      // answer line 3968: "2. You (two) stand and we (two) speak." — so
+      // vadāvaḥ = "we (two) speak". Corroborated by exercise (c)8 (line 781)
+      // / answer 3974. SPELLING: Wikner's extracted text loses the vowel
+      // length ("vadavah."), so the ā is read from Whitney §735.a's "भवावस्
+      // bhávāvas" (Page 293, row 1, active d.) with the rule at §733.9 —
+      // the same -आवस् ending this file already ships as -आवः in तिष्ठावः.
+      // Final स् → ः per §145. The ā lives inside skt-letter-daa, so no
+      // sandhiRule carries the lengthening.
+      text: 'वदावः',
+      gloss: 'vadāvaḥ — we (two) speak (1st person dual, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-daa', 'skt-letter-va', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-vadamah',
+      stage: 'words',
+      level: 3,
+      // Wikner exercise 2.B.2(c)3, line 776: "3. vadamah. tis.t.hatah. ca",
+      // answer line 3969: "3. We (pl.) speak and they (two) stand." — so
+      // vadāmaḥ = "we (pl.) speak". Label also from his 2.B.1 table (lines
+      // 754-755, uttama-puruṣa bahu-vacana = "we (pl.)"). SPELLING: Wikner's
+      // extracted text loses the vowel length ("vadamah."), so the ā is read
+      // from Whitney §735.a's "भवामस् bhávāmas" (Page 293, row 1, active p.)
+      // with §733.9's rule — the same -आमस् ending this file already ships as
+      // -आमः in तिष्ठामः. Final स् → ः per §145.
+      text: 'वदामः',
+      gloss: 'vadāmaḥ — we (pl.) speak (1st person plural, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-daa', 'skt-letter-ma', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-nayase',
+      stage: 'words',
+      level: 3,
+      // Wikner's √nī table, printed twice — 3.B.1 line 946 and the 4.B.1
+      // reference sheet line 1082 — "madhyama- nayasi nayathah nayatha |
+      // nayase nayethe nayadhve", under the column headers at lines 941-943
+      // ("parasmai-pada... atmane-pada" over "eka-/dvi-/bahu- vacana"); also
+      // in his recitation drill at lines 1070-1071 ("nayase-nayethe-
+      // nayadhve"). The gloss is composed from two things Wikner prints and
+      // not from recall: the row/column labels (2.B.1 lines 752-753 gloss
+      // madhyama-puruṣa eka-vacana as "you (sing.)") and line 1088, "√nī
+      // nayate he leads." PADA: this is the ātmanepada cell, the one 3.B.1
+      // line 959 instructs the learner to use for √nī, which is why it is
+      // admissible where नयसि is not. SPELLING: stem नय from this file's own
+      // skt-word-nayate/skt-word-nayante; ending से from Whitney §735.a's
+      // "भवसे bhávase" (Page 293, row 2, middle s.).
+      text: 'नयसे',
+      gloss: 'nayase — you (sing.) lead (2nd person singular, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ya', 'skt-letter-se'],
+    },
+    {
+      id: 'skt-word-nayethe',
+      stage: 'words',
+      level: 3,
+      // The one cell of this row with Wikner's own printed English: exercise
+      // 4.B.3(e)2, line 1135 — "2. You (two) are leading the horse for the
+      // man," — answered at line 4008 with "2. asvam naraya nayethe", so
+      // nayethe = "you (two) lead". Also in the √nī table at 3.B.1 line 946
+      // / 4.B.1 line 1082 (ātmanepada, dvi-vacana, madhyama-puruṣa), the
+      // recitation drill at line 1071, and answers at lines 4048 and 4074.
+      // PADA: ātmanepada, per 3.B.1 line 959. SPELLING: stem नये (न + ये,
+      // both already taught, as used in skt-word-nayete) plus थे from
+      // Whitney §735.a's "भवेथे bhávethe" (Page 293, row 2, middle d.),
+      // which is also where the ए of the dual stem is attested; §733.5
+      // explains that ए ("the conversion of initial ā of the 2d and 3d du.
+      // mid. endings to e").
+      text: 'नयेथे',
+      gloss: 'nayethe — you (two) lead (2nd person dual, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ye', 'skt-letter-the'],
+    },
+    {
+      id: 'skt-word-nayadhve',
+      stage: 'words',
+      level: 3,
+      // Wikner's √nī table, printed twice (3.B.1 line 946, 4.B.1 line 1082)
+      // — ātmanepada / bahu-vacana / madhyama-puruṣa cell, "nayadhve" — and
+      // chanted at line 1071. Like नयावहे in tranche 22, this cell never
+      // surfaces in an exercise, so the gloss is read off the table's own
+      // labels (2.B.1 lines 752-753 gloss madhyama-puruṣa bahu-vacana as
+      // "you (pl.)") plus line 1088's "√nī nayate he leads." — a labelled
+      // table read, not recall, and flagged here rather than left to be
+      // noticed. The -dhve ending itself is independently corroborated with
+      // English: exercise 4.B.3(d)3 (line 1129, "vr.ks.an asvat labhadhve")
+      // is answered at line 4003 "You (pl.) take the trees (pl.) from the
+      // horse." PADA: ātmanepada, per 3.B.1 line 959. SPELLING: stem नय from
+      // skt-word-nayate/skt-word-nayante; ending ध्वे from Whitney §735.a's
+      // "भवध्वे bhávadhve" (Page 293, row 2, middle p.).
+      text: 'नयध्वे',
+      gloss: 'nayadhve — you (pl.) lead (2nd person plural, ātmanepada)',
+      composedOf: ['skt-letter-na', 'skt-letter-ya', 'skt-letter-dhve'],
+    },
+
+    // ====== The rest of Wikner's नर declension (level 2-3), tranche 24 ======
+    // Tranche 23 held six cells of Wikner's own 5.B.1 declension table back
+    // (lines 1203-1207) on the grounds that they "want one coherent block of
+    // their own", naming the internal-sandhi complication in the genitive
+    // plural as the reason. This is that block — नराभ्याम्, नरैः, नरेभ्यः,
+    // नरयोः, नराणाम्, नरेषु, every remaining dual and plural cell — plus
+    // वृक्षः, the singular tranche 23 also deferred, which needs no new letter
+    // at all, and वृक्षाः, which exists here only to give नरयोः a real
+    // sentence rather than a table citation.
+    //
+    // METHOD, and what made this block possible at all. Wikner's extracted
+    // text layer is worse than useless for these forms: it flattens narābhyām
+    // to "narabhyam", narāṇām to "naran.am", nareṣu to "nares.u" and vṛkṣāḥ to
+    // "vr. ks.ah." — every macron gone, so the dual and plural cells become
+    // indistinguishable from singulars. Every roman form below was instead
+    // read off a 400-600 dpi RENDER of his page, the method tranche 23
+    // introduced for exactly this correction, and the renders print the
+    // macrons and underdots plainly. His full nara table is PDF page 48 — the
+    // UNNUMBERED chapter-opening leaf preceding printed p.39; the running head
+    // that reads "Lesson 5.B 39" belongs to the NEXT leaf, and mistaking it
+    // for this one's footer is how a printed-page citation here goes wrong by
+    // one. The 5.B.2 exercises are PDF page 49 = printed p.39, the answer key
+    // PDF page 135 = printed p.125, the 8.B appendix PDF page 76 = printed
+    // p.66.
+    //
+    // NEVER CITE THAT APPENDIX ALONE. Its eight-row nara table contradicts his
+    // own main table in three places: accusative singular "narām" (main table:
+    // naram), ablative singular "narāyāt" (main table: narāt), and genitive
+    // singular "narāsya" (main table, and Whitney §327f: narasya). All six
+    // forms taken from it below agree between the two tables, so it was used
+    // as corroboration only — but three typos in eight rows is what it is.
+    //
+    // SOURCE SPLIT, this file's usual one. Wikner is authority for WHICH cell
+    // exists, what case it is and what that case means — his own prose at
+    // 4.B.2 for tṛtīyā/caturthī/pañcamī (lines 1097-1108) and at 5.B.1 for
+    // ṣaṣṭhī/saptamī (lines 1181-1191). Wikner is authority for NOTHING about
+    // Devanagari: he has none that can be read at all. Every character below
+    // is Whitney's §330 काम/देव a-stem paradigm (p1.djvu/142-143, pagequality
+    // 4), with §327-329 stating each ending in prose and §145 (p1.djvu/78)
+    // converting every citation-form final -स् to the visarga this file has
+    // shipped since नरः. Whitney's own row labels ("Du. I. D. Ab.", "Du. G.
+    // L.", "Pl. D. Ab.") independently confirm the case syncretisms Wikner's
+    // tables show, which is why the glosses below state them as fact.
+    //
+    // NO sandhiRule ANYWHERE HERE, and that is a decision rather than an
+    // omission. नराणाम् and नरेषु each carry a real internal-sandhi change
+    // (n→ṇ, s→ṣ), but in both the changed sound lives INSIDE a letter lesson
+    // (णा, षु), so the text reconstructs exactly. Setting sandhiRule would
+    // switch OFF the one check capable of catching a dental-for-retroflex
+    // substitution in precisely the two lessons where that substitution is the
+    // likeliest error (see the field's own comment on Lesson: it is for text
+    // that legitimately does not reconstruct). The rules are therefore
+    // recorded in the glosses, with both sources quoted here.
+    {
+      id: 'skt-word-vrksah',
+      stage: 'words',
+      level: 2,
+      // The cheapest form in the file: all three letters have been taught for
+      // tranches. FORM AND GLOSS from Wikner, who licenses the paradigm at
+      // 3.B.2 line 979 — "Other nouns that take this form of declension are
+      // asva `horse', and vr. ks.a `tree'." — the paradigm being nara, whose
+      // prathamā eka-vacana cell is naraḥ (lines 977, 1200), and who then
+      // prints the form itself in his answer key at 3.B.3(d)5 (prompt line
+      // 1012 "5. The tree and the horse are standing,", answer line 3996).
+      // Rendered at 400 dpi off PDF page 134 that answer reads "vṛkṣaḥ aśvah
+      // ca tiṣṭhataḥ" — short ṛ, visarga underdot plainly there. Printed again
+      // at 5.B.2(e)2, answer line 4025 (PDF page 135): "vṛkṣeṣu naraḥ aśvaḥ ca
+      // tiṣṭhataḥ". SPELLING: the stem वृक्ष is this file's own skt-word-vrksa
+      // (tranche 4); Whitney supplies only the ending — §330 Sing. N. "कामस्
+      // kā́mas | देवस् devás" (p1.djvu/142) with final -स् → ः per §145, the
+      // same basis नरः and अश्वः already stand on, and here it merely confirms
+      // the visarga Wikner himself prints.
+      text: 'वृक्षः',
+      gloss: 'vṛkṣaḥ — tree (nominative singular)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-narabhyam',
+      stage: 'words',
+      level: 3,
+      // FORM AND GLOSS from Wikner's full nara table at 5.B.1, lines
+      // 1203-1205: the dvi-vacana column of the tṛtīyā, caturthī and pañcamī
+      // rows, all three cells reading "narabhyam" in the text dump. Rendered at
+      // 400 dpi off PDF page 48 the macron the extraction loses is plainly
+      // there — "tṛtīyā nareṇa narābhyām naraiḥ", "caturthī narāya narābhyām
+      // narebhyaḥ", "pañcamī narāt narābhyām narebhyaḥ". Same three cells at
+      // 4.B.2 lines 1112-1114 and in the 8.B appendix at lines 1939-1941. The
+      // three case meanings are his own prose at 4.B.2: tṛtīyā (lines
+      // 1097-1099) "indicates the `instrument' in relation to the verb: it is
+      // that `by means of which' the action is accomplished"; caturthī (lines
+      // 1103-1105) "indicates the indirect object, the recipient or
+      // beneficiary or purpose of the action"; pañcamī (lines 1106-1108)
+      // "indicates the place from which the action begins". SPELLING: Whitney
+      // §330 Dual "I. D. Ab.: कामाभ्याम् kā́mābhyām | देवाभ्याम् devā́bhyām |
+      // आस्याभ्याम् āsyā̀bhyām" (p1.djvu/142) — his own three-case row label
+      // independently confirming the syncretism Wikner's three rows show —
+      // with the ending stated at §328c (p1.djvu/141): "The instr., dat., and
+      // abl. have bhyām... with the stem-final lengthened to ā before it."
+      // भ्या is skt-letter-bhyaa, added in tranche 21 for युवाभ्याम्, the
+      // structurally identical instrumental/dative/ablative dual.
+      text: 'नराभ्याम्',
+      gloss:
+        'narābhyām — by/with the two men, to/for the two men, from the two men (instrumental/dative/ablative dual — one form for all three cases, as Wikner and Whitney both show)',
+      composedOf: [
+        'skt-letter-na',
+        'skt-letter-raa',
+        'skt-letter-bhyaa',
+        'skt-letter-ma-halanta',
+      ],
+    },
+    {
+      id: 'skt-word-naraih',
+      stage: 'words',
+      level: 3,
+      // FORM AND GLOSS from Wikner 5.B.1, line 1203, tṛtīyā / bahu-vacana:
+      // "naraih."; the same cell at 4.B.2 line 1112 and appendix line 1939.
+      // Rendered at 400 dpi off PDF page 48: "tṛtīyā nareṇa narābhyām naraiḥ",
+      // diphthong and visarga underdot both plainly printed. Case meaning from
+      // his tṛtīyā prose, 4.B.2 lines 1097-1102 (quoted under नराभ्याम्
+      // above). This form appears in no Wikner sentence at all, so like नरेण,
+      // नराय and नरस्य before it, it ships on a table citation — his labelled
+      // table read, not a form inferred here. SPELLING: Whitney §329d
+      // (p1.djvu/141) "The instr. ends later always in āis", printed at §330
+      // Plural "I.: कामैस् kā́māis | देवैस् devāís | आस्यैस् āsyāìs"
+      // (p1.djvu/143), final -स् → ः per §145. The ऐ sign on र is the new
+      // skt-letter-rai above, read from Whitney §879b rather than assembled.
+      text: 'नरैः',
+      gloss: 'naraiḥ — by/with the men (pl.) (instrumental plural)',
+      composedOf: ['skt-letter-na', 'skt-letter-rai', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-narebhyah',
+      stage: 'words',
+      level: 3,
+      // FORM AND GLOSS from Wikner 5.B.1, lines 1204-1205: the bahu-vacana
+      // column of the caturthī and pañcamī rows, both cells "narebhyah.";
+      // same two cells at 4.B.2 lines 1113-1114 and appendix lines 1940-1941.
+      // Rendered at 400 dpi off PDF page 48: "caturthī narāya narābhyām
+      // narebhyaḥ" and "pañcamī narāt narābhyām narebhyaḥ". Case meanings from
+      // his 4.B.2 prose, lines 1103-1108 (quoted under नराभ्याम् above). He
+      // uses the same ending on a different stem in real sentences — 4.B.3(e)6
+      // answer line 4012, 5.B.2(e)4 answer line 4027 — but both need words
+      // this file does not teach. SPELLING: Whitney §329e (p1.djvu/141) "The
+      // dat. and abl. have bhyas as ending, with e instead of the final a
+      // before it", printed at §330 Plural "D. Ab.: कामेभ्यस् kā́mebhyas |
+      // देवेभ्यस् devébhyas | आस्येभ्यस् āsyèbhyas" (p1.djvu/143) — his own
+      // two-case row label matching Wikner's two rows — with final -स् → ः per
+      // §145. रे is skt-letter-re; भ्य is skt-letter-bhya, added in tranche 21
+      // for तुभ्यम्/युष्मभ्यम्.
+      text: 'नरेभ्यः',
+      gloss:
+        'narebhyaḥ — to/for the men (pl.), from the men (pl.) (dative/ablative plural — one form for both cases, as Wikner and Whitney both show)',
+      composedOf: [
+        'skt-letter-na',
+        'skt-letter-re',
+        'skt-letter-bhya',
+        'skt-letter-visarga',
+      ],
+    },
+    {
+      id: 'skt-word-narayoh',
+      stage: 'words',
+      level: 3,
+      // FORM AND GLOSS from Wikner 5.B.1, lines 1206-1207: the dvi-vacana
+      // column of the ṣaṣṭhī and saptamī rows, both cells "narayoh.";
+      // appendix lines 1942-1943. Rendered at 400 dpi off PDF page 48:
+      // "ṣaṣṭhī narasya narayoḥ narāṇām" and "saptamī nare narayoḥ nareṣu" —
+      // and note what the render settles that the text layer cannot, that the
+      // a of narayoḥ is SHORT and unmarked, visibly distinct from the narā- of
+      // narāṇām beside it. He also puts the word in a sentence, 5.B.2(e)3
+      // (see skt-sentence-narayoh-vrksaah-tishthanti below). Case meanings are
+      // his own 5.B.1 prose: ṣaṣṭhī, lines 1181-1188, "This is usually
+      // rendered in English by the preposition `of' or with an apostrophe...
+      // This case ending generally indicates a relationship of source or
+      // possession"; saptamī, lines 1189-1191, "indicates the place or time
+      // where or when the action takes place, and may be rendered in English
+      // by the prepositions `in', `on', `at', `among', etc." SPELLING: Whitney
+      // §328d (p1.djvu/141) "The gen. and loc. have a y inserted after the
+      // stem-final before os", printed at §330 Dual "G. L.: कामयोस् kā́mayos
+      // | देवयोस् deváyos | आस्ययोस् āsyàyos" (p1.djvu/142) — his two-case
+      // label matching Wikner's two rows, and his short a in kā́mayos
+      // independently corroborating the short a read off Wikner's page —
+      // final -स् → ः per §145. यो is skt-letter-yo, added in tranche 21 for
+      // युवयोः, the structurally identical genitive/locative dual this file
+      // already glosses the same way.
+      text: 'नरयोः',
+      gloss:
+        'narayoḥ — of the two men, in/on the two men (genitive/locative dual — one form for both cases, as Wikner and Whitney both show)',
+      composedOf: ['skt-letter-na', 'skt-letter-ra', 'skt-letter-yo', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-naranam',
+      stage: 'words',
+      level: 3,
+      // The cell tranche 23 pointed at when it said the remaining cases "want
+      // one coherent block of their own" — because the ending is not simply
+      // Whitney's ending on Wikner's stem.
+      //
+      // FORM: Wikner 5.B.1 line 1206, ṣaṣṭhī / bahu-vacana, "naran.am";
+      // appendix line 1942. Rendered at 400 dpi off PDF page 48: "ṣaṣṭhī
+      // narasya narayoḥ narāṇām", macron and ṇ underdot both plainly printed.
+      // GLOSS from his ṣaṣṭhī prose (lines 1181-1188, quoted under नरयोः
+      // above) and, decisively, from his own English for a sentence containing
+      // this exact word: 5.B.2(d)2, prompt line 1229, answered at line 4017
+      // "2. The horses (pl.) of the men (pl.) are standing." (see
+      // skt-sentence-naranam-ashvaah-tishthanti below).
+      //
+      // THE n→ṇ RULE, sourced twice rather than asserted. (i) WIKNER states it
+      // for exactly this cell at 5.B.1 line 1215, rendered at 600 dpi off PDF
+      // page 49 as "thus aśvanām but vṛkṣāṇām" — his aśvanām is itself missing
+      // the macron his own main table's stem requires, and it is quoted here
+      // as printed rather than silently corrected, since the contrast he is
+      // drawing is the ṇ and not the ā. His footnote to the 4.B.2 table (lines
+      // 1116-1118) had already given the trigger — "the generic ending is
+      // -ena, but this changes to -en.a due to internal sandhi... accept that
+      // this change occurs after `r' or `s.' in the same word, thus asvena but
+      // v.rks.en.a" — which is why this file's already-taught नरेण has ण; the
+      // full statement is 11.A.3, lines 2706-2708. (ii) WHITNEY states it as
+      // §189, spanning p1.djvu/92-93 (both pagequality 4): "The dental nasal
+      // न् n, when immediately followed by a vowel or by न् n or म् m or य् y
+      // or व् v, is turned into the lingual ण् ṇ if preceded in the same word
+      // by the lingual sibilant or semivowel or vowels — that is to say, by
+      // ष् ṣ, र् r, or ऋ ṛ or ॠ ṝ —: and this... at whatever distance from the
+      // latter it may be found". §190a (p1.djvu/93) then lists rudrā́ṇām among
+      // the forms where the rule bites — the genitive plural of an a-stem
+      // whose r triggers the change, i.e. the exact structural parallel of
+      // narāṇām.
+      //
+      // SPELLING: base ending from Whitney §329f (p1.djvu/141) "The gen. ends
+      // in ānām, the final a being lengthened and having n inserted before the
+      // normal ending", printed at §330 Plural "G.: कामानाम् kā́mānām |
+      // देवानाम् devā́nām | आस्यानाम् āsyā̀nām" (p1.djvu/143). काम and देव
+      // contain no altering sound, so Whitney's cells correctly print the
+      // DENTAL ना — which is precisely why the retroflex णा had to be read
+      // separately, out of his own वारीणाम्/शत्रूणाम्/दातॄणाम् (see
+      // skt-letter-nnaa above). The ण lives inside that letter, so the text
+      // reconstructs exactly and no sandhiRule is set; the rule is in the
+      // gloss instead. Also printed by Wikner, but NOT shipped: वृक्षाणाम्,
+      // which appears only inside the statement of the rule at line 1215 —
+      // never glossed, never in an exercise.
+      text: 'नराणाम्',
+      gloss:
+        'narāṇām — of the men (pl.) (genitive plural; the ending is -ānām, but its n becomes the retroflex ṇ because an r precedes it inside the same word — the same change that already gives this file नरेण rather than *नरेन)',
+      composedOf: ['skt-letter-na', 'skt-letter-raa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-naresu',
+      stage: 'words',
+      level: 3,
+      // FORM: Wikner 5.B.1 line 1207, saptamī / bahu-vacana, "nares.u";
+      // appendix line 1943. Rendered at 400 dpi off PDF page 48: "saptamī nare
+      // narayoḥ nareṣu", the ṣ underdot plainly printed. GLOSS from his
+      // saptamī prose, 5.B.1 lines 1189-1191: "The seventh (saptam) case
+      // ending indicates the place or time where or when the action takes
+      // place, and may be rendered in English by the prepositions `in', `on',
+      // `at', `among', etc., for example, `he stands on the table', `it is hot
+      // in summer'."
+      //
+      // THE s→ṣ RULE, sourced twice, the same standard as नराणाम् above. (i)
+      // WIKNER 6.B, lines 1471-1474: "There is another sandhi rule applicable
+      // within a word, that applies here: the saptam bahu-vacana ending -su
+      // changes to -s.u following any vowel except a or a — thus -s.u is the
+      // most common form, but in the declension of bala it remains as -su.";
+      // stated in full at 11.A.3, lines 2703-2705. (ii) WHITNEY says it twice:
+      // §329g (p1.djvu/142) "The loc. ends in eṣu — that is to say, with the
+      // normal ending, before which the stem-final is changed to e (with
+      // consequent change of s to ṣ: 180)", and §338f (p1.djvu/146) "The loc.
+      // of all genders adds su (as ṣu: 180) to the stem-final."
+      //
+      // SPELLING: Whitney §330 Plural "L.: कामेषु kā́meṣu | देवेषु devéṣu |
+      // आस्येषु āsyèṣu" (p1.djvu/143) — the same cell the new letter षु was
+      // read out of. रे is skt-letter-re. The retroflex ṣ lives inside षु, so
+      // the text reconstructs exactly and no sandhiRule is set; the rule is in
+      // the gloss instead.
+      text: 'नरेषु',
+      gloss:
+        'nareṣu — in/on/among the men (pl.) (locative plural; the ending is -su, but its s becomes the retroflex ṣ after the e, by the rule Wikner states at 6.B: -su changes to -ṣu following any vowel except a or ā)',
+      composedOf: ['skt-letter-na', 'skt-letter-re', 'skt-letter-ssu'],
+    },
+    {
+      id: 'skt-word-vrksaah',
+      stage: 'words',
+      level: 3,
+      // Here only to give नरयोः a real sentence instead of a table citation —
+      // it is the one word in this block proposed for a sentence's sake rather
+      // than a paradigm's. FORM AND GLOSS from Wikner 5.B.2(e)3: English
+      // prompt line 1242, "3. The trees (pl.) of the (two) men are standing,",
+      // answered at line 4026 "3. narayoh. vr. ks.ah. tis.t.hanti". The text
+      // layer flattens the macron; rendered at 400 dpi off PDF page 135 the
+      // line reads "3. narayoḥ vṛkṣāḥ tiṣṭhanti", the ā macroned and visibly
+      // distinct from the vṛkṣaḥ printed in the 3.B.3(d)5 answer one page
+      // earlier. वृक्ष declines like nara per Wikner line 979 (quoted under
+      // वृक्षः above). SPELLING: Whitney §330 Plural "N. V.: कामास् kā́mās |
+      // देवास् devā́s" (p1.djvu/142), final -स् → ः per §145 — exactly the
+      // basis already recorded here for नराः and अश्वाः. क्षा is
+      // skt-letter-ksaa, added in tranche 23; no new letter is required.
+      text: 'वृक्षाः',
+      gloss: 'vṛkṣāḥ — the trees (pl.) (nominative plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-sentence-vrksah-ashvah-ca-tishthatah',
+      stage: 'sentences',
+      level: 3,
+      // The sentence tranche 23 named when it deferred वृक्षः. GLOSS is
+      // Wikner's own printed English, exercise 3.B.3(d)5, prompt line 1012:
+      // "5. The tree and the horse are standing,"; the Sanskrit is his answer,
+      // line 3996: "5. vr. ks.ah. asvah ca tis.t.hatah." SPELLING: वृक्षः is
+      // skt-word-vrksah above; अश्वः, च and तिष्ठतः are this file's
+      // already-taught words, unchanged.
+      //
+      // A KNOWN DEFECT IN THE SOURCE, recorded rather than silently corrected.
+      // Rendered at 400 dpi off PDF page 134 and magnified 4×, that printed
+      // line reads "5. vṛkṣaḥ aśvah ca tiṣṭhataḥ" — the h of aśvah carries NO
+      // underdot, while vṛkṣaḥ and tiṣṭhataḥ on the same line both do. It is a
+      // typesetting slip in his answer key, not a variant reading, on four
+      // independent grounds: (a) his structurally identical 3.B.3(c)5, line
+      // 1005, prints "narah. asvah. ca nayete" WITH the visarga — the sentence
+      // this file already ships as skt-sentence-narah-ashvah-ca-nayete; (b)
+      // his 5.B.2(e)2 answer, line 4025, prints "aśvaḥ" with it; (c) his
+      // 4.B.3(e)6 answer, line 4012, drops it again on the same stem, so the
+      // lapse is habitual to aśva- rather than anything about this sentence;
+      // (d) a bare word-final "h" is not a letter in his transliteration
+      // scheme at all, and an a-stem nominative singular cannot end in one.
+      // The Devanagari here never depends on that roman glyph in any case:
+      // अश्वः is an already-taught lesson in this file, spelled off Whitney.
+      //
+      // No sandhiRule: nothing changes at any word boundary — the visargas are
+      // the pausa forms already inside each word, and Wikner prints the four
+      // words space-separated.
+      text: 'वृक्षः अश्वः च तिष्ठतः',
+      gloss:
+        'vṛkṣaḥ aśvaḥ ca tiṣṭhataḥ — the tree and the horse are standing (both nouns are singular, yet the verb is the DUAL तिष्ठतः: च joining two singular subjects makes the pair count as dual for agreement — the same pattern this file already records at नरः अश्वः च नयेते, shown a second time by Wikner here)',
+      composedOf: [
+        'skt-word-vrksah',
+        'skt-word-ashvah',
+        'skt-word-ca',
+        'skt-word-tishthatah',
+      ],
+    },
+    {
+      id: 'skt-sentence-naranam-ashvaah-tishthanti',
+      stage: 'sentences',
+      level: 3,
+      // The sentence that finally gives अश्वाः something to stand in — tranche
+      // 23 shipped that word with NO sentence and flagged the gap, because all
+      // three Wikner sentences containing it need नराणाम्, वृक्षेषु or
+      // वृक्षेभ्यः. नराणाम् lands above, so this one is now reachable.
+      //
+      // SPELLING of the roman, with every length and retroflexion: Wikner
+      // 5.B.2(d)2, prompt line 1229. The text layer gives only "2. naran.am
+      // asvah. tis. .thanti"; rendered at 400 dpi off PDF page 49 the line
+      // reads unambiguously "2. narāṇām aśvāḥ tiṣṭhanti", both macrons and the
+      // ṇ underdot plainly printed. GLOSS is his own English, answer line
+      // 4017 (PDF page 135): "2. The horses (pl.) of the men (pl.) are
+      // standing." The word-placement remark in the gloss is his own, 5.B.1
+      // line 1188: "The word in s.as.t.h is usually placed immediately before
+      // the word to which it is related." DEVANAGARI: नराणाम् is
+      // skt-word-naranam above; अश्वाः and तिष्ठन्ति are already taught.
+      // Unlike the वृक्षः sentence above, this one has no printing defect
+      // anywhere in it. No sandhiRule — Wikner prints the three words with no
+      // junction change.
+      text: 'नराणाम् अश्वाः तिष्ठन्ति',
+      gloss:
+        'narāṇām aśvāḥ tiṣṭhanti — the horses (pl.) of the men (pl.) are standing (नराणाम् relates one noun to another rather than to the verb, and Wikner places such a word immediately before the noun it belongs to; the verb agrees with the subject अश्वाः, not with नराणाम्)',
+      composedOf: ['skt-word-naranam', 'skt-word-ashvaah', 'skt-word-tishthanti'],
+    },
+    {
+      id: 'skt-sentence-narayoh-vrksaah-tishthanti',
+      stage: 'sentences',
+      level: 3,
+      // The only sentence in Wikner's Lesson 5 that uses a nara DUAL case form
+      // and needs nothing this file cannot already build — which is the whole
+      // reason वृक्षाः is taught above. GLOSS is his own printed English,
+      // 5.B.2(e)3, prompt line 1242: "3. The trees (pl.) of the (two) men are
+      // standing,"; the Sanskrit is his answer, line 4026, "3. narayoh. vr.
+      // ks.ah. tis.t.hanti", rendered at 400 dpi off PDF page 135 as "3.
+      // narayoḥ vṛkṣāḥ tiṣṭhanti" — which is also what settles the macron the
+      // text layer loses. DEVANAGARI: नरयोः and वृक्षाः are the two words
+      // above; तिष्ठन्ति is already taught. No sandhiRule.
+      text: 'नरयोः वृक्षाः तिष्ठन्ति',
+      gloss:
+        'narayoḥ vṛkṣāḥ tiṣṭhanti — the trees (pl.) of the two men are standing (the same genitive-before-its-noun order as नराणाम् अश्वाः तिष्ठन्ति, but with a DUAL possessor and a plural possessed: number is carried by each noun ending, and the verb agrees with the subject वृक्षाः alone)',
+      composedOf: ['skt-word-narayoh', 'skt-word-vrksaah', 'skt-word-tishthanti'],
+    },
+
+    // ============ Level 4, "Reading Practice", tranche 22 ============
+    // Level 4 has stood empty since the level scheme was introduced
+    // (LEVELS, Curriculum.ts: "Graded reading of real text, dictionary in
+    // hand"), and this opens it the only honest way available: not with
+    // scripture, and not with a passage assembled for the occasion, but
+    // with four sentences lifted verbatim from Wikner's own graded exercise
+    // set at 3.B.3 — the same exercise set this file has been quoting
+    // piecemeal since tranche 6. Two come from exercise (c), where Wikner
+    // prints the Sanskrit and the learner supplies the English; two come
+    // from exercise (d), where Wikner prints the English and his answer
+    // appendix supplies the Sanskrit. Every gloss below is Wikner's own
+    // printed answer, string for string, not a translation made here.
+    //
+    // Zero new letters and zero new words: a full scan of the book found
+    // exactly FIVE of its 4914 lines decomposable into vocabulary this file
+    // teaches, one of which is already shipped as
+    // skt-sentence-narah-ashvam-vrksam-nayate. These four are the whole
+    // remainder — nothing was rounded up from a near-miss, and there is no
+    // sixth candidate to reach for until the noun dual/plural
+    // (अश्वौ, नरौ, वृक्षान्, वृक्षः) lands.
+    //
+    // None takes a sandhiRule, because none needs one: Wikner writes Lesson
+    // 3's exercises unsandhi'd, word by word (sandhi does not arrive until
+    // Lessons 10-11), so all four reconstruct by exact space-join and the
+    // reconstruction check keeps doing its job rather than being waived.
+    // Their sandhi'd surfaces are deliberately NOT shipped — three of the
+    // four begin with a visarga-final word before a voiced consonant, so
+    // the pairs are pedagogically obvious under the rule this file already
+    // teaches at skt-sentence-naro-vadati, but Wikner never prints them,
+    // and writing one would be composing Sanskrit rather than reading it.
+    {
+      id: 'skt-sentence-ashvah-naram-nayate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 3.B.3, exercise (c) item 1 — printed p.27, text-dump line
+      // 1005, verbatim "1. a[ś]svah. naram nayate"; his own printed answer
+      // is Appendix 2, "Answers: Lesson 3", line 4052, verbatim
+      // "3.B.3.c.1. The horse leads the man."
+      text: 'अश्वः नरम् नयते',
+      gloss: 'aśvaḥ naram nayate — the horse leads the man',
+      composedOf: ['skt-word-ashvah', 'skt-word-naram', 'skt-word-nayate'],
+    },
+    {
+      id: 'skt-sentence-ashvah-tishthati-ca-narah-vadati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 3.B.3, exercise (c) item 4 — line 1008, verbatim "4.
+      // a[ś]svah. tis.t.hati ca narah. vadati ca"; printed answer at line
+      // 4055, verbatim "4. The horse stands and the man speaks." This is
+      // the sentence tranches 6, 7 and 12 quoted a clause at a time
+      // (skt-sentence-narah-vadati, skt-sentence-ashvah-tishthati) — now
+      // whole. skt-word-ca appears TWICE in composedOf because च appears
+      // twice in the text; validateManifest looks each entry up
+      // independently and joins them in order, so the repeat reconstructs
+      // exactly rather than needing a sandhiRule. Wikner's own rule for the
+      // particle (1.B.2, line 559) allows both placements: ca "is placed
+      // after the last word of the series it links (or after each word in
+      // the series)" — that option is stated about words in a series, so
+      // the gloss below describes what is on the page rather than claiming
+      // Wikner licenses this clause-by-clause use by name.
+      text: 'अश्वः तिष्ठति च नरः वदति च',
+      gloss:
+        'aśvaḥ tiṣṭhati ca naraḥ vadati ca — the horse stands and the man speaks (च appears twice, once after each of the two linked clauses)',
+      composedOf: [
+        'skt-word-ashvah',
+        'skt-word-tishthati',
+        'skt-word-ca',
+        'skt-word-narah',
+        'skt-word-vadati',
+        'skt-word-ca',
+      ],
+    },
+    {
+      id: 'skt-sentence-narah-ashvam-nayate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 3.B.3, exercise (d) item 1 — the English prompt is printed
+      // at line 1012, verbatim "1. The man leads the horse,"; Wikner's own
+      // printed Sanskrit answer is Appendix 2, line 4058, verbatim
+      // "3.B.3.d.1. narah. a[ś]svam nayate". So the Sanskrit here is his,
+      // not a form composed from a paradigm. Distinct from the already-
+      // shipped four-word skt-sentence-narah-ashvam-vrksam-nayate: same
+      // verb, one fewer accusative. Wikner draws no contrast between the
+      // two himself, so none is claimed in the gloss.
+      text: 'नरः अश्वम् नयते',
+      gloss: 'naraḥ aśvam nayate — the man leads the horse',
+      composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-nayate'],
+    },
+    {
+      id: 'skt-sentence-ashvah-naram-vrksam-nayate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 3.B.3, exercise (d) item 4 — the English prompt is printed
+      // at line 1015, verbatim "4. The horse leads the man to the tree,";
+      // his own printed Sanskrit answer is Appendix 2, line 4061, verbatim
+      // "4. a[ś]svah. naram vr.ks.am nayate". This is the already-shipped
+      // नरः अश्वम् वृक्षम् नयते with agent and object exchanged, and the
+      // only thing that moved is the case endings — Wikner's own point at
+      // 3.B.2, lines 993-994: "Since the noun endings define the
+      // relationship to the verb, the word order is not important (as
+      // contrasted with English where it is)".
+      text: 'अश्वः नरम् वृक्षम् नयते',
+      gloss:
+        'aśvaḥ naram vṛkṣam nayate — the horse leads the man to the tree (the same four-slot frame as नरः अश्वम् वृक्षम् नयते, with agent and object exchanged: the case endings alone, not the word order, decide who leads whom)',
+      composedOf: ['skt-word-ashvah', 'skt-word-naram', 'skt-word-vrksam', 'skt-word-nayate'],
+    },
+
+    // ============ Level 4 continued, tranche 24 ============
+    // Level 4 goes from four sentences to thirty. The block above was written
+    // when a full scan of Wikner found "exactly FIVE of its 4914 lines
+    // decomposable into vocabulary this file teaches" — true then, and stale
+    // the moment tranche 23 closed all three present-indicative paradigms and
+    // added the noun dual and plural. Re-running the same scan over lessons
+    // 1-4 with today's vocabulary yields twenty-six more, and after them those
+    // four lessons are exhausted: every sentence Wikner prints in 1.B.2,
+    // 1.B.3, 2.B.2, 3.B.3 and 4.B.3 is now either shipped or blocked by a
+    // named word, with nothing left within one word of shipping.
+    //
+    // THE CONSTRAINT TRANCHE 22 RECORDED IS NOT BINDING FOR THESE, and the
+    // reason is worth stating because it reads like a contradiction. Tranche
+    // 22 said "the sandhi'd surface of any level-4 sentence stays unshippable,
+    // because Wikner never prints one". That is still true, and it is exactly
+    // why these ship: in lessons 1-4 he has not introduced sandhi at all (his
+    // contents put Vowel/Visarga/Consonant Sandhi in lessons 10-11), so he
+    // prints every exercise and every answer in pausa, visarga intact, words
+    // separated by spaces — "tis.t.hanti vadatah. ca", "tis.t.hathah.
+    // vadavah. ca". The space-joined text below IS his printed surface,
+    // verbatim, not a form composed here. None carries a sandhiRule and none
+    // should; all twenty-six reconstruct exactly, so the check keeps working
+    // rather than being waived. Their sandhi'd surfaces remain unshippable on
+    // exactly tranche 22's grounds.
+    //
+    // WHAT CAME FROM WHERE. Wikner supplied (a) which sentence exists and (b)
+    // its English — for the into-English exercises the English is his answer
+    // key, for the into-Sanskrit exercises the English is his printed prompt
+    // and the Sanskrit is his answer key. Wikner supplied NO Devanagari, as
+    // ever: his font is non-Unicode and his transliteration drops vowel length
+    // (he writes "vadavah." for vadāvaḥ, "tis.t.hami" for tiṣṭhāmi). Every
+    // character below is a join of words this file already teaches, whose
+    // spelling was settled by earlier tranches off Whitney — so this block
+    // introduces no new orthographic claim whatsoever, and no new letter or
+    // word. The occasional "tis. .thati" in a line number cited below is the
+    // pdftotext artifact of his ṭ dot-under, not a variant.
+    //
+    // TWO CURATION FACTS, recorded because they are decisions rather than
+    // accidents. (1) Twenty-five of the twenty-six are the same frame, VERB
+    // VERB ca, because that is what Wikner's lessons 1-2 drill and this
+    // tranche's brief was to fill level 4 from him. Each is individually
+    // printed and individually glossed by him, so none was dropped for
+    // monotony; a later tranche wanting variety needs new vocabulary, not a
+    // different reading of this source. (2) LEVELS calls level 4 "Reading
+    // Practice: Graded reading of real text" and level 3 "sentences that read
+    // like real text, not two words placed side by side" — these are primer
+    // drill sentences, which sit closer to the level-3 description, and one
+    // member of Wikner's own 2.B.2(c) list already ships at level 3 as
+    // skt-sentence-tishthati-vadanti-ca (his item c.7). They are shipped at
+    // level 4 to match this file's actual precedent, since the four sentences
+    // above are the same kind of Wikner exercise material at the same level.
+    // The L3/L4 split inside one exercise set is real and is left visible here
+    // rather than papered over by renumbering a shipped lesson.
+    {
+      id: 'skt-sentence-tishthati-vadami-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 1.B.2, under "With this limited vocabulary, simple sentences
+      // may be constructed:" — line 563 prints the sentence and its English on
+      // one line, "tis.t.hati vadami ca   He stands and I speak." He then
+      // gives the identical Sanskrit as his own answer to 1.B.3(e)1 (line
+      // 3961) against the prompt at line 584 ("1. He stands and I speak"), so
+      // this one is attested as illustration AND as exercise.
+      text: 'तिष्ठति वदामि च',
+      gloss: 'tiṣṭhati vadāmi ca — He stands and I speak.',
+      composedOf: ['skt-word-tishthati', 'skt-word-vadami', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthasi-vadasi-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner 1.B.2, line 564, sentence and English on one printed line:
+      // "tis.t.hasi vadasi ca   You stand and you speak, or You stand and
+      // speak." The double reading is his own and is the point of the example
+      // — ca may link two verbs sharing one subject — so both halves are kept
+      // verbatim rather than trimmed to one clause. This is the only one of
+      // the twenty-six that rests on an illustration alone rather than on an
+      // exercise; it rests on it soundly, since he prints the sentence and
+      // that English together.
+      text: 'तिष्ठसि वदसि च',
+      gloss: 'tiṣṭhasi vadasi ca — You stand and you speak, or You stand and speak.',
+      composedOf: ['skt-word-tishthasi', 'skt-word-vadasi', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthasi-vadami-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)1, line 580 col.1: "1. tis.t.hasi vadami ca";
+      // his own printed English in "Answers: Lesson 1", line 3958 col.1:
+      // "1.B.3.d.1. You stand and I speak."
+      text: 'तिष्ठसि वदामि च',
+      gloss: 'tiṣṭhasi vadāmi ca — You stand and I speak.',
+      composedOf: ['skt-word-tishthasi', 'skt-word-vadami', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthati-vadasi-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)2, line 581 col.1: "2. tis. .thati vadasi ca";
+      // answer line 3959 col.1: "2. He stands and you speak."
+      text: 'तिष्ठति वदसि च',
+      gloss: 'tiṣṭhati vadasi ca — He stands and you speak.',
+      composedOf: ['skt-word-tishthati', 'skt-word-vadasi', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadami-tishthasi-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)3, line 582 col.1: "3. vadami tis.t.hasi ca";
+      // answer line 3960 col.1: "3. I speak and you stand." He gives the
+      // identical Sanskrit again as his answer to 1.B.3(e)6, line 3963 col.2.
+      text: 'वदामि तिष्ठसि च',
+      gloss: 'vadāmi tiṣṭhasi ca — I speak and you stand.',
+      composedOf: ['skt-word-vadami', 'skt-word-tishthasi', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthami-vadati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)4, line 580 col.2: "4. tis.t.hami vadati ca";
+      // answer line 3958 col.2: "4. I stand and he speaks." Same Sanskrit
+      // reappears as his answer to 1.B.3(e)5, line 3962 col.2. His
+      // "tis.t.hami" drops the ā that this file's own तिष्ठामि carries.
+      text: 'तिष्ठामि वदति च',
+      gloss: 'tiṣṭhāmi vadati ca — I stand and he speaks.',
+      composedOf: ['skt-word-tishthami', 'skt-word-vadati', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadasi-tishthami-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)5, line 581 col.2: "5. vadasi tis.t.hami ca";
+      // answer line 3959 col.2: "5. You speak and I stand." Same Sanskrit is
+      // also his answer to 1.B.3(e)3, line 3963 col.1.
+      text: 'वदसि तिष्ठामि च',
+      gloss: 'vadasi tiṣṭhāmi ca — You speak and I stand.',
+      composedOf: ['skt-word-vadasi', 'skt-word-tishthami', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthami-vadami-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(d)6, line 582 col.2: "6. tis.t.hami vadami ca";
+      // answer line 3960 col.2: "6. I stand and speak." His English is
+      // deliberately "I stand and speak", not "I stand and I speak" — the same
+      // point his 1.B.2 note at line 564 makes about one subject shared by two
+      // verbs — and is kept as printed rather than smoothed.
+      text: 'तिष्ठामि वदामि च',
+      gloss: 'tiṣṭhāmi vadāmi ca — I stand and speak.',
+      composedOf: ['skt-word-tishthami', 'skt-word-vadami', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthasi-vadati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(e)2 — English prompt at line 585 col.1: "2. You
+      // stand and he speaks"; his own Sanskrit answer in "Answers: Lesson 1",
+      // line 3962 col.1: "2. tis.t.hasi vadati ca".
+      text: 'तिष्ठसि वदति च',
+      gloss: 'tiṣṭhasi vadati ca — You stand and he speaks.',
+      composedOf: ['skt-word-tishthasi', 'skt-word-vadati', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadasi-tishthati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 1.B.3(e)4 — English prompt at line 584 col.2: "4. You
+      // speak and he stands"; his own Sanskrit answer at line 3961 col.2: "4.
+      // vadasi tis.t.hati ca".
+      text: 'वदसि तिष्ठति च',
+      gloss: 'vadasi tiṣṭhati ca — You speak and he stands.',
+      composedOf: ['skt-word-vadasi', 'skt-word-tishthati', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthanti-vadatah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)1, line 774: "1. tis.t.hanti vadatah. ca"; his
+      // own printed English in "Answers: Lesson 2", line 3967: "2.B.2.c.1.
+      // They (pl.) stand and they (two) speak." Note he prints the visarga
+      // un-sandhi'd before ca ("vadatah. ca"), matching वदतः च exactly — he
+      // has not introduced visarga sandhi at this point in the course.
+      text: 'तिष्ठन्ति वदतः च',
+      gloss: 'tiṣṭhanti vadataḥ ca — They (pl.) stand and they (two) speak.',
+      composedOf: ['skt-word-tishthanti', 'skt-word-vadatah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthathah-vadavah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)2, line 775: "2. tis.t.hathah. vadavah. ca";
+      // answer line 3968: "2. You (two) stand and we (two) speak." Both
+      // visargas printed un-sandhi'd. His "vadavah." drops the ā that this
+      // file's वदावः carries, off Whitney.
+      text: 'तिष्ठथः वदावः च',
+      gloss: 'tiṣṭhathaḥ vadāvaḥ ca — You (two) stand and we (two) speak.',
+      composedOf: ['skt-word-tishthathah', 'skt-word-vadavah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadamah-tishthatah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)3, line 776: "3. vadamah. tis.t.hatah. ca";
+      // answer line 3969: "3. We (pl.) speak and they (two) stand."
+      text: 'वदामः तिष्ठतः च',
+      gloss: 'vadāmaḥ tiṣṭhataḥ ca — We (pl.) speak and they (two) stand.',
+      composedOf: ['skt-word-vadamah', 'skt-word-tishthatah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthasi-vadathah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)4, line 777: "4. tis.t.hasi vadathah. ca";
+      // answer line 3970: "4. You (s.) stand and you (two) speak." His "(s.)"
+      // is kept as printed — he abbreviates the same category "(sing.)"
+      // elsewhere in the same answer key, and normalising it would be editing
+      // the source.
+      text: 'तिष्ठसि वदथः च',
+      gloss: 'tiṣṭhasi vadathaḥ ca — You (s.) stand and you (two) speak.',
+      composedOf: ['skt-word-tishthasi', 'skt-word-vadathah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthatha-vadathah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)5, line 778: "5. tis.t.hatha vadathah. ca";
+      // answer line 3971: "5. You (pl.) stand and you (two) speak." The
+      // minimal pair तिष्ठथ / वदथः — plural against dual, differing only by
+      // the visarga — is exactly what this exercise drills.
+      text: 'तिष्ठथ वदथः च',
+      gloss: 'tiṣṭhatha vadathaḥ ca — You (pl.) stand and you (two) speak.',
+      composedOf: ['skt-word-tishthatha', 'skt-word-vadathah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadatah-tishthamah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)6, line 779: "6. vadatah. tis.t.hamah. ca";
+      // answer line 3972: "6. They (two) speak and we (pl.) stand."
+      text: 'वदतः तिष्ठामः च',
+      gloss: 'vadataḥ tiṣṭhāmaḥ ca — They (two) speak and we (pl.) stand.',
+      composedOf: ['skt-word-vadatah', 'skt-word-tishthamah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthasi-vadavah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(c)8, line 781: "8. tis.t.hasi vadavah. ca";
+      // answer line 3974: "8. You (s.) stand and we (two) speak." Item (c)7
+      // of the same list is deliberately absent: its text is तिष्ठति वदन्ति च,
+      // which already ships above as skt-sentence-tishthati-vadanti-ca.
+      text: 'तिष्ठसि वदावः च',
+      gloss: 'tiṣṭhasi vadāvaḥ ca — You (s.) stand and we (two) speak.',
+      composedOf: ['skt-word-tishthasi', 'skt-word-vadavah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthavah-vadatha-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)1 — English prompt at line 783: "1. We (two)
+      // stand and you (pl.) speak"; his own Sanskrit answer in "Answers:
+      // Lesson 2", line 3975: "2.B.2.d.1. tis.t.havah. vadatha ca". His answer
+      // keeps the visarga before v, so वृक्षावः-style sandhi is not implied.
+      text: 'तिष्ठावः वदथ च',
+      gloss: 'tiṣṭhāvaḥ vadatha ca — We (two) stand and you (pl.) speak.',
+      composedOf: ['skt-word-tishthavah', 'skt-word-vadatha', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadathah-tishthanti-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)2 — English prompt at line 784: "2. You (two)
+      // speak and they (pl.) stand"; Sanskrit answer at line 3976: "2.
+      // vadathah. tis.t.hanti ca".
+      text: 'वदथः तिष्ठन्ति च',
+      gloss: 'vadathaḥ tiṣṭhanti ca — You (two) speak and they (pl.) stand.',
+      composedOf: ['skt-word-vadathah', 'skt-word-tishthanti', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthathah-vadathah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)3 — English prompt at line 785: "3. You (two)
+      // stand and speak"; Sanskrit answer at line 3977: "3. tis.t.hathah.
+      // vadathah. ca". His prompt deliberately omits a second "you": one dual
+      // subject, two verbs, ca once at the end — the same teaching point as
+      // the double gloss at line 564.
+      text: 'तिष्ठथः वदथः च',
+      gloss: 'tiṣṭhathaḥ vadathaḥ ca — You (two) stand and speak.',
+      composedOf: ['skt-word-tishthathah', 'skt-word-vadathah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthanti-vadami-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)4 — English prompt at line 786: "4. They (pl.)
+      // stand and I speak"; Sanskrit answer at line 3978: "4. tis.t.hanti
+      // vadami ca".
+      text: 'तिष्ठन्ति वदामि च',
+      gloss: 'tiṣṭhanti vadāmi ca — They (pl.) stand and I speak.',
+      composedOf: ['skt-word-tishthanti', 'skt-word-vadami', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthati-vadatha-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)5 — English prompt at line 787: "5. He stands
+      // and you (pl.) speak"; Sanskrit answer at line 3979: "5. tis.t.hati
+      // vadatha ca".
+      text: 'तिष्ठति वदथ च',
+      gloss: 'tiṣṭhati vadatha ca — He stands and you (pl.) speak.',
+      composedOf: ['skt-word-tishthati', 'skt-word-vadatha', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadatah-tishthati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)6 — English prompt at line 788: "6. They (two)
+      // speak and he stands"; Sanskrit answer at line 3980: "6. vadatah.
+      // tis.t.hati ca".
+      text: 'वदतः तिष्ठति च',
+      gloss: 'vadataḥ tiṣṭhati ca — They (two) speak and he stands.',
+      composedOf: ['skt-word-vadatah', 'skt-word-tishthati', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-tishthamah-vadathah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)7 — English prompt at line 789: "7. We (pl.)
+      // stand and you (two) speak"; Sanskrit answer at line 3981: "7.
+      // tis.t.hamah. vadathah. ca".
+      text: 'तिष्ठामः वदथः च',
+      gloss: 'tiṣṭhāmaḥ vadathaḥ ca — We (pl.) stand and you (two) speak.',
+      composedOf: ['skt-word-tishthamah', 'skt-word-vadathah', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-vadatha-tishthasi-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner exercise 2.B.2(d)8 — English prompt at line 790: "8. You (pl.)
+      // speak and you (sing.) stand"; Sanskrit answer at line 3982: "8.
+      // vadatha tis. .thasi ca". His "(sing.)" here against the "(s.)" of
+      // (c)4 above is his own inconsistency, kept as printed.
+      text: 'वदथ तिष्ठसि च',
+      gloss: 'vadatha tiṣṭhasi ca — You (pl.) speak and you (sing.) stand.',
+      composedOf: ['skt-word-vadatha', 'skt-word-tishthasi', 'skt-word-ca'],
+    },
+    {
+      id: 'skt-sentence-ashvam-naraya-nayethe',
+      stage: 'sentences',
+      level: 4,
+      // The one sentence in this block that is not a VERB VERB ca frame, and
+      // the only one that uses a noun case. Wikner exercise 4.B.3(e)2 —
+      // English prompt at line 1135: "2. You (two) are leading the horse for
+      // the man,"; his own Sanskrit answer in "Answers: Lesson 4", line 4008:
+      // "2. asvam naraya nayethe". The dative नराय is the case he has just
+      // introduced at 4.B.2, line 1103 ("The fourth (caturthī) case ending
+      // indicates the indirect object, the recipient or beneficiary or purpose
+      // of the action"), with नराय in his declension table at line 1113; the
+      // verb is the ātmanepada dual cell his own table prints at line 946.
+      // This is also the sentence skt-word-nayethe was originally taught for,
+      // in tranche 23. His answer writes the three words separately with no
+      // junction change, so no sandhiRule.
+      text: 'अश्वम् नराय नयेथे',
+      gloss: 'aśvam narāya nayethe — You (two) are leading the horse for the man.',
+      composedOf: ['skt-word-ashvam', 'skt-word-naraya', 'skt-word-nayethe'],
     },
   ],
 };
