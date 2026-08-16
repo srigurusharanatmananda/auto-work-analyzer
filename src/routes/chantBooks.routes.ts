@@ -47,11 +47,11 @@ export interface ChantBooksRouterDeps {
  * streams the upload straight to disk, so this bounds disk usage.
  *
  * It does NOT bound RAM on its own, and the analogy to `resources.routes.ts`
- * stops there — that route only stores what it takes, while this one parses
- * it, and `extractText` below must read the whole file into one Buffer
- * because pdf-parse has no streaming API. `withExclusivePdfParse` is what
- * makes the peak bounded: one parse at a time, so the worst case is one
- * file's buffer rather than one per concurrent upload.
+ * stops there — that route only stores what it takes, while this one reads
+ * it, and both extraction paths pull the whole file into memory.
+ * `withExclusiveExtraction` is what makes the peak bounded: one extraction at
+ * a time, so the worst case is one file rather than one per concurrent
+ * upload. See that function's own comment for the remaining limitation.
  *
  * This was 50MB, on the reasoning that a chant book is extracted-text
  * rather than scanned-image PDF and so would be far smaller. That reasoning
@@ -77,29 +77,54 @@ const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf', '.txt']);
 const DOCUMENT_PARSE_TIMEOUT_MS = 5 * 60_000;
 
 /**
- * Only one PDF is parsed at a time, process-wide.
+ * Only one book is read into memory at a time, process-wide, and only a
+ * bounded number may be waiting for their turn.
  *
- * Multer streams the upload to disk, so the 500MB cap above really does bound
- * disk rather than RAM — but `extractText` then undoes that by reading the
- * whole file into a single Buffer for pdf-parse, which has no streaming API.
- * `translate.routes.ts` faces the same constraint and answers it by capping at
- * 20MB; a chant book cannot, because a real scripture edition is genuinely
- * large. So the cap stays at 500MB and the CONCURRENCY is bounded instead:
- * without this, a handful of simultaneous large uploads allocate their buffers
- * at once and OOM-kill the API for every user, and pdf.js parsing is
- * CPU-bound enough to stall the event loop for minutes besides.
+ * Multer streams the upload to disk, so the 500MB cap bounds disk — but both
+ * extraction paths then undo that by pulling the whole file into memory:
+ * pdf-parse has no streaming API, and the `.txt` path decodes the file to one
+ * string. `translate.routes.ts` answers the same constraint by capping at
+ * 20MB, which a real scripture edition cannot live with. So the cap stays at
+ * 500MB and the CONCURRENCY is bounded instead: without this, a handful of
+ * simultaneous large uploads allocate their buffers at once and OOM-kill the
+ * API for every user.
  *
- * A queue rather than a rejection: an upload that waits is a slow upload, an
- * upload that 503s is a lost one, and the learner has already spent the
- * transfer time by the time we get here.
+ * Covers `.txt` as well as PDF, which an earlier version did not — it queued
+ * only the PDF branch while this comment claimed the peak was "one file's
+ * buffer", leaving concurrent 500MB text uploads as exactly the unbounded case
+ * the queue exists to prevent.
+ *
+ * A queue rather than a rejection, but a BOUNDED one. An upload that waits is
+ * a slow upload and the learner has already spent the transfer time by then —
+ * but with a 5-minute parse timeout, an unbounded queue means the tenth
+ * request waits up to 45 minutes with its connection open and its temp file on
+ * disk, long past when any client or proxy has given up. Past the cap it is
+ * kinder to say so immediately.
  */
-let pdfParseQueue: Promise<unknown> = Promise.resolve();
-export function withExclusivePdfParse<T>(run: () => Promise<T>): Promise<T> {
+const MAX_QUEUED_EXTRACTIONS = 4;
+
+export class ExtractionBusyError extends Error {
+  constructor() {
+    super('Too many books are being processed right now.');
+    this.name = 'ExtractionBusyError';
+  }
+}
+
+let extractionQueue: Promise<unknown> = Promise.resolve();
+let queuedExtractions = 0;
+
+export function withExclusiveExtraction<T>(run: () => Promise<T>): Promise<T> {
+  if (queuedExtractions >= MAX_QUEUED_EXTRACTIONS) {
+    return Promise.reject(new ExtractionBusyError());
+  }
+  queuedExtractions++;
   // `.catch(() => {})` on the tail, not on the returned promise: one upload's
-  // failure must not reject the next one's turn, but the caller still needs
-  // to see its own error.
-  const turn = pdfParseQueue.then(run);
-  pdfParseQueue = turn.catch(() => {});
+  // failure must not reject the next one's turn, but the caller still needs to
+  // see its own error.
+  const turn = extractionQueue.then(run).finally(() => {
+    queuedExtractions--;
+  });
+  extractionQueue = turn.catch(() => {});
   return turn;
 }
 
@@ -108,10 +133,10 @@ function isLanguage(value: unknown): value is Language {
 }
 
 async function extractText(filePath: string, extension: string): Promise<string> {
-  if (extension === '.txt') {
-    return (await readFile(filePath, 'utf-8')).trim();
-  }
-  return withExclusivePdfParse(async () => {
+  return withExclusiveExtraction(async () => {
+    if (extension === '.txt') {
+      return (await readFile(filePath, 'utf-8')).trim();
+    }
     const buffer = await readFile(filePath);
     const parser = new PDFParse({ data: buffer });
     try {
@@ -193,6 +218,17 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
       rawText = await extractText(file.path, extension);
     } catch (error) {
       await unlink(file.path).catch(() => {});
+      // Shed load with a 503 + Retry-After, not a 500: nothing is broken, the
+      // server is simply at its extraction limit, and the learner should be
+      // told to come back rather than told their file is bad.
+      if (error instanceof ExtractionBusyError) {
+        res.setHeader('Retry-After', '60');
+        res.status(503).json({
+          success: false,
+          error: 'Too many books are being processed right now — try again in a minute.',
+        });
+        return;
+      }
       console.error('Failed to extract text from uploaded book:', error);
       res.status(500).json({ success: false, error: 'Could not read that file', details: error instanceof Error ? error.message : 'Unknown error' });
       return;

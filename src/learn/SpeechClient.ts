@@ -135,6 +135,16 @@ export async function withTimeout<T>(
   signal: AbortSignal | undefined,
   run: (signal: AbortSignal) => Promise<T>
 ): Promise<T> {
+  // An ALREADY-aborted caller signal never fires 'abort' again, so
+  // addEventListener alone would silently ignore it and run `run` to
+  // completion. Refuse before starting rather than starting and aborting: the
+  // caller has said it no longer wants the result, so the work should not be
+  // done at all. Real `fetch` checks `signal.aborted` itself and so masked
+  // this; nothing else run through here would.
+  if (signal?.aborted) {
+    throw Object.assign(new Error('Aborted before starting'), { name: 'AbortError' });
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   const onCallerAbort = () => controller.abort();

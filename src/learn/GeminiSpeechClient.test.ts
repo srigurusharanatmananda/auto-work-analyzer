@@ -191,6 +191,58 @@ describe('synthesize', () => {
     expect(signals[0]).not.toBe(signals[1]);
   });
 
+  test('a stalled response BODY still aborts — the timeout covers the whole attempt', async () => {
+    // Regression guard. An earlier version wrapped only the fetch call in
+    // withTimeout, whose `finally` clears the timer and unsubscribes from the
+    // caller's signal as soon as the fetch resolves. A server that returned
+    // 200 headers and then stalled the body therefore left response.json()
+    // awaiting forever, with nothing left able to abort it — the request and
+    // its socket leaked, and the route's own outer bound could not help
+    // because its abort was no longer wired to anything reachable.
+    const stalling = {
+      ok: true,
+      status: 200,
+      // Never settles unless the attempt's own signal aborts it.
+      json: (init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          const signal = (init as { signal?: AbortSignal } | undefined)?.signal;
+          signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+          );
+        }),
+    };
+    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => ({
+      ...stalling,
+      json: () => stalling.json(init),
+    })) as unknown as typeof fetch;
+
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+    const caller = new AbortController();
+    const promise = client.synthesize({ text: 'கைலாஸ', signal: caller.signal });
+    // Aborted on a later tick, so the attempt has reached the stalled body
+    // read by then — aborting synchronously would test the already-aborted
+    // path instead, which the case below covers.
+    setTimeout(() => caller.abort(), 10);
+
+    await expect(promise).rejects.toThrow(SpeechUnavailableError);
+  });
+
+  test('a caller signal that is ALREADY aborted is honoured, not ignored', async () => {
+    let fetched = false;
+    const fetchImpl = (async () => {
+      fetched = true;
+      return audioResponse(SAMPLE_PCM_BASE64);
+    }) as unknown as typeof fetch;
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+
+    const caller = new AbortController();
+    caller.abort();
+    await expect(client.synthesize({ text: 'வணக்கம்', signal: caller.signal })).rejects.toThrow(
+      SpeechUnavailableError
+    );
+    expect(fetched).toBe(false);
+  });
+
   test('a 400 that is NOT content_blocked fails immediately, without retrying', async () => {
     const { client, requests } = clientFor({
       respond: () => new Response('{"error":{"message":"Unknown model"}}', { status: 400 }),

@@ -28,12 +28,17 @@ export async function speakLearnText(language: LearnLanguage, text: string): Pro
   if (!response.ok) {
     // Every status parses the body the same way, 503 included. 503 used to
     // short-circuit to a flat "Text-to-speech isn't set up yet", which threw
-    // away the one message that said what was actually wrong: the route puts
-    // `SpeechUnavailableError.message` in the body (learn.routes.ts), so a
-    // learner staring at a request that had already spent three minutes
-    // polling a dead TTS container was told "not set up yet" instead of
-    // "Could not reach the speech service." Same generic fallback as before
-    // when the body carries nothing usable.
+    // away the one message that said what was actually wrong — a learner
+    // staring at a request that had already spent three minutes polling a
+    // dead TTS container was told "not set up yet" rather than that the
+    // service was unreachable.
+    //
+    // What the body now carries is NOT the raw error: `learn.routes.ts` sends
+    // `SpeechUnavailableError.learnerMessage` when the throw site set one and
+    // a generic string otherwise, logging the real message server-side, so
+    // nothing here can surface a provider name or a missing env var. So this
+    // displays whatever the server chose, and only falls back when the body
+    // carries nothing usable at all.
     let message =
       response.status === 503 ? "Text-to-speech isn't available right now" : 'Failed to play audio';
     try {

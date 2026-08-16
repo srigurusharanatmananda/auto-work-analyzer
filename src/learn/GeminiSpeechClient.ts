@@ -42,8 +42,15 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /**
  * Extra attempts (so 1 + this many requests) for a `content_blocked` 400.
  * Three total: enough that a filter which fires intermittently is very
- * unlikely to fire on all of them, few enough to stay inside
- * `DEFAULT_TIMEOUT_MS` with a real synthesis call in each attempt.
+ * unlikely to fire on all of them, few enough to stay well inside a learner's
+ * patience.
+ *
+ * Note for anyone sizing a caller deadline from this: each attempt gets its
+ * OWN `DEFAULT_TIMEOUT_MS` (see `attemptOnce`), so the worst case is
+ * 3 x 30s + 3s of backoff, about 93 seconds — not 30. An earlier version of
+ * this comment claimed the three attempts fit inside one 30s budget, which was
+ * true only of the shared-budget implementation that caused the bug
+ * `attemptOnce` documents.
  */
 const CONTENT_BLOCKED_RETRIES = 2;
 /** Multiplied by the attempt number, so 1s then 2s. */
@@ -139,107 +146,133 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
     voice: string,
     signal: AbortSignal | undefined
   ): Promise<SynthesisResult> {
-    let response!: Response;
-      let blockedBody = '';
+    let blockedBody = '';
 
-      // Gemini's safety filter intermittently answers a perfectly ordinary
-      // request with 400 `content_blocked` ("Request blocked for an
-      // unspecified policy reason"). Established as FLAKY rather than a
-      // property of the input, by hand against the live API: the same
-      // devotional Sanskrit pāda that was blocked came back 200 on the very
-      // next attempt with byte-identical input. Left unretried it meant a
-      // learner chanting through a text hit a hard, unexplained failure on
-      // a random verse and a different one each time.
-      //
-      // Retried here rather than at the caller because only this file can
-      // tell `content_blocked` apart from a genuine 400 (a bad model name,
-      // a malformed body) — those must still fail immediately rather than
-      // burn three attempts on a request that cannot succeed.
-      for (let attempt = 0; attempt <= CONTENT_BLOCKED_RETRIES; attempt++) {
-        if (attempt > 0) await this.sleep(CONTENT_BLOCKED_BACKOFF_MS * attempt);
+    // Gemini's safety filter intermittently answers a perfectly ordinary
+    // request with 400 `content_blocked` ("Request blocked for an unspecified
+    // policy reason"). Established as FLAKY rather than a property of the
+    // input, by hand against the live API: the same devotional Sanskrit pāda
+    // that was blocked came back 200 on the very next attempt with
+    // byte-identical input. Left unretried it meant a learner chanting
+    // through a text hit a hard, unexplained failure on a random verse, and a
+    // different one each time.
+    //
+    // Retried here rather than at the caller because only this file can tell
+    // `content_blocked` apart from a genuine 400 (a bad model name, a
+    // malformed body) — those must still fail immediately rather than burn
+    // three attempts on a request that cannot succeed.
+    for (let attempt = 0; attempt <= CONTENT_BLOCKED_RETRIES; attempt++) {
+      if (attempt > 0) await this.sleep(CONTENT_BLOCKED_BACKOFF_MS * attempt);
 
-        try {
-          response = await withTimeout(DEFAULT_TIMEOUT_MS, signal, (innerSignal) =>
-            this.fetchImpl(ENDPOINT, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': this.apiKey!,
-              },
-              body: JSON.stringify({
-                model: this.model,
-                input,
-                response_format: { type: 'audio' },
-                generation_config: { speech_config: [{ voice }] },
-              }),
-              signal: innerSignal,
-            })
-          );
-        } catch (error) {
-          // A caller-side timeout (learn.routes.ts's outer bound, or this
-          // client's own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped
-          // connection below, not a hard failure.
-          if (isAbortError(error)) {
-            throw new SpeechUnavailableError('Synthesis timed out.', 'That took too long to speak — try again.');
+      const outcome = await this.attemptOnce(input, voice, signal);
+      if (outcome.audio) return outcome.audio;
+      blockedBody = outcome.blockedBody;
+    }
+
+    // Every attempt was blocked. Surfaced as *unavailable* rather than failed
+    // because it is a transient provider decision the learner can do nothing
+    // about and which usually clears — the same class of thing a 429 is, not
+    // the same class as a malformed request.
+    throw new SpeechUnavailableError(
+      `Gemini's safety filter blocked this text on every attempt: ${blockedBody}`.trim(),
+      'The speech service declined to read this text — try again, it is usually transient.'
+    );
+  }
+
+  /**
+   * One request, start to finish, under ONE timeout.
+   *
+   * The whole attempt lives inside `withTimeout` — including reading the
+   * response body. An earlier version wrapped only the `fetch` call, which
+   * looked equivalent and was not: `withTimeout`'s `finally` clears the timer
+   * and unsubscribes from the caller's signal the moment the fetch resolves,
+   * so a server that returned 200 headers and then stalled the body left
+   * `response.json()` awaiting forever with nothing able to abort it. The
+   * route's own outer bound could not save it either, since that abort was no
+   * longer wired to anything reachable — the request and its socket simply
+   * leaked.
+   *
+   * Returns the audio, or the body of a `content_blocked` 400 so the caller
+   * can retry. Every other failure throws.
+   */
+  private async attemptOnce(
+    input: string,
+    voice: string,
+    signal: AbortSignal | undefined
+  ): Promise<{ audio?: SynthesisResult; blockedBody: string }> {
+    try {
+      return await withTimeout(DEFAULT_TIMEOUT_MS, signal, async (innerSignal) => {
+        const response = await this.fetchImpl(ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.apiKey!,
+          },
+          body: JSON.stringify({
+            model: this.model,
+            input,
+            response_format: { type: 'audio' },
+            generation_config: { speech_config: [{ voice }] },
+          }),
+          signal: innerSignal,
+        });
+
+        if (!response.ok) {
+          const body = await response.text().catch(() => '');
+          if (response.status === 401 || response.status === 403) {
+            // No learnerMessage: a rejected key is an operator problem, and
+            // naming the provider or the status tells a learner nothing they
+            // can act on.
+            throw new SpeechUnavailableError(`Gemini rejected the API key (${response.status}).`);
           }
-          const code = (error as NodeJS.ErrnoException)?.code;
-          if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
-            throw new SpeechUnavailableError('Could not reach the Gemini API.', 'Could not reach the speech service — try again shortly.');
+          if (response.status === 429) {
+            throw new SpeechUnavailableError(
+              'Gemini rate-limited this request (429) — its free tier is per-minute, so this usually clears on its own.',
+              'Too many audio requests just now — wait a moment and try again.'
+            );
           }
-          throw error;
-        }
-
-        if (response.ok) break;
-
-        const body = await response.text().catch(() => '');
-        if (response.status === 401 || response.status === 403) {
-          // No learnerMessage: a rejected key is an operator problem, and naming
-          // the provider or the status tells a learner nothing they can act on.
-          throw new SpeechUnavailableError(`Gemini rejected the API key (${response.status}).`);
-        }
-        if (response.status === 429) {
-          throw new SpeechUnavailableError(
-            'Gemini rate-limited this request (429) — its free tier is per-minute, so this usually clears on its own.',
-            'Too many audio requests just now — wait a moment and try again.'
+          if (response.status === 400 && body.includes('content_blocked')) {
+            return { blockedBody: body };
+          }
+          throw new SynthesisFailedError(
+            `Gemini returned ${response.status} ${response.statusText}: ${body}`.trim()
           );
         }
-        if (response.status === 400 && body.includes('content_blocked')) {
-          blockedBody = body;
-          continue;
+
+        // Verified by hand against the live API: the docs' own summary of this
+        // shape (`output_audio.data` at the top level) does not match what the
+        // API actually returns. The real shape is `steps[].content[]`, each
+        // content item carrying a `mime_type` and `data` — find the first
+        // audio one rather than assuming it is always steps[0].content[0], in
+        // case a future response ever includes a text step alongside it.
+        const payload = (await response.json()) as {
+          steps?: Array<{ content?: Array<{ mime_type?: string; data?: string }> }>;
+        };
+        const base64Audio = payload.steps
+          ?.flatMap((step) => step.content ?? [])
+          .find((item) => item.mime_type?.startsWith('audio/'))?.data;
+        if (!base64Audio) {
+          throw new SynthesisFailedError('Gemini response had no audio content in steps[].content[]');
         }
-        throw new SynthesisFailedError(
-          `Gemini returned ${response.status} ${response.statusText}: ${body}`.trim()
-        );
+
+        const pcm = Buffer.from(base64Audio, 'base64');
+        return { audio: { audio: pcmToWav(pcm), contentType: 'audio/wav' }, blockedBody: '' };
+      });
+    } catch (error) {
+      // A caller-side timeout (learn.routes.ts's outer bound, or this client's
+      // own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped connection
+      // below, not a hard failure.
+      if (isAbortError(error)) {
+        throw new SpeechUnavailableError('Synthesis timed out.', 'That took too long to speak — try again.');
       }
-
-      if (!response.ok) {
-        // Every attempt was blocked. Surfaced as *unavailable* rather than
-        // failed because it is a transient provider decision the learner
-        // can do nothing about and which usually clears — the same class of
-        // thing a 429 is, not the same class as a malformed request.
+      const code = (error as NodeJS.ErrnoException)?.code;
+      if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
         throw new SpeechUnavailableError(
-          `Gemini's safety filter blocked this text on every attempt: ${blockedBody}`.trim(),
-          'The speech service declined to read this text — try again, it is usually transient.'
+          'Could not reach the Gemini API.',
+          'Could not reach the speech service — try again shortly.'
         );
       }
-
-      // Verified by hand against the live API: the docs' own summary of this
-      // shape (`output_audio.data` at the top level) does not match what the
-      // API actually returns. The real shape is `steps[].content[]`, each
-      // content item carrying a `mime_type` and `data` — find the first
-      // audio one rather than assuming it is always steps[0].content[0], in
-      // case a future response ever includes a text step alongside it.
-      const payload = (await response.json()) as {
-        steps?: Array<{ content?: Array<{ mime_type?: string; data?: string }> }>;
-      };
-      const base64Audio = payload.steps
-        ?.flatMap((step) => step.content ?? [])
-        .find((item) => item.mime_type?.startsWith('audio/'))?.data;
-      if (!base64Audio) {
-        throw new SynthesisFailedError('Gemini response had no audio content in steps[].content[]');
-      }
-
-      const pcm = Buffer.from(base64Audio, 'base64');
-      return { audio: pcmToWav(pcm), contentType: 'audio/wav' };
+      throw error;
+    }
   }
 }

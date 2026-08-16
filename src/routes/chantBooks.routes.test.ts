@@ -38,7 +38,7 @@ afterAll(() => {
   mock.module('../middleware/policy.js', () => realPolicy);
 });
 
-const { createChantBooksRouter, withExclusivePdfParse } = await import('./chantBooks.routes.js');
+const { createChantBooksRouter, withExclusiveExtraction, ExtractionBusyError } = await import('./chantBooks.routes.js');
 
 function fakeProvider(response: string): AiProvider {
   return { name: 'Fake', generate: async () => response };
@@ -184,14 +184,14 @@ function minimalPdf(lines: string[]): Buffer {
   return Buffer.from(pdf, 'latin1');
 }
 
-describe('withExclusivePdfParse', () => {
+describe('withExclusiveExtraction', () => {
   test('runs one at a time, and one failure does not poison the next turn', async () => {
     let active = 0;
     let peak = 0;
     const order: string[] = [];
 
     const task = (name: string, fail = false) =>
-      withExclusivePdfParse(async () => {
+      withExclusiveExtraction(async () => {
         active++;
         peak = Math.max(peak, active);
         // Yield twice, so an unserialised implementation would interleave here.
@@ -216,7 +216,28 @@ describe('withExclusivePdfParse', () => {
     expect(peak).toBe(1);
     expect(order).toEqual(['a', 'b', 'c']);
   });
+
+  test('sheds load past the queue cap instead of letting a request wait indefinitely', async () => {
+    // With a 5-minute parse timeout, an unbounded queue means a late request
+    // waits far past when any client or proxy has given up — holding its
+    // connection and its temp file the whole time.
+    let release!: () => void;
+    const blocker = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    // One running + MAX_QUEUED_EXTRACTIONS-1 waiting fills the allowance.
+    const inFlight = Array.from({ length: 4 }, () => withExclusiveExtraction(async () => blocker));
+    await expect(withExclusiveExtraction(async () => 'overflow')).rejects.toThrow(ExtractionBusyError);
+
+    release();
+    await Promise.all(inFlight);
+
+    // Once drained, the gate reopens — the cap is backpressure, not a latch.
+    expect(await withExclusiveExtraction(async () => 'ok')).toBe('ok');
+  });
 });
+
 
 describe('POST /chant-books', () => {
   test('uploads a .txt file, parses it, and creates the book with its verses', async () => {
