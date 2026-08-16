@@ -42,11 +42,33 @@ export interface ChantBooksRouterDeps {
   maxUploadBytes?: number;
 }
 
-/** Books are extracted-text, not scanned-image PDFs — smaller than `resources.routes.ts`'s own 500MB allowance for a scanned book, but generous for a text-based one. */
-const DEFAULT_MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+/**
+ * Same 500MB allowance `resources.routes.ts` gives a scanned book, and for
+ * the same reason: multer streams the upload straight to disk, so this
+ * bounds disk usage, not RAM.
+ *
+ * This was 50MB, on the reasoning that a chant book is extracted-text
+ * rather than scanned-image PDF and so would be far smaller. That reasoning
+ * doesn't survive contact with real books: a scripture edition is routinely
+ * hundreds of pages carrying embedded fonts and page images *alongside* its
+ * text layer, and 50MB rejected ordinary uploads.
+ *
+ * To be clear about what the raise does and does not buy: this admits large
+ * TEXT-LAYER books. A PDF that is purely page images still has nothing to
+ * extract and is rejected below, at any size — there is no OCR in this
+ * path.
+ */
+const DEFAULT_MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf', '.txt']);
-/** Same value and reasoning as `translate.routes.ts`'s own `DOCUMENT_PARSE_TIMEOUT_MS` — kept as its own constant here rather than importing a private one across route files. */
-const DOCUMENT_PARSE_TIMEOUT_MS = 30_000;
+/**
+ * Was 30s, copied from `translate.routes.ts`'s own `DOCUMENT_PARSE_TIMEOUT_MS`
+ * — but that bounds a single translated page, whereas this bounds extracting
+ * text from a whole book, and the size limit above is now ten times what it
+ * was. A several-hundred-page PDF genuinely takes longer than 30s to walk,
+ * and aborting it mid-parse looks to the learner like a corrupt file rather
+ * than a timeout. Still bounded, just at book scale.
+ */
+const DOCUMENT_PARSE_TIMEOUT_MS = 5 * 60_000;
 
 function isLanguage(value: unknown): value is Language {
   return value === 'sanskrit' || value === 'tamil';
@@ -130,13 +152,34 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
       return;
     }
 
+    const extension = extname(file.originalname).toLowerCase();
     let rawText: string;
     try {
-      rawText = await extractText(file.path, extname(file.originalname).toLowerCase());
+      rawText = await extractText(file.path, extension);
     } catch (error) {
       await unlink(file.path).catch(() => {});
       console.error('Failed to extract text from uploaded book:', error);
       res.status(500).json({ success: false, error: 'Could not read that file', details: error instanceof Error ? error.message : 'Unknown error' });
+      return;
+    }
+
+    // Extraction succeeding but yielding nothing is the scanned-PDF case,
+    // and it needs its own message. Left to fall through, empty text
+    // reaches `parseBookVerses` and comes back "Could not find numbered
+    // verses in this document" — which tells the learner their book is
+    // badly numbered when the truth is that it is page images with no text
+    // layer at all, and sends them off to re-check numbering they cannot
+    // fix. There is no OCR anywhere in this path, so the honest advice is
+    // a different source file, not "try again".
+    if (!rawText) {
+      await unlink(file.path).catch(() => {});
+      res.status(422).json({
+        success: false,
+        error:
+          extension === '.pdf'
+            ? 'That PDF has no extractable text — it looks like page images (a scan) rather than a text-layer PDF. Try a PDF you can select text in, or paste the verses into a .txt file.'
+            : 'That file is empty.',
+      });
       return;
     }
 

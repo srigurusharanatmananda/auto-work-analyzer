@@ -141,6 +141,49 @@ function txtFormData(text: string, language: string, title: string, filename = '
 
 const SANSKRIT_DANDA_TEXT = 'first verse text here ॥ १॥\nsecond verse text here ॥ २॥\nthird verse text here ॥ ३॥';
 
+/**
+ * A real, valid PDF — hand-assembled rather than checked in as a binary
+ * fixture, so the bytes under test are visible here instead of opaque.
+ *
+ * Worth the ~25 lines because `.txt` uploads skip `extractText`'s entire
+ * PDF branch, which is the branch a learner actually uses (books arrive as
+ * PDFs, not text files) and the one that was never covered. Uncompressed
+ * content stream, one built-in Type1 font, no images: the smallest thing
+ * `pdf-parse` will genuinely extract text from.
+ *
+ * Latin text, not Devanagari — embedding an Indic font would balloon this
+ * into the binary fixture it exists to avoid, and the script makes no
+ * difference to what's under test here (extraction and verse splitting are
+ * both script-agnostic; `BookVerseParser.test.ts` covers the Devanagari
+ * numeral conventions directly).
+ */
+function minimalPdf(lines: string[]): Buffer {
+  const content =
+    'BT /F1 12 Tf 72 720 Td 14 TL\n' +
+    lines.map((line) => `(${line.replace(/([\\()])/g, '\\$1')}) Tj T*`).join('\n') +
+    '\nET';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  // The cross-reference table is byte offsets into the file itself, so it
+  // can only be built after the body — hence the two passes.
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objects.forEach((body, i) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xrefStart = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
 describe('POST /chant-books', () => {
   test('uploads a .txt file, parses it, and creates the book with its verses', async () => {
     const storageRoot = await mkdtemp(join(tmpdir(), 'chant-books-test-'));
@@ -157,6 +200,62 @@ describe('POST /chant-books', () => {
       expect(body.data.title).toBe('My Test Book');
       expect(body.data.language).toBe('sanskrit');
       expect(body.data.verseCount).toBe(3);
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('uploads a real PDF, extracts its text, and splits it into verses', async () => {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'chant-books-test-'));
+    const app = buildApp({ aiClient: new AiClient([]), booksFactory: fakeBooks, versesFactory: fakeVerses, storageRoot });
+    const { server, baseUrl } = await listen(app);
+    try {
+      const pdf = minimalPdf([
+        '1.',
+        'first verse text here',
+        '2.',
+        'second verse text here',
+        '3.',
+        'third verse text here',
+      ]);
+      const body = new FormData();
+      body.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gurugita.pdf');
+      body.append('language', 'sanskrit');
+      body.append('title', 'A PDF Book');
+
+      const res = await fetch(baseUrl, { method: 'POST', body });
+      const payload = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(payload.data.verseCount).toBe(3);
+      expect(payload.data.originalFilename).toBe('gurugita.pdf');
+    } finally {
+      server.close();
+      await rm(storageRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects a text-layerless PDF by naming the missing text layer, not the numbering', async () => {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'chant-books-test-'));
+    const app = buildApp({ aiClient: new AiClient([]), booksFactory: fakeBooks, versesFactory: fakeVerses, storageRoot });
+    const { server, baseUrl } = await listen(app);
+    try {
+      // A structurally valid PDF with no text at all — what a pure scan
+      // extracts to. The distinction under test is precisely that this
+      // must NOT be reported as a numbering problem, since the learner has
+      // no way to act on that diagnosis.
+      const body = new FormData();
+      body.append('file', new Blob([minimalPdf([])], { type: 'application/pdf' }), 'scan.pdf');
+      body.append('language', 'sanskrit');
+      body.append('title', 'A Scanned Book');
+
+      const res = await fetch(baseUrl, { method: 'POST', body });
+      const payload = await res.json();
+
+      expect(res.status).toBe(422);
+      expect(payload.error).toContain('no extractable text');
+      expect(payload.error).not.toContain('numbered verses');
     } finally {
       server.close();
       await rm(storageRoot, { recursive: true, force: true });
