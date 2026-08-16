@@ -39,12 +39,24 @@ const BITS_PER_SAMPLE = 16;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/**
+ * Extra attempts (so 1 + this many requests) for a `content_blocked` 400.
+ * Three total: enough that a filter which fires intermittently is very
+ * unlikely to fire on all of them, few enough to stay inside
+ * `DEFAULT_TIMEOUT_MS` with a real synthesis call in each attempt.
+ */
+const CONTENT_BLOCKED_RETRIES = 2;
+/** Multiplied by the attempt number, so 1s then 2s. */
+const CONTENT_BLOCKED_BACKOFF_MS = 1_000;
+
 export interface GeminiSpeechClientOptions {
   /** Defaults to GOOGLE_API_KEY. */
   apiKey?: string;
   /** Injectable for tests. */
   fetchImpl?: typeof fetch;
   model?: string;
+  /** Injectable for tests, so retry backoff does not really sleep — same seam `SpeechClient` gives its own health poll. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /**
@@ -78,11 +90,13 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
   private readonly apiKey: string | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly model: string;
+  private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(options: GeminiSpeechClientOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.GOOGLE_API_KEY;
     this.fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
     this.model = options.model ?? DEFAULT_MODEL;
+    this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
   async synthesize(options: SynthesizeOptions): Promise<SynthesisResult> {
@@ -112,46 +126,81 @@ export class GeminiSpeechClient implements SpeechSynthesizer {
       // wraps, even with no prosody given.
       const input = `Say ${prosody ? `in a ${prosody} voice` : 'clearly'}: ${text}`;
 
-      let response: Response;
-      try {
-        response = await this.fetchImpl(ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey,
-          },
-          body: JSON.stringify({
-            model: this.model,
-            input,
-            response_format: { type: 'audio' },
-            generation_config: { speech_config: [{ voice }] },
-          }),
-          signal: innerSignal,
-        });
-      } catch (error) {
-        // A caller-side timeout (learn.routes.ts's outer bound, or this
-        // client's own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped
-        // connection below, not a hard failure.
-        if (isAbortError(error)) {
-          throw new SpeechUnavailableError('Synthesis timed out.');
-        }
-        const code = (error as NodeJS.ErrnoException)?.code;
-        if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
-          throw new SpeechUnavailableError('Could not reach the Gemini API.');
-        }
-        throw error;
-      }
+      let response!: Response;
+      let blockedBody = '';
 
-      if (!response.ok) {
+      // Gemini's safety filter intermittently answers a perfectly ordinary
+      // request with 400 `content_blocked` ("Request blocked for an
+      // unspecified policy reason"). Established as FLAKY rather than a
+      // property of the input, by hand against the live API: the same
+      // devotional Sanskrit pāda that was blocked came back 200 on the very
+      // next attempt with byte-identical input. Left unretried it meant a
+      // learner chanting through a text hit a hard, unexplained failure on
+      // a random verse and a different one each time.
+      //
+      // Retried here rather than at the caller because only this file can
+      // tell `content_blocked` apart from a genuine 400 (a bad model name,
+      // a malformed body) — those must still fail immediately rather than
+      // burn three attempts on a request that cannot succeed.
+      for (let attempt = 0; attempt <= CONTENT_BLOCKED_RETRIES; attempt++) {
+        if (attempt > 0) await this.sleep(CONTENT_BLOCKED_BACKOFF_MS * attempt);
+
+        try {
+          response = await this.fetchImpl(ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': this.apiKey,
+            },
+            body: JSON.stringify({
+              model: this.model,
+              input,
+              response_format: { type: 'audio' },
+              generation_config: { speech_config: [{ voice }] },
+            }),
+            signal: innerSignal,
+          });
+        } catch (error) {
+          // A caller-side timeout (learn.routes.ts's outer bound, or this
+          // client's own DEFAULT_TIMEOUT_MS) — retryable, same as a dropped
+          // connection below, not a hard failure.
+          if (isAbortError(error)) {
+            throw new SpeechUnavailableError('Synthesis timed out.');
+          }
+          const code = (error as NodeJS.ErrnoException)?.code;
+          if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
+            throw new SpeechUnavailableError('Could not reach the Gemini API.');
+          }
+          throw error;
+        }
+
+        if (response.ok) break;
+
         const body = await response.text().catch(() => '');
         if (response.status === 401 || response.status === 403) {
           throw new SpeechUnavailableError(`Gemini rejected the API key (${response.status}).`);
         }
         if (response.status === 429) {
-          throw new SpeechUnavailableError('Gemini rate-limited this request (429).');
+          throw new SpeechUnavailableError(
+            'Gemini rate-limited this request (429) — its free tier is per-minute, so this usually clears on its own.'
+          );
+        }
+        if (response.status === 400 && body.includes('content_blocked')) {
+          blockedBody = body;
+          continue;
         }
         throw new SynthesisFailedError(
           `Gemini returned ${response.status} ${response.statusText}: ${body}`.trim()
+        );
+      }
+
+      if (!response.ok) {
+        // Every attempt was blocked. Surfaced as *unavailable* rather than
+        // failed because it is a transient provider decision the learner
+        // can do nothing about and which usually clears — the same class of
+        // thing a 429 is, not the same class as a malformed request.
+        throw new SpeechUnavailableError(
+          `Gemini's safety filter blocked this text on every attempt: ${blockedBody}`.trim()
         );
       }
 

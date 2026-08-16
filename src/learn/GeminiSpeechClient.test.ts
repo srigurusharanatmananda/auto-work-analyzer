@@ -41,9 +41,25 @@ function clientFor(options: {
   const client = new GeminiSpeechClient({
     apiKey: options.apiKey ?? 'test-key',
     fetchImpl,
+    // Retry backoff must not really sleep, or every content_blocked test
+    // pays 3 real seconds.
+    sleep: async () => {},
   });
 
   return { client, requests };
+}
+
+/** The real body Gemini returns when its safety filter fires, verified against the live API. */
+function contentBlockedResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: 'Request blocked for an unspecified policy reason. Please modify your input and retry.',
+        code: 'content_blocked',
+      },
+    }),
+    { status: 400 }
+  );
 }
 
 describe('synthesize', () => {
@@ -124,6 +140,42 @@ describe('synthesize', () => {
       respond: () => new Response('model error', { status: 500, statusText: 'Internal Server Error' }),
     });
     await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SynthesisFailedError);
+  });
+
+  test('retries a content_blocked 400 and succeeds when a later attempt is not blocked', async () => {
+    let calls = 0;
+    const { client, requests } = clientFor({
+      respond: () => (++calls === 1 ? contentBlockedResponse() : audioResponse(SAMPLE_PCM_BASE64)),
+    });
+
+    const result = await client.synthesize({ text: 'कैलास शिखरे रम्ये' });
+
+    expect(result.contentType).toBe('audio/wav');
+    expect(requests).toHaveLength(2);
+    // The retry must send the SAME input — retrying with altered text would
+    // cache audio under a key no real request ever asks for.
+    expect((requests[1].body as { input: string }).input).toBe(
+      (requests[0].body as { input: string }).input
+    );
+  });
+
+  test('a persistently blocked request is unavailable (retryable), not a synthesis failure', async () => {
+    const { client, requests } = clientFor({ respond: () => contentBlockedResponse() });
+
+    await expect(client.synthesize({ text: 'कैलास शिखरे रम्ये' })).rejects.toThrow(
+      SpeechUnavailableError
+    );
+    // One initial attempt plus CONTENT_BLOCKED_RETRIES.
+    expect(requests).toHaveLength(3);
+  });
+
+  test('a 400 that is NOT content_blocked fails immediately, without retrying', async () => {
+    const { client, requests } = clientFor({
+      respond: () => new Response('{"error":{"message":"Unknown model"}}', { status: 400 }),
+    });
+
+    await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SynthesisFailedError);
+    expect(requests).toHaveLength(1);
   });
 
   test('a response with no audio content in steps[].content[] is a synthesis failure', async () => {

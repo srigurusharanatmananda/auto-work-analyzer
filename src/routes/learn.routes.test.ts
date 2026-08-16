@@ -55,7 +55,7 @@ afterAll(() => {
 // Imported dynamically, and only after the mocks above are installed, so this
 // module (and the two it wires in) resolve against the fakes rather than the
 // real, Postgres-backed middleware.
-const { createLearnRouter } = await import('./learn.routes.js');
+const { createLearnRouter, defaultSpeechClientFor } = await import('./learn.routes.js');
 
 /** In-memory stand-in for ProgressService. One Set per (userId, language). */
 function fakeProgress(): ProgressService & { seenByKey: Map<string, Set<string>>; recordSeenCalls: number } {
@@ -302,6 +302,41 @@ describe('POST /learn/seen', () => {
     } finally {
       server.close();
     }
+  });
+});
+
+describe('defaultSpeechClientFor', () => {
+  // Guards the routing decision itself, not just that SOME client is
+  // returned: sending Sanskrit to the self-hosted client is what produced
+  // the "only verse 1 ever plays" bug (everything but the one pre-warmed
+  // verse fell through to a multi-minute CPU synthesis that timed out), so
+  // a silent regression back to it would break the feature again without
+  // failing any other test here.
+  test('routes Sanskrit to Gemini when a Google key is configured', () => {
+    const pick = defaultSpeechClientFor({ GOOGLE_API_KEY: 'AIzaTestKey' } as NodeJS.ProcessEnv);
+    expect(pick('sanskrit').constructor.name).toBe('GeminiSpeechClient');
+    expect(pick('tamil').constructor.name).toBe('GeminiSpeechClient');
+  });
+
+  test('falls back to the self-hosted client for Sanskrit with no usable Google key', () => {
+    expect(defaultSpeechClientFor({} as NodeJS.ProcessEnv)('sanskrit').constructor.name).toBe(
+      'SpeechClient'
+    );
+    // The placeholder env.example ships in real .env files — treating it as
+    // a real key would send every request to a guaranteed 400.
+    const placeholder = { GOOGLE_API_KEY: 'your_google_api_key_here' } as NodeJS.ProcessEnv;
+    expect(defaultSpeechClientFor(placeholder)('sanskrit').constructor.name).toBe('SpeechClient');
+  });
+
+  test('LEARN_SANSKRIT_TTS=self-hosted overrides an available Google key', () => {
+    const env = {
+      GOOGLE_API_KEY: 'AIzaTestKey',
+      LEARN_SANSKRIT_TTS: 'self-hosted',
+    } as NodeJS.ProcessEnv;
+    expect(defaultSpeechClientFor(env)('sanskrit').constructor.name).toBe('SpeechClient');
+    // Tamil is unaffected — the override is Sanskrit's, and the self-hosted
+    // container has no Tamil voice to fall back to.
+    expect(defaultSpeechClientFor(env)('tamil').constructor.name).toBe('GeminiSpeechClient');
   });
 });
 

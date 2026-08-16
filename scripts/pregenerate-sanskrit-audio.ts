@@ -26,7 +26,10 @@ import { sanskritManifest } from '../src/learn/content/sanskrit.js';
 import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
-import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js';
+import {
+  DEFAULT_VOICE as CACHE_VOICE_KEY,
+  defaultSpeechClientFor,
+} from '../src/routes/learn.routes.js';
 
 // `undefined` is what's actually passed to synthesize(), so the backend's
 // own default voice applies — the same reasoning as learn.routes.ts's own
@@ -35,12 +38,19 @@ import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js'
 // the cache lookup/write key, never passed to synthesize() itself.
 
 async function main() {
-  const speechClient = new SpeechClient();
+  // The SAME backend a real `POST /learn/speak` would pick — see the
+  // matching comment in `pregenerate-chanting-audio.ts` for why hardcoding
+  // `new SpeechClient()` here silently warmed the cache with audio from a
+  // backend the route no longer uses.
+  const speechClient = defaultSpeechClientFor()('sanskrit');
   const audioCache = new AudioCache();
 
-  console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
-  await speechClient.waitUntilReady();
-  console.log('TTS service is healthy. Pregenerating audio for the sanskrit manifest...');
+  if (speechClient instanceof SpeechClient) {
+    console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
+    await speechClient.waitUntilReady();
+    console.log('TTS service is healthy.');
+  }
+  console.log('Pregenerating audio for the sanskrit manifest...');
 
   let cached = 0;
   let generated = 0;

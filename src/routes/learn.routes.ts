@@ -34,15 +34,42 @@ import { anyRole } from '../middleware/policy.js';
 
 /**
  * Which language gets which speech backend. Tamil uses Gemini (verified to
- * support Tamil — see GeminiSpeechClient.ts); Sanskrit uses the self-hosted
- * Indic-Parler-TTS container (services/tts) via SpeechClient — Gemini has no
- * Sanskrit voice. One instance per language, not per request — both clients
- * are stateless enough to share.
+ * support Tamil — see GeminiSpeechClient.ts). One instance per language, not
+ * per request — both clients are stateless enough to share.
+ *
+ * Sanskrit ALSO uses Gemini now, whenever GOOGLE_API_KEY is set. That
+ * reverses this function's original routing, and the reason is measured,
+ * not assumed:
+ *
+ *  - The self-hosted Indic-Parler-TTS container (services/tts) is CPU-only
+ *    and takes MINUTES per phrase, so it is only usable at all via
+ *    pre-warmed AudioCache entries. In practice pregeneration never
+ *    finished: of the Guru Gita's 182 verses, exactly one (5 cache items)
+ *    was ever warmed, so verse 1 played instantly and every other verse
+ *    fell through to a live synthesis that hung and then failed — the
+ *    reported bug. Warming the other 905 items would take days of CPU.
+ *  - GeminiSpeechClient.ts's header notes Gemini does not LIST Sanskrit
+ *    among its supported languages. Not listed turns out not to mean
+ *    unsupported: verified directly against the live API (2026-08-13) by
+ *    synthesising `देवि उवाच । कैलास शिखरे रम्ये...` — it returned ~8s of
+ *    intelligible Devanagari speech in seconds. Sanskrit in Devanagari is
+ *    read close enough to Hindi (which IS listed) for this to work.
+ *
+ * So: a real backend that answers in seconds beats a nominally-better one
+ * that in practice answers never. The self-hosted client stays the fallback
+ * for a deployment with no Google key, and `LEARN_SANSKRIT_TTS=self-hosted`
+ * forces it back for anyone who has actually warmed the cache or is running
+ * the container on a GPU.
  */
-function defaultSpeechClientFor(): (language: Language) => SpeechSynthesizer {
+export function defaultSpeechClientFor(
+  env: NodeJS.ProcessEnv = process.env
+): (language: Language) => SpeechSynthesizer {
   const gemini = new GeminiSpeechClient();
   const selfHosted = new SpeechClient();
-  return (language) => (language === 'tamil' ? gemini : selfHosted);
+  const googleKey = env.GOOGLE_API_KEY;
+  const hasGoogleKey = !!googleKey && googleKey !== 'your_google_api_key_here';
+  const sanskrit = env.LEARN_SANSKRIT_TTS === 'self-hosted' || !hasGoogleKey ? selfHosted : gemini;
+  return (language) => (language === 'tamil' ? gemini : sanskrit);
 }
 
 export interface LearnRouterDeps {
