@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
+import VersePicker, { VerseStepper, type VersePickerItem } from '@/lib/components/VersePicker';
 import toast from 'react-hot-toast';
 import type { ChantSyllable, ChantVerse, ChantVerseSummary } from '@/types';
 
@@ -104,6 +105,15 @@ export default function ChantingPage() {
 
   const pada = verse?.padas[padaIndex] ?? null;
 
+  // The picker searches this, so both the Devanagari opening and the English
+  // meaning are in it — a learner reaching for a half-remembered verse has
+  // one or the other, rarely its number.
+  const pickerItems: VersePickerItem[] = verses.map((v) => ({
+    key: v.id,
+    number: v.verseNumber,
+    preview: v.firstLine ? `${v.firstLine} — ${v.meaning}` : v.meaning,
+  }));
+
   return (
     <ProtectedRoute>
       <div className="p-8">
@@ -124,135 +134,144 @@ export default function ChantingPage() {
           </div>
         </div>
 
-        {verses.length > 1 && (
-          <div className="mb-6 flex flex-wrap gap-2">
-            {verses.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => selectVerse(v.id)}
-                className={`rounded-lg border px-3 py-2 text-left text-xs ${
-                  verse?.id === v.id ? 'border-primary bg-primary/10' : 'border-border'
-                }`}
-              >
-                <p className="font-semibold text-foreground">
-                  {v.source} — verse {v.verseNumber}
+        {/* The rail's track only exists when there is a rail — declaring a
+            19rem column and then spanning the sole child across it would
+            leave the practice pane laid out around a phantom sidebar. */}
+        <div
+          className={
+            verses.length > 1 ? 'grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]' : 'flex flex-col'
+          }
+        >
+          {verses.length > 1 && (
+            // `self-start` + `sticky` keeps the index in view while the
+            // practice pane — which is much taller — scrolls past it.
+            <Card className="self-start p-4 lg:sticky lg:top-6">
+              <VersePicker
+                items={pickerItems}
+                selectedKey={verse?.id ?? null}
+                onSelect={selectVerse}
+                title={verses[0]?.source ?? 'Verses'}
+              />
+            </Card>
+          )}
+
+          <div>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : !verse ? (
+              <Card className="py-12 text-center">
+                <p className="text-foreground-secondary">
+                  {verseLoadFailed ? "Couldn't load this verse — try again." : 'No verses yet.'}
                 </p>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner size="lg" />
-          </div>
-        ) : !verse ? (
-          <Card className="py-12 text-center">
-            <p className="text-foreground-secondary">
-              {verseLoadFailed ? "Couldn't load this verse — try again." : 'No verses yet.'}
-            </p>
-          </Card>
-        ) : (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-sm font-medium text-foreground-secondary">
-                {verse.source} — verse {verse.verseNumber}
-              </p>
-              {verse.speakerTag && (
-                <p className="mt-1 text-sm italic text-foreground-tertiary">{verse.speakerTag}</p>
-              )}
-            </div>
-
-            {pada && (
-              <Card className="flex flex-col items-center gap-4 py-10 text-center">
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  Phrase {padaIndex + 1} of {verse.padas.length}
-                </span>
-
-                <p className="text-4xl font-semibold text-foreground">{pada.text}</p>
-                <p className="text-sm text-foreground-secondary">{pada.iast}</p>
-
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {pada.syllables.map((syllable, i) => (
-                    <span
-                      key={i}
-                      title={WEIGHT_LABEL[syllable.weight]}
-                      className={`rounded px-2 py-1 text-lg ${WEIGHT_STYLE[syllable.weight]}`}
-                    >
-                      {syllable.text}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-xs text-foreground-tertiary">
-                  Darker = guru (say it longer) · lighter = laghu (say it shorter) · italic = pāda-final,
-                  either length is fine
-                </p>
-
-                <div className="mt-2 flex flex-col gap-1 text-sm text-foreground-secondary">
-                  {pada.words.map((word, i) => (
-                    <p key={i}>
-                      <span className="font-medium text-foreground">{word.devanagari}</span>
-                      <span className="text-foreground-tertiary"> ({word.iast})</span> — {word.gloss}
-                    </p>
-                  ))}
-                </div>
-
-                <Button
-                  variant="ghost"
-                  onClick={() => playAudio(pada.text)}
-                  disabled={audioLoading}
-                >
-                  {audioLoading ? 'Synthesizing (can take minutes)...' : 'Play audio'}
-                </Button>
               </Card>
+            ) : (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-3">
+                  <VerseStepper items={pickerItems} selectedKey={verse.id} onSelect={selectVerse} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground-secondary">
+                      {verse.source} — verse {verse.verseNumber}
+                    </p>
+                    {verse.speakerTag && (
+                      <p className="mt-1 text-sm italic text-foreground-tertiary">{verse.speakerTag}</p>
+                    )}
+                  </div>
+                </div>
+
+                {pada && (
+                  <Card className="flex flex-col items-center gap-4 py-10 text-center">
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      Phrase {padaIndex + 1} of {verse.padas.length}
+                    </span>
+
+                    <p className="text-4xl font-semibold text-foreground">{pada.text}</p>
+                    <p className="text-sm text-foreground-secondary">{pada.iast}</p>
+
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {pada.syllables.map((syllable, i) => (
+                        <span
+                          key={i}
+                          title={WEIGHT_LABEL[syllable.weight]}
+                          className={`rounded px-2 py-1 text-lg ${WEIGHT_STYLE[syllable.weight]}`}
+                        >
+                          {syllable.text}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-foreground-tertiary">
+                      Darker = guru (say it longer) · lighter = laghu (say it shorter) · italic = pāda-final,
+                      either length is fine
+                    </p>
+
+                    <div className="mt-2 flex flex-col gap-1 text-sm text-foreground-secondary">
+                      {pada.words.map((word, i) => (
+                        <p key={i}>
+                          <span className="font-medium text-foreground">{word.devanagari}</span>
+                          <span className="text-foreground-tertiary"> ({word.iast})</span> — {word.gloss}
+                        </p>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => playAudio(pada.text)}
+                      disabled={audioLoading}
+                    >
+                      {audioLoading ? 'Synthesizing…' : 'Play audio'}
+                    </Button>
+                  </Card>
+                )}
+
+                <div className="flex justify-center gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setPadaIndex((i) => Math.max(0, i - 1))}
+                    disabled={padaIndex === 0}
+                  >
+                    ← Previous phrase
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPadaIndex((i) => Math.min(verse.padas.length - 1, i + 1))}
+                    disabled={padaIndex === verse.padas.length - 1}
+                  >
+                    Next phrase →
+                  </Button>
+                </div>
+
+                <Card className="flex flex-col gap-3 p-6">
+                  <h2 className="text-lg font-semibold text-foreground">Full verse</h2>
+                  <p className="text-xl text-foreground">{verse.padas.map((p) => p.text).join(' ')}</p>
+                  <p className="text-sm text-foreground-secondary">
+                    {verse.padas.map((p) => p.iast).join(' ')}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="self-start"
+                    onClick={() => playAudio(verse.padas.map((p) => p.text).join(' '))}
+                    disabled={audioLoading}
+                  >
+                    {audioLoading ? 'Synthesizing…' : 'Play full verse'}
+                  </Button>
+                </Card>
+
+                <Card className="flex flex-col gap-2 p-6">
+                  <h2 className="text-lg font-semibold text-foreground">Meaning</h2>
+                  <p className="text-foreground-secondary">{verse.meaning}</p>
+                </Card>
+
+                <details className="rounded-lg border border-border p-4 text-xs text-foreground-tertiary">
+                  <summary className="cursor-pointer text-sm font-medium text-foreground-secondary">
+                    Sourcing notes
+                  </summary>
+                  <p className="mt-2">{verse.citation}</p>
+                </details>
+              </div>
             )}
-
-            <div className="flex justify-center gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => setPadaIndex((i) => Math.max(0, i - 1))}
-                disabled={padaIndex === 0}
-              >
-                ← Previous phrase
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setPadaIndex((i) => Math.min(verse.padas.length - 1, i + 1))}
-                disabled={padaIndex === verse.padas.length - 1}
-              >
-                Next phrase →
-              </Button>
-            </div>
-
-            <Card className="flex flex-col gap-3 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Full verse</h2>
-              <p className="text-xl text-foreground">{verse.padas.map((p) => p.text).join(' ')}</p>
-              <p className="text-sm text-foreground-secondary">
-                {verse.padas.map((p) => p.iast).join(' ')}
-              </p>
-              <Button
-                variant="ghost"
-                className="self-start"
-                onClick={() => playAudio(verse.padas.map((p) => p.text).join(' '))}
-                disabled={audioLoading}
-              >
-                {audioLoading ? 'Synthesizing (can take minutes)...' : 'Play full verse'}
-              </Button>
-            </Card>
-
-            <Card className="flex flex-col gap-2 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Meaning</h2>
-              <p className="text-foreground-secondary">{verse.meaning}</p>
-            </Card>
-
-            <details className="rounded-lg border border-border p-4 text-xs text-foreground-tertiary">
-              <summary className="cursor-pointer text-sm font-medium text-foreground-secondary">
-                Sourcing notes
-              </summary>
-              <p className="mt-2">{verse.citation}</p>
-            </details>
           </div>
-        )}
+        </div>
       </div>
     </ProtectedRoute>
   );

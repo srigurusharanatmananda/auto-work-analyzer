@@ -32,7 +32,17 @@ function padaWithSyllables(pada: ChantPada): PadaWithSyllables {
 export function createChantingRouter(): Router {
   const router = Router();
 
-  /** The verse list, minus each verse's own padas/citation — just enough for a picker UI. */
+  /**
+   * The verse list, minus each verse's own syllable breakdown/citation —
+   * just enough for a picker UI.
+   *
+   * `firstLine` (the opening pāda, in Devanagari) is here rather than left
+   * to the client to derive: with 182 verses the picker's search box is the
+   * only practical way to reach one, and searching only English `meaning`
+   * would leave a learner who remembers how a verse BEGINS — the normal way
+   * a chanted text is remembered — with nothing to type. Sending one pāda,
+   * not all four, keeps this list a list.
+   */
   router.get('/verses', authenticate, anyRole, (_req: Request, res: Response) => {
     res.json({
       success: true,
@@ -41,6 +51,7 @@ export function createChantingRouter(): Router {
         source: verse.source,
         verseNumber: verse.verseNumber,
         meaning: verse.meaning,
+        firstLine: verse.padas[0]?.text ?? '',
       })),
     });
   });

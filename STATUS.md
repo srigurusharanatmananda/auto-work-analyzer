@@ -1,6 +1,6 @@
 # Project status
 
-**Last verified: 2026-08-10.** Everything here was checked against the repo on
+**Last verified: 2026-08-13.** Everything here was checked against the repo on
 that date, not recalled.
 
 If you are picking this up cold, read this file first. There is no `CLAUDE.md`
@@ -59,8 +59,8 @@ not by leader election.
 ```bash
 npx tsc --noEmit          # clean
 npm run lint              # clean  (eslint src)
-bun test                  # 589 pass, 0 fail
-npm run test:db           # 450 pass, 0 fail  (needs Postgres up)
+bun test                  # 1801 pass, 2 fail  (see below)
+npm run test:db           # 472 pass, 1 fail   (needs Postgres up)
 
 cd ui
 npx tsc --noEmit          # clean
@@ -69,12 +69,19 @@ bun test                  # 54 pass, 0 fail
 npm run lint              # clean; 14 warnings — pre-existing, see Known issues
 ```
 
-`docker compose up tts` also needs to be running for real Sanskrit audio
-(`services/tts`, Indic-Parler-TTS, gated model — see env.example's
-`HUGGINGFACE_API_KEY`). CPU inference is slow — several minutes per lesson on
-a cache miss — so `npm run learn:pregenerate-sanskrit-audio` should be run
-once (or after any manifest change) rather than leaving a learner to hit that
-cold path live.
+The 2 `bun test` failures are `templates.routes.mount.test.ts` only, and only
+in a FULL run — both pass in isolation. Cross-file `mock.module` pollution
+from the auth mocks, not a broken route. Pre-existing; reproduces on a clean
+checkout of `HEAD`.
+
+Speech needs only `GOOGLE_API_KEY` now — both languages go to Gemini and
+answer in seconds, so `docker compose up tts` is no longer required and
+pregeneration is an optimisation rather than a prerequisite. `services/tts`
+(Indic-Parler-TTS, gated model — see env.example's `HUGGINGFACE_API_KEY`)
+remains the fallback when no Google key is set, and can be forced back for
+Sanskrit with `LEARN_SANSKRIT_TTS=self-hosted`; on CPU it is several minutes
+per phrase, so that path really does need
+`npm run learn:pregenerate-sanskrit-audio` run first.
 
 `npm test` runs lint → bun → db in that order.
 
@@ -189,9 +196,34 @@ Whitney's Sanskrit Grammar (1889, public domain, `skt-whitney-grammar`,
 §491) has it in clean Devanagari + IAST: त्वम् ("you") and यूयम् ("you
 all"). Same tranche shipped Tamil's அவனுடைய ("his"), which turned out
 to need zero new letters (the alveolar னு grapheme it needs was
-already in the file from an earlier tranche). Sanskrit: 118 lessons
-total.
-Tamil: 253. The remaining gap is content, not
+already in the file from an earlier tranche). Tranches 19–24 followed
+(2nd-person pronoun case forms, a broad grammar push,
+pronoun/mood/compound/tense completion, verb number + the 2nd-person plural
++ Tamil's three unstarted person-categories, noun number + closing all three
+Sanskrit present indicatives, and then the rest of the नर declension +
+filling Level 4). Counted by running the real manifests, not grep:
+**Sanskrit 253 lessons, Tamil 315**. All nine person/number cells of √sthā,
+√vad and √nī are taught, Sanskrit nouns inflect for dual and plural (so verb
+agreement can be shown subject-to-verb, not only verb-to-verb), Wikner's नर
+paradigm is complete, and Tamil has a second verb root (போ).
+
+**Level 4 ("Reading Practice") holds 30 Sanskrit sentences — but read the
+caveat before treating it as done.** Every one is a line Wikner prints, with
+his own printed English as its gloss, so they clear the sourcing bar. But 25
+of the 30 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
+…) — permutations from his conjugation exercises. The tier is populated;
+whether it teaches "graded reading of real text" is a different question, and
+today it mostly drills verb agreement. Real prose needs Wikner's lessons
+5-11, which need a vocabulary tranche first.
+
+**Level 5 ("Classical Texts") is empty, and that is a measurement rather than
+an oversight**: a `sentences` lesson must reconstruct exactly from words the
+curriculum already teaches, and tokenising all 182 Guru Gita verses against
+the taught Sanskrit vocabulary gives a best case of 3 words out of 12, with
+no verse reaching zero gaps. Tamil Level 4 is likewise empty — ABC of Tamil
+Book One was enumerated and contains no graded reading at any vocabulary
+size, so that one is blocked on a new source, not on more work.
+The remaining gap is content, not
 an engine limitation — per the design doc's own risk note, needs the one
 human quality gate this
 module can't automate: a beginner cannot detect a bad teacher. The plan's
@@ -222,8 +254,32 @@ take — so audio practice uses the existing Sanskrit TTS pipeline
 recordings, not yet added. New: `src/learn/Akshara.ts` (the engine,
 fully unit- and adversarially-tested), `src/learn/content/chanting.ts`
 (verse content), `src/routes/chanting.routes.ts`, `ui/app/learn/
-chanting/page.tsx`. One verse shipped; more need the same per-verse
-sourcing rigor as the curriculum tranches above, not a bulk import.
+chanting/page.tsx`. All 182 verses of the short recension have since
+shipped, each with the same per-verse sourcing rigor as the curriculum
+tranches above.
+
+**Chant books: bring your own text (2026-08-13).** `/learn/chanting/books`
+takes a PDF or `.txt` up to 500MB, splits it on explicit verse-number
+markers (`BookVerseParser.ts` — danda-wrapped `॥ १॥` or a bare numeral
+starting a line; a book using neither is rejected rather than guessed
+at), and computes each verse's pāda/word/gloss breakdown on the AI
+lazily, the first time that verse is opened. Verified end to end against
+a real text-layer PDF, in both Latin and Devanagari script. Known limit:
+a purely scanned PDF has no text to extract and is rejected, and Tamil
+books get no syllable-weight analysis (`@vipran/aksharas` is
+Devanagari-only — see `chantBooks.routes.ts`'s own comment).
+
+**Chanting audio: fixed 2026-08-13.** Only verse 1 would play; every
+other verse hung on "Synthesising" for three minutes and failed. Not a
+playback bug — Sanskrit was routed to the self-hosted, CPU-only
+Indic-Parler-TTS container, which is only usable via a pre-warmed
+`AudioCache`, and pregeneration had warmed exactly 5 of the 910 chanting
+items (all of them verse 1's) before anyone stopped waiting. Measured,
+not assumed: recomputing every cache key against `storage/learn-audio`
+gives 5/910. Sanskrit now routes to Gemini, which Google does not list as
+supporting Sanskrit but which — verified directly against the live API —
+speaks Devanagari intelligibly and in seconds. `LEARN_SANSKRIT_TTS=self-hosted`
+restores the old routing for anyone running the container on a GPU.
 
 **Fixed same day: `services/tts` had a real memory leak, not just
 slowness.** "Play audio" on the chanting page appeared permanently

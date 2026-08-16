@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { api, messageFor } from '@/lib/api';
 import { speakLearnText } from '@/lib/speak';
 import { Button, Card, LoadingSpinner } from '@/lib/components/ui';
+import VersePicker, { VerseStepper, type VersePickerItem } from '@/lib/components/VersePicker';
 import toast from 'react-hot-toast';
 import type {
   ChantBook,
@@ -22,6 +23,14 @@ const LANGUAGE_LABEL: Record<LearnLanguage, string> = {
 };
 
 const LANGUAGES: LearnLanguage[] = ['sanskrit', 'tamil'];
+
+/**
+ * Mirrors `DEFAULT_MAX_UPLOAD_BYTES` in `src/routes/chantBooks.routes.ts`.
+ * Checked here as well as there so an oversized file is refused instantly
+ * instead of after uploading half a gigabyte only to be rejected — the
+ * server check is still the real one, this is just courtesy.
+ */
+const MAX_UPLOAD_MB = 500;
 
 // Same styling as the built-in chanting page (ui/app/learn/chanting/page.tsx)
 // — kept as its own copy rather than a shared import, since the two pages'
@@ -94,6 +103,12 @@ export default function ChantBooksPage() {
     if (!file || uploading) return;
     if (!title.trim()) {
       toast.error('Give the book a title first.');
+      return;
+    }
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      toast.error(
+        `That file is ${Math.round(file.size / 1024 / 1024)} MB — the limit is ${MAX_UPLOAD_MB} MB.`
+      );
       return;
     }
 
@@ -172,6 +187,15 @@ export default function ChantBooksPage() {
 
   const pada = selectedVerse?.padas[padaIndex] ?? null;
 
+  // Verse NUMBER is the key here, not an id: a book verse is addressed by
+  // its number in the route (`/chant-books/:id/verses/:verseNumber`) and
+  // has no id of its own.
+  const pickerItems: VersePickerItem[] = verseSummaries.map((v) => ({
+    key: String(v.verseNumber),
+    number: v.verseNumber,
+    preview: v.rawText,
+  }));
+
   return (
     <ProtectedRoute>
       <div className="p-8">
@@ -208,6 +232,10 @@ export default function ChantBooksPage() {
           <p className="text-xs text-foreground-tertiary">
             Needs explicit verse-number markers — either &quot;॥ 1॥&quot;-style dandas, or a bare number on its own line.
             A book without one of those conventions can&apos;t be split into verses reliably and will be rejected.
+          </p>
+          <p className="text-xs text-foreground-tertiary">
+            PDF or .txt, up to {MAX_UPLOAD_MB} MB. A PDF needs a real text layer — a purely scanned
+            book has no text to extract and will come back empty.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -266,29 +294,28 @@ export default function ChantBooksPage() {
             )}
           </Card>
 
-          <Card className="flex flex-col gap-2 p-4 lg:col-span-1">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground-tertiary">Verses</h2>
+          <Card className="self-start p-4 lg:col-span-1 lg:sticky lg:top-6">
             {!selectedBook ? (
-              <p className="py-4 text-center text-sm text-foreground-tertiary">Pick a book to see its verses.</p>
+              <>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground-tertiary">
+                  Verses
+                </h2>
+                <p className="py-4 text-center text-sm text-foreground-tertiary">
+                  Pick a book to see its verses.
+                </p>
+              </>
             ) : versesLoading ? (
               <div className="flex justify-center py-8">
                 <LoadingSpinner />
               </div>
             ) : (
-              <div className="flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: '28rem' }}>
-                {verseSummaries.map((v) => (
-                  <button
-                    key={v.verseNumber}
-                    onClick={() => selectVerse(selectedBook.id, v.verseNumber)}
-                    className={`rounded-md border px-3 py-2 text-left text-xs ${
-                      selectedVerse?.verseNumber === v.verseNumber ? 'border-primary bg-primary/10' : 'border-border'
-                    }`}
-                  >
-                    <p className="font-semibold text-foreground">Verse {v.verseNumber}</p>
-                    <p className="mt-0.5 truncate text-foreground-tertiary">{v.rawText.replace(/\s+/g, ' ')}</p>
-                  </button>
-                ))}
-              </div>
+              <VersePicker
+                items={pickerItems}
+                selectedKey={selectedVerse ? String(selectedVerse.verseNumber) : null}
+                onSelect={(key) => selectVerse(selectedBook.id, Number(key))}
+                title={selectedBook.title}
+                emptyMessage="This book has no verses."
+              />
             )}
           </Card>
 
@@ -307,6 +334,11 @@ export default function ChantBooksPage() {
             ) : (
               pada && (
                 <div className="flex flex-col gap-4">
+                  <VerseStepper
+                    items={pickerItems}
+                    selectedKey={String(selectedVerse.verseNumber)}
+                    onSelect={(key) => selectVerse(selectedBook!.id, Number(key))}
+                  />
                   <Card className="flex flex-col items-center gap-4 py-8 text-center">
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       Phrase {padaIndex + 1} of {selectedVerse.padas.length}

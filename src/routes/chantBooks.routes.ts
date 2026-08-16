@@ -42,39 +42,121 @@ export interface ChantBooksRouterDeps {
   maxUploadBytes?: number;
 }
 
-/** Books are extracted-text, not scanned-image PDFs — smaller than `resources.routes.ts`'s own 500MB allowance for a scanned book, but generous for a text-based one. */
-const DEFAULT_MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+/**
+ * Same 500MB allowance `resources.routes.ts` gives a scanned book: multer
+ * streams the upload straight to disk, so this bounds disk usage.
+ *
+ * It does NOT bound RAM on its own, and the analogy to `resources.routes.ts`
+ * stops there — that route only stores what it takes, while this one reads
+ * it, and both extraction paths pull the whole file into memory.
+ * `withExclusiveExtraction` is what makes the peak bounded: one extraction at
+ * a time, so the worst case is one file rather than one per concurrent
+ * upload. See that function's own comment for the remaining limitation.
+ *
+ * This was 50MB, on the reasoning that a chant book is extracted-text
+ * rather than scanned-image PDF and so would be far smaller. That reasoning
+ * doesn't survive contact with real books: a scripture edition is routinely
+ * hundreds of pages carrying embedded fonts and page images *alongside* its
+ * text layer, and 50MB rejected ordinary uploads.
+ *
+ * To be clear about what the raise does and does not buy: this admits large
+ * TEXT-LAYER books. A PDF that is purely page images still has nothing to
+ * extract and is rejected below, at any size — there is no OCR in this
+ * path.
+ */
+const DEFAULT_MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf', '.txt']);
-/** Same value and reasoning as `translate.routes.ts`'s own `DOCUMENT_PARSE_TIMEOUT_MS` — kept as its own constant here rather than importing a private one across route files. */
-const DOCUMENT_PARSE_TIMEOUT_MS = 30_000;
+/**
+ * Was 30s, copied from `translate.routes.ts`'s own `DOCUMENT_PARSE_TIMEOUT_MS`
+ * — but that bounds a single translated page, whereas this bounds extracting
+ * text from a whole book, and the size limit above is now ten times what it
+ * was. A several-hundred-page PDF genuinely takes longer than 30s to walk,
+ * and aborting it mid-parse looks to the learner like a corrupt file rather
+ * than a timeout. Still bounded, just at book scale.
+ */
+const DOCUMENT_PARSE_TIMEOUT_MS = 5 * 60_000;
+
+/**
+ * Only one book is read into memory at a time, process-wide, and only a
+ * bounded number may be waiting for their turn.
+ *
+ * Multer streams the upload to disk, so the 500MB cap bounds disk — but both
+ * extraction paths then undo that by pulling the whole file into memory:
+ * pdf-parse has no streaming API, and the `.txt` path decodes the file to one
+ * string. `translate.routes.ts` answers the same constraint by capping at
+ * 20MB, which a real scripture edition cannot live with. So the cap stays at
+ * 500MB and the CONCURRENCY is bounded instead: without this, a handful of
+ * simultaneous large uploads allocate their buffers at once and OOM-kill the
+ * API for every user.
+ *
+ * Covers `.txt` as well as PDF, which an earlier version did not — it queued
+ * only the PDF branch while this comment claimed the peak was "one file's
+ * buffer", leaving concurrent 500MB text uploads as exactly the unbounded case
+ * the queue exists to prevent.
+ *
+ * A queue rather than a rejection, but a BOUNDED one. An upload that waits is
+ * a slow upload and the learner has already spent the transfer time by then —
+ * but with a 5-minute parse timeout, an unbounded queue means the tenth
+ * request waits up to 45 minutes with its connection open and its temp file on
+ * disk, long past when any client or proxy has given up. Past the cap it is
+ * kinder to say so immediately.
+ */
+const MAX_QUEUED_EXTRACTIONS = 4;
+
+export class ExtractionBusyError extends Error {
+  constructor() {
+    super('Too many books are being processed right now.');
+    this.name = 'ExtractionBusyError';
+  }
+}
+
+let extractionQueue: Promise<unknown> = Promise.resolve();
+let queuedExtractions = 0;
+
+export function withExclusiveExtraction<T>(run: () => Promise<T>): Promise<T> {
+  if (queuedExtractions >= MAX_QUEUED_EXTRACTIONS) {
+    return Promise.reject(new ExtractionBusyError());
+  }
+  queuedExtractions++;
+  // `.catch(() => {})` on the tail, not on the returned promise: one upload's
+  // failure must not reject the next one's turn, but the caller still needs to
+  // see its own error.
+  const turn = extractionQueue.then(run).finally(() => {
+    queuedExtractions--;
+  });
+  extractionQueue = turn.catch(() => {});
+  return turn;
+}
 
 function isLanguage(value: unknown): value is Language {
   return value === 'sanskrit' || value === 'tamil';
 }
 
 async function extractText(filePath: string, extension: string): Promise<string> {
-  if (extension === '.txt') {
-    return (await readFile(filePath, 'utf-8')).trim();
-  }
-  const buffer = await readFile(filePath);
-  const parser = new PDFParse({ data: buffer });
-  try {
-    let timer: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`PDF parsing timed out after ${DOCUMENT_PARSE_TIMEOUT_MS}ms — the file may be malformed or unusually complex`)),
-        DOCUMENT_PARSE_TIMEOUT_MS
-      );
-    });
-    try {
-      const result = await Promise.race([parser.getText(), timeout]);
-      return result.pages.map((page) => page.text).join('\n\n').trim();
-    } finally {
-      clearTimeout(timer!);
+  return withExclusiveExtraction(async () => {
+    if (extension === '.txt') {
+      return (await readFile(filePath, 'utf-8')).trim();
     }
-  } finally {
-    await parser.destroy();
-  }
+    const buffer = await readFile(filePath);
+    const parser = new PDFParse({ data: buffer });
+    try {
+      let timer: ReturnType<typeof setTimeout>;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`PDF parsing timed out after ${DOCUMENT_PARSE_TIMEOUT_MS}ms — the file may be malformed or unusually complex`)),
+          DOCUMENT_PARSE_TIMEOUT_MS
+        );
+      });
+      try {
+        const result = await Promise.race([parser.getText(), timeout]);
+        return result.pages.map((page) => page.text).join('\n\n').trim();
+      } finally {
+        clearTimeout(timer!);
+      }
+    } finally {
+      await parser.destroy();
+    }
+  });
 }
 
 export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
@@ -130,13 +212,45 @@ export function createChantBooksRouter(deps: ChantBooksRouterDeps): Router {
       return;
     }
 
+    const extension = extname(file.originalname).toLowerCase();
     let rawText: string;
     try {
-      rawText = await extractText(file.path, extname(file.originalname).toLowerCase());
+      rawText = await extractText(file.path, extension);
     } catch (error) {
       await unlink(file.path).catch(() => {});
+      // Shed load with a 503 + Retry-After, not a 500: nothing is broken, the
+      // server is simply at its extraction limit, and the learner should be
+      // told to come back rather than told their file is bad.
+      if (error instanceof ExtractionBusyError) {
+        res.setHeader('Retry-After', '60');
+        res.status(503).json({
+          success: false,
+          error: 'Too many books are being processed right now — try again in a minute.',
+        });
+        return;
+      }
       console.error('Failed to extract text from uploaded book:', error);
       res.status(500).json({ success: false, error: 'Could not read that file', details: error instanceof Error ? error.message : 'Unknown error' });
+      return;
+    }
+
+    // Extraction succeeding but yielding nothing is the scanned-PDF case,
+    // and it needs its own message. Left to fall through, empty text
+    // reaches `parseBookVerses` and comes back "Could not find numbered
+    // verses in this document" — which tells the learner their book is
+    // badly numbered when the truth is that it is page images with no text
+    // layer at all, and sends them off to re-check numbering they cannot
+    // fix. There is no OCR anywhere in this path, so the honest advice is
+    // a different source file, not "try again".
+    if (!rawText) {
+      await unlink(file.path).catch(() => {});
+      res.status(422).json({
+        success: false,
+        error:
+          extension === '.pdf'
+            ? 'That PDF has no extractable text — it looks like page images (a scan) rather than a text-layer PDF. Try a PDF you can select text in, or paste the verses into a .txt file.'
+            : 'That file is empty.',
+      });
       return;
     }
 

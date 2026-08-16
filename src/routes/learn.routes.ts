@@ -34,15 +34,48 @@ import { anyRole } from '../middleware/policy.js';
 
 /**
  * Which language gets which speech backend. Tamil uses Gemini (verified to
- * support Tamil — see GeminiSpeechClient.ts); Sanskrit uses the self-hosted
- * Indic-Parler-TTS container (services/tts) via SpeechClient — Gemini has no
- * Sanskrit voice. One instance per language, not per request — both clients
- * are stateless enough to share.
+ * support Tamil — see GeminiSpeechClient.ts). One instance per language, not
+ * per request — both clients are stateless enough to share.
+ *
+ * Sanskrit ALSO uses Gemini now, whenever GOOGLE_API_KEY is set. That
+ * reverses this function's original routing, and the reason is measured,
+ * not assumed:
+ *
+ *  - The self-hosted Indic-Parler-TTS container (services/tts) is CPU-only
+ *    and takes MINUTES per phrase, so it is only usable at all via
+ *    pre-warmed AudioCache entries. In practice pregeneration never
+ *    finished: of the Guru Gita's 182 verses, exactly one (5 cache items)
+ *    was ever warmed, so verse 1 played instantly and every other verse
+ *    fell through to a live synthesis that hung and then failed — the
+ *    reported bug. Warming the other 905 items would take days of CPU.
+ *  - GeminiSpeechClient.ts's header notes Gemini does not LIST Sanskrit
+ *    among its supported languages. Not listed turns out not to mean
+ *    unsupported: verified directly against the live API (2026-08-13) by
+ *    synthesising `देवि उवाच । कैलास शिखरे रम्ये...` — it returned ~8s of
+ *    intelligible Devanagari speech in seconds. Sanskrit in Devanagari is
+ *    read close enough to Hindi (which IS listed) for this to work.
+ *
+ * So: a real backend that answers in seconds beats a nominally-better one
+ * that in practice answers never. The self-hosted client stays the fallback
+ * for a deployment with no Google key, and `LEARN_SANSKRIT_TTS=self-hosted`
+ * forces it back for anyone who has actually warmed the cache or is running
+ * the container on a GPU.
  */
-function defaultSpeechClientFor(): (language: Language) => SpeechSynthesizer {
-  const gemini = new GeminiSpeechClient();
-  const selfHosted = new SpeechClient();
-  return (language) => (language === 'tamil' ? gemini : selfHosted);
+export function defaultSpeechClientFor(
+  env: NodeJS.ProcessEnv = process.env
+): (language: Language) => SpeechSynthesizer {
+  // `env` feeds the CLIENTS as well as the routing decision. It used to feed
+  // only the decision, while the clients read `process.env` themselves — so
+  // `defaultSpeechClientFor({ GOOGLE_API_KEY: k })` with no key in the real
+  // environment returned a Gemini client that threw on every call. A seam
+  // that looks injectable and is only half-injectable is worse than none,
+  // because the tests that use it still pass.
+  const gemini = new GeminiSpeechClient({ apiKey: env.GOOGLE_API_KEY });
+  const selfHosted = new SpeechClient({ baseUrl: env.TTS_API_URL });
+  const googleKey = env.GOOGLE_API_KEY;
+  const hasGoogleKey = !!googleKey && googleKey !== 'your_google_api_key_here';
+  const sanskrit = env.LEARN_SANSKRIT_TTS === 'self-hosted' || !hasGoogleKey ? selfHosted : gemini;
+  return (language) => (language === 'tamil' ? gemini : sanskrit);
 }
 
 export interface LearnRouterDeps {
@@ -65,6 +98,30 @@ export interface LearnRouterDeps {
  * drifting apart if this one ever changed.
  */
 export const DEFAULT_VOICE = 'default';
+
+/**
+ * The cache key's voice component, which must identify the BACKEND as well as
+ * the voice.
+ *
+ * `AudioCache` keys on (text, voice, prosody), and both backends historically
+ * wrote under the bare `'default'` label — so the same key could hold
+ * Indic-Parler bytes or Gemini bytes depending on which backend happened to
+ * run first. That is not academic: routing Sanskrit to Gemini left the five
+ * already-warmed Parler entries for Guru Gita verse 1 in place, so verse 1
+ * would have played in one voice and verses 2-182 in another. It also breaks
+ * the `LEARN_SANSKRIT_TTS=self-hosted` override in the other direction — the
+ * pregeneration scripts' cache-hit skip would find Gemini's entries, generate
+ * nothing, and the route would keep serving Gemini audio despite the flag.
+ *
+ * Including the backend makes the two sets of entries disjoint, so switching
+ * backends is a cache miss (correct) rather than a silent wrong-voice hit.
+ * Exported so both pregeneration scripts derive the identical key rather than
+ * re-deriving it and drifting.
+ */
+export function cacheVoiceKeyFor(client: SpeechSynthesizer, voice?: string): string {
+  const backend = client instanceof SpeechClient ? 'parler' : 'gemini';
+  return `${voice && voice.trim() !== '' ? voice.trim() : DEFAULT_VOICE}@${backend}`;
+}
 
 /** The only two languages this module teaches. `null` for anything else. */
 function manifestFor(language: string): Manifest | null {
@@ -218,7 +275,6 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     // the bug this comment replaces — sent 'default' to the live Gemini API
     // as a voice name, which Gemini does not have, breaking every Tamil
     // request that didn't name a voice explicitly.
-    const cacheVoiceKey = trimmedVoice !== '' ? trimmedVoice : DEFAULT_VOICE;
     const requestedVoice = trimmedVoice !== '' ? trimmedVoice : undefined;
 
     // A learner is waiting synchronously on this request, unlike a background
@@ -245,6 +301,11 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SPEAK_TIMEOUT_MS);
 
+    // Resolved before the cache lookup, not just before synthesis: the cache
+    // key depends on WHICH backend would answer, so the two must agree.
+    const speechClient = speechClientFor(manifest.language);
+    const cacheVoiceKey = cacheVoiceKeyFor(speechClient, requestedVoice);
+
     try {
       const cached = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
       if (cached) {
@@ -258,7 +319,7 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
         return;
       }
 
-      const result = await speechClientFor(manifest.language).synthesize({
+      const result = await speechClient.synthesize({
         text: synthesisText,
         voice: requestedVoice,
         prosody: DEFAULT_PROSODY,
@@ -282,7 +343,14 @@ export function createLearnRouter(deps: LearnRouterDeps = {}): Router {
       // is the expected, common case right now (no TTS server exists yet),
       // and a caller needs to be able to tell that apart from "broke".
       if (error instanceof SpeechUnavailableError) {
-        res.status(503).json({ success: false, error: error.message });
+        // `message` goes to the log, `learnerMessage` (when the throw site set
+        // one) goes to the learner — see SpeechUnavailableError's own comment
+        // for why the two must not be the same string.
+        console.error('Speech unavailable:', error.message);
+        res.status(503).json({
+          success: false,
+          error: error.learnerMessage ?? 'Text-to-speech is unavailable right now — try again shortly.',
+        });
         return;
       }
       console.error('Failed to synthesize speech:', error);

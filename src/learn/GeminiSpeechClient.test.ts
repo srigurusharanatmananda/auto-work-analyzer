@@ -41,9 +41,25 @@ function clientFor(options: {
   const client = new GeminiSpeechClient({
     apiKey: options.apiKey ?? 'test-key',
     fetchImpl,
+    // Retry backoff must not really sleep, or every content_blocked test
+    // pays 3 real seconds.
+    sleep: async () => {},
   });
 
   return { client, requests };
+}
+
+/** The real body Gemini returns when its safety filter fires, verified against the live API. */
+function contentBlockedResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: 'Request blocked for an unspecified policy reason. Please modify your input and retry.',
+        code: 'content_blocked',
+      },
+    }),
+    { status: 400 }
+  );
 }
 
 describe('synthesize', () => {
@@ -124,6 +140,116 @@ describe('synthesize', () => {
       respond: () => new Response('model error', { status: 500, statusText: 'Internal Server Error' }),
     });
     await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SynthesisFailedError);
+  });
+
+  test('retries a content_blocked 400 and succeeds when a later attempt is not blocked', async () => {
+    let calls = 0;
+    const { client, requests } = clientFor({
+      respond: () => (++calls === 1 ? contentBlockedResponse() : audioResponse(SAMPLE_PCM_BASE64)),
+    });
+
+    const result = await client.synthesize({ text: 'कैलास शिखरे रम्ये' });
+
+    expect(result.contentType).toBe('audio/wav');
+    expect(requests).toHaveLength(2);
+    // The retry must send the SAME input — retrying with altered text would
+    // cache audio under a key no real request ever asks for.
+    expect((requests[1].body as { input: string }).input).toBe(
+      (requests[0].body as { input: string }).input
+    );
+  });
+
+  test('a persistently blocked request is unavailable (retryable), not a synthesis failure', async () => {
+    const { client, requests } = clientFor({ respond: () => contentBlockedResponse() });
+
+    await expect(client.synthesize({ text: 'कैलास शिखरे रम्ये' })).rejects.toThrow(
+      SpeechUnavailableError
+    );
+    // One initial attempt plus CONTENT_BLOCKED_RETRIES.
+    expect(requests).toHaveLength(3);
+  });
+
+  test('each retry attempt gets its own timeout budget, not a shared one', async () => {
+    // The retry loop used to sit INSIDE one withTimeout, so three attempts
+    // plus backoff shared a single 30s budget: a first attempt that spent
+    // most of it and then returned content_blocked left no room for the
+    // retries, and the learner got "Synthesis timed out." instead of the
+    // audio a retry would have produced. Proven by the signals rather than
+    // by wall-clock: a shared budget means every attempt sees the SAME
+    // AbortSignal instance; a per-attempt budget means a fresh one each time.
+    const signals: AbortSignal[] = [];
+    let calls = 0;
+    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+      signals.push(init!.signal as AbortSignal);
+      return ++calls === 1 ? contentBlockedResponse() : audioResponse(SAMPLE_PCM_BASE64);
+    }) as unknown as typeof fetch;
+
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+    await client.synthesize({ text: 'कैलास' });
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+
+  test('a stalled response BODY still aborts — the timeout covers the whole attempt', async () => {
+    // Regression guard. An earlier version wrapped only the fetch call in
+    // withTimeout, whose `finally` clears the timer and unsubscribes from the
+    // caller's signal as soon as the fetch resolves. A server that returned
+    // 200 headers and then stalled the body therefore left response.json()
+    // awaiting forever, with nothing left able to abort it — the request and
+    // its socket leaked, and the route's own outer bound could not help
+    // because its abort was no longer wired to anything reachable.
+    const stalling = {
+      ok: true,
+      status: 200,
+      // Never settles unless the attempt's own signal aborts it.
+      json: (init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          const signal = (init as { signal?: AbortSignal } | undefined)?.signal;
+          signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+          );
+        }),
+    };
+    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => ({
+      ...stalling,
+      json: () => stalling.json(init),
+    })) as unknown as typeof fetch;
+
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+    const caller = new AbortController();
+    const promise = client.synthesize({ text: 'கைலாஸ', signal: caller.signal });
+    // Aborted on a later tick, so the attempt has reached the stalled body
+    // read by then — aborting synchronously would test the already-aborted
+    // path instead, which the case below covers.
+    setTimeout(() => caller.abort(), 10);
+
+    await expect(promise).rejects.toThrow(SpeechUnavailableError);
+  });
+
+  test('a caller signal that is ALREADY aborted is honoured, not ignored', async () => {
+    let fetched = false;
+    const fetchImpl = (async () => {
+      fetched = true;
+      return audioResponse(SAMPLE_PCM_BASE64);
+    }) as unknown as typeof fetch;
+    const client = new GeminiSpeechClient({ apiKey: 'test-key', fetchImpl, sleep: async () => {} });
+
+    const caller = new AbortController();
+    caller.abort();
+    await expect(client.synthesize({ text: 'வணக்கம்', signal: caller.signal })).rejects.toThrow(
+      SpeechUnavailableError
+    );
+    expect(fetched).toBe(false);
+  });
+
+  test('a 400 that is NOT content_blocked fails immediately, without retrying', async () => {
+    const { client, requests } = clientFor({
+      respond: () => new Response('{"error":{"message":"Unknown model"}}', { status: 400 }),
+    });
+
+    await expect(client.synthesize({ text: 'வணக்கம்' })).rejects.toThrow(SynthesisFailedError);
+    expect(requests).toHaveLength(1);
   });
 
   test('a response with no audio content in steps[].content[] is a synthesis failure', async () => {

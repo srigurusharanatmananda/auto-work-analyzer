@@ -73,6 +73,116 @@
  * previously taught as a word either), even though the genitives
  * themselves reuse the already-taught fused ளு and need zero new letters,
  * same split as tranche 19's own அவன்/அவனுடைய.
+ * Tranche 22 does three things at once, all Tamil. It completes ABC of
+ * Tamil Lesson Seventeen's own eleven-row person table by adding the three
+ * person-categories this file had never started at all — "we" (inclusive
+ * நாம் and exclusive நாங்கள், sharing one verb form செய்கிறோம்),
+ * plural/honorific "you" (நீங்கள் செய்கிறீர்கள்), and the neuter அது/அவை
+ * (செய்கிறது, செய்கின்றன) — needing one new atomic letter, the dead ங்
+ * (tam-pulli-nga) that நாங்கள்/நீங்கள் both carry and that tranche 5
+ * deliberately never reached, the same class of gap that stopped அவளுடைய
+ * in tranche 19, caught this time before drafting rather than after. It
+ * closes two of the three named past/future person gaps from Andronov —
+ * செய்தார் (the honorific SINGULAR past, distinct from the plural
+ * செய்தார்கள் tranche 21 shipped) and செய்வான் (அவன்'s future, the tense
+ * its past செய்தான் has had to itself since tranche 12) — zero new letters
+ * for either, each being an already-shipped form with its final dead
+ * consonant swapped. And it establishes, by enumerating every Tamil phrase
+ * and sentence the primer prints against this file's own taught
+ * vocabulary, that ABC of Tamil Book One contains no graded reading at any
+ * vocabulary size: exactly two of its phrases decompose completely, one of
+ * which (நான் யார்) was already taught. So Tamil level 4 stays
+ * deliberately EMPTY, and the single new find — என் கண் ("my eye"), from
+ * Lesson Two's pronunciation drill — ships at level 3, where its
+ * provenance actually puts it, rather than being used to make an empty
+ * tier look full. Deliberately NOT shipped: செய்வார், the honorific
+ * singular future that would have completed the -ஆர் column. Andronov
+ * states the -ஆர் future rule but conjugates a different verb under it
+ * (ennutal → enpaar), and "ceyvaar" occurs in the whole book only inside
+ * the plural ceyvaarkaL this file already ships — deriving it would have
+ * been exactly the plausible, derivable, unattested guess that produced
+ * skt-word-nayati. Still blocked after this tranche: that honorific future
+ * cell, and Tamil level 4 itself — both need a genuinely new source (ABC
+ * of Tamil Books Two/Three, if tamilvu.org hosts them, or a printed
+ * paradigm/reader such as Arden's *A Progressive Grammar of Common
+ * Tamil*), none of which was fetched here. One housekeeping note this
+ * tranche's re-fetch turned up: the "line" pinpoints earlier tranches cite
+ * for both sources are unreliable — Lesson Seventeen actually runs pp.
+ * 38-41 with its suffix table on p.40, not p.39, and the Andronov item now
+ * serves a differently-named djvu.txt whose line numbers do not match the
+ * ones tranches 12-21 recorded. Tranche 22 therefore cites ABC by page
+ * read off rendered page images, and Andronov by § and page only, both of
+ * which check out; the older references are worth a cleanup pass.
+ * Tranche 23 finishes the person/tense grid for செய், filling five of the
+ * nine cells tranche 22's five new pronouns had left standing in the present
+ * tense only. Shipped: நீங்கள்'s two missing tenses (செய்வீர்கள்,
+ * செய்தீர்கள்) off a single Andronov line, §132 p.159, that conjugates
+ * ceytal by name in all three tenses at once; அது's past (செய்தது, §148
+ * p.168) and அவை's past (செய்தன, §155 p.172), each from a section that also
+ * conjugates ceytal in the present tense this file already ships, so both
+ * derivations are checkable against existing content; and நாம்/நாங்கள்'s
+ * shared future (செய்வோம், §216 p.209). Zero new letters — every one of the
+ * five words is already-taught letters concatenated, which is what made this
+ * area worth doing now. Deliberately NOT shipped, four cells, each re-read
+ * off a rendered page image this session rather than taken on trust:
+ * செய்தோம் (1st plural past — §117 p.150 conjugates ceytal in the present
+ * only, and the string "ceytoom" occurs nowhere in the book), செய்யும் (3rd
+ * singular neuter future — §150 p.169 illustrates with seven verbs, none of
+ * them ceytal), செய்வன (3rd plural neuter future — §155's own future
+ * paragraph switches to corital/naTattal, in the very section that
+ * conjugates ceytal for the other two tenses), and செய்வார், carried over
+ * from tranche 22 and re-confirmed dropped (§142 p.164 states the -ஆர்
+ * future rule then switches to ennutal for every example). The resulting
+ * asymmetry is deliberate and is the tranche's point: செய்வோம் ships because
+ * Andronov prints that string against this verb with his own "we shall do",
+ * while its past counterpart செய்தோம் is a string he never prints at all.
+ * செய்வோம் is nonetheless the weakest item here by a clear margin — a single
+ * occurrence in the whole book, inside a §216 quotation about participial
+ * nouns — and its own comment below says so plainly instead of calling the
+ * problem a wrinkle. One register judgment is recorded rather than buried:
+ * Andronov writes the neuter plural past as "ceyt(an)a", and this file's
+ * habit with bracketed material is to drop it (செய்யாதீர், செய்வான்), but
+ * here he labels the increment the one used "commonly" and bare joining "in
+ * Classical Tamil rarely", so dropping would have produced the rare
+ * classical form — the reverse of the modern-register choice those earlier
+ * drops were making. Still blocked after this tranche: those four cells,
+ * which will not move without a source printing a paradigm TABLE rather than
+ * rule-plus-example prose (ABC of Tamil Books Two/Three, if tamilvu.org
+ * hosts them; Arden's *A Progressive Grammar of Common Tamil*), and Tamil
+ * level 4, unchanged by this tranche and still empty for tranche 22's own
+ * enumerated reason.
+ * Tranche 24 breaks this file's one-verb habit: every finite form since
+ * tranche 7 has been செய், so nothing yet distinguished what belongs to the
+ * present tense from what belongs to that particular root. It adds the
+ * primer's second root, போ ("to go"), and the three persons ABC of Tamil
+ * actually prints it in — போகிறேன், போகிறான், போகிறார் — plus the two
+ * sentences the book prints whole (நான் போகிறேன், p.39 and again parsed on
+ * p.45; அவர் போகிறார், p.41 exercise item (4)). Unlike tranche 23, one source
+ * supplies both halves: ABC of Tamil gives the SPELLING and the GLOSS
+ * together, with no romanised form from Andronov involved. Zero new letters —
+ * every grapheme was already taught, so nothing had to go ahead of the
+ * vocabulary block. Method, unchanged from tranche 22: the TAB/TSCII text
+ * layer was used only as a locator, and every form was read off a 600-dpi
+ * render, with each new form's tail compared against the same page's
+ * already-shipped செய் counterpart to settle ற/ர and ன்/ண் — a stronger
+ * discriminator than magnification. One gloss is DERIVED rather than quoted
+ * and is labelled so in its own comment: p.41 withholds the English for அவர்
+ * போகிறார் because translating it is the student's exercise, so the gloss is
+ * recombined from that book's own p.40 suffix table and its own "He goes"
+ * (p.55) — the book's English in the book's own paradigm cell, with the Tamil
+ * read off the page. Deliberately NOT shipped: அவன் வீட்டுக்குப் போகிறான்
+ * (needs a dead ட் and ப், neither taught, AND the noun வீடு, which no
+ * rendered vocabulary list gives); அவன் போகிறான் as a standalone sentence,
+ * which the book never prints, even though both its words are attested and it
+ * would reconstruct cleanly; and the other nine persons of போ's present
+ * paradigm, which the primer runs on செய் only — the same line this file drew
+ * at செய்வார் and செய்தோம். போ turns out to be attested in exactly three
+ * persons, all present, and that partial paradigm is what ships. Still
+ * blocked: the whole dative-sentence family, which needs its own ட்/ப்
+ * letters tranche plus sourced nouns (வீடு, நாய்) before the primer's printed
+ * doubling rule after 'கு' can be taught; and Tamil level 4, still empty for
+ * tranche 22's reason and deliberately not filled with verb forms that belong
+ * at level 3.
  *
  * The paragraphs below describe the file's state BEFORE this tranche
  * (2026-08-09 pulli extension, 2026-08-10 first sentence) — kept as the
@@ -776,6 +886,38 @@ export const tamilManifest: Manifest = {
       gloss: 'k — dead consonant (no vowel)',
       composedOf: [],
     },
+    // New (tranche 22): needed because நாங்கள் ("we", exclusive) and
+    // நீங்கள் ("you", plural/honorific) both carry it — this file taught
+    // only the LIVE ங (tam-letter-nga, tranche 2), never its dead form, and
+    // tranche 5's vowel-sign sweep deliberately skipped ங entirely. ABC of
+    // Tamil, Lesson Three ("Consonantal Vowels (contd.)"), p.14 prints this
+    // letter in the consonant+ஆ table's left column, second row: "ங் + ஆ =
+    // ஙா (nā)". That lesson's closing Notes — running onto p.15,
+    // immediately above the LESSON FOUR heading — then names it directly,
+    // and in doing so states the very fact tranche 5 acted on: "The
+    // following consonantal-vowels can never be the first letter of any
+    // Tamil word : ங, ட, ண, ர, ல, ழ, ள, ற & ன, The consonant 'ங்' and
+    // consonantal vowel 'ங' only are in use. Other consonantal vowel forms
+    // of 'ங' are not in use. As such the combination of ங் with other
+    // vowels need not be learnt." The pulli notation itself is Lesson Two,
+    // p.11: "Tamil has 18 consonants. They are denoted with a dot above.
+    // e.g., க், ட், ப், ம், (k, t, p, m)" — the same mark every other
+    // tam-pulli-* letter above already carries.
+    //
+    // Page numbers here were read off rendered page images, not computed
+    // from the cached extraction's line offsets, which is why they differ
+    // by one from what a line-derived reference would give.
+    {
+      id: 'tam-pulli-nga',
+      stage: 'letters',
+      level: 1,
+      text: 'ங்',
+      // Not "used at the end of a word" — like tam-pulli-ka above, this one
+      // sits medially in both of its uses (நாங்கள், நீங்கள், between the
+      // long vowel and க), so the same more general phrasing applies.
+      gloss: 'ṅ — dead consonant (no vowel); the only form of ங besides ங itself that Tamil actually uses',
+      composedOf: [],
+    },
 
     {
       id: 'tam-word-kan',
@@ -1384,6 +1526,63 @@ export const tamilManifest: Manifest = {
         'tam-pulli-lla',
       ],
     },
+    // Tranche 22: the honorific SINGULAR past — a different lesson from the
+    // plural செய்தார்கள் directly above, and the past-tense counterpart of
+    // the already-shipped செய்கிறார். Andronov §142 (p.164) conjugates
+    // ceytal itself under this suffix for present and past: "In the present
+    // and the past tenses these suffixes are distributed and used similarly
+    // to the suffixes of the 3rd person singular masculine (cf. § 135);
+    // e.g., ceytal 'to do' ceyki(n)Raar / ceykiRpaar / ceykinRanar 'they
+    // do', ceytaar / ceytanar 'they did'." The SINGULAR reading — the whole
+    // reason this is not a duplicate of செய்தார்கள் — is Andronov's own,
+    // stated one section earlier at §141 (p.164): the suffixes -aar/-ar are
+    // used "usually as common masculine-feminine honorific singular forms"
+    // in Modern Tamil. §142 itself then glosses a past-tense -aar form as a
+    // singular with a feminine referent: "intap peNmaNi pala kaTTuraikaL
+    // ezhutinaar (Se, 111) 'This lady wrote a number of articles'". The
+    // pronoun/suffix pairing is the primer's own — ABC of Tamil Lesson
+    // Seventeen's person-suffix table, p.40: "அவர் - ஆர் (III person,
+    // singular, honorific - masculine and feminine)".
+    //
+    // Cited by § and page only, on purpose. Andronov romanises throughout
+    // and never prints these forms in Tamil script, so the script here is
+    // derived — the suffix's letterform coming from ABC's own table — which
+    // is a standing property of every past/future form this file has taken
+    // from Andronov since tranche 12, not something new. It is unusually
+    // well cushioned in this one case: செய்தார் is a proper prefix of the
+    // already-shipped செய்தார்கள். And the "archive.org text line" numbers
+    // earlier tranches record no longer resolve (that item now serves
+    // 2015.201870.A-Grammar_djvu.txt, not the file they name), so § and
+    // page — which do check out — are the only pinpoints worth recording.
+    {
+      id: 'tam-word-seythaar',
+      stage: 'words',
+      level: 3,
+      // The already-shipped செய்தான் with its final dead consonant swapped
+      // for ர் (tam-pulli-ra, the same one already in அவர்/செய்கிறார்) —
+      // plain concatenation of four already-taught letters reaches the real
+      // spelling, no sandhiRule needed.
+      text: 'செய்தார்',
+      gloss: 'seytār — he/she did (3rd person singular honorific, past, both masculine and feminine)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-taa', 'tam-pulli-ra'],
+    },
+    {
+      id: 'tam-sentence-avar-seythaar',
+      stage: 'sentences',
+      level: 3,
+      // Not assembled here from separately-sourced words: Andronov §186
+      // (p.187) prints the clause whole and glosses it with a singular
+      // "He" — "avar avviirarukkut tammaal ceyyak kuuTiya utaviyaic ceytaar
+      // (MV, 51) 'He rendered all feasible (lit. which could be done by
+      // him) assistance to that hero.'" This is that clause with its object
+      // phrase stripped, because those words are not yet taught; the two
+      // that remain are exactly the two the source puts at its ends. The
+      // present-tense counterpart, tam-sentence-avar-seykirraar, is already
+      // shipped from the primer's own person paradigm.
+      text: 'அவர் செய்தார்',
+      gloss: 'avar seytār — he/she did (honorific)',
+      composedOf: ['tam-word-avar', 'tam-word-seythaar'],
+    },
 
     // ================= Negative imperative (level 3) =================
     // Extension, 2026-08-12 (tranche 13): Tamil negation turned out to be
@@ -1499,6 +1698,57 @@ export const tamilManifest: Manifest = {
         'tam-pulli-lla',
       ],
     },
+    // Tranche 22: அவன்'s future — the one tense its past செய்தான் has had
+    // to itself since tranche 12. Andronov §135 (p.161): "In the future
+    // tense the suffix -aan is used in forms derived by the tense suffixes
+    // -v- / -p(p)- and is joined to them directly; e.g., ceytal 'to do' -
+    // cey(ku)vaan 'he will do'." The parenthesised (ku) is the optional
+    // Classical increment, exactly as in the §138 entry "cey(ku)va(a)L 'she
+    // will do'" this file already shipped செய்வாள் from — so dropping it
+    // here is the same modern-register choice, not a new one. The bare,
+    // (ku)-less spelling is independently attested in running text: "enna
+    // cenhcaa tuTTu keTaikkumoo atellaam avanum ceyvaan (JSC, 10) 'He will
+    // also do this all if he somehow raises some money'". Pronoun/suffix
+    // agreement is the primer's own — ABC of Tamil Lesson Seventeen's
+    // person-suffix table, p.40: "அவன் - ஆன் (III person, singular,
+    // masculine)".
+    {
+      id: 'tam-word-seyvaan',
+      stage: 'words',
+      level: 3,
+      // The already-shipped செய்வாள் with its final dead consonant swapped
+      // for ன் (tam-pulli-alveolar-na, the same one already in அவன்/நான்/
+      // செய்தான்) — plain concatenation, no sandhiRule needed.
+      text: 'செய்வான்',
+      gloss: 'seyvāṉ — he will do (3rd person singular masculine, future)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-vaa', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-avan-seyvaan',
+      stage: 'sentences',
+      level: 3,
+      // The subject-verb pairing is Andronov's own, from the running-text
+      // sentence quoted above (there with the enclitic உம் this file
+      // already teaches as tam-word-um: "avanum ceyvaan"). This drops the
+      // enclitic and the object, leaving the bare pronoun + finite verb —
+      // the future counterpart of the already-shipped
+      // tam-sentence-avan-seythaan and tam-sentence-avan-seykirraan.
+      text: 'அவன் செய்வான்',
+      gloss: 'avan seyvāṉ — he will do',
+      composedOf: ['tam-word-avan', 'tam-word-seyvaan'],
+    },
+    // NOT shipped, deliberately: செய்வார், the honorific singular future
+    // that would complete the -ஆர் column beside செய்கிறார்/செய்தார்.
+    // Andronov §142 (p.164) does state the -aar/-ar future rule, but every
+    // worked example under it switches verbs (ennutal 'to say' → enpa(a)r /
+    // enma(a)r / enmanaar, with running citations koopittukkoLvaar,
+    // puRantarukuvar, mozhimanaar) — he conjugates ceytal by name under
+    // -aar for the present and the past, then declines to for the future.
+    // A grep of the whole text finds "ceyvaar" only ever inside the plural
+    // ceyvaarkaL (§143) this file already ships. Applying a stated rule to
+    // a verb the source itself refused to apply it to is precisely the
+    // skt-word-nayati failure — plausible, derivable, unattested — so this
+    // cell stays an honest gap until a source conjugates செய் in it.
 
     // ================= A second person, present tense (level 2-3) =================
     // Extension, 2026-08-12 (tranche 15): this file's second grammatical
@@ -1545,6 +1795,304 @@ export const tamilManifest: Manifest = {
       text: 'நீ செய்கிறாய்',
       gloss: 'nī seykiṟāy — you do',
       composedOf: ['tam-word-nii', 'tam-word-seykiraay'],
+    },
+
+    // ============ The remaining person-categories, present tense (level 2-3) ============
+    // Extension, 2026-08-13 (tranche 22): until now this file could say "I
+    // do", "you (singular) do", "he/she does" and "they (people) do", but
+    // had no way to say "we" at all, no plural or polite "you", and nothing
+    // whatever for things rather than people. This closes all three, and
+    // with them ABC of Tamil Lesson Seventeen's own eleven-row person
+    // table, which tranches 7/11/15/21 have been filling in a row at a time.
+    //
+    // Everything below is that single lesson — "TENSES - PRESENT", pp.
+    // 38-41. Its 'Suffixes:' table (p.40) and its worked conjugation of
+    // செய் down every person-category (pp.40-41) sit on the page together,
+    // so no pronoun, suffix or sentence here is assembled from parts found
+    // in different chapters; the two pronouns that need outside support
+    // (நீங்கள், அது) get it from their own earlier vocabulary lessons,
+    // cited per item.
+    //
+    // Page numbers were read off rendered page images this tranche rather
+    // than computed from the cached extraction's line offsets. That matters
+    // and is why these differ from earlier tranches' references: Lesson
+    // Seventeen runs to p.41, not p.40, and its suffix table is on p.40,
+    // not p.39.
+    //
+    // One new letter, the dead ங் (tam-pulli-nga, added in the letters
+    // section above with its own citation), which நாங்கள் and நீங்கள் both
+    // need — the same class of gap that stopped அவளுடைய in tranche 19,
+    // caught this time before drafting rather than after.
+
+    // p.40, 'Suffixes:' table, second row: "நாம் - ஓம் (I per. Plural,
+    // inclusive) - (This includes the II person.)" The inclusive sense is
+    // the primer's own bracketed gloss, not a distinction imported from
+    // elsewhere; it is reinforced lower on the same page by the worked
+    // "நாம் செய்கிறோம் - We do (inclusive)", and independently by Lesson
+    // Five's closing Rule, p.18: "It can be generalized that நான், நாம் and
+    // நாங்கள் (I person) change into என், எம், எங்கள், respectively." Zero
+    // new letters — நா and ம் are both long taught.
+    {
+      id: 'tam-word-naam',
+      stage: 'words',
+      level: 2,
+      text: 'நாம்',
+      gloss: 'nām — we (1st person plural, INCLUSIVE — includes the person being spoken to)',
+      composedOf: ['tam-letter-naa', 'tam-pulli-ma'],
+    },
+    // p.40, the very next row: "நாங்கள் - ஓம் ((I per. Plural, exclusive) -
+    // (This excludes the II person.)" (the doubled opening paren is the
+    // primer's own typo, kept here in the quote for fidelity), reinforced
+    // on the same page by "நாங்கள் செய்கிறோம் - We do (exclusive)". Note
+    // the suffix is the SAME ஓம் as நாம் above: the two pronouns differ
+    // only in whether the listener is included, which is exactly why the
+    // primer prints them as adjacent rows and why the two sentences below
+    // differ by one word and nothing else. ங் here is the dead consonant
+    // added in the letters section, needed for this word and நீங்கள்.
+    {
+      id: 'tam-word-naangal',
+      stage: 'words',
+      level: 2,
+      text: 'நாங்கள்',
+      gloss: 'nāṅkaḷ — we (1st person plural, EXCLUSIVE — excludes the person being spoken to)',
+      composedOf: ['tam-letter-naa', 'tam-pulli-nga', 'tam-letter-ka', 'tam-pulli-lla'],
+    },
+    // Two independent places in the primer. Lesson Five, p.17, vocabulary:
+    // "நீங்கள் - (ningal) - you (honorific and plural as well)", with that
+    // page's own note: "'நீ' stands for 'you' (singular), 'நீங்கள்' stands
+    // for plural 'you'. It is also used as a respectful form of address in
+    // the singular." And Lesson Seventeen's suffix table, p.40, fifth row:
+    // "நீங்கள் - ஈர்கள் (II person, plural and honorific)". Its singular
+    // நீ is already taught (tam-word-nii, tranche 15) from that same
+    // Lesson Five vocabulary.
+    {
+      id: 'tam-word-niingal',
+      stage: 'words',
+      level: 2,
+      // The LETTER நீ (tam-letter-nii), not the word — words compose only
+      // from letters, per Curriculum.ts's prerequisiteStage.
+      text: 'நீங்கள்',
+      gloss: 'nīṅkaḷ — you (2nd person plural; also the respectful/honorific form of address to one person)',
+      composedOf: ['tam-letter-nii', 'tam-pulli-nga', 'tam-letter-ka', 'tam-pulli-lla'],
+    },
+    // Lesson Six, p.19, vocabulary: "அது - adu - that ( - do - )", the
+    // "-do-" carrying down the demonstrative-pronoun label from "இது - idu -
+    // This (demonstrative pronoun)" on the line above, and covered by that
+    // lesson's Notes on p.20 ("This applies to அந்த, அது and எந்த and எது,
+    // also"). Its use as a VERBAL SUBJECT is Lesson Seventeen's, p.40:
+    // "அது - அது (III person, singular, neuter gender)" — this pronoun's
+    // personal suffix is the pronoun itself, which is why செய்கிறது below
+    // ends the way it does. The "it" half of the gloss is the primer's own,
+    // from p.41's "அது செய்கிறது - It does (singular-neuter gender)"; the
+    // gloss carries both lessons' framings because both are cited.
+    {
+      id: 'tam-word-athu',
+      stage: 'words',
+      level: 2,
+      text: 'அது',
+      gloss: 'atu — it, that (3rd person singular, neuter gender)',
+      composedOf: ['tam-letter-a', 'tam-letter-tu'],
+    },
+    // p.40, the suffix table's final entry, which brackets two pronouns
+    // against one suffix: "அவை, / அவைகள் - அன (III person, plural, neuter
+    // gender)"; rendered on p.41 as "அவை or அவைகள் — செய்கின்றன - They do
+    // (plural-neuter gender)". The contrast with the already-taught
+    // அவர்கள் is the primer's own, from the table row four lines above:
+    // "அவர்கள் - ஆர்கள் [(III person, plural (for human beings only)]" —
+    // these two "they"s split on human versus non-human, not on number.
+    // p.41's own exercise "(3) ஒன்பது பூனைகள் ஓடுகின்றன" (nine cats run)
+    // is what puts animals on this side of that split.
+    //
+    // Glossed "they" and not "they, those": the primer glosses அவை only as
+    // "They" / "them" / "Their" everywhere it prints it (pp.40, 41, 46, 51,
+    // 56) and never lists it among Lesson Six's demonstratives
+    // (இது/அது/எது), so "those" would be this file's addition rather than
+    // the source's.
+    {
+      id: 'tam-word-avai',
+      stage: 'words',
+      level: 2,
+      text: 'அவை',
+      gloss: 'avai — they (3rd person plural, neuter gender — not human beings, for which the primer uses அவர்கள்)',
+      composedOf: ['tam-letter-a', 'tam-letter-vai'],
+    },
+    // The same braced table entry (p.40) and the same p.41 line — the word
+    // "or" there is the primer's own, and is the whole basis for glossing
+    // these two as interchangeable rather than distinguishing them. அவைகள்
+    // still earns its own lesson despite that, because it is the form the
+    // primer's later case lessons actually inflect: Lesson Nineteen, p.46,
+    // "அவைகள்+ஐ=அவைகளை"; Lesson Twentyone, p.56, "அவைகள் + உடைய =
+    // அவைகளுடைய = Their (neuter gender)". Zero new letters — the same கள்
+    // ending அவர்கள் already uses.
+    {
+      id: 'tam-word-avaigal',
+      stage: 'words',
+      level: 2,
+      text: 'அவைகள்',
+      gloss: 'avaikaḷ — they (3rd person plural, neuter gender — the primer gives this and அவை as interchangeable)',
+      composedOf: ['tam-letter-a', 'tam-letter-vai', 'tam-letter-ka', 'tam-pulli-lla'],
+    },
+    // p.40, 'I Person', two consecutive lines under a shared 'Plural'
+    // brace: "நாம் செய்கிறோம் - We do (inclusive)" and "நாங்கள்
+    // செய்கிறோம் - We do (exclusive)". That ONE verb form serves both
+    // pronouns is the primer's own layout, corroborated by the identical
+    // ஓம் suffix it assigns them in the table higher on that page — which
+    // is why there is one word lesson here and two sentences below. Root
+    // and tense marker are p.39's: "செய் = to do; நான் செய்+ கிறு+ ஏன்=
+    // நான் செய்கிறேன்= I do" and "The present tense symbols are 'கிறு' and
+    // 'கின்று'."
+    {
+      id: 'tam-word-seykirroom',
+      stage: 'words',
+      level: 3,
+      // The same five-letter shape as the already-shipped செய்கிறேன், with
+      // றோ for றே and ம் for ன் — றோ is already an atomic letter (ற + the
+      // ō vowel sign, tranche 5), so plain concatenation reaches the real
+      // spelling directly and no sandhiRule is needed.
+      text: 'செய்கிறோம்',
+      gloss: 'seykiṟōm — we do (1st person plural, present — one and the same form for inclusive நாம் and exclusive நாங்கள்)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rroo', 'tam-pulli-ma'],
+    },
+    // p.40, 'II Person': "நீங்கள் செய்கிறீர்கள் - You do (plural and as
+    // well honorific singular)", its suffix ஈர்கள் from the table higher
+    // on the same page. Independently attested in that lesson's own
+    // exercise, p.41: "(6) நீங்கள் என்ன செய்கிறீர்கள்?" — the primer
+    // printing the finished form in running text, not only in the
+    // paradigm.
+    {
+      id: 'tam-word-seykirriirgal',
+      stage: 'words',
+      level: 3,
+      // றீ (already an atomic letter, ற + the ī vowel sign, tranche 5) plus
+      // the same ர்கள் ending செய்கிறார்கள் already uses — zero new
+      // letters, no sandhiRule.
+      text: 'செய்கிறீர்கள்',
+      gloss: 'seykiṟīrkaḷ — you do (2nd person plural, present; also the honorific singular)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-ki',
+        'tam-letter-rrii',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
+    },
+    // p.41, 'III Person': "அது செய்கிறது - It does (singular-neuter
+    // gender)". The personal suffix is the pronoun itself, per the suffix
+    // table on p.40 ("அது - அது").
+    {
+      id: 'tam-word-seykirrathu',
+      stage: 'words',
+      level: 3,
+      // Note the BARE ற here (tam-letter-rra), not a vowel-signed றா/றே/றோ
+      // like every other present-tense form in this file: the suffix அது
+      // supplies its own vowel, so this word's letter breakdown is a
+      // genuinely different shape from its siblings'. Zero new letters
+      // even so — ற and து are both long taught.
+      text: 'செய்கிறது',
+      gloss: 'seykiṟatu — it does (3rd person singular, neuter gender, present)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ki', 'tam-letter-rra', 'tam-letter-tu'],
+    },
+    // p.41, 'III Person': "அவை or அவைகள் — செய்கின்றன - They do
+    // (plural-neuter gender)", immediately followed on the same page by the
+    // primer's own bracketed rule: "[With Neuter gender plural the tense
+    // symbol 'கின்று' is used always, to sound rythmically with the
+    // 'personal suffix' 'அன'.]" — the source of this gloss's parenthetical,
+    // and the one stated exception to p.39's "The present tense symbols are
+    // 'கிறு' and 'கின்று'. There is no difference between these two. Either
+    // of them can be used." Suffix அன from the p.40 table.
+    //
+    // That exception governs which tense marker gets SELECTED, not any
+    // sound change at a join, so this word still concatenates exactly and
+    // correctly carries no sandhiRule — a euphonic motivation in the
+    // source's prose is not a sandhi rule in this file's sense.
+    //
+    // The p.41 exercise "(3) ஒன்பது பூனைகள் ஓடுகின்றன" (nine cats run)
+    // shows the same ending on another root. Those two are the ONLY -கின்ற-
+    // forms printed anywhere in the primer, which is also why no
+    // கின்று-marked form for any other person is shipped here: p.39 invites
+    // the inference, but the primer never prints செய்கின்றேன் or
+    // செய்கின்றோம், and generating them would be recall rather than
+    // reading.
+    {
+      id: 'tam-word-seykinrrana',
+      stage: 'words',
+      level: 3,
+      // ன் (tam-pulli-alveolar-na) and ன (tam-letter-alveolar-na) are two
+      // distinct already-taught entries and both appear here, in that
+      // order, either side of the bare ற — zero new letters.
+      text: 'செய்கின்றன',
+      gloss: 'seykiṉṟaṉa — they do (3rd person plural, neuter gender, present — built on the alternative tense marker கின்று, which this person-category always takes)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-ki',
+        'tam-pulli-alveolar-na',
+        'tam-letter-rra',
+        'tam-letter-alveolar-na',
+      ],
+    },
+    {
+      id: 'tam-sentence-naam-seykirroom',
+      stage: 'sentences',
+      level: 3,
+      // p.40, under 'e.g., I Person', printed as a complete sentence with
+      // its English: "நாம் செய்கிறோம் - We do (inclusive)".
+      text: 'நாம் செய்கிறோம்',
+      gloss: 'nām seykiṟōm — we do (inclusive — "we" including you)',
+      composedOf: ['tam-word-naam', 'tam-word-seykirroom'],
+    },
+    {
+      id: 'tam-sentence-naangal-seykirroom',
+      stage: 'sentences',
+      level: 3,
+      // p.40, the line directly beneath the one above: "நாங்கள்
+      // செய்கிறோம் - We do (exclusive)". Printing them one under the other,
+      // identical verb and different pronoun, is what makes this minimal
+      // pair the primer's own teaching point rather than an arrangement of
+      // this file's.
+      text: 'நாங்கள் செய்கிறோம்',
+      gloss: 'nāṅkaḷ seykiṟōm — we do (exclusive — "we" not including you)',
+      composedOf: ['tam-word-naangal', 'tam-word-seykirroom'],
+    },
+    {
+      id: 'tam-sentence-niingal-seykirriirgal',
+      stage: 'sentences',
+      level: 3,
+      // p.40, under 'II Person': "நீங்கள் செய்கிறீர்கள் - You do (plural
+      // and as well honorific singular)".
+      text: 'நீங்கள் செய்கிறீர்கள்',
+      gloss: 'nīṅkaḷ seykiṟīrkaḷ — you do (plural, and honorific to one person)',
+      composedOf: ['tam-word-niingal', 'tam-word-seykirriirgal'],
+    },
+    {
+      id: 'tam-sentence-athu-seykirrathu',
+      stage: 'sentences',
+      level: 3,
+      // p.41, under 'III Person': "அது செய்கிறது - It does (singular-neuter
+      // gender)".
+      text: 'அது செய்கிறது',
+      gloss: 'atu seykiṟatu — it does',
+      composedOf: ['tam-word-athu', 'tam-word-seykirrathu'],
+    },
+    {
+      id: 'tam-sentence-avai-seykinrrana',
+      stage: 'sentences',
+      level: 3,
+      // p.41, under 'III Person': "அவை or அவைகள் — செய்கின்றன - They do
+      // (plural-neuter gender)". அவை is taken as the subject because the
+      // primer's own brace explicitly offers either pronoun with this one
+      // verb form; the parallel அவைகள் sentence is deliberately NOT shipped
+      // for that same reason — it would teach nothing this one does not.
+      // The "not human beings" half of the gloss is the primer's own
+      // contrast, from the அவர்கள் line on the same page ("They do
+      // (plural-human beings- both masculine and feminine.)") and the p.40
+      // table row "அவர்கள் - ஆர்கள் [(III person, plural (for human beings
+      // only)]".
+      text: 'அவை செய்கின்றன',
+      gloss: 'avai seykiṉṟaṉa — they do (of things and animals, not human beings)',
+      composedOf: ['tam-word-avai', 'tam-word-seykinrrana'],
     },
 
     // ================= Negative indicative (level 3) =================
@@ -1786,5 +2334,701 @@ export const tamilManifest: Manifest = {
         'tam-letter-ya',
       ],
     },
+
+    // ============ A taught noun behind a taught possessive (level 3) ============
+    // Extension, 2026-08-13 (tranche 22). This one lesson is the residue of
+    // a search for level-4 ("Reading Practice — graded reading of real
+    // text") material, and the size of that residue IS the finding: ABC of
+    // Tamil, Book One contains no graded reading at all. It runs from
+    // alphabet drill through word lists, derivations and short exercises to
+    // Lesson Twenty-One's genitives and stops, its final exercise being
+    // English-only prompts. Every Tamil phrase and sentence the book prints
+    // was enumerated against this file's own taught words; exactly two
+    // decompose completely, and one of them (நான் யார்) has been taught
+    // since 2026-08-10. So Tamil level 4 stays empty — per LEVELS's own
+    // comment that is a content-completeness signal, not an engine problem
+    // — and opening it needs a different source, not more vocabulary.
+    //
+    // The remainder is என் கண், printed verbatim in Lesson Two's "Practise
+    // with pronunciation" line, p.13, as its own comma-delimited item:
+    // "எந்த, மகன், படம், பணம் (money), மகள், மரம், கல், கண், கள் (toddy),
+    // நல்ல மரம், நல்ல பழம், என் கண், உன் மகள், என்ன பழம்? அந்த மரம், எந்த
+    // மணல்?" Of that whole line it is the only phrase whose both halves this
+    // curriculum already knows (tam-word-en, tam-word-kan) — the first Tamil
+    // lesson here to put a taught noun behind a taught possessive.
+    //
+    // Unlike நான் யார், the gloss is COMPOSED, not quoted: the primer prints
+    // this phrase unglossed, in a pronunciation drill. It is built from the
+    // same lesson's two-lettered-words list, p.12 ("கண் (kaṇ) - an eye",
+    // "என் (en) - my"), plus the book's own gloss of the identical என் +
+    // body-part construction in Lesson Three's phrase list, p.15 ("என் கால்
+    // - my leg"). Recorded explicitly because those drill lines are the
+    // book's richest untapped seam, and every phrase mined out of them will
+    // have this same property.
+    //
+    // Level 3, not 4, and that is the point rather than a compromise: this
+    // is Lesson TWO drill material, printed EARLIER in the primer than நான்
+    // யார், which this file holds at level 2. Shipping it at level 4 would
+    // have made the manifest tell a learner that an alphabet-drill fragment
+    // is graded reading. Level 3 is in any case the minimum legal level
+    // here, since tam-word-en is itself level 3.
+    {
+      id: 'tam-sentence-en-kan',
+      stage: 'sentences',
+      level: 3,
+      // Nothing happens at the junction — என் ends in a dead ன் and கண்
+      // begins with a consonant, so none of Lesson Twelve's letter-junction
+      // rules is triggered and the ordinary exact-match reconstruction
+      // applies in full. No sandhiRule, deliberately.
+      text: 'என் கண்',
+      gloss: 'eṉ kaṇ — my eye',
+      composedOf: ['tam-word-en', 'tam-word-kan'],
+    },
+
+    // ============ The செய் grid completed, five cells (level 3) ============
+    // Extension, 2026-08-14 (tranche 23). Tranche 22 added five pronouns
+    // (நாம், நாங்கள், நீங்கள், அது, அவை) but could conjugate them in the
+    // PRESENT only, because ABC of Tamil Book One never reaches the other
+    // tenses: its table of contents stops the sequence at "17.
+    // Tenses--Present ... 38" and "18. Present Tense (contd.) ... 42", its
+    // last lesson is TWENTYONE: CASES (Genitive), and Lesson Seventeen itself
+    // opens "In this lesson we shall discuss the Present Tense symbols".
+    // This tranche fills five of those nine empty cells from Andronov and
+    // leaves four of them empty on purpose — see the NOT-shipped note at the
+    // end of this block, which is as much of the tranche as what ships.
+    // Zero new letters: all five words are already-taught letters
+    // concatenated, which is what made this area worth doing now.
+    //
+    // The standing division of labour between the two sources applies to
+    // every lesson below, and is why each one names both. Andronov romanises
+    // throughout and never prints these forms in Tamil script — true of every
+    // past/future form this file has taken from him since tranche 12 — so he
+    // supplies the FORM and the English GLOSS, while the SPELLING of each
+    // personal suffix is read in Tamil script off ABC of Tamil Book One's own
+    // personal-suffix table, Lesson Seventeen, printed p.40, rendered at
+    // 600 dpi and read visually this session: ஓம், ஈர்கள், அது and அன are all
+    // printed there in script, which is also what fixes செய்தன's final letter
+    // as the alveolar ன rather than ந.
+    //
+    // Pinpoints are § and printed page only, as tranche 22 established.
+    // Andronov's printed page N is PDF page N+11, an offset re-derived this
+    // session by rendering a page and reading its folio; his PDF has no text
+    // layer at all, so every form below was read off a rendered page image,
+    // and the OCR text was used only as a search index and for the negative
+    // greps recorded in the NOT-shipped note. Both PDFs were re-downloaded
+    // this session and are byte-identical by SHA-256 to the copies the
+    // drafting pass read.
+
+    // நாம்/நாங்கள்'s shared future — the future counterpart of the
+    // already-shipped செய்கிறோம், one verb form for both pronouns exactly as
+    // in the present.
+    //
+    // SPELLING: ABC of Tamil, Lesson Seventeen, p.40: "நாம் - ஓம் (I per.
+    // Plural, inclusive)" and "நாங்கள் - ஓம் (I per. Plural, exclusive)". The
+    // வோ grapheme spans the -வ்- / ஓம் morpheme boundary exactly as வே does
+    // in the already-shipped செய்வேன் and தே does in செய்தேன்.
+    //
+    // FORM + GLOSS: Andronov, printed p.209 (= PDF p.220), which prints the
+    // string verbatim inside a quoted Modern Tamil sentence: "appaal aavana
+    // ceyvoom (RT, 205) 'Afterwards we shall do what is to be done'". The
+    // word-level mapping is unambiguous — appaal "afterwards", aavana "what
+    // is to be done", ceyvoom "we shall do".
+    //
+    // THE LIMITS OF THIS CITATION, recorded rather than smoothed over: this
+    // is the weakest lesson in the tranche and the comment had better say so.
+    // First, that is the SOLE occurrence of the string in the whole 390-page
+    // book (exhaustive grep of the item's OCR text layer, used only as a
+    // search index). Second, the section that actually TEACHES this cell does
+    // not use this verb: §117, printed p.150, states the rule ("In the future
+    // tense the suffix -oom is used in forms with the suffixes -v- / -p(p)-
+    // or zero and is joined to them directly") but conjugates ceytal only in
+    // the PRESENT (ceyki(n)Room / ceykiRpoom "we do"), switching to aRital →
+    // aRivoom/aRikoom, ennutal → enpoom, naTattal → naTappoom for the future.
+    // Third, the p.209 quotation is adduced under §216, which is about
+    // participial nouns; the participial noun it illustrates is aavana (3rd
+    // person neuter plural, matching §216's own remark that in Modern Tamil
+    // these are used "for the most part in the 3rd person"), while ceyvoom is
+    // the ordinary finite main verb of the clause. §216 also states that such
+    // participial nouns "have the same suffixes as finite forms of the
+    // indicative mood (cf. §§ 109-155) and do not differ in this respect from
+    // the latter", so nothing in that section casts doubt on the spelling.
+    //
+    // What this lesson claims, and no more: the string ceyvoom is printed by
+    // Andronov, attached to the verb cey-, with his own English "we shall
+    // do". That is weaker footing than செய்வீர்கள்/செய்தீர்கள் below, where
+    // §132 conjugates ceytal by name in all three tenses, and stronger than
+    // செய்வார்/செய்தோம், where the string is never printed at all — which is
+    // exactly why those two stay unshipped. A distractor checked and
+    // excluded: printed p.22 prints "ceyvoon [seyvo:ⁿ] 'he who will do'" in
+    // the phonetics chapter — that is செய்வோன், a masculine participial noun,
+    // a different word from this one.
+    {
+      id: 'tam-word-seyvoom',
+      stage: 'words',
+      level: 3,
+      // வோ (already an atomic letter, வ + the ō vowel sign, tranche 5) plays
+      // the same role வே plays in செய்வேன் — plain concatenation of four
+      // already-taught letters reaches the real spelling, no sandhiRule.
+      text: 'செய்வோம்',
+      gloss:
+        'seyvōm — we shall do, we will do (1st person plural, future — one and the same form for inclusive நாம் and exclusive நாங்கள்)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-voo', 'tam-pulli-ma'],
+    },
+    // நீங்கள்'s future. This and செய்தீர்கள் below are the cleanest
+    // citations in the tranche, and they share one source line.
+    //
+    // SPELLING: ABC of Tamil, Lesson Seventeen, p.40: "நீங்கள் - ஈர்கள் (II
+    // person, plural and honorific)". The honorific-singular half of the
+    // gloss is that table's own wording, reinforced by the same page's worked
+    // example "நீங்கள் செய்கிறீர்கள் - You do (plural and as well honorific
+    // singular)" — the very sentence this file already ships as
+    // tam-sentence-niingal-seykirriirgal.
+    //
+    // FORM + GLOSS: Andronov §132, printed p.159, which conjugates ceytal by
+    // name in this exact cell: "The suffix -iirkaL is for the most part used
+    // in Modern Tamil. It is used in forms of all the three tenses and is
+    // joined to the tense suffix similarly to the suffix -iir (cf. § 130);
+    // e.g., ceytal 'to do' - ceykiRiirkaL 'you do', ceyviirkaL 'you will do',
+    // ceytiirkaL 'you did'." The source names the verb and gives all three
+    // tenses in one line, and its present-tense member ceykiRiirkaL IS the
+    // already-shipped செய்கிறீர்கள் — so the derivation of the two new forms
+    // is checkable against content this file already carries.
+    {
+      id: 'tam-word-seyviirgal',
+      stage: 'words',
+      level: 3,
+      // வீ (already an atomic letter, வ + the ī vowel sign, tranche 5) spans
+      // the -வ்- / ஈர்கள் boundary the same way வோ does above, and the ர்கள்
+      // ending is the one செய்கிறீர்கள்/செய்வார்கள் already use — plain
+      // concatenation, no sandhiRule.
+      text: 'செய்வீர்கள்',
+      gloss: 'seyvīrkaḷ — you will do (2nd person plural, future; also the honorific singular)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-vii',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
+    },
+    // நீங்கள்'s past — same two pinpoints as செய்வீர்கள் directly above, read
+    // in the same session off the same renders. SPELLING of the suffix
+    // ஈர்கள்: ABC of Tamil, Lesson Seventeen, p.40, "நீங்கள் - ஈர்கள் (II
+    // person, plural and honorific)". FORM + GLOSS: Andronov §132, printed
+    // p.159, "... e.g., ceytal 'to do' - ceykiRiirkaL 'you do', ceyviirkaL
+    // 'you will do', ceytiirkaL 'you did'." The past marker is the same -த-
+    // this file has used for செய்தேன்/செய்தான்/செய்தாள்/செய்தார்/
+    // செய்தார்கள் since tranche 12; only the personal suffix differs.
+    {
+      id: 'tam-word-seythiirgal',
+      stage: 'words',
+      level: 3,
+      // தீ is already an atomic letter, reused from the already-shipped
+      // செய்யாதீர் — plain concatenation, no sandhiRule.
+      text: 'செய்தீர்கள்',
+      gloss: 'seytīrkaḷ — you did (2nd person plural, past; also the honorific singular)',
+      composedOf: [
+        'tam-letter-ce',
+        'tam-pulli-ya',
+        'tam-letter-tii',
+        'tam-pulli-ra',
+        'tam-letter-ka',
+        'tam-pulli-lla',
+      ],
+    },
+    // அது's past — the past counterpart of the already-shipped செய்கிறது.
+    //
+    // SPELLING: ABC of Tamil, Lesson Seventeen, p.40: "அது - அது (III person,
+    // singular, neuter gender)" — the pronoun and its personal suffix are the
+    // same string, which is exactly why the joined form doubles the த.
+    //
+    // FORM + GLOSS: Andronov §148, printed p.168, which conjugates ceytal by
+    // name: "In the past tense the suffix -atu is used in forms derived by
+    // the tense suffixes -t(t)-, -nt-, -i- and is joined to the first two of
+    // them directly and to the last one by means of the increment -n- or -y-;
+    // e.g., ceytal 'to do' - ceytatu 'it did', iruttal 'to be' - iruntatu 'it
+    // was'." The same section's present-tense paragraph gives ceyki(n)Ratu
+    // "it does", which is the already-shipped செய்கிறது — so this derivation
+    // too is checkable against existing content.
+    //
+    // Not a duplicate of the already-shipped செய்யாதது (ceyyātatu, tranche
+    // 16's NEGATIVE participial noun from §240): different form, different
+    // section, different meaning. Worth noting for a later tranche that this
+    // affirmative ceytatu is itself homonymous with a participial noun ("that
+    // which has been done"), which Andronov declines elsewhere; §148 plainly
+    // gives the finite "it did", which is all this lesson glosses, but the
+    // file may eventually want the two senses distinguished the way it
+    // already distinguishes the ceyyaata- family.
+    {
+      id: 'tam-word-seythathu',
+      stage: 'words',
+      level: 3,
+      // The two adjacent த are real and are the point of the form: the first
+      // is the past marker, the second (as து) is the head of the suffix அது,
+      // whose அ is absorbed into the preceding dead consonant by ordinary
+      // Tamil orthography — த் + அது = தது. That is spelling convention, not
+      // a sound change the source states, so no sandhiRule: plain
+      // concatenation of already-taught letters reaches the real spelling.
+      text: 'செய்தது',
+      gloss: 'seytatu — it did (3rd person singular, neuter gender, past)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ta', 'tam-letter-tu'],
+    },
+    // அவை's past — the past counterpart of the already-shipped செய்கின்றன.
+    //
+    // SPELLING: ABC of Tamil, Lesson Seventeen, p.40: "அவை, அவைகள் - அன (III
+    // person, plural, neuter gender)" — note the alveolar ன, which is what
+    // fixes the last letter as tam-letter-alveolar-na and not tam-letter-na.
+    //
+    // FORM + GLOSS: Andronov §155, printed p.172, which conjugates ceytal by
+    // name: "In the past tense the suffix -a is used in forms derived by the
+    // tense suffixes -t(t)-, -nt-, -i-. It is joined to the first two of them
+    // either by means of the increment -an- (commonly) or directly (in
+    // Classical Tamil rarely) and to the last one, by means of the increment
+    // -n-; e.g., ceytal 'to do' - ceyt(an)a 'they did'." The -an- variant is
+    // additionally attested verbatim in that section's own quoted sentence,
+    // "mulaimukanh ceytana muLLeyi Rilamkina talaimuTi caanRa (A, 7)".
+    //
+    // WHY ceytana AND NOT ceyta — i.e. why this one departs from this file's
+    // usual bracket-dropping habit. Elsewhere the bracketed material was the
+    // optional CLASSICAL extra and dropping it produced the modern standard
+    // (ceyyaatiir(kaL) → செய்யாதீர், cey(ku)vaan → செய்வான்). Here Andronov
+    // labels it the other way round — the increment is the one used
+    // "commonly", bare joining is "in Classical Tamil rarely" — so dropping
+    // would have produced the rare classical form, the reverse of the
+    // register choice those earlier drops were making. The habit is a proxy
+    // for that choice, not the choice itself. Keeping the increment also
+    // matches the already-shipped present-tense counterpart செய்கின்றன, which
+    // carries the same -அன-.
+    {
+      id: 'tam-word-seythana',
+      stage: 'words',
+      level: 3,
+      // The final letter is ன (tam-letter-alveolar-na, U+0BA9), not ந — as
+      // printed in ABC's p.40 suffix அன and as in the already-shipped
+      // செய்கின்றன. Plain concatenation, no sandhiRule.
+      text: 'செய்தன',
+      gloss: 'seytaṉa — they did (3rd person plural, neuter gender, past)',
+      composedOf: ['tam-letter-ce', 'tam-pulli-ya', 'tam-letter-ta', 'tam-letter-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-naam-seyvoom',
+      stage: 'sentences',
+      level: 3,
+      // The future counterpart of the already-shipped
+      // tam-sentence-naam-seykirroom, in the same pronoun + finite verb frame
+      // ABC of Tamil p.40 uses for its own worked examples ("நாம்
+      // செய்கிறோம் - We do (inclusive)"). The agreement asserted here — that
+      // நாம் takes the suffix ஓம் — is that same page's own table entry,
+      // "நாம் - ஓம் (I per. Plural, inclusive) - (This includes the II
+      // person.)", stated for the personal suffixes as such ("Now we shall
+      // see all the personal suffixes"), not for one tense; Andronov's §117
+      // is likewise organised by person across all three tenses. Assembling
+      // the tense counterpart of an existing sourced pairing is this file's
+      // own established precedent (tam-sentence-avan-seythaan).
+      //
+      // The verb carries the caveat recorded on its own lesson above:
+      // Andronov prints the string exactly once in the book, in a §216
+      // quotation whose illustrated participial noun is aavana rather than
+      // ceyvoom, and §117, which teaches this cell, conjugates ceytal in the
+      // present only. This sentence is therefore assembled on a frame the
+      // primer prints around a verb form attested once; it is the least
+      // directly sourced item in this tranche and should be the first thing
+      // revisited if a paradigm-table source (Arden) is ever fetched.
+      text: 'நாம் செய்வோம்',
+      gloss: 'nām seyvōm — we shall do (inclusive — "we" including you)',
+      composedOf: ['tam-word-naam', 'tam-word-seyvoom'],
+    },
+    {
+      id: 'tam-sentence-naangal-seyvoom',
+      stage: 'sentences',
+      level: 3,
+      // The future counterpart of the already-shipped
+      // tam-sentence-naangal-seykirroom. ABC of Tamil p.40 gives both the
+      // table entry "நாங்கள் - ஓம் ((I per. Plural, exclusive) - (This
+      // excludes the II person.)" (the doubled opening paren is the primer's
+      // own typo, kept in the quote for fidelity) and the worked pairing
+      // "நாங்கள் செய்கிறோம் - We do (exclusive)". Shipping this beside நாம்
+      // செய்வோம் is the pedagogical point the primer itself makes on that
+      // page: one and the same verb form serves the inclusive and the
+      // exclusive pronoun, and only the pronoun distinguishes them — exactly
+      // as the present-tense pair already in this file does.
+      //
+      // Same inherited caveat as the sentence above: the verb செய்வோம் is
+      // attested once in Andronov (§216, printed p.209), and §117, which
+      // teaches the 1st-plural future, does not conjugate ceytal in that
+      // tense — see the verb's own lesson for the full record. The
+      // pronoun/suffix agreement and the pronoun + verb frame, by contrast,
+      // are ABC of Tamil p.40's own.
+      text: 'நாங்கள் செய்வோம்',
+      gloss: 'nāṅkaḷ seyvōm — we shall do (exclusive — "we" not including you)',
+      composedOf: ['tam-word-naangal', 'tam-word-seyvoom'],
+    },
+    {
+      id: 'tam-sentence-niingal-seyviirgal',
+      stage: 'sentences',
+      level: 3,
+      // The future counterpart of the already-shipped
+      // tam-sentence-niingal-seykirriirgal. The pronoun/suffix agreement is
+      // ABC of Tamil p.40's own — "நீங்கள் - ஈர்கள் (II person, plural and
+      // honorific)" — and that page prints the present-tense member of this
+      // very frame, "நீங்கள் செய்கிறீர்கள் - You do (plural and as well
+      // honorific singular)". The verb is Andronov §132, printed p.159's own
+      // ceyviirkaL "you will do".
+      text: 'நீங்கள் செய்வீர்கள்',
+      gloss: 'nīṅkaḷ seyvīrkaḷ — you will do (plural, and honorific to one person)',
+      composedOf: ['tam-word-niingal', 'tam-word-seyviirgal'],
+    },
+    {
+      id: 'tam-sentence-niingal-seythiirgal',
+      stage: 'sentences',
+      level: 3,
+      // Same frame and the same two pinpoints as நீங்கள் செய்வீர்கள் directly
+      // above: agreement from ABC of Tamil p.40 ("நீங்கள் - ஈர்கள் (II
+      // person, plural and honorific)", with its worked present-tense pairing
+      // நீங்கள் செய்கிறீர்கள்), verb from Andronov §132, printed p.159
+      // ("ceytiirkaL 'you did'"). Shipping the past beside the future
+      // completes நீங்கள்'s three-tense row, the one row in this tranche
+      // where a single source line supplies all three tenses of செய் by name.
+      text: 'நீங்கள் செய்தீர்கள்',
+      gloss: 'nīṅkaḷ seytīrkaḷ — you did (plural, and honorific to one person)',
+      composedOf: ['tam-word-niingal', 'tam-word-seythiirgal'],
+    },
+    {
+      id: 'tam-sentence-athu-seythathu',
+      stage: 'sentences',
+      level: 3,
+      // The past counterpart of the already-shipped
+      // tam-sentence-athu-seykirrathu. Agreement from ABC of Tamil p.40's
+      // personal-suffix table, "அது - அது (III person, singular, neuter
+      // gender)"; verb from Andronov §148, printed p.168, "ceytal 'to do' -
+      // ceytatu 'it did'". The sentence is a striking one to read aloud
+      // precisely because the pronoun and the verb's personal suffix are the
+      // same word — which is what that table entry is saying.
+      text: 'அது செய்தது',
+      gloss: 'atu seytatu — it did',
+      composedOf: ['tam-word-athu', 'tam-word-seythathu'],
+    },
+    {
+      id: 'tam-sentence-avai-seythana',
+      stage: 'sentences',
+      level: 3,
+      // The past counterpart of the already-shipped
+      // tam-sentence-avai-seykinrrana, and its gloss follows that lesson's
+      // own wording for the neuter/non-human restriction. Agreement from ABC
+      // of Tamil p.40's personal-suffix table, "அவை, அவைகள் - அன (III person,
+      // plural, neuter gender)"; verb from Andronov §155, printed p.172,
+      // "ceytal 'to do' - ceyt(an)a 'they did'". Note the tense-marker
+      // asymmetry this pair teaches, which the sources themselves force: the
+      // present செய்கின்றன has to use the கின்று marker (the primer states
+      // that rule outright, and §155's present paragraph derives the neuter
+      // plural from -inR- specifically), while the past uses the ordinary -த-
+      // shared with every other person in this file.
+      text: 'அவை செய்தன',
+      gloss: 'avai seytaṉa — they did (of things and animals, not human beings)',
+      composedOf: ['tam-word-avai', 'tam-word-seythana'],
+    },
+    // NOT shipped, deliberately — four cells of the same grid, left as honest
+    // gaps. All four fail the same way, and the pattern is now confirmed
+    // often enough to be worth recording as a finding rather than as bad
+    // luck: Andronov states the rule in the right section, conjugates செய் by
+    // name in that section's OTHER tenses, then switches to a different verb
+    // for exactly the cell wanted. He varies his illustrative verb by
+    // paragraph, and this file has been mining one verb.
+    //
+    // செய்தோம் (1st plural PAST — நாம்/நாங்கள்'s missing cell, and the most
+    // conspicuous asymmetry left here, since its future counterpart ships).
+    // §117, printed p.150, is organised present / future / past, and only the
+    // PRESENT paragraph conjugates ceytal (ceyki(n)Room / ceykiRpoom "we
+    // do"). The past paragraph switches verbs entirely — uzhutal → uzhutoom,
+    // paarttal → paarttoom, iruttal → iruntoom, ezhututal → ezhutinoom — and
+    // its quoted sentence (RKT, 84-85) uses poonoom, paarttoom, cuzhaRRinoom,
+    // still not ceytal. A grep of the whole text for "ceytoom" and its
+    // OCR-plausible variants returns ZERO hits anywhere in the book. That is
+    // the sharp line between the two 1st-plural cells: செய்வோம் is a string
+    // Andronov prints with the gloss "we shall do"; செய்தோம் is a string he
+    // never prints at all, and deriving it from ஓம் + -த- would be pure
+    // paradigm arithmetic. Deliberately not papered over by withholding
+    // செய்வோம் too — an honest asymmetry is better content than a symmetric
+    // guess.
+    //
+    // செய்யும் (3rd singular neuter FUTURE — அது's missing cell). §150,
+    // printed p.169, states the -um future rule and then illustrates it with
+    // iruttal → irukkum, niRRal → niRkum, keeTTal → keeTkum, uNNutal →
+    // uNNum/uNkum, varutal → var(uk)um, pootal → poo(ku)m, aatal → aa(ku)m:
+    // seven verbs, none of them ceytal. The string "ceyyum" does occur
+    // elsewhere in the book, and each hit was read rather than counted — a
+    // Kural quotation cited to illustrate the interrogative evan and glossed
+    // "can ... yield" ("vaanuyar tooRRa mevan ceyyum?", K, 272), relative
+    // participles inside noun phrases (utavi ceyyum eNNam, toNTu ceyyum), the
+    // temporal ceyyumpootu "while doing", a colloquial imperative ceyyumka, a
+    // contracted ceym "(from ceyyum)", and an optative ceyyumaaka. None is
+    // செய் conjugated in this cell with this meaning.
+    //
+    // செய்வன (3rd plural neuter FUTURE — அவை's missing cell). §155, printed
+    // p.172, covers the neuter plural -a suffix in all three tenses and
+    // conjugates ceytal BY NAME in the present (ceykinRana) and the past
+    // (ceyt(an)a, shipped above) — but its future paragraph switches to
+    // corital → coriv(an)a "they will drop down" and naTattal → naTapp(an)a
+    // "they will walk", and its quoted sentences use takaippana, takaippa,
+    // toonRuva. The one verb the section otherwise conjugates throughout is
+    // the one verb it skips in this cell. That the shape would be trivially
+    // predictable from the past form beside it is precisely why it must not
+    // be written. ("ceyvana" does occur once in the book, "ceyvana tiruntac
+    // cey" — a participial-noun object of an imperative, not a finite
+    // 3rd-plural neuter future.)
+    //
+    // செய்வார் (3rd singular honorific FUTURE) stays dropped, re-verified
+    // this session from the page image rather than from tranche 22's note:
+    // §142, printed p.164, states the rule ("In the future tense the suffixes
+    // -aar / -ar are used in forms derived by the tense suffixes -v- / -p(p)-
+    // or -m-") and then switches verbs for every single example — ennutal →
+    // enpa(a)r / enma(a)r / enmanaar, with running citations
+    // koopittukkoLvaar, puRantarukuvar, mozhimanaar — even though the same
+    // section conjugates ceytal by name for the present and the past two
+    // paragraphs earlier. An exhaustive grep for ceyvaar/ceyvar in any
+    // affixed form returns exactly one hit, and it is inside the plural
+    // ceyvaarkaL of §143 that this file already ships.
+    //
+    // Also considered and NOT proposed, noted so the omissions are visibly
+    // deliberate rather than overlooked. ceykiRpoom (§117's alternant for the
+    // present 1st plural, beside ceyki(n)Room) and the ceyk- alternants
+    // generally: this file made its register choice in tranche 14 — the
+    // ceyv- / modern standard over the ceyk- classical alternant — and a
+    // second present-tense "we do" would reopen a settled decision. And
+    // செய்வோன் "he who will do", printed in the phonetics chapter at pp.22-23
+    // beside vantoom: an active trap for anyone grepping for ceyvoom, since
+    // the two strings differ by one letter and sit in the same neighbourhood,
+    // but it is a masculine participial noun in -ஓன், not the 1st-plural
+    // finite form shipped above.
+    //
+    // What would actually unblock the four gaps is a source that prints a
+    // full paradigm TABLE for one verb rather than rule-plus-example prose.
+    // Named but still not fetched: ABC of Tamil Books Two/Three (if
+    // tamilvu.org hosts them, not checked here) and Arden's *A Progressive
+    // Grammar of Common Tamil*, the likelier candidate — a teaching grammar
+    // with conjugation tables, old enough to be on archive.org. Either would
+    // also settle the register question this file keeps re-deciding case by
+    // case (ceyv- versus ceyk-, bracketed increments in or out) by showing a
+    // single coherent paradigm instead of scattered alternants. A tranche
+    // working this area again should expect the remaining gaps to be
+    // structural rather than searchable, and should not spend its budget
+    // re-grepping.
+
+    // ============ A second verb root: போ "to go" (level 2-3) ============
+    // Extension, 2026-08-14 (tranche 24). Every finite verb in this file since
+    // tranche 7 has been செய். That is a real weakness for a learner — the
+    // present-tense pattern has only ever been seen on one root, so nothing
+    // distinguishes what belongs to the tense from what belongs to the verb.
+    // This tranche adds the primer's second root, போ ("to go"), and the three
+    // persons ABC of Tamil actually prints it in. Zero new letters: போ, கி,
+    // றே, றா, ன், ர் are all already taught, so nothing had to be inserted
+    // ahead of the vocabulary block and the letters-ordering rule is untouched.
+    //
+    // ONE SOURCE, ONE METHOD, for every lesson below. ABC of Tamil Book One
+    // supplies BOTH the Tamil spelling and the English gloss here — unlike the
+    // tranche-23 block above, no Andronov material is involved and no form is
+    // taken from a romanisation. The primer's TAB/TSCII text layer decodes
+    // wrong and was used only as a locator: grepping it for the mis-decoded
+    // போ byte-sequence returned pages 33, 39, 41, 45 and 55, and each of those
+    // (plus p.40 for the personal-suffix table) was then rendered at 600 dpi
+    // with pdftoppm and READ AS GLYPHS. Page-number drift was checked on every
+    // page used by cropping and reading that page's own printed footer digit;
+    // in this range the extracted page number and the printed one agree.
+    //
+    // The ற/ர and ன்/ண் confusions this area is prone to were settled without
+    // relying on the eye. Each new form's rendered tail was set beside the
+    // SAME PAGE's already-shipped செய் counterpart (p.41 prints "அவர்
+    // செய்கிறார்" a few lines above the exercise line "அவர் போகிறார்"), and
+    // the shipped forms' codepoints were dumped from this very manifest: ற is
+    // U+0BB1 (inside tam-letter-rraa/rree), ர is U+0BB0 (tam-pulli-ra), and
+    // போகிறார் is the one form containing both, in that order. Comparing a new
+    // form against an already-verified form printed in the same font on the
+    // same page is a stronger discriminator than any amount of magnification.
+    //
+    // No sandhiRule on any lesson here, for the reason already established at
+    // tam-word-seykirren: the primer does state a real fusion on p.39 ("று =
+    // ற் + உ; 'உ' is a short vowel and it gives room for the long vowel 'ஏ'"),
+    // but றே is already an atomic letter in this curriculum, so the
+    // concatenation is exact and there is no unexplained change for a rule to
+    // name.
+    {
+      id: 'tam-word-poo',
+      stage: 'words',
+      level: 2,
+      // SPELLING and GLOSS both ABC of Tamil, printed p.33 (footer digit
+      // rendered and read), Lesson FOURTEEN's vocabulary list — the lesson
+      // boundary was checked against the heading offsets, not eyeballed: on
+      // the rendered page the LESSON FIFTEEN heading sits physically BELOW
+      // this vocabulary block. The page prints "போ - pō = to go", and a few
+      // lines above it builds the syllable itself: "ப் + ஓ = போ (pō)".
+      // Corroborated on p.39: "நான் = I; போ = to go".
+      //
+      // Level 2 to sit beside tam-word-sey, the other bare root, which the
+      // primer likewise introduces in a plain vocabulary list. A word whose
+      // text is a single already-taught letter has precedent here in
+      // tam-word-nii (நீ ← tam-letter-nii).
+      text: 'போ',
+      gloss: 'pō — to go (verb root)',
+      composedOf: ['tam-letter-poo'],
+    },
+    {
+      id: 'tam-word-pookirreen',
+      stage: 'words',
+      level: 3,
+      // SPELLING and GLOSS both ABC of Tamil, printed p.39, Lesson Seventeen
+      // (Tenses - Present), which prints its own worked derivation with the
+      // English at the head of the equation: "I go = நான் போ+கிறு+ஏன் >
+      // போகிறு+ஏன் = போகிறேன்". This is the primer's headline example of the
+      // present tense, not an incidental mention. Person label from the same
+      // lesson's personal-suffix table, printed p.40: "நான் - ஏன் (I person,
+      // singular)". Corroborated on p.45, where the finished sentence is
+      // re-printed and parsed.
+      //
+      // Same tense-symbol + personal-suffix fusion as tam-word-seykirren, on a
+      // different root: போ + கிறு + ஏன் → போகிறேன், with றே (already atomic)
+      // absorbing the fusion. Level 3, the tier its exact twin செய்கிறேன்
+      // sits at — this is a verb form, which is what LEVELS calls tier 3, not
+      // the graded reading of real text that tier 4 means. Tamil level 4 is
+      // still empty after this tranche and is meant to stay that way until a
+      // source with actual connected text is fetched.
+      text: 'போகிறேன்',
+      gloss: 'pōkiṟēṉ — I go (1st person singular, present)',
+      composedOf: ['tam-letter-poo', 'tam-letter-ki', 'tam-letter-rree', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-sentence-naan-pookirreen',
+      stage: 'sentences',
+      level: 3,
+      // The primer's own sentence, printed twice. On p.39 it is set on its own
+      // line, "நான் போகிறேன்.", directly under the equation headed "I go =",
+      // which is therefore the book's own English for exactly these two words.
+      // On p.45 (Lesson Nineteen, Cases) the same sentence is re-printed as
+      // the worked example of the nominative and parsed: "நான் போகிறேன். நான்
+      // - I Person, singular". Read, not assembled from separately-sourced
+      // words — the failure mode this file guards against.
+      //
+      // The printed full stop is dropped, following this file's own precedent
+      // at tam-sentence-naan-seykirren.
+      text: 'நான் போகிறேன்',
+      gloss: 'nāṉ pōkiṟēṉ — I go',
+      composedOf: ['tam-word-naan', 'tam-word-pookirreen'],
+    },
+    {
+      id: 'tam-word-pookirraan',
+      stage: 'words',
+      level: 3,
+      // SPELLING and GLOSS both ABC of Tamil, printed p.55 (Lesson Twenty,
+      // Dative), whose worked sentence reads: "அவன் வீட்டுக்குப் போகிறான் = He
+      // goes to (the) house." The verb is printed there and the "He goes" half
+      // of the book's own English is its gloss; the rest of that English
+      // belongs to வீட்டுக்குப், which is NOT shipped (see the note below).
+      // Person label from the personal-suffix table, printed p.40: "அவன் - ஆன்
+      // (III person, singular, masculine)" — the same table cell the
+      // already-shipped செய்கிறான் is glossed from.
+      //
+      // ATTESTATION STRENGTH, recorded rather than smoothed over: this form
+      // occurs ONCE in the whole book, embedded in a dative sentence. Every
+      // occurrence of the போ byte-sequence in the text layer was enumerated
+      // (eight: three bare போ, one derivation line, two நான் போகிறேன்., one
+      // போகிறார், one போகிறான்) and each was rendered and read. The word is
+      // printed and glossed, but on a single attestation — weaker footing than
+      // போகிறேன் above, which the book prints in three places.
+      text: 'போகிறான்',
+      gloss: 'pōkiṟāṉ — he goes (3rd person singular masculine, present)',
+      composedOf: ['tam-letter-poo', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-alveolar-na'],
+    },
+    {
+      id: 'tam-word-pookirraar',
+      stage: 'words',
+      level: 3,
+      // SPELLING from ABC of Tamil, printed p.41, the end-of-Lesson-Seventeen
+      // exercise "II. Translate into English", item (4): "அவர் போகிறார்". The
+      // surrounding item numbers were read too, to confirm (4) is exactly
+      // these two words and not a line-wrap: "... ஓடுகின்றன (4) அவர் போகிறார்
+      // (5) அவர்கள் பாடுகிறார்கள் (6) ...".
+      //
+      // GLOSS DERIVED, and flagged as such because this is the one place in
+      // the tranche where the book withholds its English — translating the
+      // line is the student's task. Nothing in the gloss is recalled: "goes"
+      // is the book's own English for போ in a finite 3rd-person form (p.55,
+      // "He goes"), and "III person, singular, honorific - masculine and
+      // feminine" is the p.40 suffix table verbatim, which is also the exact
+      // wording the same book prints for the identical paradigm cell of செய்
+      // on p.41 ("அவர் செய்கிறார் - He (she) does (singular-honorific, both
+      // masculine and feminine)"). This is the book's own English recombined
+      // into the book's own paradigm cell, with the Tamil string itself read
+      // off the page — not composition of a Tamil form, which is what the
+      // skt-word-nayati precedent forbids. Deliberately distinguished from
+      // that case: there is no avoidance signal here at all. The primer runs
+      // its full person table on செய் because செய் is its model verb, and it
+      // uses போ freely in its own headline derivation and in its exercises.
+      text: 'போகிறார்',
+      gloss: 'pōkiṟār — he/she goes (3rd person singular honorific, present, both masculine and feminine)',
+      composedOf: ['tam-letter-poo', 'tam-letter-ki', 'tam-letter-rraa', 'tam-pulli-ra'],
+    },
+    {
+      id: 'tam-sentence-avar-pookirraar',
+      stage: 'sentences',
+      level: 3,
+      // The complete two-word sentence as ABC of Tamil prints it on p.41,
+      // exercise item (4) — a sentence read off the page, not one assembled
+      // here from separately-taught words. The gloss carries the same derived
+      // status, and the same justification, as tam-word-pookirraar above, and
+      // is worded parallel to this file's own tam-sentence-avar-seykirraar.
+      text: 'அவர் போகிறார்',
+      gloss: 'avar pōkiṟār — he/she goes (honorific)',
+      composedOf: ['tam-word-avar', 'tam-word-pookirraar'],
+    },
+    // NOT shipped from this area, deliberately.
+    //
+    // அவன் வீட்டுக்குப் போகிறான் ("He goes to (the) house", printed p.55, read
+    // at 600 dpi) — blocked on letters and on vocabulary at once.
+    // வீட்டுக்குப் needs a dead ட் and a dead ப், neither of which this file
+    // teaches, and it would also need the noun வீடு, which no vocabulary list
+    // on any page rendered here gives. Bringing those two letters would mean
+    // inserting them ahead of the entire Tamil vocabulary block (the
+    // manifests.test.ts ordering rule), a much larger edit than this tranche
+    // warrants, and the sentence would STILL be missing its noun afterwards.
+    // Only its verb ships, glossed from the "He goes" half of the book's own
+    // English.
+    //
+    // அவன் போகிறான் as a standalone sentence — NOT PRINTED anywhere. போகிறான்
+    // occurs only inside that p.55 dative sentence. Both words are
+    // individually attested and the join would reconstruct cleanly, which is
+    // exactly why the temptation is worth naming: composing it here would be
+    // this file writing Tamil rather than reading it.
+    //
+    // The other nine persons of போ's present paradigm (போகிறாய், போகிறோம்,
+    // போகிறீர்கள், போகிறாள், போகிறார்கள், போகிறது, போகின்றன, ...) — the primer
+    // runs its FULL person table on செய் only (p.40-41) and never prints போ
+    // with any of these suffixes. Generating them from the suffix table is
+    // paradigm arithmetic on forms the book does not print, the same line this
+    // file drew at செய்வார் and செய்தோம். போ is attested in exactly three
+    // persons, all present tense, and that partial paradigm is what ships.
+    //
+    // Past and future போ (போனேன், போவேன், ...) and negatives (போகாதே, ...) —
+    // nothing to read. Every occurrence of the root in the book is one of the
+    // eight enumerated above, and all are present tense or the bare root; the
+    // past/future lessons use other verbs entirely.
+    //
+    // "You go" (p.33 exercise I item 5) and "I go" (p.41 exercise I item 1) —
+    // these are ENGLISH prompts asking the student to produce Tamil, with no
+    // Tamil printed for them. The p.41 "I go" prompt happens to have its
+    // answer printed elsewhere (p.39), which is why the நான் sentence above
+    // ships; the p.33 "You go" has no printed Tamil answer anywhere.
+    //
+    // Still blocked after this tranche: the dative-sentence family, which
+    // needs a ட்/ப் letters tranche of its own plus sourced nouns (வீடு, நாய்)
+    // — the p.55 doubling note, read at 600 dpi, is a genuine printed sandhi
+    // rule this curriculum could eventually teach: "[Words beginning with க,
+    // ச, த and ப get doubled after the dative case symbol 'கு'. This is for an
+    // easy and continous pronunciation.]". And Tamil level 4, unchanged and
+    // still empty for tranche 22's own enumerated reason. The obvious next
+    // tranche on this same evidence standard is p.39's other roots — எழுது
+    // (to write), ஓடு (to run), பாடு (to sing), ஆடு / விளையாடு (to play) —
+    // each printed there in the identical "நான் X+கிறு+ஏன் = நான் Xகிறேன் =
+    // I write/run/sing/play" frame with its English; three of them end in டு
+    // and may run into the same dead-ட் problem.
   ],
 };

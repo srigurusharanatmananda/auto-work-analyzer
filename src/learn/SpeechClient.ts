@@ -96,9 +96,24 @@ const HEALTH_POLL_MS = 5_000;
 const DEFAULT_SYNTHESIZE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export class SpeechUnavailableError extends Error {
-  constructor(message: string) {
+  /**
+   * What a LEARNER may be shown. `message` is for the log and routinely names
+   * the provider, the status code, or the env var that is missing — detail an
+   * operator needs and an end user must never see.
+   *
+   * The split exists because `learn.routes.ts` used to put `message` straight
+   * into the 503 body, which meant a misconfigured deployment told every
+   * authenticated learner "GOOGLE_API_KEY is not set, so Gemini speech
+   * generation is unavailable." Throw sites opt in to a safe phrasing; the
+   * route falls back to a generic one, so a new throw site leaks nothing by
+   * forgetting to think about this.
+   */
+  readonly learnerMessage?: string;
+
+  constructor(message: string, learnerMessage?: string) {
     super(message);
     this.name = 'SpeechUnavailableError';
+    this.learnerMessage = learnerMessage;
   }
 }
 
@@ -120,6 +135,16 @@ export async function withTimeout<T>(
   signal: AbortSignal | undefined,
   run: (signal: AbortSignal) => Promise<T>
 ): Promise<T> {
+  // An ALREADY-aborted caller signal never fires 'abort' again, so
+  // addEventListener alone would silently ignore it and run `run` to
+  // completion. Refuse before starting rather than starting and aborting: the
+  // caller has said it no longer wants the result, so the work should not be
+  // done at all. Real `fetch` checks `signal.aborted` itself and so masked
+  // this; nothing else run through here would.
+  if (signal?.aborted) {
+    throw Object.assign(new Error('Aborted before starting'), { name: 'AbortError' });
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   const onCallerAbort = () => controller.abort();
@@ -232,7 +257,7 @@ export class SpeechClient {
       // client's own) — retryable, not a hard failure, so it gets the same
       // treatment as a dropped connection below.
       if (isAbortError(error)) {
-        throw new SpeechUnavailableError('Synthesis timed out.');
+        throw new SpeechUnavailableError('Synthesis timed out.', 'That took too long to speak — try again.');
       }
       const code = (error as NodeJS.ErrnoException)?.code;
       // Mirrors WhisperClient: a dropped connection here is almost always the

@@ -25,7 +25,10 @@ import { guruGitaVerses } from '../src/learn/content/chanting.js';
 import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
-import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js';
+import {
+  cacheVoiceKeyFor,
+  defaultSpeechClientFor,
+} from '../src/routes/learn.routes.js';
 
 interface Item {
   id: string;
@@ -39,12 +42,28 @@ function itemsFor(verse: (typeof guruGitaVerses)[number]): Item[] {
 }
 
 async function main() {
-  const speechClient = new SpeechClient();
+  // The SAME backend a real `POST /learn/speak` would pick, rather than
+  // `new SpeechClient()` unconditionally. That hardcoding is what made this
+  // script's output diverge from what the app actually serves: with Gemini
+  // now handling Sanskrit whenever GOOGLE_API_KEY is set (see
+  // learn.routes.ts's own comment on why), a run against the self-hosted
+  // container would spend hours warming a cache the route no longer misses
+  // — and, before that, silently failed outright whenever the container
+  // wasn't up, leaving 181 of the Guru Gita's 182 verses unwarmed.
+  const speechClient = defaultSpeechClientFor()('sanskrit');
   const audioCache = new AudioCache();
+  // Backend-scoped, so a run against one backend never reads or overwrites
+  // the other's entries — see cacheVoiceKeyFor's own comment.
+  const cacheVoiceKey = cacheVoiceKeyFor(speechClient);
 
-  console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
-  await speechClient.waitUntilReady();
-  console.log('TTS service is healthy. Pregenerating audio for chanting verses...');
+  // Only the self-hosted client has a container to wait for; Gemini is a
+  // hosted API with nothing to poll.
+  if (speechClient instanceof SpeechClient) {
+    console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
+    await speechClient.waitUntilReady();
+    console.log('TTS service is healthy.');
+  }
+  console.log('Pregenerating audio for chanting verses...');
 
   const items = guruGitaVerses.flatMap(itemsFor);
 
@@ -61,18 +80,18 @@ async function main() {
     // here would mean this pregeneration writes a cache entry a real
     // request's own key never reads.
     const synthesisText = transliterateForSynthesis(item.text.trim(), 'sanskrit');
-    const existing = await audioCache.get(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY);
+    const existing = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
     if (existing) {
       cached++;
       console.log(`[cached]       ${item.id} (${item.text})`);
       continue;
     }
 
-    console.log(`[synthesizing] ${item.id} (${item.text}) — this can take several minutes on CPU, longer for longer phrases...`);
+    console.log(`[synthesizing] ${item.id} (${item.text})...`);
     const started = Date.now();
     try {
       const result = await speechClient.synthesize({ text: synthesisText, prosody: DEFAULT_PROSODY });
-      await audioCache.put(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY, result.audio);
+      await audioCache.put(synthesisText, cacheVoiceKey, DEFAULT_PROSODY, result.audio);
       generated++;
       console.log(`[done]         ${item.id} — ${Math.round((Date.now() - started) / 1000)}s`);
     } catch (error) {

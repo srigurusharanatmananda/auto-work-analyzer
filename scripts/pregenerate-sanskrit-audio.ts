@@ -26,21 +26,34 @@ import { sanskritManifest } from '../src/learn/content/sanskrit.js';
 import { transliterateForSynthesis } from '../src/learn/Transliterator.js';
 import { SpeechClient, DEFAULT_PROSODY } from '../src/learn/SpeechClient.js';
 import { AudioCache } from '../src/learn/AudioCache.js';
-import { DEFAULT_VOICE as CACHE_VOICE_KEY } from '../src/routes/learn.routes.js';
+import {
+  cacheVoiceKeyFor,
+  defaultSpeechClientFor,
+} from '../src/routes/learn.routes.js';
 
 // `undefined` is what's actually passed to synthesize(), so the backend's
 // own default voice applies — the same reasoning as learn.routes.ts's own
 // comment on why sending the literal string 'default' as a voice name broke
-// real requests. `CACHE_VOICE_KEY` (imported above) is only ever used as
+// real requests. `cacheVoiceKey` (imported above) is only ever used as
 // the cache lookup/write key, never passed to synthesize() itself.
 
 async function main() {
-  const speechClient = new SpeechClient();
+  // The SAME backend a real `POST /learn/speak` would pick — see the
+  // matching comment in `pregenerate-chanting-audio.ts` for why hardcoding
+  // `new SpeechClient()` here silently warmed the cache with audio from a
+  // backend the route no longer uses.
+  const speechClient = defaultSpeechClientFor()('sanskrit');
   const audioCache = new AudioCache();
+  // Backend-scoped, so a run against one backend never reads or overwrites
+  // the other's entries — see cacheVoiceKeyFor's own comment.
+  const cacheVoiceKey = cacheVoiceKeyFor(speechClient);
 
-  console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
-  await speechClient.waitUntilReady();
-  console.log('TTS service is healthy. Pregenerating audio for the sanskrit manifest...');
+  if (speechClient instanceof SpeechClient) {
+    console.log(`Checking TTS service health at ${process.env.TTS_API_URL ?? 'http://localhost:8001'}...`);
+    await speechClient.waitUntilReady();
+    console.log('TTS service is healthy.');
+  }
+  console.log('Pregenerating audio for the sanskrit manifest...');
 
   let cached = 0;
   let generated = 0;
@@ -52,7 +65,7 @@ async function main() {
   // flaky attempt is cheap to retry, unlike making a live learner wait for it.
   for (const lesson of sanskritManifest.lessons) {
     const synthesisText = transliterateForSynthesis(lesson.text, sanskritManifest.language);
-    const existing = await audioCache.get(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY);
+    const existing = await audioCache.get(synthesisText, cacheVoiceKey, DEFAULT_PROSODY);
     if (existing) {
       cached++;
       console.log(`[cached]    ${lesson.id} (${lesson.text})`);
@@ -63,7 +76,7 @@ async function main() {
     const started = Date.now();
     try {
       const result = await speechClient.synthesize({ text: synthesisText, prosody: DEFAULT_PROSODY });
-      await audioCache.put(synthesisText, CACHE_VOICE_KEY, DEFAULT_PROSODY, result.audio);
+      await audioCache.put(synthesisText, cacheVoiceKey, DEFAULT_PROSODY, result.audio);
       generated++;
       console.log(`[done]      ${lesson.id} — ${Math.round((Date.now() - started) / 1000)}s`);
     } catch (error) {
