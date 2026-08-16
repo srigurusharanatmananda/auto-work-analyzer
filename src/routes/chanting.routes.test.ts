@@ -57,6 +57,9 @@ describe('GET /verses', () => {
         source: expect.stringContaining('Guru Gita'),
         verseNumber: 1,
         meaning: expect.stringContaining('Kailāsa'),
+        // The opening pāda only — the picker searches on it, so it has to
+        // be here, but sending all four would make this a detail response.
+        firstLine: expect.stringContaining('कैलास'),
       });
       for (const entry of body.data) {
         expect(entry.padas).toBeUndefined();

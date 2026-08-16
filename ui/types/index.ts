@@ -463,15 +463,27 @@ export interface ChantPada {
 }
 
 /** The `data` payload of `GET /chanting/verses` — a verse without its own padas/citation, just enough for a picker. */
-export interface ChantVerseSummary {
+interface ChantVerseIdentity {
   id: string;
   source: string;
   verseNumber: number;
   meaning: string;
 }
 
-/** The `data` payload of `GET /chanting/verses/:id`. */
-export interface ChantVerse extends ChantVerseSummary {
+export interface ChantVerseSummary extends ChantVerseIdentity {
+  /** The opening pāda, in Devanagari — what the verse picker searches on. */
+  firstLine: string;
+}
+
+/**
+ * The `data` payload of `GET /chanting/verses/:id`. Deliberately a sibling
+ * of `ChantVerseSummary` rather than an extension of it: the detail
+ * response carries `padas` in full, so it has no reason to also send the
+ * summary's `firstLine` (which exists only to spare the list endpoint from
+ * sending every pāda), and inheriting would have claimed a field the route
+ * does not actually return.
+ */
+export interface ChantVerse extends ChantVerseIdentity {
   speakerTag: string | null;
   padas: ChantPada[];
   citation: string;
