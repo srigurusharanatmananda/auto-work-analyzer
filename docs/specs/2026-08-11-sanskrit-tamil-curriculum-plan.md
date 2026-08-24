@@ -1112,6 +1112,19 @@ ships only if BOTH lenses actually returned a verdict on it.
 
 Sanskrit: 213 → 253 lessons. Tamil: 309 → 315.
 
+**Twenty-sixth pass — tranche 25: the first vocabulary bottleneck slice.**
+Wikner's 4.B.1 reference sheet (PDF p. 42; source-text lines 1087–1092) supplies the
+forms and printed English glosses for three exercise verbs: √gam → गच्छति
+("he goes"), √labh → लभते ("he takes"), and √vah → वहति ("he carries").
+Only one new atomic letter is required: च्छ (`ccha`), which Wikner lists in
+his 7.A.6 conjunct table; all other components were already taught. The
+Devanagari forms were independently cross-checked against the printed
+present-tense table in *Sanskritabodhini 2*. This tranche intentionally adds
+no sentences or noun forms: those belong to the following reading-quality
+slice, after the new verbs are available as dependencies.
+
+Sanskrit: 253 → 257 lessons. Tamil: unchanged at 315.
+
 **A caveat to read before anyone calls Level 4 done.** 25 of its 30 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
@@ -1135,29 +1148,21 @@ corpus.
 
 ## What's next, in order
 
-*Rewritten after tranches 22-24, which closed most of what the previous
+*Rewritten after tranche 25, which closed the first vocabulary slice from the
+previous
 version of this list named. Superseded items are gone rather than left
 standing with a "done" beside them; the tranche log above is the record.*
 
-1. **A Sanskrit VOCABULARY tranche — now the bottleneck for everything
-   else.** Not more paradigm cells: this file teaches three verb roots
-   (√sthā, √vad, √nī) and three nouns (नर, अश्व, वृक्ष), and every remaining
-   blocked item traces back to that. Wikner's own 4.B.1 reference sheet
-   (lines 1087-1092) names √gam (गच्छति), √labh (लभते) and √vah (वहति) with
-   printed English glosses and uses them heavily in exercises; वहति alone
-   unblocks two more printed sentences, and roughly a dozen of his glossed
-   sentences need nothing but these three plus forms already taught. Cost is
-   letters only — गच्छ needs a छ-conjunct, लभ needs भ in a word, वह needs
-   nothing new. Then the lesson 5-11 vocabulary (bālā "girl", phala "fruit")
-   and the locative/genitive/instrumental declensions, which is what stands
-   between Level 4 and actual graded prose.
-2. **Make Level 4 read like Level 4.** It is populated (30 sentences) but 25
-   are two-verb-plus-च conjugation drills. After item 1 lands, revisit it
-   with Wikner's lessons 5-11 and prefer real sentences over permutations —
+1. **Make Level 4 read like Level 4.** It is populated (30 sentences) but 25
+   are two-verb-plus-च conjugation drills. Use the newly taught verbs to add
+   the remaining already-decomposable Wikner exercise sentences, then move
+   into lessons 5-11 vocabulary (bālā "girl", phala "fruit") and the
+   locative/genitive/instrumental declensions needed for real prose. Prefer
+   real sentences over permutations —
    and consider whether the drill-shaped ones belong at level 3 instead,
    the way tranche 22 demoted `tam-sentence-en-kan` rather than let an
    alphabet-drill fragment stand as graded reading.
-3. **A new Tamil source, which is now a hard blocker rather than a
+2. **A new Tamil source, which is now a hard blocker rather than a
    preference.** Four cells of the செய் grid (செய்வார், செய்தோம், செய்யும்,
    செய்வன) are confirmed unsourceable four times over from ABC of Tamil Book
    One plus Andronov, and the failure is structural: Andronov varies his
@@ -1169,12 +1174,12 @@ standing with a "done" beside them; the tranche log above is the record.*
    Tamil*, which is a teaching grammar with real conjugation tables and old
    enough for archive.org. Either would also settle the ceyv-/ceyk- register
    question this file keeps re-deciding case by case.
-4. **A Devanagari corpus source, for glyphs Whitney never prints.** अश्वौ is
+3. **A Devanagari corpus source, for glyphs Whitney never prints.** अश्वौ is
    blocked on श्वौ, which a census over all of English Wikisource shows
    appears nowhere in any namespace — three Wikner sentences stay out because
    of it. Whitney is a grammar, not a corpus, so this will keep recurring.
    What is needed is a scan-backed Devanagari text of comparable standing.
-5. **Sanskrit moods beyond the singular** — the optative and imperative dual
+4. **Sanskrit moods beyond the singular** — the optative and imperative dual
    and plural of √sthā, and either mood for √vad and √nī. Blocked in an
    interesting way: Whitney §§738-741 would give the Devanagari, but Wikner's
    exercises never leave the present indicative, so the ENGLISH GLOSS has no
@@ -1182,7 +1187,7 @@ standing with a "done" beside them; the tranche log above is the record.*
    moods later, or deciding deliberately that Whitney's own section headings
    may serve as gloss source — a methodology change to make on purpose, not
    inside a tranche.
-6. **Expert-tier reading (Level 5)**, still the last item and still far off.
+5. **Expert-tier reading (Level 5)**, still the last item and still far off.
    The bar is a real short verse fully decomposable into taught vocabulary
    and grammar. Measured, not assumed: tokenising all 182 Guru Gita verses
    against the taught Sanskrit vocabulary gives a best case of 3 words out of

@@ -162,8 +162,8 @@
  * 5.B.2(d)4, and the 4.B.3(e)6 answer at line 4012) need नराणाम्, वृक्षेषु or
  * वृक्षेभ्यः, none of which this file has. Wikner's three other exercise
  * verbs — √gam, √labh, √vah, on his 4.B.1 reference sheet at lines 1087-1092
- * — still have zero forms here, which is now the largest single content gap
- * and also the cheapest next tranche. Non-present tenses and moods stay
+ * — then had zero forms here, making them the next vocabulary tranche.
+ * Non-present tenses and moods stay
  * stuck for a different reason: Wikner's exercises never leave the present
  * indicative, so he cannot supply the "which form, and what does it mean"
  * half at all, and taking one from Whitney's tables alone would be a change
@@ -241,11 +241,8 @@
  * plus every within-batch and already-shipped duplicate, notably his 2.B.2(c)7
  * whose text is the तिष्ठति वदन्ति च shipped at level 3 in tranche 22.
  *
- * Still blocked after tranche 24: Wikner's three other exercise verbs — √gam,
- * √labh, √vah, on his 4.B.1 reference sheet at lines 1087-1092 — still have
- * zero forms here, and they are now unambiguously both the largest content gap
- * and the cheapest next tranche, since one of them alone unblocks several
- * sentences he prints and glosses. Lessons 5-11 are a different problem from
+ * Tranche 25 closes the three-verb gap with √gam, √labh and √vah. Lessons
+ * 5-11 are a different problem from
  * lessons 1-4 and cannot be mined for sentences at all yet: their answer keys
  * need bālā, phala, and locative/genitive/instrumental forms of stems this file
  * does not decline, i.e. a vocabulary tranche, not a sentence tranche. नरे
@@ -765,6 +762,17 @@ export const sanskritManifest: Manifest = {
       // tranche 4).
       text: 'श्व',
       gloss: 'śva',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-chcha',
+      stage: 'letters',
+      level: 1,
+      // Wikner 7.A.6's conjunct reference table prints च्छ (ccha). This
+      // ordinary conjunct is needed solely for गच्छति below; its parts च
+      // and छ are already taught as skt-letter-ca and skt-letter-cha.
+      text: 'च्छ',
+      gloss: 'ccha',
       composedOf: [],
     },
     {
@@ -3782,6 +3790,37 @@ export const sanskritManifest: Manifest = {
       text: 'वृक्षाः',
       gloss: 'vṛkṣāḥ — the trees (pl.) (nominative plural)',
       composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-visarga'],
+    },
+    // ============ Vocabulary, tranche 25: Wikner's remaining exercise verbs ==========
+    // Wikner's 4.B.1 reference sheet (PDF p. 42; source-text lines
+    // 1087-1092) supplies these exact forms and glosses: √gam gacchati "he goes", √labh
+    // labhate "he takes", and √vah vahati "he carries". The source's 7.A.6
+    // table supplies च्छ; an independent Sanskritabodhini 2 present-tense
+    // table corroborates all three Devanagari forms. No new noun forms or
+    // sentences land in this vocabulary-only tranche.
+    {
+      id: 'skt-word-gacchati',
+      stage: 'words',
+      level: 3,
+      text: 'गच्छति',
+      gloss: 'gacchati — he goes (3rd person singular present, parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ti'],
+    },
+    {
+      id: 'skt-word-labhate',
+      stage: 'words',
+      level: 3,
+      text: 'लभते',
+      gloss: 'labhate — he takes (3rd person singular present, ātmanepada)',
+      composedOf: ['skt-letter-la', 'skt-letter-bha', 'skt-letter-te'],
+    },
+    {
+      id: 'skt-word-vahati',
+      stage: 'words',
+      level: 3,
+      text: 'वहति',
+      gloss: 'vahati — he carries (3rd person singular present, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ti'],
     },
     {
       id: 'skt-sentence-vrksah-ashvah-ca-tishthatah',

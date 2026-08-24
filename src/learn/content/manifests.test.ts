@@ -49,6 +49,46 @@ describe.each([
 });
 
 describe('sanskrit manifest content', () => {
+  test('teaches the next three source-attested vocabulary verbs with only the needed conjunct', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    // This tranche is deliberately four lessons only: the sole new letter
+    // plus the three 4.B.1 verb forms. Keep the inventory fixed so unrelated
+    // vocabulary cannot quietly expand its scope.
+    expect(sanskritManifest.lessons).toHaveLength(257);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(115);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(96);
+
+    expect(byId.get('skt-letter-chcha')).toMatchObject({
+      stage: 'letters',
+      level: 1,
+      text: 'च्छ',
+      gloss: 'ccha',
+      composedOf: [],
+    });
+    expect(byId.get('skt-word-gacchati')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'गच्छति',
+      gloss: 'gacchati — he goes (3rd person singular present, parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ti'],
+    });
+    expect(byId.get('skt-word-labhate')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'लभते',
+      gloss: 'labhate — he takes (3rd person singular present, ātmanepada)',
+      composedOf: ['skt-letter-la', 'skt-letter-bha', 'skt-letter-te'],
+    });
+    expect(byId.get('skt-word-vahati')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'वहति',
+      gloss: 'vahati — he carries (3rd person singular present, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ti'],
+    });
+  });
+
   test('a word never depends on a letter not in this same seed', () => {
     const letterIds = new Set(
       sanskritManifest.lessons.filter((l) => l.stage === 'letters').map((l) => l.id)
