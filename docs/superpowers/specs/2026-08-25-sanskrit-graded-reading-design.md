@@ -8,7 +8,7 @@ in his printed, English-glossed sentences.
 
 ## Scope
 
-- This first slice is exactly five lessons from Wikner 6.B.4: letter lessons
+- This first slice is exactly seven lessons from Wikner 6.B.4: letter lessons
   `skt-letter-laa` (ला) and `skt-letter-bhe` (भे); Level 3 words
   `skt-word-bala` (बाला, girl), `skt-word-phalam` (फलम्, fruit as the
   accusative singular), and `skt-word-labhe` (लभे, I take); and the two
@@ -19,7 +19,7 @@ in his printed, English-glossed sentences.
   `skt-sentence-ashvam-nayethe-ca-phalam-labhe` — अश्वम् नयेथे च फलम् लभे
   (“You (two) lead the horse and I take the fruit”), 6.B.4(d)2 and its
   answer.
-- The completed inventory is fixed at 262 Sanskrit lessons: 117 letters, 99
+- The completed inventory is fixed at 264 Sanskrit lessons: 117 letters, 99
   words, and 48 sentences. These bounds make any later vocabulary expansion
   an explicit follow-up tranche rather than incidental scope growth.
 - Preserve the existing Level 4 drills. Re-leveling or removing them needs a
