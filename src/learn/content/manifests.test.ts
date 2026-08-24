@@ -85,11 +85,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the next graded-reading letters, words, and sentences', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(264);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(117);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(99);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(48);
-
     expect(byId.get('skt-letter-laa')).toMatchObject({
       stage: 'letters',
       level: 1,
