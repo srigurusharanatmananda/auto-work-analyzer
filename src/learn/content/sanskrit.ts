@@ -1469,6 +1469,33 @@ export const sanskritManifest: Manifest = {
       gloss: 'ṇā',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-laa',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(b), visibly prints bālā in the instruction to
+      // sound the full declension; PDF p.136, answer-key heading "6.B.3.d.1"
+      // item 1 visibly confirms bālā in "naraḥ tiṣṭhati ca bālā vadati".
+      // The source's Devanagari extraction is unreliable, so ला follows this
+      // file's independently attested consonant-plus-ā-sign convention (see
+      // skt-letter-baa), rather than claiming the broken text layer read it.
+      text: 'ला',
+      gloss: 'lā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-bhe',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(c)7, visibly prints "... phalāni labhe";
+      // PDF p.136, answer-key "6.B.3.d.1" item 2 confirms "... phalam
+      // labhe". The source's Devanagari extraction is unreliable, so भे
+      // follows the independently attested existing conventions for भ
+      // (skt-letter-bha) and the e sign (skt-letter-be).
+      text: 'भे',
+      gloss: 'bhe',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -3823,6 +3850,44 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ti'],
     },
     {
+      id: 'skt-word-bala',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(b), visibly names bālā for full declension;
+      // PDF p.136, answer-key "6.B.3.d.1" item 1 confirms bālā in the
+      // answer to 6.B.4(d)1. The Devanagari follows the separately attested
+      // letter records skt-letter-baa and skt-letter-laa because this PDF's
+      // Devanagari extraction is unreliable.
+      text: 'बाला',
+      gloss: 'bālā — the girl (feminine nominative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa'],
+    },
+    {
+      id: 'skt-word-phalam',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)3, visibly prints phalam; PDF p.136,
+      // answer-key "6.B.3.d.1" item 2 confirms phalam in the answer to
+      // 6.B.4(d)2. The Devanagari is exactly the already-attested letter
+      // sequence pha + la + word-final m (skt-letter-pha/-la/-ma-halanta),
+      // not a reliance on the source's unreliable Devanagari extraction.
+      text: 'फलम्',
+      gloss: 'phalam — the fruit (neuter accusative singular)',
+      composedOf: ['skt-letter-pha', 'skt-letter-la', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-labhe',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)7, visibly prints labhe; PDF p.136,
+      // answer-key "6.B.3.d.1" item 2 confirms labhe for 6.B.4(d)2's "I
+      // take". Its Devanagari joins the independently attested records for
+      // la and bhe (skt-letter-la/-bhe), not the unreliable source extraction.
+      text: 'लभे',
+      gloss: 'labhe — I take (1st person singular present, ātmanepada)',
+      composedOf: ['skt-letter-la', 'skt-letter-bhe'],
+    },
+    {
       id: 'skt-sentence-vrksah-ashvah-ca-tishthatah',
       stage: 'sentences',
       level: 3,
@@ -4381,6 +4446,32 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वम् नराय नयेथे',
       gloss: 'aśvam narāya nayethe — You (two) are leading the horse for the man.',
       composedOf: ['skt-word-ashvam', 'skt-word-naraya', 'skt-word-nayethe'],
+    },
+    {
+      id: 'skt-sentence-narah-tishthati-ca-bala-vadati',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(d)1, visibly asks "The man stands and the
+      // girl speaks." PDF p.136's answer key, headed "6.B.3.d.1" despite
+      // the exercise's 6.B.4 heading, visibly confirms "naraḥ tiṣṭhati ca
+      // bālā vadati". The Devanagari is the exact sequence of independently
+      // attested word records below; the source extraction itself is unreliable.
+      text: 'नरः तिष्ठति च बाला वदति',
+      gloss: 'naraḥ tiṣṭhati ca bālā vadati — the man stands and the girl speaks',
+      composedOf: ['skt-word-narah', 'skt-word-tishthati', 'skt-word-ca', 'skt-word-bala', 'skt-word-vadati'],
+    },
+    {
+      id: 'skt-sentence-ashvam-nayethe-ca-phalam-labhe',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(d)2, visibly asks "You (two) lead the horse
+      // and I take the fruit." PDF p.136's answer key, headed "6.B.3.d.1"
+      // despite the exercise's 6.B.4 heading, visibly confirms "aśvam
+      // nayethe ca phalam labhe". The Devanagari joins independently attested
+      // word records only; the source extraction itself is unreliable.
+      text: 'अश्वम् नयेथे च फलम् लभे',
+      gloss: 'aśvam nayethe ca phalam labhe — you (two) lead the horse and I take the fruit',
+      composedOf: ['skt-word-ashvam', 'skt-word-nayethe', 'skt-word-ca', 'skt-word-phalam', 'skt-word-labhe'],
     },
   ],
 };
