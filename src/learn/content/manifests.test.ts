@@ -141,6 +141,57 @@ describe('sanskrit manifest content', () => {
     });
   });
 
+  test('specifies the case-reading letters, words, and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(269);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(101);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(49);
+
+    expect(byId.get('skt-letter-le')).toMatchObject({
+      stage: 'letters',
+      level: 1,
+      text: 'ले',
+      gloss: 'le',
+      composedOf: [],
+    });
+    expect(byId.get('skt-letter-kshe')).toMatchObject({
+      stage: 'letters',
+      level: 1,
+      text: 'क्षे',
+      gloss: 'kṣe',
+      composedOf: [],
+    });
+    expect(byId.get('skt-word-bale')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'बाले',
+      gloss: 'bāle — the two girls (feminine nominative dual)',
+      composedOf: ['skt-letter-baa', 'skt-letter-le'],
+    });
+    expect(byId.get('skt-word-vrksesu')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'वृक्षेषु',
+      gloss: 'vṛkṣeṣu — among the trees (locative plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-kshe', 'skt-letter-ssu'],
+    });
+    expect(byId.get('skt-sentence-bale-vrksesu-tishthatah-vadatah-ca')).toMatchObject({
+      stage: 'sentences',
+      level: 4,
+      text: 'बाले वृक्षेषु तिष्ठतः वदतः च',
+      gloss: 'bāle vṛkṣeṣu tiṣṭhataḥ vadataḥ ca — the girls (two) stand among the trees and speak',
+      composedOf: [
+        'skt-word-bale',
+        'skt-word-vrksesu',
+        'skt-word-tishthatah',
+        'skt-word-vadatah',
+        'skt-word-ca',
+      ],
+    });
+  });
+
   test('a word never depends on a letter not in this same seed', () => {
     const letterIds = new Set(
       sanskritManifest.lessons.filter((l) => l.stage === 'letters').map((l) => l.id)
