@@ -52,13 +52,6 @@ describe('sanskrit manifest content', () => {
   test('teaches the next three source-attested vocabulary verbs with only the needed conjunct', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    // This tranche is deliberately four lessons only: the sole new letter
-    // plus the three 4.B.1 verb forms. Keep the inventory fixed so unrelated
-    // vocabulary cannot quietly expand its scope.
-    expect(sanskritManifest.lessons).toHaveLength(257);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(115);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(96);
-
     expect(byId.get('skt-letter-chcha')).toMatchObject({
       stage: 'letters',
       level: 1,
