@@ -1476,9 +1476,12 @@ export const sanskritManifest: Manifest = {
       // Wikner PDF p.62, 6.B.4(b), visibly prints bālā in the instruction to
       // sound the full declension; PDF p.136, answer-key heading "6.B.3.d.1"
       // item 1 visibly confirms bālā in "naraḥ tiṣṭhati ca bālā vadati".
-      // The source's Devanagari extraction is unreliable, so ला follows this
-      // file's independently attested consonant-plus-ā-sign convention (see
-      // skt-letter-baa), rather than claiming the broken text layer read it.
+      // Wikner PDF p.55, 6.A.1 "Vowels after Consonants," says a following
+      // vowel other than inherent a is marked by an embellishment on the
+      // consonant and that these signs apply to all consonants (ka through ha),
+      // except ru/rū/hṛ; its rendered table supplies bā. Thus ला follows the
+      // independently attested same-ā-sign convention in skt-letter-baa, not
+      // the source's unreliable Devanagari extraction.
       text: 'ला',
       gloss: 'lā',
       composedOf: [],
@@ -1489,9 +1492,12 @@ export const sanskritManifest: Manifest = {
       level: 1,
       // Wikner PDF p.62, 6.B.4(c)7, visibly prints "... phalāni labhe";
       // PDF p.136, answer-key "6.B.3.d.1" item 2 confirms "... phalam
-      // labhe". The source's Devanagari extraction is unreliable, so भे
-      // follows the independently attested existing conventions for भ
-      // (skt-letter-bha) and the e sign (skt-letter-be).
+      // labhe". Wikner PDF p.55, 6.A.1 "Vowels after Consonants," says a
+      // following vowel other than inherent a is marked by an embellishment
+      // on the consonant and that these signs apply to all consonants (ka
+      // through ha), except ru/rū/hṛ; its rendered table supplies be. Thus भे
+      // follows the independently attested conventions for भ (skt-letter-bha)
+      // and the same e sign (skt-letter-be), not unreliable source extraction.
       text: 'भे',
       gloss: 'bhe',
       composedOf: [],
