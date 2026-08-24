@@ -1502,6 +1502,35 @@ export const sanskritManifest: Manifest = {
       gloss: 'bhe',
       composedOf: [],
     },
+    {
+      id: 'skt-letter-le',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.60, 6.B.2 supplies the bālā paradigm whose dual is
+      // bāle; PDF p.62, 6.B.4(c)6 gives the Roman transliteration bāle.
+      // Deliberate letter-composition policy: this is a new atomic reading
+      // form, not a composedOf spelling. Its Devanagari provenance is exact:
+      // ल is skt-letter-la plus the े sign already attested in skt-letter-se,
+      // Whitney p.293 §735.a, भवसे bhávase.
+      text: 'ले',
+      gloss: 'le',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-kshe',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.60, 6.B.2 supplies the vṛkṣa paradigm whose locative
+      // plural is vṛkṣeṣu; PDF p.62, 6.B.4(c)6 gives that Roman
+      // transliteration. Deliberate letter-composition policy: this is a new
+      // atomic reading form, not a composedOf spelling. Its Devanagari
+      // provenance is exact: क्ष is skt-letter-ksa, established in Wikner
+      // 7.A.3–7.A.4, plus the same े sign attested in skt-letter-se, Whitney
+      // p.293 §735.a, भवसे bhávase.
+      text: 'क्षे',
+      gloss: 'kṣe',
+      composedOf: [],
+    },
 
     // ================= Words =================
     {
@@ -3894,6 +3923,26 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-la', 'skt-letter-bhe'],
     },
     {
+      id: 'skt-word-bale',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's bālā paradigm gives the feminine nominative
+      // dual; PDF p.62, 6.B.4(c)6 prints its Roman transliteration, bāle.
+      text: 'बाले',
+      gloss: 'bāle — the two girls (feminine nominative dual)',
+      composedOf: ['skt-letter-baa', 'skt-letter-le'],
+    },
+    {
+      id: 'skt-word-vrksesu',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's vṛkṣa paradigm gives the locative plural;
+      // PDF p.62, 6.B.4(c)6 prints its Roman transliteration, vṛkṣeṣu.
+      text: 'वृक्षेषु',
+      gloss: 'vṛkṣeṣu — among the trees (locative plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-kshe', 'skt-letter-ssu'],
+    },
+    {
       id: 'skt-sentence-vrksah-ashvah-ca-tishthatah',
       stage: 'sentences',
       level: 3,
@@ -4452,6 +4501,19 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वम् नराय नयेथे',
       gloss: 'aśvam narāya nayethe — You (two) are leading the horse for the man.',
       composedOf: ['skt-word-ashvam', 'skt-word-naraya', 'skt-word-nayethe'],
+    },
+    {
+      id: 'skt-sentence-bale-vrksesu-tishthatah-vadatah-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)6 prints this sentence in Roman
+      // transliteration. PDF p.135's English answer, misheaded 6.B.3.c.1,
+      // supplies “The girls (two) stand among the trees and speak.” The
+      // Devanagari is the exact space-joined sequence of these five
+      // independently attested word records.
+      text: 'बाले वृक्षेषु तिष्ठतः वदतः च',
+      gloss: 'bāle vṛkṣeṣu tiṣṭhataḥ vadataḥ ca — the girls (two) stand among the trees and speak',
+      composedOf: ['skt-word-bale', 'skt-word-vrksesu', 'skt-word-tishthatah', 'skt-word-vadatah', 'skt-word-ca'],
     },
     {
       id: 'skt-sentence-narah-tishthati-ca-bala-vadati',
