@@ -139,10 +139,10 @@ describe('sanskrit manifest content', () => {
   test('specifies the case-reading letters, words, and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(269);
+    expect(sanskritManifest.lessons).toHaveLength(271);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(101);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(49);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(102);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(50);
 
     expect(byId.get('skt-letter-le')).toMatchObject({
       stage: 'letters',
@@ -183,6 +183,36 @@ describe('sanskrit manifest content', () => {
         'skt-word-tishthatah',
         'skt-word-vadatah',
         'skt-word-ca',
+      ],
+    });
+  });
+
+  test('specifies the dative-reading word and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(271);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(102);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(50);
+
+    expect(byId.get('skt-word-phalaya')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'फलाय',
+      gloss: 'phalāya — for fruit (neuter dative singular)',
+      composedOf: ['skt-letter-pha', 'skt-letter-laa', 'skt-letter-ya'],
+    });
+    expect(byId.get('skt-sentence-bala-ashvam-vrksam-phalaya-nayate')).toMatchObject({
+      stage: 'sentences',
+      level: 4,
+      text: 'बाला अश्वम् वृक्षम् फलाय नयते',
+      gloss: 'bālā aśvam vṛkṣam phalāya nayate — the girl leads the horse to the tree for fruit',
+      composedOf: [
+        'skt-word-bala',
+        'skt-word-ashvam',
+        'skt-word-vrksam',
+        'skt-word-phalaya',
+        'skt-word-nayate',
       ],
     });
   });
