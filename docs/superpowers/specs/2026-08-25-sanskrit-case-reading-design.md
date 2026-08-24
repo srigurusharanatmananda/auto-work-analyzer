@@ -16,11 +16,11 @@ This tranche contains exactly five Sanskrit lessons from Wikner 6.B.2/6.B.4:
   `बाले वृक्षेषु तिष्ठतः वदतः च` — “The girls (two) stand among the trees
   and speak.”
 
-Wikner prints the form paradigms at PDF p.60 (6.B.2), the Sanskrit sentence at
-PDF p.62 (6.B.4(c)6), and its English answer at PDF p.135 (Answers: Lesson 6,
-misheaded 6.B.3.c.1). The source's Devanagari extraction is unreliable, so
-every rendered form must be visually checked and the manifest comments must
-state its independently attested letter decomposition.
+Wikner prints the form paradigms at PDF p.60 (6.B.2), the Sanskrit sentence in
+Roman transliteration at PDF p.62 (6.B.4(c)6), and its English answer at PDF
+p.135 (Answers: Lesson 6, misheaded 6.B.3.c.1). The manifest Devanagari must
+therefore be independently established and its letter decomposition recorded
+in the source comments.
 
 ## Boundaries
 
