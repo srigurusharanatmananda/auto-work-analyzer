@@ -196,27 +196,30 @@ Whitney's Sanskrit Grammar (1889, public domain, `skt-whitney-grammar`,
 §491) has it in clean Devanagari + IAST: त्वम् ("you") and यूयम् ("you
 all"). Same tranche shipped Tamil's அவனுடைய ("his"), which turned out
 to need zero new letters (the alveolar னு grapheme it needs was
-already in the file from an earlier tranche). Tranches 19–25 followed
+already in the file from an earlier tranche). Tranches 19–26 followed
 (2nd-person pronoun case forms, a broad grammar push,
 pronoun/mood/compound/tense completion, verb number + the 2nd-person plural
 + Tamil's three unstarted person-categories, noun number + closing all three
 Sanskrit present indicatives, and then the rest of the नर declension +
 filling Level 4, then Wikner's three remaining exercise verbs: √gam, √labh,
-and √vah). Counted by running the real manifests, not grep:
-**Sanskrit 257 lessons, Tamil 315**. All nine person/number cells of √sthā,
+and √vah, then Wikner 6.B.4's letters lā/bhe, words bālā/phalam/labhe, and
+two Level 4 sentences). Counted by running the real manifests, not grep:
+**Sanskrit 264 lessons, Tamil 315**. All nine person/number cells of √sthā,
 √vad and √nī are taught, Sanskrit nouns inflect for dual and plural (so verb
 agreement can be shown subject-to-verb, not only verb-to-verb), Wikner's नर
 paradigm is complete, and Tamil has a second verb root (போ).
 
-**Level 4 ("Reading Practice") holds 30 Sanskrit sentences — but read the
+**Level 4 ("Reading Practice") holds 32 Sanskrit sentences — but read the
 caveat before treating it as done.** Every one is a line Wikner prints, with
 his own printed English as its gloss, so they clear the sourcing bar. But 25
-of the 30 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
+of the 32 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
 …) — permutations from his conjugation exercises. The tier is populated;
 whether it teaches "graded reading of real text" is a different question, and
 today it mostly drills verb agreement. The first vocabulary tranche has now
-added √gam, √labh and √vah; real prose still needs Wikner's lessons 5-11
-vocabulary and their locative/genitive/instrumental declensions.
+added √gam, √labh and √vah, and tranche 26 added bālā, phalam and labhe;
+real prose still needs future Wikner lessons 5-11 vocabulary and their
+locative/genitive/instrumental declensions. That is future vocabulary work,
+not an immediate re-leveling of the existing Level 4 sentences.
 
 **Level 5 ("Classical Texts") is empty, and that is a measurement rather than
 an oversight**: a `sentences` lesson must reconstruct exactly from words the
@@ -342,11 +345,11 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
-**Phase 7 content depth, per the new curriculum plan.** The next task is to
-turn Sanskrit Level 4 into genuine reading practice: use the newly taught
-√gam, √labh and √vah forms to add source-quoted exercise sentences, then
-expand lessons 5-11 vocabulary and the needed locative/genitive/instrumental
-declensions. See
+**Phase 7 content depth, per the new curriculum plan.** The next task is
+future Sanskrit vocabulary work toward genuine reading practice: expand
+Wikner lessons 5-11 vocabulary and the needed
+locative/genitive/instrumental declensions. It is not an immediate re-leveling
+of the existing Level 4 sentences. See
 [`docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md`](docs/specs/2026-08-11-sanskrit-tamil-curriculum-plan.md)'s
 "What's next, in order" for the source and quality constraints. Content work
 still needs the human quality gate the design doc calls for before it ships to
