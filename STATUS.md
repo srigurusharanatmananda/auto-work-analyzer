@@ -203,21 +203,25 @@ pronoun/mood/compound/tense completion, verb number + the 2nd-person plural
 Sanskrit present indicatives, and then the rest of the नर declension +
 filling Level 4, then Wikner's three remaining exercise verbs: √gam, √labh,
 and √vah, then Wikner 6.B.4's letters lā/bhe, words bālā/phalam/labhe, and
-two Level 4 sentences). Counted by running the real manifests, not grep:
-**Sanskrit 264 lessons, Tamil 315**. All nine person/number cells of √sthā,
+two Level 4 sentences, then the case-reading slice from Wikner 6.B.4(c)6:
+the letters le/kṣe, bāle ("the two girls") and vṛkṣeṣu ("among the trees"),
+and the Level 4 sentence bāle vṛkṣeṣu tiṣṭhataḥ vadataḥ ca — “the girls (two)
+stand among the trees and speak”). Counted by running the real manifests, not
+grep: **Sanskrit 269 lessons, Tamil 315**. All nine person/number cells of √sthā,
 √vad and √nī are taught, Sanskrit nouns inflect for dual and plural (so verb
 agreement can be shown subject-to-verb, not only verb-to-verb), Wikner's नर
 paradigm is complete, and Tamil has a second verb root (போ).
 
-**Level 4 ("Reading Practice") holds 32 Sanskrit sentences — but read the
+**Level 4 ("Reading Practice") holds 33 Sanskrit sentences — but read the
 caveat before treating it as done.** Every one is a line Wikner prints, with
 his own printed English as its gloss, so they clear the sourcing bar. But 25
-of the 32 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
+of the 33 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
 …) — permutations from his conjugation exercises. The tier is populated;
 whether it teaches "graded reading of real text" is a different question, and
 today it mostly drills verb agreement. The first vocabulary tranche has now
-added √gam, √labh and √vah, and tranche 26 added bālā, phalam and labhe;
-real prose still needs future Wikner lessons 5-11 vocabulary and their
+added √gam, √labh and √vah, tranche 26 added bālā, phalam and labhe, and
+tranche 27 added the case-reading sentence from Wikner 6.B.4(c)6; real prose
+still needs future Wikner lessons 5-11 vocabulary and their
 locative/genitive/instrumental declensions. That is future vocabulary work,
 not an immediate re-leveling of the existing Level 4 sentences.
 

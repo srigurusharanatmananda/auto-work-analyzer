@@ -1135,7 +1135,18 @@ unchanged.
 
 Sanskrit: 257 → 264 lessons. Tamil: unchanged at 315.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 32 sentences
+**Twenty-eighth pass — tranche 27: a case-reading slice.** Wikner 6.B.4(c)6
+(PDF p. 62) supplies five Sanskrit lessons: the atomic reading forms le and
+kṣe; bāle (“the two girls,” feminine nominative dual) and vṛkṣeṣu (“among the
+trees,” locative plural); and the Level 4 sentence *bāle vṛkṣeṣu tiṣṭhataḥ
+vadataḥ ca* — “The girls (two) stand among the trees and speak.” The two
+letter forms are introduced only because the source-quoted case forms require
+them. Tamil is intentionally unchanged.
+
+Sanskrit: 264 → 269 lessons. Tamil: unchanged at 315. Level 4: 32 → 33
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 33 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
@@ -1145,8 +1156,9 @@ and a conjugation drill is not reading. The tier is populated; whether it
 today is that it mostly drills verb agreement. Real graded prose needs
 future Wikner lessons 5-11 vocabulary and the
 locative/genitive/instrumental declensions. Tranche 26 added two Level 4
-sentences, so the tier now holds 32; its remaining work is future vocabulary,
-not an immediate re-leveling of the existing sentences.
+sentences and tranche 27 added one, so the tier now holds 33; its remaining
+work is future vocabulary, not an immediate re-leveling of the existing
+sentences.
 
 **अश्वौ is now closed hard, by census rather than by fatigue.** The search was
 re-run across ALL of English Wikisource, every namespace including every
@@ -1159,16 +1171,16 @@ corpus.
 
 ## What's next, in order
 
-*Rewritten after tranche 26, which closed the next vocabulary slice from the
+*Rewritten after tranche 27, which added the next case-reading slice from the
 previous version of this list. Superseded items are gone rather than left
 standing with a "done" beside them; the tranche log above is the record.*
 
-1. **Make Level 4 read like Level 4.** It is populated (32 sentences) but 25
+1. **Make Level 4 read like Level 4.** It is populated (33 sentences) but 25
    are two-verb-plus-च conjugation drills. Continue with future Wikner
    lessons 5-11 vocabulary and the locative/genitive/instrumental
-   declensions needed for real prose; bālā, phalam, and labhe are now taught.
-   This is vocabulary work, not an immediate re-leveling of the existing 32
-   sentences. Prefer real sentences over permutations when new source-quoted
+   declensions needed for real prose; bālā, phalam, labhe, bāle, and vṛkṣeṣu
+   are now taught. This is vocabulary work, not an immediate re-leveling of
+   the existing 33 sentences. Prefer real sentences over permutations when new source-quoted
    material becomes decomposable.
 2. **A new Tamil source, which is now a hard blocker rather than a
    preference.** Four cells of the செய் grid (செய்வார், செய்தோம், செய்யும்,
