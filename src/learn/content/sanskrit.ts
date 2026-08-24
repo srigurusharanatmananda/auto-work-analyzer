@@ -3911,6 +3911,18 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-pha', 'skt-letter-la', 'skt-letter-ma-halanta'],
     },
     {
+      id: 'skt-word-phalaya',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's neuter paradigm supplies phalāya, the
+      // dative singular. The Devanagari composes only existing, independently
+      // attested letter records: pha + lā + ya (skt-letter-pha/-laa/-ya), not
+      // this PDF's unreliable Devanagari extraction.
+      text: 'फलाय',
+      gloss: 'phalāya — for fruit (neuter dative singular)',
+      composedOf: ['skt-letter-pha', 'skt-letter-laa', 'skt-letter-ya'],
+    },
+    {
       id: 'skt-word-labhe',
       stage: 'words',
       level: 3,
@@ -4540,6 +4552,19 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वम् नयेथे च फलम् लभे',
       gloss: 'aśvam nayethe ca phalam labhe — you (two) lead the horse and I take the fruit',
       composedOf: ['skt-word-ashvam', 'skt-word-nayethe', 'skt-word-ca', 'skt-word-phalam', 'skt-word-labhe'],
+    },
+    {
+      id: 'skt-sentence-bala-ashvam-vrksam-phalaya-nayate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)1 prints the sentence in Roman
+      // transliteration; PDF p.135's Lesson 6 answer supplies its English.
+      // The Devanagari is the exact space-joined composition of independently
+      // attested word records, including phalāya's pha/lā/ya components, not
+      // a reading of the source's unreliable Devanagari extraction.
+      text: 'बाला अश्वम् वृक्षम् फलाय नयते',
+      gloss: 'bālā aśvam vṛkṣam phalāya nayate — the girl leads the horse to the tree for fruit',
+      composedOf: ['skt-word-bala', 'skt-word-ashvam', 'skt-word-vrksam', 'skt-word-phalaya', 'skt-word-nayate'],
     },
   ],
 };
