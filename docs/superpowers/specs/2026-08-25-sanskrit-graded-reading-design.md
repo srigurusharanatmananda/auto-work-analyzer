@@ -8,13 +8,20 @@ in his printed, English-glossed sentences.
 
 ## Scope
 
-- Add only vocabulary and inflected forms that Wikner actually prints and
-  glosses in the selected sentences, beginning with *bālā* (girl) and *phala*
-  (fruit).
-- Add any genuinely required Devanagari letter lessons before a word that
-  depends on them.
-- Add the resulting source-quoted sentences at Level 4. Prefer varied noun,
-  case, and verb constructions over further two-verb-plus-च agreement drills.
+- This first slice is exactly five lessons from Wikner 6.B.4: letter lessons
+  `skt-letter-laa` (ला) and `skt-letter-bhe` (भे); Level 3 words
+  `skt-word-bala` (बाला, girl), `skt-word-phalam` (फलम्, fruit as the
+  accusative singular), and `skt-word-labhe` (लभे, I take); and the two
+  Level 4 sentences below. No other Lesson 5–11 form is in scope.
+- Add the two source-quoted sentences at Level 4:
+  `skt-sentence-narah-tishthati-ca-bala-vadati` — नरः तिष्ठति च बाला वदति
+  (“The man stands and the girl speaks”), Wikner 6.B.4(d)1 and its answer;
+  `skt-sentence-ashvam-nayethe-ca-phalam-labhe` — अश्वम् नयेथे च फलम् लभे
+  (“You (two) lead the horse and I take the fruit”), 6.B.4(d)2 and its
+  answer.
+- The completed inventory is fixed at 262 Sanskrit lessons: 117 letters, 99
+  words, and 48 sentences. These bounds make any later vocabulary expansion
+  an explicit follow-up tranche rather than incidental scope growth.
 - Preserve the existing Level 4 drills. Re-leveling or removing them needs a
   separate curriculum-quality decision once there is enough replacement prose.
 
@@ -30,9 +37,10 @@ in his printed, English-glossed sentences.
 
 Content remains declarative in `src/learn/content/sanskrit.ts`. A new Level 3
 word declares the smallest `composedOf` list needed to render it. A Level 4
-sentence declares the exact word or letter lessons needed to reconstruct every
-token, and retains an in-file citation comment recording the Wikner lesson,
-source-text line or PDF page, Sanskrit, and printed English gloss.
+sentence declares only the exact word lessons needed to reconstruct every
+token; letters compose words, never sentences. Each sentence retains an
+in-file citation comment recording the Wikner lesson, source-text line or PDF
+page, Sanskrit, and printed English gloss.
 
 No engine changes are expected. Existing manifest validation remains the
 boundary that prevents missing dependencies, illegal stages, duplicate IDs,
