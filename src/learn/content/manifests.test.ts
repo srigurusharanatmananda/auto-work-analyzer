@@ -394,13 +394,13 @@ describe('sanskrit manifest content', () => {
     });
   });
 
-  test('specifies the horse-locative Lesson 5 sentence', () => {
+  test('specifies the plural-horse Lesson 5 sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(303);
+    expect(sanskritManifest.lessons).toHaveLength(304);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(117);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(63);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(64);
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
@@ -430,6 +430,11 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'अश्वे तिष्ठति च वदति च',
       gloss: 'aśve tiṣṭhati ca vadati ca — he stands on the horse and speaks',
       composedOf: ['skt-word-ashve', 'skt-word-tishthati', 'skt-word-ca', 'skt-word-vadati', 'skt-word-ca'],
+    });
+    expect(byId.get('skt-sentence-vrksesu-narasya-ashvaah-tishthanti')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'वृक्षेषु नरस्य अश्वाः तिष्ठन्ति',
+      gloss: 'vṛkṣeṣu narasya aśvāḥ tiṣṭhanti — the man’s horses stand among the trees',
+      composedOf: ['skt-word-vrksesu', 'skt-word-narasya', 'skt-word-ashvaah', 'skt-word-tishthanti'],
     });
   });
 
