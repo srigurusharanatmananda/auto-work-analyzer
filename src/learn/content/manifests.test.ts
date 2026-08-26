@@ -362,14 +362,29 @@ describe('sanskrit manifest content', () => {
   test('specifies the possessive-tree reading sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(294);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(114);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(57);
     expect(byId.get('skt-sentence-bale-phalani-narasya-vrksat-labhete')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बाले फलानि नरस्य वृक्षात् लभेते',
       gloss: 'bāle phalāni narasya vṛkṣāt labhete — the girls (two) take the fruits from the man’s tree',
       composedOf: ['skt-word-bale', 'skt-word-phalani', 'skt-word-narasya', 'skt-word-vrksat', 'skt-word-labhete'],
+    });
+  });
+
+  test('specifies the dual-carrying word and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(296);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(58);
+    expect(byId.get('skt-word-vahatah')).toMatchObject({
+      stage: 'words', level: 3, text: 'वहतः',
+      gloss: 'vahataḥ — they two carry (3rd person dual present, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ta', 'skt-letter-visarga'],
+    });
+    expect(byId.get('skt-sentence-bala-narah-ca-vrksam-ashvam-vahatah')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बाला नरः च वृक्षम् अश्वम् वहतः',
+      gloss: 'bālā naraḥ ca vṛkṣam aśvam vahataḥ — the girl and the man carry the tree to the horse',
+      composedOf: ['skt-word-bala', 'skt-word-narah', 'skt-word-ca', 'skt-word-vrksam', 'skt-word-ashvam', 'skt-word-vahatah'],
     });
   });
 
