@@ -4933,5 +4933,15 @@ export const sanskritManifest: Manifest = {
       gloss: 'vṛkṣeṣu narasya aśvāḥ tiṣṭhanti — the man’s horses stand among the trees',
       composedOf: ['skt-word-vrksesu', 'skt-word-narasya', 'skt-word-ashvaah', 'skt-word-tishthanti'],
     },
+    {
+      id: 'skt-sentence-ashvah-naram-vrksat-gacchati',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.49, 5.B.2(d)7; the Lesson 5 answer on p.135 supplies
+      // “The horse goes to the man from the tree.” All forms are taught.
+      text: 'अश्वः नरम् वृक्षात् गच्छति',
+      gloss: 'aśvaḥ naram vṛkṣāt gacchati — the horse goes to the man from the tree',
+      composedOf: ['skt-word-ashvah', 'skt-word-naram', 'skt-word-vrksat', 'skt-word-gacchati'],
+    },
   ],
 };
