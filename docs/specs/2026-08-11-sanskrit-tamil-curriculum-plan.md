@@ -1231,7 +1231,15 @@ Only vahataḥ (“they two carry”) was new; it composes entirely from existin
 Sanskrit: 294 → 296 lessons. Tamil: unchanged at 315. Level 4: 41 → 42
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 42 sentences
+**Thirty-eighth pass — tranche 37: a horse-carrying reading sentence.**
+Wikner 6.B.4(d)7 (PDF p.62) and its Lesson 6 answer (PDF p.136) supply
+*aśvaḥ vṛkṣam bālam narāya vahati* — “The horse carries the tree to the girl
+for the man.” All word forms were already taught, so this is sentence-only.
+
+Sanskrit: 296 → 297 lessons. Tamil: unchanged at 315. Level 4: 42 → 43
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 43 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
