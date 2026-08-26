@@ -789,6 +789,18 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     {
+      id: 'skt-letter-chchaa',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(c)7 prints gacchāmi in Roman transliteration.
+      // His 7.A.6 table supplies the ccha conjunct and p.55 establishes the
+      // ā sign after consonants; this combined cchā string is needed only for
+      // that source-attested form.
+      text: 'च्छा',
+      gloss: 'cchā',
+      composedOf: [],
+    },
+    {
       id: 'skt-letter-te',
       stage: 'letters',
       level: 1,
@@ -1336,6 +1348,18 @@ export const sanskritManifest: Manifest = {
       // gloss. Needed only because skt-word-vrksaan below needs it.
       text: 'क्षा',
       gloss: 'kṣā',
+      composedOf: [],
+    },
+    {
+      id: 'skt-letter-ksau',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(c)7 prints vṛkṣau in Roman transliteration.
+      // The existing kṣa conjunct and independently attested au sign are
+      // read as one component here, solely to make that exact source line
+      // decomposable.
+      text: 'क्षौ',
+      gloss: 'kṣau',
       composedOf: [],
     },
     {
@@ -3893,6 +3917,16 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ti'],
     },
     {
+      id: 'skt-word-gacchami',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)7 prints gacchāmi; p.135 translates “I
+      // go to the trees (two).” The Devanagari exactly composes ga/cchā/mi.
+      text: 'गच्छामि',
+      gloss: 'gacchāmi — I go (1st person singular present, parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chchaa', 'skt-letter-mi'],
+    },
+    {
       id: 'skt-word-labhate',
       stage: 'words',
       level: 3,
@@ -3965,6 +3999,16 @@ export const sanskritManifest: Manifest = {
       text: 'वृक्षाणाम्',
       gloss: 'vṛkṣāṇām — of the trees (genitive plural)',
       composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-vrksau',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)7 prints vṛkṣau and p.135 translates “to
+      // the trees (two).” The dual accusative uses the new kṣau component.
+      text: 'वृक्षौ',
+      gloss: 'vṛkṣau — to the two trees (dual accusative)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksau'],
     },
     {
       id: 'skt-word-phalani',
@@ -4709,6 +4753,17 @@ export const sanskritManifest: Manifest = {
       text: 'बालाः नरान् फलानि अश्वेन नयन्ते',
       gloss: 'bālāḥ narān phalāni aśvena nayante — the girls lead the men to the fruits by horse',
       composedOf: ['skt-word-balaah', 'skt-word-naraan', 'skt-word-phalani', 'skt-word-ashvena', 'skt-word-nayante'],
+    },
+    {
+      id: 'skt-sentence-vrksau-gacchami-ca-phalani-labhe',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)7 prints the Roman sentence; PDF p.135
+      // supplies “I go to the trees (two) and take the fruit (pl.).” The
+      // Devanagari exactly space-joins its independently attested words.
+      text: 'वृक्षौ गच्छामि च फलानि लभे',
+      gloss: 'vṛkṣau gacchāmi ca phalāni labhe — I go to the two trees and take the fruits',
+      composedOf: ['skt-word-vrksau', 'skt-word-gacchami', 'skt-word-ca', 'skt-word-phalani', 'skt-word-labhe'],
     },
   ],
 };
