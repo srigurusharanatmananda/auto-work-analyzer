@@ -262,7 +262,7 @@ describe('sanskrit manifest content', () => {
       level: 3,
       text: 'वृक्षाणाम्',
       gloss: 'vṛkṣāṇām — of the trees (genitive plural)',
-      composedOf: ['skt-letter-vri', 'skt-letter-kshaa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
     });
     expect(byId.get('skt-word-phalani')).toMatchObject({
       stage: 'words',
