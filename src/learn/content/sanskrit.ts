@@ -765,6 +765,19 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     {
+      id: 'skt-letter-shve',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(c)5 prints aśvena in Roman transliteration.
+      // His p.55 vowel-sign table establishes that e is marked after every
+      // consonant; the same already-attested rule is used for be/bhe/le.
+      // This is the combined śva conjunct with that e sign, read as one
+      // component because it is needed only for the source-attested form.
+      text: 'श्वे',
+      gloss: 'śve',
+      composedOf: [],
+    },
+    {
       id: 'skt-letter-chcha',
       stage: 'letters',
       level: 1,
@@ -1846,6 +1859,17 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वम्',
       gloss: 'aśvam — horse (accusative singular, direct object)',
       composedOf: ['skt-letter-a', 'skt-letter-shva', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-ashvena',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)5 prints aśvena; p.135 translates that
+      // sentence “by horse.” The Devanagari is the exact a + śve + na
+      // composition, using the source-attested combined letter above.
+      text: 'अश्वेन',
+      gloss: 'aśvena — by horse (instrumental singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shve', 'skt-letter-na'],
     },
     {
       id: 'skt-word-nayate',
@@ -3898,6 +3922,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-baa', 'skt-letter-laa'],
     },
     {
+      id: 'skt-word-balaah',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's feminine paradigm gives bālāḥ; p.62,
+      // 6.B.4(c)5 uses it and p.135 translates “The girls (pl.).” The
+      // Devanagari joins the existing bā/lā/visarga records only.
+      text: 'बालाः',
+      gloss: 'bālāḥ — the girls (feminine nominative plural)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-visarga'],
+    },
+    {
       id: 'skt-word-balam',
       stage: 'words',
       level: 3,
@@ -4663,6 +4698,17 @@ export const sanskritManifest: Manifest = {
       text: 'नरौ वृक्षाणाम् फलानि अश्वम् लभेते',
       gloss: 'narau vṛkṣāṇām phalāni aśvam labhete — the men (two) take the fruits of the trees to the horse',
       composedOf: ['skt-word-narau', 'skt-word-vrksanam', 'skt-word-phalani', 'skt-word-ashvam', 'skt-word-labhete'],
+    },
+    {
+      id: 'skt-sentence-balaah-naraan-phalani-ashvena-nayante',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)5 prints the Roman sentence; PDF p.135
+      // supplies “The girls (pl.) lead the men (pl.) to the fruit (pl.) by
+      // horse.” The Devanagari exactly space-joins its word lessons.
+      text: 'बालाः नरान् फलानि अश्वेन नयन्ते',
+      gloss: 'bālāḥ narān phalāni aśvena nayante — the girls lead the men to the fruits by horse',
+      composedOf: ['skt-word-balaah', 'skt-word-naraan', 'skt-word-phalani', 'skt-word-ashvena', 'skt-word-nayante'],
     },
   ],
 };
