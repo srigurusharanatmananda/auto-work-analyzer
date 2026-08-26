@@ -1239,7 +1239,15 @@ for the man.” All word forms were already taught, so this is sentence-only.
 Sanskrit: 296 → 297 lessons. Tamil: unchanged at 315. Level 4: 42 → 43
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 43 sentences
+**Thirty-ninth pass — tranche 38: a girl-possessive horse sentence.** Wikner
+6.B.4(d)9 (PDF p.62) and its Lesson 6 answer (PDF p.136) supply *bālāyāḥ
+aśvaḥ phalāni narāya vahati* — “The girl’s horse carries the fruits for the
+man.” All word forms were already taught, so this is sentence-only.
+
+Sanskrit: 297 → 298 lessons. Tamil: unchanged at 315. Level 4: 43 → 44
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 44 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
@@ -1251,7 +1259,8 @@ future Wikner lessons 5-11 vocabulary and the
 locative/genitive/instrumental declensions. Tranche 26 added two Level 4
 sentences, tranche 27 added one, tranche 28 added one, tranche 29 added one,
 tranche 30 added one, tranche 31 added one, tranche 32 added one, and tranche
-33 added one, tranche 34 added one, and tranche 35 added one, so the tier now holds 41; its remaining
+33 added one, tranche 34 added one, tranche 35 added one, tranche 36 added one,
+tranche 37 added one, and tranche 38 added one, so the tier now holds 44; its remaining
 work is future vocabulary, not an immediate re-leveling of the existing
 sentences.
 
@@ -1291,11 +1300,15 @@ standing with a "done" beside them; the tranche log above is the record.*
    Tamil*, which is a teaching grammar with real conjugation tables and old
    enough for archive.org. Either would also settle the ceyv-/ceyk- register
    question this file keeps re-deciding case by case.
-3. **A Devanagari corpus source, for glyphs Whitney never prints.** अश्वौ is
-   blocked on श्वौ, which a census over all of English Wikisource shows
+3. **Pilot a Devanagari corpus source, for glyphs Whitney never prints.** अश्वौ
+   is blocked on श्वौ, which a census over all of English Wikisource shows
    appears nowhere in any namespace — three Wikner sentences stay out because
-   of it. Whitney is a grammar, not a corpus, so this will keep recurring.
-   What is needed is a scan-backed Devanagari text of comparable standing.
+   of it. Lanman's 1903 *A Sanskrit Reader* is now verified as a scan-backed,
+   public-domain candidate: its Nala selection provides Devanagari text and
+   its notes provide line-level English explanations. It is much more advanced
+   than Wikner, so first make a small, separately labelled classical-reading
+   pilot rather than silently treating it as the next beginner vocabulary
+   tranche. Whitney is a grammar, not a corpus, so this will keep recurring.
 4. **Sanskrit moods beyond the singular** — the optative and imperative dual
    and plural of √sthā, and either mood for √vad and √nī. Blocked in an
    interesting way: Whitney §§738-741 would give the Devanagari, but Wikner's
