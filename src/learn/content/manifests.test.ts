@@ -387,14 +387,24 @@ describe('sanskrit manifest content', () => {
   test('specifies the horse-carrying reading sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(297);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(59);
     expect(byId.get('skt-sentence-ashvah-vrksam-balam-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'अश्वः वृक्षम् बालम् नराय वहति',
       gloss: 'aśvaḥ vṛkṣam bālam narāya vahati — the horse carries the tree to the girl for the man',
       composedOf: ['skt-word-ashvah', 'skt-word-vrksam', 'skt-word-balam', 'skt-word-naraya', 'skt-word-vahati'],
+    });
+  });
+
+  test('specifies the girl-possessive carrying sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(298);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(60);
+    expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
+      gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
+      composedOf: ['skt-word-balayah', 'skt-word-ashvah', 'skt-word-phalani', 'skt-word-naraya', 'skt-word-vahati'],
     });
   });
 
