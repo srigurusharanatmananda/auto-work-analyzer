@@ -285,10 +285,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the plural instrumental reading words and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(283);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(120);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(109);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(54);
     expect(byId.get('skt-letter-shve')).toMatchObject({
       stage: 'letters', level: 1, text: 'श्वे', gloss: 'śve', composedOf: [],
     });
@@ -306,6 +302,36 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'बालाः नरान् फलानि अश्वेन नयन्ते',
       gloss: 'bālāḥ narān phalāni aśvena nayante — the girls lead the men to the fruits by horse',
       composedOf: ['skt-word-balaah', 'skt-word-naraan', 'skt-word-phalani', 'skt-word-ashvena', 'skt-word-nayante'],
+    });
+  });
+
+  test('specifies the dual-destination reading words and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(288);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(122);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(111);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(55);
+    expect(byId.get('skt-letter-ksau')).toMatchObject({
+      stage: 'letters', level: 1, text: 'क्षौ', gloss: 'kṣau', composedOf: [],
+    });
+    expect(byId.get('skt-letter-chchaa')).toMatchObject({
+      stage: 'letters', level: 1, text: 'च्छा', gloss: 'cchā', composedOf: [],
+    });
+    expect(byId.get('skt-word-vrksau')).toMatchObject({
+      stage: 'words', level: 3, text: 'वृक्षौ',
+      gloss: 'vṛkṣau — to the two trees (dual accusative)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksau'],
+    });
+    expect(byId.get('skt-word-gacchami')).toMatchObject({
+      stage: 'words', level: 3, text: 'गच्छामि',
+      gloss: 'gacchāmi — I go (1st person singular present, parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chchaa', 'skt-letter-mi'],
+    });
+    expect(byId.get('skt-sentence-vrksau-gacchami-ca-phalani-labhe')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'वृक्षौ गच्छामि च फलानि लभे',
+      gloss: 'vṛkṣau gacchāmi ca phalāni labhe — I go to the two trees and take the fruits',
+      composedOf: ['skt-word-vrksau', 'skt-word-gacchami', 'skt-word-ca', 'skt-word-phalani', 'skt-word-labhe'],
     });
   });
 
