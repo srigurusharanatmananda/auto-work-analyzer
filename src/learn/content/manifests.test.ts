@@ -394,13 +394,13 @@ describe('sanskrit manifest content', () => {
     });
   });
 
-  test('specifies the horse-locative word and final Lesson 6 sentence', () => {
+  test('specifies the horse-locative Lesson 5 sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(302);
+    expect(sanskritManifest.lessons).toHaveLength(303);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(117);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(62);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(63);
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
@@ -425,6 +425,11 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'बाले अश्वे तिष्ठतः च फलम् वृक्षात् लभेते',
       gloss: 'bāle aśve tiṣṭhataḥ ca phalam vṛkṣāt labhete — the girls stand on the horse and take the fruit from the tree',
       composedOf: ['skt-word-bale', 'skt-word-ashve', 'skt-word-tishthatah', 'skt-word-ca', 'skt-word-phalam', 'skt-word-vrksat', 'skt-word-labhete'],
+    });
+    expect(byId.get('skt-sentence-ashve-tishthati-ca-vadati-ca')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'अश्वे तिष्ठति च वदति च',
+      gloss: 'aśve tiṣṭhati ca vadati ca — he stands on the horse and speaks',
+      composedOf: ['skt-word-ashve', 'skt-word-tishthati', 'skt-word-ca', 'skt-word-vadati', 'skt-word-ca'],
     });
   });
 
