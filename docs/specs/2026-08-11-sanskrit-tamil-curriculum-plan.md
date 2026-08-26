@@ -1275,7 +1275,17 @@ is a sentence-only reading addition.
 Sanskrit: 302 → 303 lessons. Tamil: unchanged at 315. Level 4: 46 → 47
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 47 sentences
+**Forty-third pass — tranche 42: a plural-horse Lesson 5 sentence.** Wikner
+5.B.2(d)4 (PDF p.49) and its Lesson 5 answer (PDF p.135) supply *vṛkṣeṣu
+narasya aśvāḥ tiṣṭhanti* — “The man's horses (pl.) are standing among the
+trees (pl.).” The OCR drops the long-vowel mark in the printed Roman aśvāḥ,
+but the answer’s plural gloss fixes the intended word form. Every component
+was already taught, so this is sentence-only.
+
+Sanskrit: 303 → 304 lessons. Tamil: unchanged at 315. Level 4: 47 → 48
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 48 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
