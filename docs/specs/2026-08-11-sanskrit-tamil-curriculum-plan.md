@@ -1256,7 +1256,17 @@ It needs no new letter form: phalena composes from existing pha/le/na records.
 Sanskrit: 298 → 300 lessons. Tamil: unchanged at 315. Level 4: 44 → 45
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 45 sentences
+**Forty-first pass — tranche 40: a horse-locative reading slice.** Wikner
+6.B.1 (PDF p.60) supplies aśve (“on the horse,” masculine locative singular);
+6.B.4(d)10 (PDF p.62) and its Lesson 6 answer (PDF p.136) supply *bāle aśve
+tiṣṭhataḥ ca phalam vṛkṣāt labhete* — “The girls (two) stand on the horse and
+take the fruit from the tree.” It needs no new letter form: aśve composes from
+the existing a and śve records.
+
+Sanskrit: 300 → 302 lessons. Tamil: unchanged at 315. Level 4: 45 → 46
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 46 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
@@ -1269,7 +1279,8 @@ locative/genitive/instrumental declensions. Tranche 26 added two Level 4
 sentences, tranche 27 added one, tranche 28 added one, tranche 29 added one,
 tranche 30 added one, tranche 31 added one, tranche 32 added one, and tranche
 33 added one, tranche 34 added one, tranche 35 added one, tranche 36 added one,
-tranche 37 added one, tranche 38 added one, and tranche 39 added one, so the tier now holds 45; its remaining
+tranche 37 added one, tranche 38 added one, tranche 39 added one, and tranche
+40 added one, so the tier now holds 46; its remaining
 work is future vocabulary, not an immediate re-leveling of the existing
 sentences.
 
