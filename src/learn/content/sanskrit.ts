@@ -3898,6 +3898,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-baa', 'skt-letter-laa'],
     },
     {
+      id: 'skt-word-balam',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's feminine declension table gives bālam as
+      // the accusative singular. The Devanagari is the existing bā + la +
+      // word-final m sequence, not a reading of the source extraction.
+      text: 'बालम्',
+      gloss: 'bālam — the girl (feminine accusative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-la', 'skt-letter-ma-halanta'],
+    },
+    {
       id: 'skt-word-phalam',
       stage: 'words',
       level: 3,
@@ -4565,6 +4576,25 @@ export const sanskritManifest: Manifest = {
       text: 'बाला अश्वम् वृक्षम् फलाय नयते',
       gloss: 'bālā aśvam vṛkṣam phalāya nayate — the girl leads the horse to the tree for fruit',
       composedOf: ['skt-word-bala', 'skt-word-ashvam', 'skt-word-vrksam', 'skt-word-phalaya', 'skt-word-nayate'],
+    },
+    {
+      id: 'skt-sentence-ashvah-naram-ca-balam-ca-vrksam-vahati',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)2 prints the Roman sentence; PDF p.135's
+      // answer key supplies its English. The Devanagari space-joins the
+      // independently attested word records.
+      text: 'अश्वः नरम् च बालम् च वृक्षम् वहति',
+      gloss: 'aśvaḥ naram ca bālam ca vṛkṣam vahati — the horse carries the man and the girl to the tree',
+      composedOf: [
+        'skt-word-ashvah',
+        'skt-word-naram',
+        'skt-word-ca',
+        'skt-word-balam',
+        'skt-word-ca',
+        'skt-word-vrksam',
+        'skt-word-vahati',
+      ],
     },
   ],
 };
