@@ -394,13 +394,13 @@ describe('sanskrit manifest content', () => {
     });
   });
 
-  test('specifies the instrumental fruit word and horse-leading sentence', () => {
+  test('specifies the horse-locative word and final Lesson 6 sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(300);
+    expect(sanskritManifest.lessons).toHaveLength(302);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(116);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(61);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(117);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(62);
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
@@ -415,6 +415,16 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'नरः अश्वम् फलेन नयते',
       gloss: 'naraḥ aśvam phalena nayate — the man leads the horse by means of fruit',
       composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-phalena', 'skt-word-nayate'],
+    });
+    expect(byId.get('skt-word-ashve')).toMatchObject({
+      stage: 'words', level: 3, text: 'अश्वे',
+      gloss: 'aśve — on the horse (masculine locative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shve'],
+    });
+    expect(byId.get('skt-sentence-bale-ashve-tishthatah-ca-phalam-vrksat-labhete')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बाले अश्वे तिष्ठतः च फलम् वृक्षात् लभेते',
+      gloss: 'bāle aśve tiṣṭhataḥ ca phalam vṛkṣāt labhete — the girls stand on the horse and take the fruit from the tree',
+      composedOf: ['skt-word-bale', 'skt-word-ashve', 'skt-word-tishthatah', 'skt-word-ca', 'skt-word-phalam', 'skt-word-vrksat', 'skt-word-labhete'],
     });
   });
 
