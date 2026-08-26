@@ -4076,6 +4076,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-pha', 'skt-letter-le'],
     },
     {
+      id: 'skt-word-phalena',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's neuter table gives phalena, the
+      // instrumental singular; 6.B.4(d)8 (p.62) uses it and the Lesson 6
+      // answer (p.136) gives the English. It composes existing pha/le/na.
+      text: 'फलेन',
+      gloss: 'phalena — by means of fruit (neuter instrumental singular)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-na'],
+    },
+    {
       id: 'skt-word-labhete',
       stage: 'words',
       level: 3,
@@ -4868,6 +4879,16 @@ export const sanskritManifest: Manifest = {
       text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
       composedOf: ['skt-word-balayah', 'skt-word-ashvah', 'skt-word-phalani', 'skt-word-naraya', 'skt-word-vahati'],
+    },
+    {
+      id: 'skt-sentence-narah-ashvam-phalena-nayate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(d)8; its Lesson 6 answer on p.136 supplies
+      // the English. The sentence exactly space-joins its word lessons.
+      text: 'नरः अश्वम् फलेन नयते',
+      gloss: 'naraḥ aśvam phalena nayate — the man leads the horse by means of fruit',
+      composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-phalena', 'skt-word-nayate'],
     },
   ],
 };
