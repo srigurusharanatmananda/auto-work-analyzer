@@ -11,17 +11,18 @@ Use the project skill `sanskrit-curriculum-delivery` for each source-attested
 tranche. It requires source evidence, a red-green manifest test, provenance
 updates, and the focused verification gate.
 
-## Optional Codex scheduled task
+## Optional ChatGPT reminder task
 
-An account owner must create this in Codex because it is account-scoped. Use a
-daily or manual schedule, give it repository access, and paste:
+Scheduled Tasks are a ChatGPT feature, not a Codex execution scheduler, and
+they cannot access this local repository. Use one only as a daily reminder to
+open the project in Codex and continue the workflow.
 
-> Continue Sanskrit curriculum delivery on the active feature branch. Use the
-> `sanskrit-curriculum-delivery` project skill. Work only from scan-backed
-> sources and their answer keys; add a tranche only when every glyph and gloss
-> is evidenced. Run `npm run learn:audit-sanskrit` and
-> `npm run learn:verify-sanskrit`; commit and push review-ready changes. Stop
-> only for a curriculum-policy decision or external-action approval.
+In ChatGPT on the web or mobile, open **Scheduled**, choose **Try your own**,
+and create a daily reminder with:
 
-The schedule should notify the owner of each pushed commit and stop on any
-failed verification rather than retrying indefinitely.
+> Open the auto-work-analyzer project in Codex and continue Sanskrit
+> curriculum delivery using the `sanskrit-curriculum-delivery` project skill.
+> Review and push only verified, source-attested tranches.
+
+Then open the local project in Codex, where the project skill and repository
+commands are available. Keep notifications enabled for the reminder.

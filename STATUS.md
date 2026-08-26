@@ -378,8 +378,9 @@ now reports manifest-derived inventory counts, while
 and lint gate. The project-local `sanskrit-curriculum-delivery` Codex skill
 standardizes source evidence, test-first edits, provenance updates, and this
 verification gate; GitHub Actions runs it for relevant curriculum changes.
-Account-level scheduled Codex work remains an operator setup step, documented
-in [`docs/operations/codex-sanskrit-delivery.md`](docs/operations/codex-sanskrit-delivery.md).
+An optional ChatGPT Scheduled Task can remind the operator to resume local
+Codex work; its account-level setup is documented in
+[`docs/operations/codex-sanskrit-delivery.md`](docs/operations/codex-sanskrit-delivery.md).
 
 **Phase 7 content depth, per the new curriculum plan.** The next task is
 future Sanskrit vocabulary work toward genuine reading practice: expand
