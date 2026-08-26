@@ -4911,5 +4911,16 @@ export const sanskritManifest: Manifest = {
       gloss: 'bāle aśve tiṣṭhataḥ ca phalam vṛkṣāt labhete — the girls stand on the horse and take the fruit from the tree',
       composedOf: ['skt-word-bale', 'skt-word-ashve', 'skt-word-tishthatah', 'skt-word-ca', 'skt-word-phalam', 'skt-word-vrksat', 'skt-word-labhete'],
     },
+    {
+      id: 'skt-sentence-ashve-tishthati-ca-vadati-ca',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.49, 5.B.2(d)8; the Lesson 5 answer on p.135 supplies
+      // “He stands on the horse and speaks.” The sentence exactly space-joins
+      // its word lessons, including the deliberate repeated ca.
+      text: 'अश्वे तिष्ठति च वदति च',
+      gloss: 'aśve tiṣṭhati ca vadati ca — he stands on the horse and speaks',
+      composedOf: ['skt-word-ashve', 'skt-word-tishthati', 'skt-word-ca', 'skt-word-vadati', 'skt-word-ca'],
+    },
   ],
 };
