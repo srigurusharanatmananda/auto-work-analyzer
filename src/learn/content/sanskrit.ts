@@ -1908,6 +1908,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-a', 'skt-letter-shve', 'skt-letter-na'],
     },
     {
+      id: 'skt-word-ashve',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.1's aśva table gives aśve, the locative
+      // singular; 6.B.4(d)10 (p.62) uses it and the Lesson 6 answer (p.136)
+      // supplies the English. It reuses the existing a and śve records.
+      text: 'अश्वे',
+      gloss: 'aśve — on the horse (masculine locative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shve'],
+    },
+    {
       id: 'skt-word-nayate',
       stage: 'words',
       // Level 3, not 2: a verb FORM (ātmanepada pada), the other half of
@@ -4889,6 +4900,16 @@ export const sanskritManifest: Manifest = {
       text: 'नरः अश्वम् फलेन नयते',
       gloss: 'naraḥ aśvam phalena nayate — the man leads the horse by means of fruit',
       composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-phalena', 'skt-word-nayate'],
+    },
+    {
+      id: 'skt-sentence-bale-ashve-tishthatah-ca-phalam-vrksat-labhete',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(d)10; its Lesson 6 answer on p.136 supplies
+      // the English. The sentence exactly space-joins its word lessons.
+      text: 'बाले अश्वे तिष्ठतः च फलम् वृक्षात् लभेते',
+      gloss: 'bāle aśve tiṣṭhataḥ ca phalam vṛkṣāt labhete — the girls stand on the horse and take the fruit from the tree',
+      composedOf: ['skt-word-bale', 'skt-word-ashve', 'skt-word-tishthatah', 'skt-word-ca', 'skt-word-phalam', 'skt-word-vrksat', 'skt-word-labhete'],
     },
   ],
 };
