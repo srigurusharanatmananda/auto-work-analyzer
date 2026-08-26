@@ -237,10 +237,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the ablative-reading word and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(275);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(104);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(52);
     expect(byId.get('skt-word-balayah')).toMatchObject({
       stage: 'words', level: 3, text: 'बालायाः',
       gloss: 'bālāyāḥ — from the girl (feminine ablative singular)',
@@ -250,6 +246,44 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'नरस्य अश्वः फलम् बालायाः लभते',
       gloss: 'narasya aśvaḥ phalam bālāyāḥ labhate — the man’s horse takes the fruit from the girl',
       composedOf: ['skt-word-narasya', 'skt-word-ashvah', 'skt-word-phalam', 'skt-word-balayah', 'skt-word-labhate'],
+    });
+  });
+
+  test('specifies the genitive-plural reading words and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(279);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(107);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(53);
+
+    expect(byId.get('skt-word-vrksanam')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'वृक्षाणाम्',
+      gloss: 'vṛkṣāṇām — of the trees (genitive plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-kshaa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
+    });
+    expect(byId.get('skt-word-phalani')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'फलानि',
+      gloss: 'phalāni — the fruits (neuter nominative/accusative plural)',
+      composedOf: ['skt-letter-pha', 'skt-letter-laa', 'skt-letter-ni'],
+    });
+    expect(byId.get('skt-word-labhete')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'लभेते',
+      gloss: 'labhete — they two take (3rd person dual present, ātmanepada)',
+      composedOf: ['skt-letter-la', 'skt-letter-bhe', 'skt-letter-te'],
+    });
+    expect(byId.get('skt-sentence-narau-vrksanam-phalani-ashvam-labhete')).toMatchObject({
+      stage: 'sentences',
+      level: 4,
+      text: 'नरौ वृक्षाणाम् फलानि अश्वम् लभेते',
+      gloss: 'narau vṛkṣāṇām phalāni aśvam labhete — the men (two) take the fruits of the trees to the horse',
+      composedOf: ['skt-word-narau', 'skt-word-vrksanam', 'skt-word-phalani', 'skt-word-ashvam', 'skt-word-labhete'],
     });
   });
 
