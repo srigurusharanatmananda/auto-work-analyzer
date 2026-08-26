@@ -210,11 +210,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the accusative-reading word and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(273);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(103);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(51);
-
     expect(byId.get('skt-word-balam')).toMatchObject({
       stage: 'words',
       level: 3,
@@ -236,6 +231,25 @@ describe('sanskrit manifest content', () => {
         'skt-word-vrksam',
         'skt-word-vahati',
       ],
+    });
+  });
+
+  test('specifies the ablative-reading word and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(275);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(104);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(52);
+    expect(byId.get('skt-word-balayah')).toMatchObject({
+      stage: 'words', level: 3, text: 'बालायाः',
+      gloss: 'bālāyāḥ — from the girl (feminine ablative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-yaa', 'skt-letter-visarga'],
+    });
+    expect(byId.get('skt-sentence-narasya-ashvah-phalam-balayah-labhate')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'नरस्य अश्वः फलम् बालायाः लभते',
+      gloss: 'narasya aśvaḥ phalam bālāyāḥ labhate — the man’s horse takes the fruit from the girl',
+      composedOf: ['skt-word-narasya', 'skt-word-ashvah', 'skt-word-phalam', 'skt-word-balayah', 'skt-word-labhate'],
     });
   });
 

@@ -3909,6 +3909,18 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-baa', 'skt-letter-la', 'skt-letter-ma-halanta'],
     },
     {
+      id: 'skt-word-balayah',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's feminine declension table gives bālāyāḥ
+      // as the ablative singular; PDF p.62, 6.B.4(c)3 prints the Roman form
+      // bālāyāḥ and PDF p.135 supplies its English in the answer. The
+      // Devanagari joins existing bā/lā/yā/visarga components only.
+      text: 'बालायाः',
+      gloss: 'bālāyāḥ — from the girl (feminine ablative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-yaa', 'skt-letter-visarga'],
+    },
+    {
       id: 'skt-word-phalam',
       stage: 'words',
       level: 3,
@@ -4595,6 +4607,18 @@ export const sanskritManifest: Manifest = {
         'skt-word-vrksam',
         'skt-word-vahati',
       ],
+    },
+    {
+      id: 'skt-sentence-narasya-ashvah-phalam-balayah-labhate',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)3 prints the Roman sentence; PDF p.135's
+      // Lesson 6 answer supplies “The man's horse takes the fruit from the
+      // girl.” The Devanagari is the exact space-joined sequence of the
+      // independently attested word records.
+      text: 'नरस्य अश्वः फलम् बालायाः लभते',
+      gloss: 'narasya aśvaḥ phalam bālāyāḥ labhate — the man’s horse takes the fruit from the girl',
+      composedOf: ['skt-word-narasya', 'skt-word-ashvah', 'skt-word-phalam', 'skt-word-balayah', 'skt-word-labhate'],
     },
   ],
 };
