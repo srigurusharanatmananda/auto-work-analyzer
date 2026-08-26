@@ -372,10 +372,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the dual-carrying word and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(296);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(58);
     expect(byId.get('skt-word-vahatah')).toMatchObject({
       stage: 'words', level: 3, text: 'वहतः',
       gloss: 'vahataḥ — they two carry (3rd person dual present, parasmaipada)',
@@ -385,6 +381,20 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'बाला नरः च वृक्षम् अश्वम् वहतः',
       gloss: 'bālā naraḥ ca vṛkṣam aśvam vahataḥ — the girl and the man carry the tree to the horse',
       composedOf: ['skt-word-bala', 'skt-word-narah', 'skt-word-ca', 'skt-word-vrksam', 'skt-word-ashvam', 'skt-word-vahatah'],
+    });
+  });
+
+  test('specifies the horse-carrying reading sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(297);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(59);
+    expect(byId.get('skt-sentence-ashvah-vrksam-balam-naraya-vahati')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'अश्वः वृक्षम् बालम् नराय वहति',
+      gloss: 'aśvaḥ vṛkṣam bālam narāya vahati — the horse carries the tree to the girl for the man',
+      composedOf: ['skt-word-ashvah', 'skt-word-vrksam', 'skt-word-balam', 'skt-word-naraya', 'skt-word-vahati'],
     });
   });
 
