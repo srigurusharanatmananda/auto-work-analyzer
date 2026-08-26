@@ -4819,5 +4819,16 @@ export const sanskritManifest: Manifest = {
       gloss: 'naraḥ phale vṛkṣāt bālāyai vahati — the man carries the two fruits from the tree for the girl',
       composedOf: ['skt-word-narah', 'skt-word-phale', 'skt-word-vrksat', 'skt-word-balayai', 'skt-word-vahati'],
     },
+    {
+      id: 'skt-sentence-bale-phalani-narasya-vrksat-labhete',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)9 prints the Roman sentence; PDF p.135
+      // supplies “The girls (two) take the fruit (pl.) from the man’s tree.”
+      // Every component is already an independently attested word lesson.
+      text: 'बाले फलानि नरस्य वृक्षात् लभेते',
+      gloss: 'bāle phalāni narasya vṛkṣāt labhete — the girls (two) take the fruits from the man’s tree',
+      composedOf: ['skt-word-bale', 'skt-word-phalani', 'skt-word-narasya', 'skt-word-vrksat', 'skt-word-labhete'],
+    },
   ],
 };
