@@ -139,11 +139,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the case-reading letters, words, and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(271);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(102);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(50);
-
     expect(byId.get('skt-letter-le')).toMatchObject({
       stage: 'letters',
       level: 1,
@@ -190,11 +185,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the dative-reading word and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(271);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(102);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(50);
-
     expect(byId.get('skt-word-phalaya')).toMatchObject({
       stage: 'words',
       level: 3,
@@ -213,6 +203,38 @@ describe('sanskrit manifest content', () => {
         'skt-word-vrksam',
         'skt-word-phalaya',
         'skt-word-nayate',
+      ],
+    });
+  });
+
+  test('specifies the accusative-reading word and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(273);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(103);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(51);
+
+    expect(byId.get('skt-word-balam')).toMatchObject({
+      stage: 'words',
+      level: 3,
+      text: 'बालम्',
+      gloss: 'bālam — the girl (feminine accusative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-la', 'skt-letter-ma-halanta'],
+    });
+    expect(byId.get('skt-sentence-ashvah-naram-ca-balam-ca-vrksam-vahati')).toMatchObject({
+      stage: 'sentences',
+      level: 4,
+      text: 'अश्वः नरम् च बालम् च वृक्षम् वहति',
+      gloss: 'aśvaḥ naram ca bālam ca vṛkṣam vahati — the horse carries the man and the girl to the tree',
+      composedOf: [
+        'skt-word-ashvah',
+        'skt-word-naram',
+        'skt-word-ca',
+        'skt-word-balam',
+        'skt-word-ca',
+        'skt-word-vrksam',
+        'skt-word-vahati',
       ],
     });
   });
