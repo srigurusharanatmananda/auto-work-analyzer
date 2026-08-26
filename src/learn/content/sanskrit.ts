@@ -3921,6 +3921,39 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-yaa', 'skt-letter-visarga'],
     },
     {
+      id: 'skt-word-vrksanam',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2 gives the genitive-plural ending; PDF p.62,
+      // 6.B.4(c)4 prints vṛkṣāṇām in the Roman sentence, whose English is
+      // supplied on p.135. Devanagari composes existing vṛ + kṣā + ṇā + m.
+      text: 'वृक्षाणाम्',
+      gloss: 'vṛkṣāṇām — of the trees (genitive plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-nnaa', 'skt-letter-ma-halanta'],
+    },
+    {
+      id: 'skt-word-phalani',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's neuter table gives phalāni; PDF p.62,
+      // 6.B.4(c)4 uses it and p.135 supplies the English. Devanagari
+      // composes the independently attested pha + lā + ni records.
+      text: 'फलानि',
+      gloss: 'phalāni — the fruits (neuter nominative/accusative plural)',
+      composedOf: ['skt-letter-pha', 'skt-letter-laa', 'skt-letter-ni'],
+    },
+    {
+      id: 'skt-word-labhete',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's ātmanepada table gives labhete; PDF p.62,
+      // 6.B.4(c)4 prints it and p.135 supplies the English. Devanagari
+      // composes the independently attested la + bhe + te records.
+      text: 'लभेते',
+      gloss: 'labhete — they two take (3rd person dual present, ātmanepada)',
+      composedOf: ['skt-letter-la', 'skt-letter-bhe', 'skt-letter-te'],
+    },
+    {
       id: 'skt-word-phalam',
       stage: 'words',
       level: 3,
@@ -4619,6 +4652,17 @@ export const sanskritManifest: Manifest = {
       text: 'नरस्य अश्वः फलम् बालायाः लभते',
       gloss: 'narasya aśvaḥ phalam bālāyāḥ labhate — the man’s horse takes the fruit from the girl',
       composedOf: ['skt-word-narasya', 'skt-word-ashvah', 'skt-word-phalam', 'skt-word-balayah', 'skt-word-labhate'],
+    },
+    {
+      id: 'skt-sentence-narau-vrksanam-phalani-ashvam-labhete',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)4 prints the Roman sentence; PDF p.135
+      // supplies its English. The Devanagari exactly space-joins the
+      // independently attested word records.
+      text: 'नरौ वृक्षाणाम् फलानि अश्वम् लभेते',
+      gloss: 'narau vṛkṣāṇām phalāni aśvam labhete — the men (two) take the fruits of the trees to the horse',
+      composedOf: ['skt-word-narau', 'skt-word-vrksanam', 'skt-word-phalani', 'skt-word-ashvam', 'skt-word-labhete'],
     },
   ],
 };
