@@ -372,6 +372,15 @@ the decision is cheap to reverse on evidence.
 
 ## Next
 
+**Sanskrit delivery automation (2026-08-27).** `npm run learn:audit-sanskrit`
+now reports manifest-derived inventory counts, while
+`npm run learn:verify-sanskrit` runs the focused curriculum tests, type check,
+and lint gate. The project-local `sanskrit-curriculum-delivery` Codex skill
+standardizes source evidence, test-first edits, provenance updates, and this
+verification gate; GitHub Actions runs it for relevant curriculum changes.
+Account-level scheduled Codex work remains an operator setup step, documented
+in [`docs/operations/codex-sanskrit-delivery.md`](docs/operations/codex-sanskrit-delivery.md).
+
 **Phase 7 content depth, per the new curriculum plan.** The next task is
 future Sanskrit vocabulary work toward genuine reading practice: expand
 Wikner lessons 5-11 vocabulary and the needed

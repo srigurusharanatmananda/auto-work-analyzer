@@ -1,0 +1,32 @@
+name: Sanskrit Curriculum Verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/learn/**'
+      - 'scripts/audit-sanskrit-curriculum.ts'
+      - 'scripts/audit-sanskrit-curriculum.test.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/sanskrit-curriculum.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/learn/**'
+      - 'scripts/audit-sanskrit-curriculum.ts'
+      - 'scripts/audit-sanskrit-curriculum.test.ts'
+      - 'package.json'
+      - 'bun.lock'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: bun install --frozen-lockfile
+      - run: npm run learn:audit-sanskrit
+      - run: npm run learn:verify-sanskrit

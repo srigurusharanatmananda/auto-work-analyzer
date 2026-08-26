@@ -16,6 +16,8 @@
     "e2e:clickup": "tsx scripts/e2e-clickup.ts",
     "learn:pregenerate-sanskrit-audio": "tsx scripts/pregenerate-sanskrit-audio.ts",
     "learn:pregenerate-chanting-audio": "tsx scripts/pregenerate-chanting-audio.ts",
+    "learn:audit-sanskrit": "tsx scripts/audit-sanskrit-curriculum.ts",
+    "learn:verify-sanskrit": "bun test scripts/audit-sanskrit-curriculum.test.ts src/learn/content/manifests.test.ts src/learn/Curriculum.test.ts && npx tsc --noEmit && npm run lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
