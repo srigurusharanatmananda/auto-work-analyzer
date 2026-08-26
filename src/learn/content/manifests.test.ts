@@ -308,10 +308,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the dual-destination reading words and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(288);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(122);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(111);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(55);
     expect(byId.get('skt-letter-ksau')).toMatchObject({
       stage: 'letters', level: 1, text: 'क्षौ', gloss: 'kṣau', composedOf: [],
     });
@@ -332,6 +328,38 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'वृक्षौ गच्छामि च फलानि लभे',
       gloss: 'vṛkṣau gacchāmi ca phalāni labhe — I go to the two trees and take the fruits',
       composedOf: ['skt-word-vrksau', 'skt-word-gacchami', 'skt-word-ca', 'skt-word-phalani', 'skt-word-labhe'],
+    });
+  });
+
+  test('specifies the dual-fruit reading words and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(293);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(114);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(56);
+    expect(byId.get('skt-letter-yai')).toMatchObject({
+      stage: 'letters', level: 1, text: 'यै', gloss: 'yai', composedOf: [],
+    });
+    expect(byId.get('skt-word-phale')).toMatchObject({
+      stage: 'words', level: 3, text: 'फले',
+      gloss: 'phale — the two fruits (neuter nominative/accusative dual)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le'],
+    });
+    expect(byId.get('skt-word-vrksat')).toMatchObject({
+      stage: 'words', level: 3, text: 'वृक्षात्',
+      gloss: 'vṛkṣāt — from the tree (ablative singular)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-ta-halanta'],
+    });
+    expect(byId.get('skt-word-balayai')).toMatchObject({
+      stage: 'words', level: 3, text: 'बालायै',
+      gloss: 'bālāyai — for the girl (feminine dative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-yai'],
+    });
+    expect(byId.get('skt-sentence-narah-phale-vrksat-balayai-vahati')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'नरः फले वृक्षात् बालायै वहति',
+      gloss: 'naraḥ phale vṛkṣāt bālāyai vahati — the man carries the two fruits from the tree for the girl',
+      composedOf: ['skt-word-narah', 'skt-word-phale', 'skt-word-vrksat', 'skt-word-balayai', 'skt-word-vahati'],
     });
   });
 
