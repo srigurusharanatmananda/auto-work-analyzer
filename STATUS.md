@@ -213,20 +213,22 @@ its Level 4 sentence, then the genitive-plural vṛkṣāṇām ("of the trees")
 phalāni ("the fruits"), and labhete ("they two take") with their Level 4
 sentence, then the nominative-plural bālāḥ ("the girls") and instrumental
 aśvena ("by horse") with their Level 4 sentence. Counted by running the real
-manifests, not grep: **Sanskrit 298 lessons, Tamil 315**. The next slice added
+manifests, not grep: **Sanskrit 300 lessons, Tamil 315**. The next slice added
 the dual-destination vṛkṣau ("to the two trees") and gacchāmi ("I go"), then
 the dual fruit phale ("the two fruits"), the ablative vṛkṣāt ("from the
 tree"), and the dative bālāyai ("for the girl") with their Level 4 sentences,
 then the possessive-tree reading sentence, dual-carrying vahataḥ, the
-horse-carrying sentence, and the girl-possessive horse sentence. All nine person/number cells of √sthā,
+horse-carrying sentence, the girl-possessive horse sentence, and the
+instrumental phalena ("by means of fruit") with its horse-leading sentence.
+All nine person/number cells of √sthā,
 √vad and √nī are taught, Sanskrit nouns inflect for dual and plural (so verb
 agreement can be shown subject-to-verb, not only verb-to-verb), Wikner's नर
 paradigm is complete, and Tamil has a second verb root (போ).
 
-**Level 4 ("Reading Practice") holds 44 Sanskrit sentences — but read the
+**Level 4 ("Reading Practice") holds 45 Sanskrit sentences — but read the
 caveat before treating it as done.** Every one is a line Wikner prints, with
 his own printed English as its gloss, so they clear the sourcing bar. But 25
-of the 44 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
+of the 45 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
 …) — permutations from his conjugation exercises. The tier is populated;
 whether it teaches "graded reading of real text" is a different question, and
 today it mostly drills verb agreement. The first vocabulary tranche has now

@@ -1247,7 +1247,16 @@ man.” All word forms were already taught, so this is sentence-only.
 Sanskrit: 297 → 298 lessons. Tamil: unchanged at 315. Level 4: 43 → 44
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 44 sentences
+**Fortieth pass — tranche 39: an instrumental fruit reading slice.** Wikner
+6.B.2 (PDF p.60) supplies phalena (“by means of fruit,” neuter instrumental
+singular); 6.B.4(d)8 (PDF p.62) and its Lesson 6 answer (PDF p.136) supply
+*naraḥ aśvam phalena nayate* — “The man leads the horse by means of fruit.”
+It needs no new letter form: phalena composes from existing pha/le/na records.
+
+Sanskrit: 298 → 300 lessons. Tamil: unchanged at 315. Level 4: 44 → 45
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 45 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
@@ -1260,7 +1269,7 @@ locative/genitive/instrumental declensions. Tranche 26 added two Level 4
 sentences, tranche 27 added one, tranche 28 added one, tranche 29 added one,
 tranche 30 added one, tranche 31 added one, tranche 32 added one, and tranche
 33 added one, tranche 34 added one, tranche 35 added one, tranche 36 added one,
-tranche 37 added one, and tranche 38 added one, so the tier now holds 44; its remaining
+tranche 37 added one, tranche 38 added one, and tranche 39 added one, so the tier now holds 45; its remaining
 work is future vocabulary, not an immediate re-leveling of the existing
 sentences.
 
