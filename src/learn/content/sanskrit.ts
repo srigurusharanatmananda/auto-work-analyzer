@@ -4851,5 +4851,14 @@ export const sanskritManifest: Manifest = {
       gloss: 'bālā naraḥ ca vṛkṣam aśvam vahataḥ — the girl and the man carry the tree to the horse',
       composedOf: ['skt-word-bala', 'skt-word-narah', 'skt-word-ca', 'skt-word-vrksam', 'skt-word-ashvam', 'skt-word-vahatah'],
     },
+    {
+      id: 'skt-sentence-ashvah-vrksam-balam-naraya-vahati',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(d)7; its answer on p.136 supplies the English.
+      text: 'अश्वः वृक्षम् बालम् नराय वहति',
+      gloss: 'aśvaḥ vṛkṣam bālam narāya vahati — the horse carries the tree to the girl for the man',
+      composedOf: ['skt-word-ashvah', 'skt-word-vrksam', 'skt-word-balam', 'skt-word-naraya', 'skt-word-vahati'],
+    },
   ],
 };
