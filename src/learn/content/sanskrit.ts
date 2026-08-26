@@ -4922,5 +4922,16 @@ export const sanskritManifest: Manifest = {
       gloss: 'aśve tiṣṭhati ca vadati ca — he stands on the horse and speaks',
       composedOf: ['skt-word-ashve', 'skt-word-tishthati', 'skt-word-ca', 'skt-word-vadati', 'skt-word-ca'],
     },
+    {
+      id: 'skt-sentence-vrksesu-narasya-ashvaah-tishthanti',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.49, 5.B.2(d)4; the Roman scan drops the long-vowel
+      // mark in aśvāḥ, but the Lesson 5 answer on p.135 explicitly says
+      // “The man's horses (pl.) are standing among the trees (pl.).”
+      text: 'वृक्षेषु नरस्य अश्वाः तिष्ठन्ति',
+      gloss: 'vṛkṣeṣu narasya aśvāḥ tiṣṭhanti — the man’s horses stand among the trees',
+      composedOf: ['skt-word-vrksesu', 'skt-word-narasya', 'skt-word-ashvaah', 'skt-word-tishthanti'],
+    },
   ],
 };
