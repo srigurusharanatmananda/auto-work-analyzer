@@ -394,17 +394,27 @@ describe('sanskrit manifest content', () => {
     });
   });
 
-  test('specifies the girl-possessive carrying sentence', () => {
+  test('specifies the instrumental fruit word and horse-leading sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(298);
+    expect(sanskritManifest.lessons).toHaveLength(300);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(115);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(60);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(116);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(61);
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
       composedOf: ['skt-word-balayah', 'skt-word-ashvah', 'skt-word-phalani', 'skt-word-naraya', 'skt-word-vahati'],
+    });
+    expect(byId.get('skt-word-phalena')).toMatchObject({
+      stage: 'words', level: 3, text: 'फलेन',
+      gloss: 'phalena — by means of fruit (neuter instrumental singular)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-na'],
+    });
+    expect(byId.get('skt-sentence-narah-ashvam-phalena-nayate')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'नरः अश्वम् फलेन नयते',
+      gloss: 'naraḥ aśvam phalena nayate — the man leads the horse by means of fruit',
+      composedOf: ['skt-word-narah', 'skt-word-ashvam', 'skt-word-phalena', 'skt-word-nayate'],
     });
   });
 
