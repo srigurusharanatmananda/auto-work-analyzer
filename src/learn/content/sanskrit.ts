@@ -3955,6 +3955,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ti'],
     },
     {
+      id: 'skt-word-vahatah',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)10 prints vahataḥ; p.135 translates the
+      // dual subject “The girl and the man carry …”. The ending is the same
+      // third-person dual -taḥ already taught in vadataḥ and tiṣṭhataḥ.
+      text: 'वहतः',
+      gloss: 'vahataḥ — they two carry (3rd person dual present, parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-ta', 'skt-letter-visarga'],
+    },
+    {
       id: 'skt-word-bala',
       stage: 'words',
       level: 3,
@@ -4829,6 +4840,16 @@ export const sanskritManifest: Manifest = {
       text: 'बाले फलानि नरस्य वृक्षात् लभेते',
       gloss: 'bāle phalāni narasya vṛkṣāt labhete — the girls (two) take the fruits from the man’s tree',
       composedOf: ['skt-word-bale', 'skt-word-phalani', 'skt-word-narasya', 'skt-word-vrksat', 'skt-word-labhete'],
+    },
+    {
+      id: 'skt-sentence-bala-narah-ca-vrksam-ashvam-vahatah',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)10 prints the Roman sentence; PDF p.135
+      // supplies “The girl and the man carry the tree to the horse.”
+      text: 'बाला नरः च वृक्षम् अश्वम् वहतः',
+      gloss: 'bālā naraḥ ca vṛkṣam aśvam vahataḥ — the girl and the man carry the tree to the horse',
+      composedOf: ['skt-word-bala', 'skt-word-narah', 'skt-word-ca', 'skt-word-vrksam', 'skt-word-ashvam', 'skt-word-vahatah'],
     },
   ],
 };
