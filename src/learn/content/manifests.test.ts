@@ -252,11 +252,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the genitive-plural reading words and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(279);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(119);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(107);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(53);
-
     expect(byId.get('skt-word-vrksanam')).toMatchObject({
       stage: 'words',
       level: 3,
@@ -284,6 +279,33 @@ describe('sanskrit manifest content', () => {
       text: 'नरौ वृक्षाणाम् फलानि अश्वम् लभेते',
       gloss: 'narau vṛkṣāṇām phalāni aśvam labhete — the men (two) take the fruits of the trees to the horse',
       composedOf: ['skt-word-narau', 'skt-word-vrksanam', 'skt-word-phalani', 'skt-word-ashvam', 'skt-word-labhete'],
+    });
+  });
+
+  test('specifies the plural instrumental reading words and sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(283);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(120);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(109);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(54);
+    expect(byId.get('skt-letter-shve')).toMatchObject({
+      stage: 'letters', level: 1, text: 'श्वे', gloss: 'śve', composedOf: [],
+    });
+    expect(byId.get('skt-word-balaah')).toMatchObject({
+      stage: 'words', level: 3, text: 'बालाः',
+      gloss: 'bālāḥ — the girls (feminine nominative plural)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-visarga'],
+    });
+    expect(byId.get('skt-word-ashvena')).toMatchObject({
+      stage: 'words', level: 3, text: 'अश्वेन',
+      gloss: 'aśvena — by horse (instrumental singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shve', 'skt-letter-na'],
+    });
+    expect(byId.get('skt-sentence-balaah-naraan-phalani-ashvena-nayante')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बालाः नरान् फलानि अश्वेन नयन्ते',
+      gloss: 'bālāḥ narān phalāni aśvena nayante — the girls lead the men to the fruits by horse',
+      composedOf: ['skt-word-balaah', 'skt-word-naraan', 'skt-word-phalani', 'skt-word-ashvena', 'skt-word-nayante'],
     });
   });
 
