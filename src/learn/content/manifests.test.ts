@@ -349,7 +349,7 @@ describe('sanskrit manifest content', () => {
     expect(byId.get('skt-word-vrksat')).toMatchObject({
       stage: 'words', level: 3, text: 'वृक्षात्',
       gloss: 'vṛkṣāt — from the tree (ablative singular)',
-      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-ta-halanta'],
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-ta-halanta'],
     });
     expect(byId.get('skt-word-balayai')).toMatchObject({
       stage: 'words', level: 3, text: 'बालायै',

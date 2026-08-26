@@ -1524,6 +1524,18 @@ export const sanskritManifest: Manifest = {
       composedOf: [],
     },
     {
+      id: 'skt-letter-yai',
+      stage: 'letters',
+      level: 1,
+      // Wikner PDF p.62, 6.B.4(c)8 prints bālāyai in Roman transliteration.
+      // His p.55 vowel-sign table establishes the ai sign after consonants;
+      // the existing yā component already establishes this consonant. This
+      // combined yai string is needed only for that source-attested form.
+      text: 'यै',
+      gloss: 'yai',
+      composedOf: [],
+    },
+    {
       id: 'skt-letter-bhe',
       stage: 'letters',
       level: 1,
@@ -3967,6 +3979,17 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-visarga'],
     },
     {
+      id: 'skt-word-balayai',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's feminine paradigm supplies bālāyai; p.62,
+      // 6.B.4(c)8 uses it and p.135 translates “for the girl.” The spelling
+      // composes the existing bā/lā lessons with the source-attested yai.
+      text: 'बालायै',
+      gloss: 'bālāyai — for the girl (feminine dative singular)',
+      composedOf: ['skt-letter-baa', 'skt-letter-laa', 'skt-letter-yai'],
+    },
+    {
       id: 'skt-word-balam',
       stage: 'words',
       level: 3,
@@ -4011,6 +4034,16 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-vri', 'skt-letter-ksau'],
     },
     {
+      id: 'skt-word-vrksat',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 6.B.4(c)8 prints vṛkṣāt; p.135 translates “from
+      // the tree.” The Devanagari composes existing vṛ/kṣā/final-t records.
+      text: 'वृक्षात्',
+      gloss: 'vṛkṣāt — from the tree (ablative singular)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-ta-halanta'],
+    },
+    {
       id: 'skt-word-phalani',
       stage: 'words',
       level: 3,
@@ -4020,6 +4053,16 @@ export const sanskritManifest: Manifest = {
       text: 'फलानि',
       gloss: 'phalāni — the fruits (neuter nominative/accusative plural)',
       composedOf: ['skt-letter-pha', 'skt-letter-laa', 'skt-letter-ni'],
+    },
+    {
+      id: 'skt-word-phale',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.60, 6.B.2's neuter paradigm gives the dual phale; p.62,
+      // 6.B.4(c)8 uses it and p.135 translates “the fruit (two).”
+      text: 'फले',
+      gloss: 'phale — the two fruits (neuter nominative/accusative dual)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le'],
     },
     {
       id: 'skt-word-labhete',
@@ -4764,6 +4807,17 @@ export const sanskritManifest: Manifest = {
       text: 'वृक्षौ गच्छामि च फलानि लभे',
       gloss: 'vṛkṣau gacchāmi ca phalāni labhe — I go to the two trees and take the fruits',
       composedOf: ['skt-word-vrksau', 'skt-word-gacchami', 'skt-word-ca', 'skt-word-phalani', 'skt-word-labhe'],
+    },
+    {
+      id: 'skt-sentence-narah-phale-vrksat-balayai-vahati',
+      stage: 'sentences',
+      level: 4,
+      // Wikner PDF p.62, 6.B.4(c)8 prints the Roman sentence; PDF p.135
+      // supplies “The man carries the fruit (two) from the tree for the
+      // girl.” The Devanagari exactly space-joins its word lessons.
+      text: 'नरः फले वृक्षात् बालायै वहति',
+      gloss: 'naraḥ phale vṛkṣāt bālāyai vahati — the man carries the two fruits from the tree for the girl',
+      composedOf: ['skt-word-narah', 'skt-word-phale', 'skt-word-vrksat', 'skt-word-balayai', 'skt-word-vahati'],
     },
   ],
 };
