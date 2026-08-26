@@ -213,19 +213,19 @@ its Level 4 sentence, then the genitive-plural vṛkṣāṇām ("of the trees")
 phalāni ("the fruits"), and labhete ("they two take") with their Level 4
 sentence, then the nominative-plural bālāḥ ("the girls") and instrumental
 aśvena ("by horse") with their Level 4 sentence. Counted by running the real
-manifests, not grep: **Sanskrit 293 lessons, Tamil 315**. The next slice adds
+manifests, not grep: **Sanskrit 294 lessons, Tamil 315**. The next slice adds
 the dual-destination vṛkṣau ("to the two trees") and gacchāmi ("I go"), then
 the dual fruit phale ("the two fruits"), the ablative vṛkṣāt ("from the
-tree"), and the dative bālāyai ("for the girl") with their Level 4 sentences.
-All nine person/number cells of √sthā,
+tree"), and the dative bālāyai ("for the girl") with their Level 4 sentences,
+then the possessive-tree reading sentence. All nine person/number cells of √sthā,
 √vad and √nī are taught, Sanskrit nouns inflect for dual and plural (so verb
 agreement can be shown subject-to-verb, not only verb-to-verb), Wikner's नर
 paradigm is complete, and Tamil has a second verb root (போ).
 
-**Level 4 ("Reading Practice") holds 40 Sanskrit sentences — but read the
+**Level 4 ("Reading Practice") holds 41 Sanskrit sentences — but read the
 caveat before treating it as done.** Every one is a line Wikner prints, with
 his own printed English as its gloss, so they clear the sourcing bar. But 25
-of the 40 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
+of the 41 are the same two-verb-plus-च shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च,
 …) — permutations from his conjugation exercises. The tier is populated;
 whether it teaches "graded reading of real text" is a different question, and
 today it mostly drills verb agreement. The first vocabulary tranche has now
@@ -236,8 +236,9 @@ accusative-reading sentence from 6.B.4(c)2, and tranche 30 added the
 ablative-reading sentence from 6.B.4(c)3; tranche 31 added the
 genitive/plural-reading sentence from 6.B.4(c)4; tranche 32 added the
 plural/instrumental-reading sentence from 6.B.4(c)5; tranche 33 added the
-dual-destination sentence from 6.B.4(c)7; and tranche 34 added the dual-fruit
-sentence from 6.B.4(c)8. Real prose
+dual-destination sentence from 6.B.4(c)7; tranche 34 added the dual-fruit
+sentence from 6.B.4(c)8; and tranche 35 added the possessive-tree sentence
+from 6.B.4(c)9. Real prose
 still needs future Wikner lessons 5-11 vocabulary and their
 locative/genitive/instrumental declensions. That is future vocabulary work,
 not an immediate re-leveling of the existing Level 4 sentences.
