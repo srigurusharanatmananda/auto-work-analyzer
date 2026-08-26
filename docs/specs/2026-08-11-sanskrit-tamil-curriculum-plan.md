@@ -1266,7 +1266,16 @@ the existing a and śve records.
 Sanskrit: 300 → 302 lessons. Tamil: unchanged at 315. Level 4: 45 → 46
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 46 sentences
+**Forty-second pass — tranche 41: a horse-locative Lesson 5 sentence.** Wikner
+5.B.2(d)8 (PDF p.49) and its Lesson 5 answer (PDF p.135) supply *aśve
+tiṣṭhati ca vadati ca* — “He stands on the horse and speaks.” Every word,
+including the repeated particle ca, was already taught after tranche 40; this
+is a sentence-only reading addition.
+
+Sanskrit: 302 → 303 lessons. Tamil: unchanged at 315. Level 4: 46 → 47
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 47 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
