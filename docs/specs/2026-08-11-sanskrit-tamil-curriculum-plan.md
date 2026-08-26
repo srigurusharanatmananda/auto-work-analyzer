@@ -1223,7 +1223,15 @@ sentence-only tranche adds no new letter or vocabulary lesson.
 Sanskrit: 293 → 294 lessons. Tamil: unchanged at 315. Level 4: 40 → 41
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 41 sentences
+**Thirty-seventh pass — tranche 36: a dual-carrying reading slice.** Wikner
+6.B.4(c)10 (PDF p.62) and its Lesson 6 answer (PDF p.135) supply *bālā naraḥ
+ca vṛkṣam aśvam vahataḥ* — “The girl and the man carry the tree to the horse.”
+Only vahataḥ (“they two carry”) was new; it composes entirely from existing letters.
+
+Sanskrit: 294 → 296 lessons. Tamil: unchanged at 315. Level 4: 41 → 42
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 42 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
