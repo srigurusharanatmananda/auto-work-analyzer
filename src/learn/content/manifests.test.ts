@@ -334,10 +334,6 @@ describe('sanskrit manifest content', () => {
   test('specifies the dual-fruit reading words and sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(293);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(114);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(56);
     expect(byId.get('skt-letter-yai')).toMatchObject({
       stage: 'letters', level: 1, text: 'यै', gloss: 'yai', composedOf: [],
     });
@@ -360,6 +356,20 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'नरः फले वृक्षात् बालायै वहति',
       gloss: 'naraḥ phale vṛkṣāt bālāyai vahati — the man carries the two fruits from the tree for the girl',
       composedOf: ['skt-word-narah', 'skt-word-phale', 'skt-word-vrksat', 'skt-word-balayai', 'skt-word-vahati'],
+    });
+  });
+
+  test('specifies the possessive-tree reading sentence', () => {
+    const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
+
+    expect(sanskritManifest.lessons).toHaveLength(294);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(114);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(57);
+    expect(byId.get('skt-sentence-bale-phalani-narasya-vrksat-labhete')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बाले फलानि नरस्य वृक्षात् लभेते',
+      gloss: 'bāle phalāni narasya vṛkṣāt labhete — the girls (two) take the fruits from the man’s tree',
+      composedOf: ['skt-word-bale', 'skt-word-phalani', 'skt-word-narasya', 'skt-word-vrksat', 'skt-word-labhete'],
     });
   });
 
