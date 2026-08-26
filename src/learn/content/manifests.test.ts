@@ -397,10 +397,10 @@ describe('sanskrit manifest content', () => {
   test('specifies the plural-horse Lesson 5 sentence', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(304);
+    expect(sanskritManifest.lessons).toHaveLength(305);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(117);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(64);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(65);
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',
@@ -435,6 +435,11 @@ describe('sanskrit manifest content', () => {
       stage: 'sentences', level: 4, text: 'वृक्षेषु नरस्य अश्वाः तिष्ठन्ति',
       gloss: 'vṛkṣeṣu narasya aśvāḥ tiṣṭhanti — the man’s horses stand among the trees',
       composedOf: ['skt-word-vrksesu', 'skt-word-narasya', 'skt-word-ashvaah', 'skt-word-tishthanti'],
+    });
+    expect(byId.get('skt-sentence-ashvah-naram-vrksat-gacchati')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'अश्वः नरम् वृक्षात् गच्छति',
+      gloss: 'aśvaḥ naram vṛkṣāt gacchati — the horse goes to the man from the tree',
+      composedOf: ['skt-word-ashvah', 'skt-word-naram', 'skt-word-vrksat', 'skt-word-gacchati'],
     });
   });
 
