@@ -397,10 +397,10 @@ describe('sanskrit manifest content', () => {
   test('specifies the Lesson 7 reading batch', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(349);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(134);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(137);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(78);
+    expect(sanskritManifest.lessons).toHaveLength(364);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(137);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(143);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(84);
     expect(byId.get('skt-word-asvat')).toMatchObject({
       stage: 'words', level: 3, text: 'अश्वात्',
       gloss: 'aśvāt — from the horse (masculine ablative singular)',
