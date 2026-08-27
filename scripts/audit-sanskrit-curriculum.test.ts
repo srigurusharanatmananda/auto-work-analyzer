@@ -4,10 +4,10 @@ import { summarizeSanskritCurriculum } from '../src/learn/content/sanskrit-audit
 
 test('summarizes the Sanskrit curriculum from the manifest', () => {
   expect(summarizeSanskritCurriculum()).toEqual({
-    totalLessons: 314,
+    totalLessons: 319,
     letters: 123,
-    words: 121,
-    sentences: 70,
-    level4Sentences: 54,
+    words: 124,
+    sentences: 72,
+    level4Sentences: 56,
   });
 });

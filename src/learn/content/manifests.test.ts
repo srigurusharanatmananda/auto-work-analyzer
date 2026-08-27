@@ -397,10 +397,35 @@ describe('sanskrit manifest content', () => {
   test('specifies the Lesson 7 reading batch', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(314);
+    expect(sanskritManifest.lessons).toHaveLength(319);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(121);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(70);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(124);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(72);
+    expect(byId.get('skt-word-asvat')).toMatchObject({
+      stage: 'words', level: 3, text: 'अश्वात्',
+      gloss: 'aśvāt — from the horse (masculine ablative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shvaa', 'skt-letter-ta-halanta'],
+    });
+    expect(byId.get('skt-word-phalebhyah')).toMatchObject({
+      stage: 'words', level: 3, text: 'फलेभ्यः',
+      gloss: 'phalebhyaḥ — for the fruits (neuter dative plural)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-bhya', 'skt-letter-visarga'],
+    });
+    expect(byId.get('skt-word-gacchatah')).toMatchObject({
+      stage: 'words', level: 3, text: 'गच्छतः',
+      gloss: 'gacchataḥ — they two go (third-person dual present parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ta', 'skt-letter-visarga'],
+    });
+    expect(byId.get('skt-sentence-narah-vrksam-asvat-balayai-labhate')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'नरः वृक्षम् अश्वात् बालायै लभते',
+      gloss: 'naraḥ vṛkṣam aśvāt bālāyai labhate — the man takes the tree from the horse for the girl',
+      composedOf: ['skt-word-narah', 'skt-word-vrksam', 'skt-word-asvat', 'skt-word-balayai', 'skt-word-labhate'],
+    });
+    expect(byId.get('skt-sentence-bala-ashvah-ca-vrksesu-phalebhyah-gacchatah')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'बाला अश्वः च वृक्षेषु फलेभ्यः गच्छतः',
+      gloss: 'bālā aśvaḥ ca vṛkṣeṣu phalebhyaḥ gacchataḥ — the girl and the horse go among the trees for fruits',
+      composedOf: ['skt-word-bala', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-vrksesu', 'skt-word-phalebhyah', 'skt-word-gacchatah'],
+    });
     expect(byId.get('skt-word-vahatha')).toMatchObject({
       stage: 'words', level: 3, text: 'वहथ',
       gloss: 'vahatha — you all carry (second-person plural present parasmaipada)',

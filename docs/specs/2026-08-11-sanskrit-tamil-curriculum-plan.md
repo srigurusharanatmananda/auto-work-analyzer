@@ -1308,7 +1308,18 @@ all remaining words were already taught.
 Sanskrit: 307 → 314 lessons. Tamil: unchanged at 315. Level 4: 51 → 54
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 54 sentences
+**Forty-sixth pass — tranche 45: remaining decomposable Lesson 7 readings.**
+Wikner 7.B.2(g)4–5 (PDF p.62) and the Lesson 7 answer key (PDF p.136) supply
+*naraḥ vṛkṣam aśvāt bālāyai labhate* — “The man takes the tree from the horse
+for the girl”; and *bālā aśvaḥ ca vṛkṣeṣu phalebhyaḥ gacchataḥ* — “The girl
+and the horse go among the trees (pl.) for fruit (pl.).” This adds *aśvāt*,
+*phalebhyaḥ*, and *gacchataḥ*. The sole remaining Lesson 7 answer still needs
+the independently blocked glyph/form *aśvau*.
+
+Sanskrit: 314 → 319 lessons. Tamil: unchanged at 315. Level 4: 54 → 56
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 56 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —

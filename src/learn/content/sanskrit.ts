@@ -4139,6 +4139,36 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-na-halanta'],
     },
     {
+      id: 'skt-word-asvat',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)4 asks for “from the horse”; the Lesson 7
+      // answer key on p.136 supplies aśvāt. It joins existing a + śvā + t.
+      text: 'अश्वात्',
+      gloss: 'aśvāt — from the horse (masculine ablative singular)',
+      composedOf: ['skt-letter-a', 'skt-letter-shvaa', 'skt-letter-ta-halanta'],
+    },
+    {
+      id: 'skt-word-phalebhyah',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)5 asks for “for fruit (pl.)”; the Lesson 7
+      // answer key on p.136 supplies phalebhyaḥ. It joins pha + le + bhya + ḥ.
+      text: 'फलेभ्यः',
+      gloss: 'phalebhyaḥ — for the fruits (neuter dative plural)',
+      composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-bhya', 'skt-letter-visarga'],
+    },
+    {
+      id: 'skt-word-gacchatah',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)5 joins a singular girl and horse; the
+      // answer key p.136 supplies gacchataḥ, its dual present verb form.
+      text: 'गच्छतः',
+      gloss: 'gacchataḥ — they two go (third-person dual present parasmaipada)',
+      composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ta', 'skt-letter-visarga'],
+    },
+    {
       id: 'skt-word-labhete',
       stage: 'words',
       level: 3,
@@ -5029,6 +5059,26 @@ export const sanskritManifest: Manifest = {
       text: 'अश्वाः वृक्षान् नरेभ्यः वहन्ति',
       gloss: 'aśvāḥ vṛkṣān narebhyaḥ vahanti — the horses carry the trees for the men',
       composedOf: ['skt-word-ashvaah', 'skt-word-vrksan', 'skt-word-narebhyah', 'skt-word-vahanti'],
+    },
+    {
+      id: 'skt-sentence-narah-vrksam-asvat-balayai-labhate',
+      stage: 'sentences', level: 4,
+      // Wikner 7.B.2(g)4, PDF p.62; the Lesson 7 answer key p.136 supplies
+      // the Roman sentence and “The man takes the tree from the horse for
+      // the girl.” The sentence exactly space-joins taught words.
+      text: 'नरः वृक्षम् अश्वात् बालायै लभते',
+      gloss: 'naraḥ vṛkṣam aśvāt bālāyai labhate — the man takes the tree from the horse for the girl',
+      composedOf: ['skt-word-narah', 'skt-word-vrksam', 'skt-word-asvat', 'skt-word-balayai', 'skt-word-labhate'],
+    },
+    {
+      id: 'skt-sentence-bala-ashvah-ca-vrksesu-phalebhyah-gacchatah',
+      stage: 'sentences', level: 4,
+      // Wikner 7.B.2(g)5, PDF p.62; the Lesson 7 answer key p.136 supplies
+      // the Roman sentence and “The girl and the horse go among the trees
+      // (pl.) for fruit (pl.).” The sentence exactly space-joins taught words.
+      text: 'बाला अश्वः च वृक्षेषु फलेभ्यः गच्छतः',
+      gloss: 'bālā aśvaḥ ca vṛkṣeṣu phalebhyaḥ gacchataḥ — the girl and the horse go among the trees for fruits',
+      composedOf: ['skt-word-bala', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-vrksesu', 'skt-word-phalebhyah', 'skt-word-gacchatah'],
     },
   ],
 };
