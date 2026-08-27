@@ -4943,5 +4943,21 @@ export const sanskritManifest: Manifest = {
       gloss: 'aśvaḥ naram vṛkṣāt gacchati — the horse goes to the man from the tree',
       composedOf: ['skt-word-ashvah', 'skt-word-naram', 'skt-word-vrksat', 'skt-word-gacchati'],
     },
+    {
+      id: 'skt-sentence-nara-ashve-tishthasi',
+      stage: 'sentences', level: 4,
+      // Wikner 5.B.2(d)1, PDF p.49; answer key p.135 supplies the English.
+      text: 'नर अश्वे तिष्ठसि',
+      gloss: 'nara aśve tiṣṭhasi — O man, you are standing on the horse',
+      composedOf: ['skt-word-nara', 'skt-word-ashve', 'skt-word-tishthasi'],
+    },
+    {
+      id: 'skt-sentence-vrksesu-narah-ashvah-ca-tishthatah',
+      stage: 'sentences', level: 4,
+      // Wikner 5.B.2(e)2, PDF p.50; answer key p.135 supplies the English.
+      text: 'वृक्षेषु नरः अश्वः च तिष्ठतः',
+      gloss: 'vṛkṣeṣu naraḥ aśvaḥ ca tiṣṭhataḥ — the man and horse stand among the trees',
+      composedOf: ['skt-word-vrksesu', 'skt-word-narah', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-tishthatah'],
+    },
   ],
 };

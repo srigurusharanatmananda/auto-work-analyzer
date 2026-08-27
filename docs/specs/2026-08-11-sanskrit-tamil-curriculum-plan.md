@@ -1285,7 +1285,18 @@ was already taught, so this is sentence-only.
 Sanskrit: 303 → 304 lessons. Tamil: unchanged at 315. Level 4: 47 → 48
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 48 sentences
+**Forty-fourth pass — tranche 43: a Lesson 5 reading batch.** Wikner 5.B.2(d)1
+and (d)7 (PDF p.49), 5.B.2(e)2 (PDF p.50), and the Lesson 5 answer key
+(PDF p.135) supply *nara aśve tiṣṭhasi* — “O man, you are standing on the
+horse”; *aśvaḥ naram vṛkṣāt gacchati* — “The horse goes to the man from the
+tree”; and *vṛkṣeṣu naraḥ aśvaḥ ca tiṣṭhataḥ* — “The man and horse stand
+among the trees.” All components were already taught, so this is a three-
+sentence batch with no new letters or word records.
+
+Sanskrit: 304 → 307 lessons. Tamil: unchanged at 315. Level 4: 48 → 51
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 51 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
