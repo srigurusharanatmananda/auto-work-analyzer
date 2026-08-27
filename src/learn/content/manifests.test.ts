@@ -394,13 +394,48 @@ describe('sanskrit manifest content', () => {
     });
   });
 
-  test('specifies the plural-horse Lesson 5 sentence', () => {
+  test('specifies the Lesson 7 reading batch', () => {
     const byId = new Map(sanskritManifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-    expect(sanskritManifest.lessons).toHaveLength(307);
+    expect(sanskritManifest.lessons).toHaveLength(314);
     expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'letters')).toHaveLength(123);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(117);
-    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(67);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'words')).toHaveLength(121);
+    expect(sanskritManifest.lessons.filter((lesson) => lesson.stage === 'sentences')).toHaveLength(70);
+    expect(byId.get('skt-word-vahatha')).toMatchObject({
+      stage: 'words', level: 3, text: 'वहथ',
+      gloss: 'vahatha — you all carry (second-person plural present parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-tha'],
+    });
+    expect(byId.get('skt-word-vrksasya')).toMatchObject({
+      stage: 'words', level: 3, text: 'वृक्षस्य',
+      gloss: 'vṛkṣasya — of the tree (masculine/neuter genitive singular)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-sya'],
+    });
+    expect(byId.get('skt-word-vahanti')).toMatchObject({
+      stage: 'words', level: 3, text: 'वहन्ति',
+      gloss: 'vahanti — they carry (third-person plural present parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-nti'],
+    });
+    expect(byId.get('skt-word-vrksan')).toMatchObject({
+      stage: 'words', level: 3, text: 'वृक्षान्',
+      gloss: 'vṛkṣān — the trees (masculine accusative plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-na-halanta'],
+    });
+    expect(byId.get('skt-sentence-phalani-vrksat-ashvena-vahatha')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'फलानि वृक्षात् अश्वेन वहथ',
+      gloss: 'phalāni vṛkṣāt aśvena vahatha — you all carry the fruits from the tree by horse',
+      composedOf: ['skt-word-phalani', 'skt-word-vrksat', 'skt-word-ashvena', 'skt-word-vahatha'],
+    });
+    expect(byId.get('skt-sentence-ashvam-vrksasya-phalani-nayethe')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'अश्वम् वृक्षस्य फलानि नयेथे',
+      gloss: 'aśvam vṛkṣasya phalāni nayethe — you two lead the horse to the fruits of the tree',
+      composedOf: ['skt-word-ashvam', 'skt-word-vrksasya', 'skt-word-phalani', 'skt-word-nayethe'],
+    });
+    expect(byId.get('skt-sentence-ashvaah-vrksan-narebhyah-vahanti')).toMatchObject({
+      stage: 'sentences', level: 4, text: 'अश्वाः वृक्षान् नरेभ्यः वहन्ति',
+      gloss: 'aśvāḥ vṛkṣān narebhyaḥ vahanti — the horses carry the trees for the men',
+      composedOf: ['skt-word-ashvaah', 'skt-word-vrksan', 'skt-word-narebhyah', 'skt-word-vahanti'],
+    });
     expect(byId.get('skt-sentence-balayah-ashvah-phalani-naraya-vahati')).toMatchObject({
       stage: 'sentences', level: 4, text: 'बालायाः अश्वः फलानि नराय वहति',
       gloss: 'bālāyāḥ aśvaḥ phalāni narāya vahati — the girl’s horse carries the fruits for the man',

@@ -1296,7 +1296,19 @@ sentence batch with no new letters or word records.
 Sanskrit: 304 → 307 lessons. Tamil: unchanged at 315. Level 4: 48 → 51
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 51 sentences
+**Forty-fifth pass — tranche 44: a Lesson 7 reading batch.** Wikner 7.B.2(g)
+(PDF p.62) and the Lesson 7 answer key (PDF p.136) supply *phalāni vṛkṣāt
+aśvena vahatha* — “You (pl.) carry the fruit (pl.) from the tree by horse”;
+*aśvam vṛkṣasya phalāni nayethe* — “You (two) lead the horse to the fruit
+(pl.) of the tree”; and *aśvāḥ vṛkṣān narebhyaḥ vahanti* — “The horses (pl.)
+carry the trees (pl.) for the men (pl.).” The four newly decomposable forms
+are *vahatha*, *vṛkṣasya*, *vahanti*, and *vṛkṣān*; every glyph component and
+all remaining words were already taught.
+
+Sanskrit: 307 → 314 lessons. Tamil: unchanged at 315. Level 4: 51 → 54
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 54 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —

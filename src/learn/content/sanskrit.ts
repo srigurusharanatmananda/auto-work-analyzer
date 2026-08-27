@@ -4098,6 +4098,47 @@ export const sanskritManifest: Manifest = {
       composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-na'],
     },
     {
+      id: 'skt-word-vahatha',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)1 asks for the second-person plural of
+      // vah; the Lesson 7 answer key on p.136 supplies vahatha. Its existing
+      // va + ha + tha components make the printed Roman answer readable.
+      text: 'वहथ',
+      gloss: 'vahatha — you all carry (second-person plural present parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-tha'],
+    },
+    {
+      id: 'skt-word-vrksasya',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)3 and its p.136 answer key print vṛkṣasya;
+      // the already taught vṛ + kṣa + sya components spell its genitive.
+      text: 'वृक्षस्य',
+      gloss: 'vṛkṣasya — of the tree (masculine/neuter genitive singular)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksa', 'skt-letter-sya'],
+    },
+    {
+      id: 'skt-word-vahanti',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)6 and its p.136 answer key print vahanti.
+      // It uses only the taught va + ha + nti components.
+      text: 'वहन्ति',
+      gloss: 'vahanti — they carry (third-person plural present parasmaipada)',
+      composedOf: ['skt-letter-va', 'skt-letter-ha', 'skt-letter-nti'],
+    },
+    {
+      id: 'skt-word-vrksan',
+      stage: 'words',
+      level: 3,
+      // Wikner PDF p.62, 7.B.2(g)6 and its p.136 answer key print vṛkṣān;
+      // existing vṛ + kṣā + final-n components establish the accusative plural.
+      text: 'वृक्षान्',
+      gloss: 'vṛkṣān — the trees (masculine accusative plural)',
+      composedOf: ['skt-letter-vri', 'skt-letter-ksaa', 'skt-letter-na-halanta'],
+    },
+    {
       id: 'skt-word-labhete',
       stage: 'words',
       level: 3,
@@ -4958,6 +4999,36 @@ export const sanskritManifest: Manifest = {
       text: 'वृक्षेषु नरः अश्वः च तिष्ठतः',
       gloss: 'vṛkṣeṣu naraḥ aśvaḥ ca tiṣṭhataḥ — the man and horse stand among the trees',
       composedOf: ['skt-word-vrksesu', 'skt-word-narah', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-tishthatah'],
+    },
+    {
+      id: 'skt-sentence-phalani-vrksat-ashvena-vahatha',
+      stage: 'sentences', level: 4,
+      // Wikner 7.B.2(g)1, PDF p.62; Lesson 7 answer key p.136 supplies
+      // both this Roman wording and “You (pl.) carry the fruit (pl.) from
+      // the tree by horse.” The sentence exactly space-joins taught words.
+      text: 'फलानि वृक्षात् अश्वेन वहथ',
+      gloss: 'phalāni vṛkṣāt aśvena vahatha — you all carry the fruits from the tree by horse',
+      composedOf: ['skt-word-phalani', 'skt-word-vrksat', 'skt-word-ashvena', 'skt-word-vahatha'],
+    },
+    {
+      id: 'skt-sentence-ashvam-vrksasya-phalani-nayethe',
+      stage: 'sentences', level: 4,
+      // Wikner 7.B.2(g)3, PDF p.62; the Lesson 7 answer key p.136 supplies
+      // the Roman sentence and “You (two) lead the horse to the fruit (pl.)
+      // of the tree.” The sentence exactly space-joins taught words.
+      text: 'अश्वम् वृक्षस्य फलानि नयेथे',
+      gloss: 'aśvam vṛkṣasya phalāni nayethe — you two lead the horse to the fruits of the tree',
+      composedOf: ['skt-word-ashvam', 'skt-word-vrksasya', 'skt-word-phalani', 'skt-word-nayethe'],
+    },
+    {
+      id: 'skt-sentence-ashvaah-vrksan-narebhyah-vahanti',
+      stage: 'sentences', level: 4,
+      // Wikner 7.B.2(g)6, PDF p.62; the Lesson 7 answer key p.136 supplies
+      // the Roman sentence and “The horses (pl.) carry the trees (pl.) for
+      // the men (pl.).” The sentence exactly space-joins taught words.
+      text: 'अश्वाः वृक्षान् नरेभ्यः वहन्ति',
+      gloss: 'aśvāḥ vṛkṣān narebhyaḥ vahanti — the horses carry the trees for the men',
+      composedOf: ['skt-word-ashvaah', 'skt-word-vrksan', 'skt-word-narebhyah', 'skt-word-vahanti'],
     },
   ],
 };
