@@ -1582,6 +1582,19 @@ export const sanskritManifest: Manifest = {
     },
 
     // ================= Words =================
+    // Lesson 8, 8.B.5(e) (PDF p.68) and answer key p.127: vowel signs and
+    // ordinary conjuncts needed to read the complete six-sentence exercise.
+    { id: 'skt-letter-gu', stage: 'letters', level: 1, text: 'गु', gloss: 'gu', composedOf: [] },
+    { id: 'skt-letter-ru', stage: 'letters', level: 1, text: 'रु', gloss: 'ru', composedOf: [] },
+    { id: 'skt-letter-dii', stage: 'letters', level: 1, text: 'दी', gloss: 'dī', composedOf: [] },
+    { id: 'skt-letter-dyaa', stage: 'letters', level: 1, text: 'द्या', gloss: 'dyā', composedOf: [] },
+    { id: 'skt-letter-ro', stage: 'letters', level: 1, text: 'रो', gloss: 'ro', composedOf: [] },
+    { id: 'skt-letter-nda', stage: 'letters', level: 1, text: 'न्द', gloss: 'nda', composedOf: [] },
+    { id: 'skt-letter-raii', stage: 'letters', level: 1, text: 'री', gloss: 'rī', composedOf: [] },
+    { id: 'skt-letter-shii', stage: 'letters', level: 1, text: 'शी', gloss: 'śī', composedOf: [] },
+    { id: 'skt-letter-ghra', stage: 'letters', level: 1, text: 'घ्र', gloss: 'ghra', composedOf: [] },
+    { id: 'skt-letter-lpa', stage: 'letters', level: 1, text: 'ल्प', gloss: 'lpa', composedOf: [] },
+    { id: 'skt-letter-lpaa', stage: 'letters', level: 1, text: 'ल्पा', gloss: 'lpā', composedOf: [] },
     {
       id: 'skt-word-nara',
       stage: 'words',
@@ -4168,6 +4181,20 @@ export const sanskritManifest: Manifest = {
       gloss: 'gacchataḥ — they two go (third-person dual present parasmaipada)',
       composedOf: ['skt-letter-ga', 'skt-letter-chcha', 'skt-letter-ta', 'skt-letter-visarga'],
     },
+    // Wikner 8.B.5(e), PDF p.68; answer key p.127.
+    { id: 'skt-word-guruh', stage: 'words', level: 3, text: 'गुरुः', gloss: 'guruḥ — teacher (masculine nominative singular)', composedOf: ['skt-letter-gu', 'skt-letter-ru', 'skt-letter-visarga'] },
+    { id: 'skt-word-nadim', stage: 'words', level: 3, text: 'नदीम्', gloss: 'nadīm — river (feminine accusative singular)', composedOf: ['skt-letter-na', 'skt-letter-dii', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-alpam', stage: 'words', level: 3, text: 'अल्पम्', gloss: 'alpam — small (neuter accusative singular)', composedOf: ['skt-letter-a', 'skt-letter-lpa', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-gurum', stage: 'words', level: 3, text: 'गुरुम्', gloss: 'gurum — teacher (masculine accusative singular)', composedOf: ['skt-letter-gu', 'skt-letter-ru', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-alpayam', stage: 'words', level: 3, text: 'अल्पायाम्', gloss: 'alpayām — in the small (feminine locative singular)', composedOf: ['skt-letter-a', 'skt-letter-lpaa', 'skt-letter-yaa', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-nadyam', stage: 'words', level: 3, text: 'नद्याम्', gloss: 'nadyām — in the river (feminine locative singular)', composedOf: ['skt-letter-na', 'skt-letter-dyaa', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-guroh', stage: 'words', level: 3, text: 'गुरोः', gloss: 'guroḥ — of the teacher (masculine genitive singular)', composedOf: ['skt-letter-gu', 'skt-letter-ro', 'skt-letter-visarga'] },
+    { id: 'skt-word-sundare', stage: 'words', level: 3, text: 'सुन्दरे', gloss: 'sundare — on the beautiful (masculine locative singular)', composedOf: ['skt-letter-su', 'skt-letter-nda', 'skt-letter-re'] },
+    { id: 'skt-word-sundari', stage: 'words', level: 3, text: 'सुन्दरी', gloss: 'sundarī — beautiful (feminine nominative singular)', composedOf: ['skt-letter-su', 'skt-letter-nda', 'skt-letter-raii'] },
+    { id: 'skt-word-sighram', stage: 'words', level: 3, text: 'शीघ्रम्', gloss: 'śīghram — quickly', composedOf: ['skt-letter-shii', 'skt-letter-ghra', 'skt-letter-ma-halanta'] },
+    { id: 'skt-word-alpasya', stage: 'words', level: 3, text: 'अल्पस्य', gloss: 'alpasya — of the small (masculine/neuter genitive singular)', composedOf: ['skt-letter-a', 'skt-letter-lpa', 'skt-letter-sya'] },
+    { id: 'skt-word-sundaresu', stage: 'words', level: 3, text: 'सुन्दरेषु', gloss: 'sundareṣu — among the beautiful (neuter locative plural)', composedOf: ['skt-letter-su', 'skt-letter-nda', 'skt-letter-re', 'skt-letter-ssu'] },
+    { id: 'skt-word-phalesu', stage: 'words', level: 3, text: 'फलेषु', gloss: 'phaleṣu — among the fruits (neuter locative plural)', composedOf: ['skt-letter-pha', 'skt-letter-le', 'skt-letter-ssu'] },
     {
       id: 'skt-word-labhete',
       stage: 'words',
@@ -5080,5 +5107,12 @@ export const sanskritManifest: Manifest = {
       gloss: 'bālā aśvaḥ ca vṛkṣeṣu phalebhyaḥ gacchataḥ — the girl and the horse go among the trees for fruits',
       composedOf: ['skt-word-bala', 'skt-word-ashvah', 'skt-word-ca', 'skt-word-vrksesu', 'skt-word-phalebhyah', 'skt-word-gacchatah'],
     },
+    // Wikner 8.B.5(e), PDF p.68; answer key p.127.
+    { id: 'skt-sentence-narasya-guruh-nadim-ashvena-gacchati', stage: 'sentences', level: 4, text: 'नरस्य गुरुः नदीम् अश्वेन गच्छति', gloss: 'narasya guruḥ nadīm aśvena gacchati — the man’s teacher goes to the river by horse', composedOf: ['skt-word-narasya', 'skt-word-guruh', 'skt-word-nadim', 'skt-word-ashvena', 'skt-word-gacchati'] },
+    { id: 'skt-sentence-bala-alpam-phalam-narasya-gurum-vahati', stage: 'sentences', level: 4, text: 'बाला अल्पम् फलम् नरस्य गुरुम् वहति', gloss: 'bālā alpam phalam narasya gurum vahati — the girl carries the small fruit to the man’s teacher', composedOf: ['skt-word-bala', 'skt-word-alpam', 'skt-word-phalam', 'skt-word-narasya', 'skt-word-gurum', 'skt-word-vahati'] },
+    { id: 'skt-sentence-balayah-guruh-alpayam-nadyam-tishthati', stage: 'sentences', level: 4, text: 'बालायाः गुरुः अल्पायाम् नद्याम् तिष्ठति', gloss: 'bālāyāḥ guruḥ alpayām nadyām tiṣṭhati — the girl’s teacher stands in the small river', composedOf: ['skt-word-balayah', 'skt-word-guruh', 'skt-word-alpayam', 'skt-word-nadyam', 'skt-word-tishthati'] },
+    { id: 'skt-sentence-guroh-bala-sundare-ashve-tishthati', stage: 'sentences', level: 4, text: 'गुरोः बाला सुन्दरे अश्वे तिष्ठति', gloss: 'guroḥ bālā sundare aśve tiṣṭhati — the teacher’s girl stands on the handsome horse', composedOf: ['skt-word-guroh', 'skt-word-bala', 'skt-word-sundare', 'skt-word-ashve', 'skt-word-tishthati'] },
+    { id: 'skt-sentence-sundari-bala-naram-alpam-gurum-sighram-nayate', stage: 'sentences', level: 4, text: 'सुन्दरी बाला नरम् अल्पम् गुरुम् शीघ्रम् नयते', gloss: 'sundarī bālā naram alpam gurum śīghram nayate — the beautiful girl quickly leads the man to the small teacher', composedOf: ['skt-word-sundari', 'skt-word-bala', 'skt-word-naram', 'skt-word-alpam', 'skt-word-gurum', 'skt-word-sighram', 'skt-word-nayate'] },
+    { id: 'skt-sentence-guruh-alpasya-vrksasya-sundaresu-phalesu-tishthati', stage: 'sentences', level: 4, text: 'गुरुः अल्पस्य वृक्षस्य सुन्दरेषु फलेषु तिष्ठति', gloss: 'guruḥ alpasya vṛkṣasya sundareṣu phaleṣu tiṣṭhati — the teacher stands among the beautiful fruits of the small tree', composedOf: ['skt-word-guruh', 'skt-word-alpasya', 'skt-word-vrksasya', 'skt-word-sundaresu', 'skt-word-phalesu', 'skt-word-tishthati'] },
   ],
 };

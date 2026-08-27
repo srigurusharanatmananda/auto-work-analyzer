@@ -1319,7 +1319,16 @@ the independently blocked glyph/form *aśvau*.
 Sanskrit: 314 → 319 lessons. Tamil: unchanged at 315. Level 4: 54 → 56
 sentences.
 
-**A caveat to read before anyone calls Level 4 done.** 25 of its 56 sentences
+**Forty-seventh pass — tranche 46: complete Lesson 8 reading set.** Wikner
+8.B.5(e) (PDF p.68) and its answer key (PDF p.127) supply all six graded
+sentences. The batch adds the required vowel-sign and conjunct reading forms,
+thirteen declined vocabulary forms, and six Level 4 readings without relying
+on reconstructed English glosses.
+
+Sanskrit: 319 → 349 lessons. Tamil: unchanged at 315. Level 4: 56 → 62
+sentences.
+
+**A caveat to read before anyone calls Level 4 done.** 25 of its 62 sentences
 are the same two-verb-plus-च drill shape (तिष्ठसि वदसि च, वदामि तिष्ठसि च, …),
 permutations out of Wikner's conjugation exercises. They are legitimately
 printed and legitimately glossed, so they clear this project's sourcing bar —
